@@ -15,6 +15,7 @@
 //     does NOT mutate community membership.
 
 import { readSeasonClosureStatus } from '@/utils/seasonClosureStatus';
+import { diagnosticEntity } from '@/services/diagnosticJournal';
 import { readDraftColors } from '@/utils/draftColors';
 import {
   CollectionReference,
@@ -167,6 +168,8 @@ export function readStats(d: DocumentData): UserStats | undefined {
     // when absent so a player who never took a penalty carries no penalty fields.
     penTaken: typeof s.penTaken === 'number' ? s.penTaken : undefined,
     penScored: typeof s.penScored === 'number' ? s.penScored : undefined,
+    penInPlayTaken: typeof s.penInPlayTaken === 'number' ? s.penInPlayTaken : undefined,
+    penInPlayScored: typeof s.penInPlayScored === 'number' ? s.penInPlayScored : undefined,
     penMissed: typeof s.penMissed === 'number' ? s.penMissed : undefined,
     penFaced: typeof s.penFaced === 'number' ? s.penFaced : undefined,
     penSaved: typeof s.penSaved === 'number' ? s.penSaved : undefined,
@@ -271,6 +274,8 @@ const userConverter: FirestoreDataConverter<User> = {
             // creating 0-fields on every user who never took a penalty.
             ...(typeof u.stats.penTaken === 'number' ? { penTaken: u.stats.penTaken } : {}),
             ...(typeof u.stats.penScored === 'number' ? { penScored: u.stats.penScored } : {}),
+            ...(typeof u.stats.penInPlayTaken === 'number' ? { penInPlayTaken: u.stats.penInPlayTaken } : {}),
+            ...(typeof u.stats.penInPlayScored === 'number' ? { penInPlayScored: u.stats.penInPlayScored } : {}),
             ...(typeof u.stats.penMissed === 'number' ? { penMissed: u.stats.penMissed } : {}),
             ...(typeof u.stats.penFaced === 'number' ? { penFaced: u.stats.penFaced } : {}),
             ...(typeof u.stats.penSaved === 'number' ? { penSaved: u.stats.penSaved } : {}),
@@ -306,6 +311,7 @@ const userConverter: FirestoreDataConverter<User> = {
   },
   fromFirestore(snap: QueryDocumentSnapshot<DocumentData>): User {
     const d = snap.data();
+    diagnosticEntity('profile',snap.id,{profileDocumentPresent:true,profileSource:snap.metadata? (snap.metadata.fromCache?'cache':'server'):'unknown',profileHasPendingWrites:snap.metadata?.hasPendingWrites??'unknown'});
     return {
       id: snap.id,
       name: d.name ?? '',
@@ -914,6 +920,7 @@ export function readLiveMatch(v: unknown): LiveMatchState | undefined {
           )
           .map((x) => ({
             id: x.id,
+            ...(typeof x.penaltyId === 'string' ? { penaltyId: x.penaltyId } : {}),
             team: x.team,
             scorerId: typeof x.scorerId === 'string' ? x.scorerId : null,
             // Keep the assister through deserialization — without this the
@@ -926,6 +933,14 @@ export function readLiveMatch(v: unknown): LiveMatchState | undefined {
             at: typeof x.at === 'number' ? x.at : 0,
           }))
       : undefined,
+    inPlayPenalties: Array.isArray(o.inPlayPenalties) ? o.inPlayPenalties.filter((p): p is import('@/types').InPlayPenalty =>
+      !!p && typeof p === 'object' && typeof (p as import('@/types').InPlayPenalty).id === 'string' &&
+      typeof (p as import('@/types').InPlayPenalty).kickerId === 'string' &&
+      ['A','B'].includes((p as import('@/types').InPlayPenalty).team) &&
+      ['goal','save','miss'].includes((p as import('@/types').InPlayPenalty).outcome))
+      .map(p => ({id:p.id,team:p.team,kickerId:p.kickerId,keeperId:typeof p.keeperId === 'string' ? p.keeperId : null,
+        ...(typeof p.clockMs === 'number' && Number.isSafeInteger(p.clockMs) && p.clockMs >= 0 ? {clockMs:p.clockMs} : {}),
+        outcome:p.outcome,minute:typeof p.minute === 'number' ? p.minute : 0,at:typeof p.at === 'number' ? p.at : 0})) : undefined,
     // Penalty-shootout state for a drawn round. Same explicit-deserialization
     // requirement as `goals` above — without this branch the whole `shootout`
     // object (first team, keepers, every kick) is stripped on every listener
@@ -987,6 +1002,7 @@ export function readLiveMatch(v: unknown): LiveMatchState | undefined {
           : undefined,
     timerAccumulatedMs:
       typeof o.timerAccumulatedMs === 'number' ? o.timerAccumulatedMs : undefined,
+    lastWidgetCommandId: typeof o.lastWidgetCommandId === 'string' ? o.lastWidgetCommandId : undefined,
     timerControlledBy:
       typeof o.timerControlledBy === 'string' ? o.timerControlledBy : undefined,
     timerControlledByName:
@@ -1539,6 +1555,9 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
   },
   fromFirestore(snap): GameDoc {
     const d = snap.data();
+    diagnosticEntity('game',snap.id,{gameStatus:d.status??'unknown',groupId:d.groupId,seasonId:d.seasonId,
+      playerCount:Array.isArray(d.players)?d.players.length:'unknown',waitlistCount:Array.isArray(d.waitlist)?d.waitlist.length:'unknown',maxPlayers:d.maxPlayers,
+      dataSource:snap.metadata?(snap.metadata.fromCache?'cache':'server'):'unknown',hasPendingWrites:snap.metadata?.hasPendingWrites??'unknown'});
     // Stage 2 lifecycle: accept all valid GameStatus values; anything
     // unrecognised collapses to 'open' so a typo in Firestore can't
     // brick the screen. Legacy docs missing the field also fall back

@@ -11,6 +11,16 @@ import { Linking } from 'react-native';
 import { appAlert } from '@/components/AppDialog';
 import { he } from '@/i18n/he';
 
+/** Optional provider calls must release both the UI and their deadline timer. */
+async function locationRead<T>(read: Promise<T>, timeoutMs: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([read, new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), timeoutMs); })]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
 export interface NearbyLocation {
   /** GPS coords — the preferred input for radius (haversine) matching. */
   latLng: { lat: number; lng: number } | null;
@@ -55,10 +65,7 @@ export async function resolveLocationIfGranted(): Promise<
   try {
     const cur = await Location.getForegroundPermissionsAsync();
     if (!cur.granted) return null;
-    const pos = await Promise.race([
-      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 6000)),
-    ]);
+    const pos = await locationRead(Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }), 6000);
     if (!pos) return null;
     return { lat: pos.coords.latitude, lng: pos.coords.longitude };
   } catch (caughtError67bb320a28) {
@@ -80,6 +87,7 @@ export async function resolveNearbyLocation(
   }
   if (Location) {
     let canAskAgain = true;
+    let granted = false;
     try {
       // Read the CURRENT status first (non-prompting). If it's already
       // granted we skip the prompt; if it's permanently denied we return
@@ -87,7 +95,7 @@ export async function resolveNearbyLocation(
       // state can hang forever on some Android builds (it never resolves
       // because the OS won't show a prompt).
       const cur = await Location.getForegroundPermissionsAsync();
-      let granted = cur.granted;
+      granted = cur.granted;
       canAskAgain = cur.canAskAgain;
       if (!granted && canAskAgain) {
         const req = await Location.requestForegroundPermissionsAsync();
@@ -97,12 +105,10 @@ export async function resolveNearbyLocation(
       if (granted) {
         // Cap the GPS fix so a slow/again-hanging sensor doesn't leave the
         // UI stuck on "locating…" — fall back to a city-only result.
-        const pos = await Promise.race([
+        const pos = await locationRead(
           Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.Balanced,
-          }),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
-        ]);
+          }), 8000);
         if (!pos) {
           return {
             latLng: null,
@@ -119,11 +125,11 @@ export async function resolveNearbyLocation(
         // non-fatal because latLng alone is enough for the radius check.
         let city: string | null = null;
         try {
-          const places = await Location.reverseGeocodeAsync({
+          const places = await locationRead(Location.reverseGeocodeAsync({
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
-          });
-          const place = places[0];
+          }), 6000);
+          const place = places?.[0];
           city =
             (place?.city || place?.subregion || place?.region || '').trim() ||
             null;
@@ -148,7 +154,7 @@ export async function resolveNearbyLocation(
       return {
         latLng: null,
         city: fallbackCity?.trim() ?? null,
-        granted: false,
+        granted,
         canAskAgain,
       };
     } catch (err) {
@@ -160,7 +166,7 @@ export async function resolveNearbyLocation(
       return {
         latLng: null,
         city: fallbackCity?.trim() ?? null,
-        granted: false,
+        granted,
         canAskAgain,
       };
     }

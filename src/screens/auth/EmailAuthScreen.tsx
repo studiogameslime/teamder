@@ -158,7 +158,7 @@ export function EmailAuthScreen() {
         await finishParkedAction();
       }
     } catch (err) {
-    observeCaughtError(err, {"source":"src/screens/auth/EmailAuthScreen.tsx","handler":"submit","site":"EmailAuthScreen:174c49be30"});
+      if ((err as {code?:string})?.code !== 'auth/network-request-failed') observeCaughtError(err, {"source":"src/screens/auth/EmailAuthScreen.tsx","handler":"submit","site":"EmailAuthScreen:174c49be30"});
       handleAuthError(err);
     } finally {
       inFlight.current = false;

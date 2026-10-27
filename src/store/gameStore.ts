@@ -27,6 +27,8 @@ import { logError } from '@/services/errorLog';
 // to show stale on every roster until sign-out). Cleared on reset().
 const playerHydratedAt = new Map<string, number>();
 const PLAYER_HYDRATE_TTL_MS = 5 * 60 * 1000;
+const playerHydrating = new Map<string, Promise<void>>();
+let playerGeneration = 0;
 
 /**
  * Empty Game placeholder. The redesigned screens query games via
@@ -83,6 +85,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   reset: () => {
     if (USE_MOCK_DATA) return; // keep the demo seed intact
+    playerGeneration += 1;
+    playerHydrating.clear();
     playerHydratedAt.clear();
     set({ players: {}, game: makeEmptyGame(), currentUserId: null });
   },
@@ -96,39 +100,56 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // Guard against falsy ids: a single undefined/'' (e.g. a malformed guest
     // with no addedBy) would otherwise reach the Firestore `in`-query and reject
     // the WHOLE batch, blanking every roster name to "…".
-    const missing = uids.filter(
+    const needed = [...new Set(uids)].filter(
       (id) =>
         !!id &&
         (!existing[id] ||
           now - (playerHydratedAt.get(id) ?? 0) > PLAYER_HYDRATE_TTL_MS),
     );
-    if (missing.length === 0) return;
-    try {
-      // /usersPublic, NOT /users. This is the roster on a game screen — a
-      // surface a guest reaches — and it renders exactly the four fields the
-      // public mirror carries. /users is now gated on a full account so that a
-      // Firebase anonymous session cannot read anyone's email, phone, push
-      // tokens or referral attribution; reading the mirror here is what keeps
-      // the public roster rendering for them.
-      const users = await groupService.hydratePublicUsers(missing);
-      set((s) => {
-        const next = { ...s.players };
-        for (const u of users) {
-          next[u.id] = {
-            id: u.id,
-            displayName: u.name,
-            avatarUrl: u.photoUrl,
-            avatarId: u.avatarId,
-            photoUrl: u.photoUrl,
-          };
-          playerHydratedAt.set(u.id, now);
-        }
-        return { players: next };
-      });
-    } catch (err) {
-    observeCaughtError(err, {"source":"src/store/gameStore.ts","handler":"hydratePlayers","site":"gameStore:a88761ce0f"});
-      logError('hydratePlayers', err, { count: missing.length });
-      if (__DEV__) console.warn('[gameStore] hydratePlayers failed', err);
+    if (needed.length === 0) return;
+    const waiting = new Set<Promise<void>>();
+    const missing = needed.filter((id) => {
+      const pending = playerHydrating.get(id);
+      if (!pending) return true;
+      waiting.add(pending);
+      return false;
+    });
+    if (missing.length === 0) {
+      await Promise.all(waiting);
+      return;
     }
+    const generation = playerGeneration;
+    const batch = (async () => {
+      try {
+        // Identity only: retain the public reader for both full and guest accounts.
+        const users = await groupService.hydratePublicUsers(missing);
+        if (generation !== playerGeneration) return;
+        set((s) => {
+          const next = { ...s.players };
+          for (const u of users) {
+            next[u.id] = {
+              id: u.id,
+              displayName: u.name,
+              avatarUrl: u.photoUrl,
+              avatarId: u.avatarId,
+              photoUrl: u.photoUrl,
+            };
+            playerHydratedAt.set(u.id, Date.now());
+          }
+          return { players: next };
+        });
+      } catch (err) {
+        if (generation !== playerGeneration) return;
+        observeCaughtError(err, {"source":"src/store/gameStore.ts","handler":"hydratePlayers","site":"gameStore:a88761ce0f"});
+        logError('hydratePlayers', err, { count: missing.length });
+        if (__DEV__) console.warn('[gameStore] hydratePlayers failed', err);
+      }
+    })().finally(() => {
+      for (const id of missing) {
+        if (playerHydrating.get(id) === batch) playerHydrating.delete(id);
+      }
+    });
+    for (const id of missing) playerHydrating.set(id, batch);
+    await Promise.all([...waiting, batch]);
   },
 }));

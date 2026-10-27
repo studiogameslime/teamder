@@ -110,6 +110,9 @@ function PostSignInProfileForm() {
   // avatar clears the photo (and vice versa) so the on-screen
   // preview always reflects exactly one choice.
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(user?.photoUrl);
+  // Keep evidence of an upload even when a later avatar selection clears the
+  // draft URL. A new account choosing only a built-in avatar has no file to delete.
+  const uploadedPhotoRef = useRef(false);
   const [avatarId, setAvatarId] = useState<string | undefined>(
     user?.avatarId ?? (user ? pickRandomAvatarId() : undefined),
   );
@@ -156,6 +159,7 @@ function PostSignInProfileForm() {
         }
         return;
       }
+      uploadedPhotoRef.current = true;
       setPhotoUrl(res.url);
       // The user just picked a photo — drop the previously-picked
       // avatar selection so the preview / save reflect the photo.
@@ -210,7 +214,9 @@ function PostSignInProfileForm() {
       // tied to its account, while failures and a changed identity retain the
       // file. It is never part of the profile transaction.
       if (useUserStore.getState().currentUser?.id !== user.id) return;
-      if (!photoUrl && avatarId) void deleteUserPhoto(user.id);
+      if (!photoUrl && avatarId && (user.photoUrl || uploadedPhotoRef.current)) {
+        void deleteUserPhoto(user.id);
+      }
       // Closes the funnel leg that starts at auth_prompt_shown. `complete`
       // flips `onboardingCompleted`, which is what lets RootNavigator's resume
       // effect run — so the action the person originally asked for finishes

@@ -40,7 +40,9 @@ const geometry = {
   penalty: { primary: { x: 0.50, y: 0.63 }, secondary: { x: 0.50, y: 0.17 } },
 };
 const rtl = I18nManager.isRTL;
-const logicalStart = (x: number, width: number, itemWidth: number) => rtl ? width - x - itemWidth / 2 : x - itemWidth / 2;
+// Percentage anchors follow the actual native width, including the first frame
+// before onLayout reports it. Margins center the slot on its physical anchor.
+const logicalAnchor = (x: number): `${number}%` => `${(rtl ? 1 - x : x) * 100}%`;
 const participantDiscSize = (height: number, concise: boolean) => concise ? (height < 145 ? 32 : 36) : height < 210 ? 42 : 52;
 
 function Participant({ person, x, y, width, height, active, visible, disabled, dive = 0, concise = false, selectionLabel = false }: {
@@ -83,7 +85,7 @@ function Participant({ person, x, y, width, height, active, visible, disabled, d
     </Animated.View>
     {labels}
   </>;
-  const position = { width:slotWidth,start: logicalStart(x * width, width, slotWidth), top: y * height - discSize / 2 };
+  const position = { width:slotWidth,start: logicalAnchor(x), marginStart: -slotWidth / 2, top: y * height - discSize / 2 };
   return editable ? <Pressable onPress={person.onEdit} accessibilityRole="button" accessibilityLabel={`שינוי ${person.label}, ${person.player!.name}`} style={[s.participant, position]}>{content}</Pressable>
     : <View style={[s.participant, position]} accessible accessibilityLabel={`${person.label}, ${person.player?.name ?? person.fallback ?? 'טרם נבחר'}${person.teamLabel ? ', ' + person.teamLabel : ''}`}>{content}</View>;
 }
@@ -140,7 +142,7 @@ export function MatchActionPitch({ mode, primary, secondary, activeRole, status,
       const endY = outcome === 'miss' ? 0.07 : outcome === 'save' ? 0.20 : 0.10;
       x = startX + (endX - startX) * u; y = startY + (endY - startY) * u - Math.sin(Math.PI * u) * 0.035;
     }
-    return { transform: [{ translateX: rtl ? width * (x - 1) + 12 : width * x - 12 }, { translateY: height * y - 12 }, { scale: 1 - p * 0.25 }, { rotate: `${p * 300}deg` }] };
+    return { transform: [{ translateX: width * (x - 0.5) }, { translateY: height * y - 12 }, { scale: 1 - p * 0.25 }, { rotate: `${p * 300}deg` }] };
   });
   const netStyle = useAnimatedStyle(() => ({ transform: [{ scaleX: 1 + net.value * 0.045 }, { scaleY: 1 + net.value * 0.09 }] }));
   const celebrationStyle = useAnimatedStyle(() => ({ opacity: celebration.value, transform: [{ scale: reduced ? 1 : 0.90 + celebration.value * 0.10 }] }));
@@ -154,7 +156,7 @@ export function MatchActionPitch({ mode, primary, secondary, activeRole, status,
       <Circle cx="50" cy="39" r="0.65" fill="#FFF" opacity={0.8}/>
       {mode === 'goal' && primary.player && <Path d={`M25 ${passStartY*100} Q50 ${passStartY*100-2} 75 ${shotStartY*100} L50 10`} stroke="#E5FFEF" strokeDasharray="2.2 1.6" strokeWidth={0.65} fill="none" opacity={0.82}/>}
     </Svg>
-    <Animated.View pointerEvents="none" style={[s.goal, { width: width * 0.32, height: height * 0.15, start: logicalStart(width * 0.5, width, width * 0.32), top: height * 0.035 }, netStyle]}>
+    <Animated.View pointerEvents="none" style={[s.goal, { width: '32%', height: height * 0.15, start: '34%', top: height * 0.035 }, netStyle]}>
       <Svg width="100%" height="100%" viewBox="0 0 160 60" preserveAspectRatio="none" accessible={false}>
         <Path d="M2 58 L12 4 H148 L158 58Z" fill="rgba(255,255,255,0.08)" stroke="#DFF7E9" strokeWidth={2}/>
         {Array.from({ length: 21 }, (_, i) => <Path key={i} d={`M${12 + i * 6.8} 4 L${2 + i * 7.8} 58`} stroke="#DFF7E9" strokeWidth={0.6} opacity={0.72}/>)}
@@ -179,13 +181,13 @@ const s = StyleSheet.create({
   goal: { position: 'absolute' }, participant: { position: 'absolute', width: 108, alignItems: 'center', gap: 1 },
   previewShirts: { position: 'absolute', start: 0, end: 0, bottom: '12%', flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center' },
   disc: { width: 52, height: 52, borderRadius: 26, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  halo: { position: 'absolute', width: 64, height: 64, borderRadius: 32, borderWidth: 2 }, plus: { fontSize: 31, fontWeight: '600', lineHeight: 40, textAlign: 'center' },
+  halo: { position: 'absolute', width: 64, height: 64, borderRadius: 32, borderWidth: 2 }, plus: { fontSize: 31, fontWeight: '600', lineHeight: 40, includeFontPadding: false, textAlignVertical: 'center', textAlign: 'center' },
   role: { color: '#FFF', fontSize: 12, fontWeight: '800', textAlign: 'center', textShadowColor: '#103A20', textShadowRadius: 2 },
   playerName: { color: '#FFF', fontSize: 12, fontWeight: '700', textAlign: 'center', textShadowColor: '#103A20', textShadowRadius: 2, maxWidth: 108 },
   teamTag: { color: '#FFF', fontSize: 10, fontWeight: '700', textAlign: 'center', paddingHorizontal: 7, paddingVertical: 1, borderRadius: 8, maxWidth: 108 },
   compactLabel:{fontSize:11,lineHeight:14,includeFontPadding:false},compactTeamTag:{fontSize:9,lineHeight:12,includeFontPadding:false},
   editDot: { position: 'absolute', bottom: -1, end: -4, width: 18, height: 18, borderRadius: 9, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' }, editIcon: { color: '#172554', fontSize: 14 },
-  ball: { position: 'absolute', start: 0, top: 0, width: 24, height: 24 },
+  ball: { position: 'absolute', start: '50%', marginStart: -12, top: 0, width: 24, height: 24 },
   ballImage: { width: 24, height: 24 },
   celebration: { position: 'absolute', top: '30%', start: '31%', end: '31%', borderRadius: 14, paddingVertical: 7, paddingHorizontal: 6, borderWidth: 1, borderColor: '#FFFFFF80' },
   celebrationText: { color: '#FFF', fontSize: 23, fontWeight: '900', textAlign: 'center' },

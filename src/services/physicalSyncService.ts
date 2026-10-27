@@ -1,3 +1,4 @@
+import { SPORTS_ACTIVITY_ENABLED } from '@/config/sportsActivity';
 import { observeCaughtError } from '../utils/errorObservation';
 // physicalSyncService — after a game, reads the player's wearable session and
 // uploads the physical metrics via the saveGamePhysical callable.
@@ -25,7 +26,7 @@ const MAX_GAME_MS = 4 * 60 * 60 * 1000;
 export const physicalSyncService = {
   /** Ingest + upload this player's physical stats for a finished game. */
   async syncForGame(gameId: string): Promise<boolean> {
-    if (!gameId || USE_MOCK_DATA) return false;
+    if (!SPORTS_ACTIVITY_ENABLED || !gameId || USE_MOCK_DATA) return false;
     if (!healthService.isAvailable()) return false;
     // Ensure Health Connect access before reading — prompts the permission
     // sheet the first time, then stays silent (declined users aren't nagged).
@@ -114,7 +115,7 @@ export const physicalSyncService = {
       };
 
       // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
-      const { httpsCallable } = require('firebase/functions');
+      const { httpsCallable } = require('@/services/diagnosticCallable');
       await httpsCallable(getFirebase().functions, 'saveGamePhysical')({ gameId, metrics });
       return true;
     } catch (err) {

@@ -638,6 +638,7 @@ function RoundCard({
                         {he.matchRoundsAssist(assist.name)}
                       </Text>
                     ) : null}
+                    {g.penaltyId ? <Text style={styles.goalAssist}>פנדל במהלך המשחק</Text> : null}
                   </View>
                 </View>
                 {g.minute ? (
@@ -651,6 +652,13 @@ function RoundCard({
         <Text style={styles.noGoals}>{he.matchRoundsNoGoals}</Text>
       )}
 
+      {!!round.inPlayPenalties?.length&&<View style={styles.goalsList}>
+        <Text style={styles.pensHeadTx}>פנדלים במהלך המשחק</Text>
+        {round.inPlayPenalties.map(p=><View key={p.id} style={styles.penRow}>
+          <Text style={styles.goalMinute}>{p.minute}׳</Text>
+          <Text style={styles.goalAssist}>{resolve(p.kickerId).name} · {p.outcome==='goal'?'גול':p.outcome==='save'?'השוער עצר':'החטאה'}{p.keeperId?` · שוער: ${resolve(p.keeperId).name}`:''}</Text>
+        </View>)}
+      </View>}
       {/* Penalty shootout */}
       {pens.length > 0 ? (
         <View style={styles.pens}>

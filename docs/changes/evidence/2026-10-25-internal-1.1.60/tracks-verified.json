@@ -1,0 +1,65 @@
+{
+  "tracks": {
+    "production": [
+      {
+        "name": "1.1.57",
+        "versionCodes": [
+          "291"
+        ],
+        "releaseNotes": [
+          {
+            "language": "iw-IL",
+            "text": "עיצוב מעודכן למסכי המועדונים והמחזורים ולניווט. שיפורים בסיכום האישי, בתמונות המועדונים ובהרשמה. תיקונים בתהליך ההצטרפות ובהזמנות, ושיפורי יציבות."
+          }
+        ],
+        "status": "completed"
+      }
+    ],
+    "beta": [],
+    "alpha": [
+      {
+        "name": "27 (0.2.10)",
+        "versionCodes": [
+          "27"
+        ],
+        "status": "completed"
+      }
+    ],
+    "internal": [
+      {
+        "name": "1.1.60",
+        "versionCodes": [
+          "294"
+        ],
+        "status": "completed"
+      }
+    ],
+    "wear:beta": [],
+    "wear:internal": [
+      {
+        "name": "1005 (0.2.21)",
+        "versionCodes": [
+          "1005"
+        ],
+        "status": "completed"
+      }
+    ],
+    "wear:production": [
+      {
+        "name": "1.0.30",
+        "versionCodes": [
+          "1027"
+        ],
+        "status": "completed"
+      }
+    ]
+  },
+  "productionUnchanged": true,
+  "otherTracksUnchanged": true,
+  "uploadedBundle": {
+    "versionCode": 294,
+    "sha1": "7f29f30cae3652ff5c8d18a4622326e83afbee75",
+    "sha256": "ea32a4e2483ab622efd37e455d6c6eecc1dfd3bd2b642cb4d1f3a6e16e5c6435"
+  },
+  "binaryHashMatches": true
+}

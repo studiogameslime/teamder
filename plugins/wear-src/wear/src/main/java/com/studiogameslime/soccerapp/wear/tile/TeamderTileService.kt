@@ -20,7 +20,7 @@ import androidx.wear.protolayout.TimelineBuilders
 import androidx.wear.tiles.RequestBuilders
 import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
-import com.google.android.gms.tasks.Tasks
+import com.google.common.util.concurrent.SettableFuture
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.Wearable
 import com.google.common.util.concurrent.Futures
@@ -61,33 +61,48 @@ class TeamderTileService : TileService() {
     override fun onTileRequest(
         requestParams: RequestBuilders.TileRequest,
     ): ListenableFuture<TileBuilders.Tile> {
-        val state = loadCurrentState()
-        val root = buildLayout(state)
-        // While live, ask the system to refresh after a minute even if no
-        // push comes — keeps the displayed minute count honest if the
-        // listener service is killed. Idle/Upcoming refresh slower.
-        val freshness =
-            if (state is WearGameState.Live) RUNNING_FRESHNESS_MS else IDLE_FRESHNESS_MS
-
-        val tile = TileBuilders.Tile.Builder()
-            .setResourcesVersion(RESOURCES_VERSION)
-            .setTileTimeline(
-                TimelineBuilders.Timeline.Builder()
-                    .addTimelineEntry(
-                        TimelineBuilders.TimelineEntry.Builder()
-                            .setLayout(
-                                LayoutElementBuilders.Layout.Builder()
-                                    .setRoot(root)
-                                    .build()
-                            )
-                            .build()
-                    )
-                    .build()
-            )
-            .setFreshnessIntervalMillis(freshness)
-            .build()
-        return Futures.immediateFuture(tile)
+        com.studiogameslime.soccerapp.wear.activity.WearClockSync.restore(applicationContext)
+        val result = SettableFuture.create<TileBuilders.Tile>()
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        val timeout = Runnable { result.set(buildTile(WearGameState.Disconnected)) }
+        handler.postDelayed(timeout, 5_000)
+        result.addListener({ handler.removeCallbacks(timeout) }, com.google.common.util.concurrent.MoreExecutors.directExecutor())
+        Wearable.getDataClient(this).dataItems
+            .addOnSuccessListener { buffer ->
+                try {
+                    var newest = 0L
+                    var state: WearGameState = WearGameState.Disconnected
+                    for (item in buffer) {
+                        if (item.uri.path != STATE_PATH) continue
+                        val map = DataMapItem.fromDataItem(item).dataMap
+                        val json = map.getString(KEY_JSON) ?: continue
+                        val at = map.getLong(KEY_TS, 0L)
+                        if (at >= newest) {
+                            newest = at
+                            applicationContext.getSharedPreferences("WearLastState", MODE_PRIVATE).edit()
+                                .putString("json", json).putLong("ts", at).putString("node", item.uri.host).apply()
+                            val viewer = try { org.json.JSONObject(json).optJSONObject("viewer")?.optString("id").orEmpty() } catch (_: Exception) { "" }
+                            com.studiogameslime.soccerapp.wear.activity.WearClockSync.request(applicationContext, item.uri.host.orEmpty(), viewer)
+                            if (viewer.isNotBlank() && item.uri.host != null) Wearable.getMessageClient(applicationContext).sendMessage(
+                                item.uri.host!!, "/teamder/request-state", org.json.JSONObject().put("userId", viewer).toString().toByteArray())
+                            state = parseWearStateFresh(json, at, com.studiogameslime.soccerapp.wear.activity.WearClockSync.calibration?.takeIf { it.fresh(System.currentTimeMillis()) }?.offsetMs?.toLong()) }
+                    }
+                    result.set(buildTile(state))
+                } catch (_: Exception) { result.set(buildTile(WearGameState.Disconnected)) }
+                finally { buffer.release() }
+            }.addOnFailureListener { result.set(buildTile(WearGameState.Disconnected)) }
+        return result
     }
+
+    private fun buildTile(state: WearGameState): TileBuilders.Tile = TileBuilders.Tile.Builder()
+        .setResourcesVersion(RESOURCES_VERSION)
+        .setTileTimeline(TimelineBuilders.Timeline.Builder().addTimelineEntry(
+            TimelineBuilders.TimelineEntry.Builder().setLayout(
+                LayoutElementBuilders.Layout.Builder().setRoot(buildLayout(state)).build()
+            ).build()
+        ).build())
+        .setFreshnessIntervalMillis(if (state is WearGameState.Live) RUNNING_FRESHNESS_MS else IDLE_FRESHNESS_MS)
+        .build()
 
     override fun onTileResourcesRequest(
         requestParams: RequestBuilders.ResourcesRequest,
@@ -106,38 +121,6 @@ class TeamderTileService : TileService() {
             )
             .build()
         return Futures.immediateFuture(resources)
-    }
-
-    // ── State load ────────────────────────────────────────────────────────
-
-    /**
-     * Synchronously read the latest `/teamder/state` data item and parse.
-     * DataItems persist across phone-app restarts, so this returns the
-     * last-known state even if the phone is currently offline.
-     */
-    private fun loadCurrentState(): WearGameState = try {
-        val buffer = Tasks.await(
-            Wearable.getDataClient(this).dataItems,
-            DATA_TIMEOUT_S, TimeUnit.SECONDS,
-        )
-        var result: WearGameState = WearGameState.Disconnected
-        try {
-            for (i in 0 until buffer.count) {
-                val item = buffer[i]
-                if (item.uri.path == STATE_PATH) {
-                    val dataMap = DataMapItem.fromDataItem(item).dataMap
-                    val json = dataMap.getString(KEY_JSON)
-                    if (json != null) {
-                        result = parseWearStateFresh(json, dataMap.getLong(KEY_TS, 0L))
-                    }
-                }
-            }
-        } finally {
-            buffer.release()
-        }
-        result
-    } catch (_: Exception) {
-        WearGameState.Disconnected
     }
 
     // ── Layouts ───────────────────────────────────────────────────────────
@@ -176,7 +159,7 @@ class TeamderTileService : TileService() {
     private fun liveLayout(s: WearGameState.Live): LayoutElement {
         val elapsed = computeElapsedMs(s.timer)
         val timerColor = if (s.timer.running) COLOR_BLUE else COLOR_INK
-        val statusText = if (s.timer.running) STATUS_RUNNING else STATUS_PAUSED
+        val statusText = if (s.stale) "ממתין לעדכון מהטלפון" else if (s.timer.running) STATUS_RUNNING else STATUS_PAUSED
         // A tile can only re-render on its freshness interval (60s while live),
         // so a ticking mm:ss would show seconds that are up to a minute stale.
         // While running we therefore show minute resolution; a PAUSED value is
@@ -217,7 +200,7 @@ class TeamderTileService : TileService() {
                 .addContent(spacer(DP_2))
                 .addContent(
                     textLine(
-                        "${s.playersCount}/${s.maxPlayers} שחקנים",
+                        (if (s.maxPlayers > 0) "\u2066${s.playersCount}/${s.maxPlayers}\u2069" else "${s.playersCount}") + " שחקנים",
                         TEXT_SP_LINE, false, COLOR_INK_SOFT, 1,
                     )
                 )
@@ -311,7 +294,7 @@ class TeamderTileService : TileService() {
      *  skew (same device-independent formula as the watch app + widget). Legacy
      *  wall-clock fallback only for old phones that don't send baseElapsedMs. */
     private fun computeElapsedMs(t: TimerState): Long =
-        if (t.baseElapsedMs >= 0L) {
+        if (!t.clockReady) t.baseElapsedMs.coerceAtLeast(0) else if (t.baseElapsedMs >= 0L) {
             if (t.running) {
                 t.baseElapsedMs +
                     (SystemClock.elapsedRealtime() - t.parseAnchorRealtimeMs)

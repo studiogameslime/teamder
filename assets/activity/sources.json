@@ -1,0 +1,38 @@
+[
+  {
+    "slug": "fit",
+    "package": "com.google.android.apps.fitness",
+    "page": "https://play.google.com/store/apps/details?id=com.google.android.apps.fitness&hl=en",
+    "image": "https://play-lh.googleusercontent.com/JX8RAoUFybCYzCLp5bNhqeXCmhqqzXf4sX81-XsokkOJXqZyw5N83wpzrtHlILhFBkFmuhhM51z9wSLXQrEa=s0-br30"
+  },
+  {
+    "slug": "samsung",
+    "package": "com.sec.android.app.shealth",
+    "page": "https://play.google.com/store/apps/details?id=com.sec.android.app.shealth&hl=en",
+    "image": "https://play-lh.googleusercontent.com/OS7TGfRDIg8sbKxzYpsAr6fcg8vWPBV6Wx85alc0EQivKZY4I6VQuFRNaFSyi07ZydngVcxFkmVUUkr32khBVg=s0-br30"
+  },
+  {
+    "slug": "strava",
+    "package": "com.strava",
+    "page": "https://play.google.com/store/apps/details?id=com.strava&hl=en",
+    "image": "https://play-lh.googleusercontent.com/J4LN2qH2PQkZ3sFQonz-HWYkd7M38BtEO4Grzh1Xn7L2J6NUILHPkhYvPjdhMZQzrdm4BarUj547wfthyMz_vWM=s0-br30"
+  },
+  {
+    "slug": "garmin",
+    "package": "com.garmin.android.apps.connectmobile",
+    "page": "https://play.google.com/store/apps/details?id=com.garmin.android.apps.connectmobile&hl=en",
+    "image": "https://play-lh.googleusercontent.com/wQVBsxZBX7buxjAlBIsBTRth7hknBOcbOUbzxNprfH22T9_ejF6VO5QC3CrMpvNivFvkyHHKvmiTnFO9P39S=s0-br30"
+  },
+  {
+    "slug": "fitbit",
+    "package": "com.fitbit.FitbitMobile",
+    "page": "https://play.google.com/store/apps/details?id=com.fitbit.FitbitMobile&hl=en",
+    "image": "https://play-lh.googleusercontent.com/W1N5QAjSPsNwmwLo135MWqTnlCpkULVTVvf4eN_FekTOJ3gV53vi_lhxd3pk8oVXdUuqKPU8SkhA1iRnPzJeng=s0-br30"
+  },
+  {
+    "slug": "polar",
+    "package": "fi.polar.polarflow",
+    "page": "https://play.google.com/store/apps/details?id=fi.polar.polarflow&hl=en",
+    "image": "https://play-lh.googleusercontent.com/ywq638XXnAndLxk3YiqGr0i-Cy6NcVa3pI6yAWSJZ_5N0PkmhRifo6a3KAkB1DqeQq36TkfvD8tEWncM_FXg-g=s0-br30"
+  }
+]

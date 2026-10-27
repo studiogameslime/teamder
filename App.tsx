@@ -210,6 +210,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { SupportChatHost } from '@/components/support/SupportChatHost';
 import { crumbNav, crumbTap, crumbGestureEnd } from '@/services/breadcrumbs';
 import { bindDiagnosticOwner, recordDiagnostic } from '@/services/diagnosticJournal';
+import { startDiagnosticRuntime } from '@/services/diagnosticRuntime';
 import { startDiagnosticStorage, persistDiagnosticJournal, clearDiagnosticStorage } from '@/services/diagnosticStorage';
 import { restorePendingErrors, clearPendingErrors } from '@/services/errorLog';
 import * as Linking from 'expo-linking';
@@ -264,6 +265,7 @@ import {
 import { applyStoreUpdate, useUpdatePromptStore } from '@/store/updatePromptStore';
 import { reconcileStoreUpdate } from '@/services/updateAttributionService';
 import { useWatchSync } from '@/services/watchSyncService';
+import { usePersonalActivitySync } from '@/services/personalActivityService';
 import { UpdateModal } from '@/components/UpdateModal';
 import { WhatsNewGate } from '@/components/WhatsNewGate';
 import { NotificationOfferHost } from '@/components/notifications/NotificationOfferHost';
@@ -271,6 +273,8 @@ import { colors, isDarkTheme } from '@/theme';
 import { DefaultTheme, DarkTheme, type Theme } from '@react-navigation/native';
 import { joryio } from '@/services/joryio';
 import { InAppMessageHost } from '@/components/joryio/InAppMessageHost';
+import { FeedbackPromptHost } from '@/components/feedback/FeedbackPromptHost';
+import { useSupportChat } from '@/services/supportChat';
 
 // ── Force RTL on first launch ───────────────────────────────────────────────
 // Hebrew is RTL. Setting this once at startup mirrors the entire layout.
@@ -392,6 +396,7 @@ export default function App() {
   // them here for campaign navigation and retrying fresh-account attribution.
   const currentUserId = useUserStore((s) => s.currentUser?.id ?? null);
   const diagnosticAuthHydrated = useUserStore((s) => s.hydrated);
+  useEffect(()=>startDiagnosticRuntime(),[]);
   useEffect(() => {
     if(!diagnosticAuthHydrated)return;
     if(bindDiagnosticOwner(currentUserId)){clearPendingErrors();void clearDiagnosticStorage();}
@@ -413,6 +418,11 @@ export default function App() {
   // delivered the moment the host registers again, so nothing is lost —
   // caught on the emulator with both sheets on screen at once.
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+  const [feedbackPromptOpen, setFeedbackPromptOpen] = useState(false);
+  const [campaignOpen, setCampaignOpen] = useState(false);
+  const [inAppOpen, setInAppOpen] = useState(false);
+  const [notificationOfferOpen, setNotificationOfferOpen] = useState(false);
+  const supportChatOpen = useSupportChat(s => s.visible);
   // Hydration signals from the stores. When both flip true the splash
   // is allowed to fade out — that way the user never sees the small
   // "still loading" spinner that RootNavigator used to render under
@@ -425,6 +435,7 @@ export default function App() {
   // state (live stopwatch / next game / not-registered). Android-only,
   // best-effort — no-ops everywhere else.
   useWatchSync(currentUserId);
+  usePersonalActivitySync(currentUserId);
 
   useEffect(() => {
     // NOTE: ExpoSplash.hideAsync() is intentionally NOT called here.
@@ -1051,7 +1062,7 @@ export default function App() {
         {/* Joryio in-app campaigns. INSIDE the navigator so a message's
             deep-link button resolves against the same routing as any other
             link; above it there is no navigation to hand the URL to. */}
-        <InAppMessageHost />
+        <InAppMessageHost active={!feedbackPromptOpen} onVisibilityChange={setInAppOpen} />
       </NavigationContainer>
 
       {/* Splash sits ABOVE everything. RootNavigator keeps mounting +
@@ -1099,7 +1110,11 @@ export default function App() {
 
       {/* In-app popup campaigns (authored in Pulse). Only after splash +
           when signed in and no blocking update modal is up. */}
-      <CampaignGate active={splashDone && updateKind !== 'force' && !!currentUserId} />
+      <CampaignGate active={splashDone && updateKind !== 'force' && !!currentUserId && !feedbackPromptOpen} onVisibilityChange={setCampaignOpen} />
+      <FeedbackPromptHost
+        onVisibilityChange={setFeedbackPromptOpen}
+        active={splashDone && updateKind !== 'force' && !!currentUserId && !viewerIsGuest && profileComplete && onboardingComplete && activeRouteName === 'Profile' && !whatsNewOpen && !campaignOpen && !inAppOpen && !notificationOfferOpen && !supportChatOpen}
+      />
 
       {/* One-time "מה חדש" highlights after a version update. Only once splash
           is done, signed in + onboarded, and no update modal is competing. */}
@@ -1108,12 +1123,13 @@ export default function App() {
           and it presents only when a completed action announces a context it
           recognises. Never at startup. */}
       <NotificationOfferHost
+        onVisibilityChange={setNotificationOfferOpen}
         active={
           splashDone &&
           updateKind !== 'force' &&
           !!currentUserId &&
           !viewerIsGuest &&
-          !whatsNewOpen
+          !whatsNewOpen && !feedbackPromptOpen
         }
       />
       <WhatsNewGate
@@ -1123,6 +1139,7 @@ export default function App() {
           updateKind !== 'force' &&
           !!currentUserId &&
           onboardingComplete &&
+          !feedbackPromptOpen &&
           !viewerIsGuest
         }
       />

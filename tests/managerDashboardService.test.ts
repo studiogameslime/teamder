@@ -68,3 +68,36 @@ it('rechecks admin membership after asynchronous reads',async()=>{
  await expect(loadManagerDashboard('g','admin')).rejects.toThrow('manager-access-revoked');
 });
 
+function scoreRequest() {
+ let resolve!:(value:Record<string,number>)=>void,reject!:(reason:unknown)=>void;
+ const promise=new Promise<Record<string,number>>((yes,no)=>{resolve=yes;reject=no;});
+ return {promise,resolve,reject};
+}
+const flushScores=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};
+function pendingScores(count:number) {
+ const requests=Array.from({length:count},scoreRequest);
+ mockDocs.mockImplementation(async(c:string)=>({docs:c==='games'?requests.map((_,i)=>({data:()=>({id:'past-'+i,groupId:'g',status:'finished',startsAt:Date.now()-(i+1)*86400000,players:['a'],waitlist:[]})})):[]}));
+ mockScores.mockImplementation((id:string)=>requests[Number(id.split('-')[1])].promise);
+ return requests;
+}
+it('fills each free score slot without waiting for slow peers and preserves partial failure',async()=>{
+ const requests=pendingScores(6),pending=loadManagerDashboard('g','admin');
+ await flushScores();expect(mockScores).toHaveBeenCalledTimes(4);
+ requests[3].resolve({a:3});await flushScores();
+ expect(mockScores.mock.calls.map(([id])=>id)).toEqual(['past-0','past-1','past-2','past-3','past-4']);
+ requests[4].reject(Error('offline'));await flushScores();expect(mockScores).toHaveBeenCalledTimes(6);
+ requests[5].resolve({a:5});requests[2].resolve({a:2});requests[1].resolve({a:1});requests[0].resolve({a:0});
+ const data=await pending;
+ expect(data.scoresIncomplete).toBe(true);expect(data.scores['past-4']).toBeUndefined();
+ expect(data.scores).toEqual({'past-0':{a:0},'past-1':{a:1},'past-2':{a:2},'past-3':{a:3},'past-5':{a:5}});
+ expect(mockGroupGet).toHaveBeenCalledTimes(2);
+});
+it('stops starting queued score reads when the owner changes',async()=>{
+ const requests=pendingScores(6),pending=loadManagerDashboard('g','admin');
+ const rejected=expect(pending).rejects.toThrow('manager-session-changed');
+ await flushScores();expect(mockScores).toHaveBeenCalledTimes(4);
+ mockAuth.currentUser={uid:'other'};
+ requests.slice(0,4).forEach(request=>request.resolve({a:1}));
+ await rejected;expect(mockScores).toHaveBeenCalledTimes(4);
+});
+

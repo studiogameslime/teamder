@@ -1,0 +1,13 @@
+{
+  "applicationTypes": true,
+  "serverTypes": true,
+  "testSuites": 516,
+  "tests": 5819,
+  "wholeSuiteSeconds": 271.238,
+  "rulesSuites": 34,
+  "rulesTests": 353,
+  "rulesSeconds": 67.3403109,
+  "deviceInstallTested": false,
+  "nativeCrashEventTested": false,
+  "newVisualVerificationDuringRelease": false
+}

@@ -27,6 +27,8 @@ const {
 const fs = require('fs');
 const path = require('path');
 
+const SPORTS_ACTIVITY_ENABLED = require('../src/config/sportsActivity.json').enabled;
+
 const WEAR_DEP = 'com.google.android.gms:play-services-wearable:18.2.0';
 const WATCH_PKG = 'com.studiogameslime.soccerapp.watch.WatchBridgePackage()';
 const WIDGET_RECEIVER = 'com.studiogameslime.soccerapp.widget.TeamderWidgetProvider';
@@ -60,6 +62,19 @@ function copyWearSources(config) {
       const watchSrc = path.join(srcRoot, 'watch');
       for (const file of fs.readdirSync(watchSrc)) {
         fs.copyFileSync(path.join(watchSrc, file), path.join(watchDest, file));
+      }
+
+      for (const [folder, pkg] of [[watchDest, 'com.studiogameslime.soccerapp.watch'], [path.join(androidRoot, 'wear/src/main/java/com/studiogameslime/soccerapp/wear'), 'com.studiogameslime.soccerapp.wear']]) {
+        fs.writeFileSync(path.join(folder, 'SportsActivity.kt'), `package ${pkg}
+object SportsActivity { const val ENABLED = ${SPORTS_ACTIVITY_ENABLED} }
+`);
+      }
+      if (!SPORTS_ACTIVITY_ENABLED) {
+        const manifestPath = path.join(androidRoot, 'wear/src/main/AndroidManifest.xml');
+        let manifest = fs.readFileSync(manifestPath, 'utf8');
+        manifest = manifest.replace(/\s*<uses-permission android:name="android.permission.(?:ACTIVITY_RECOGNITION|BODY_SENSORS|health.READ_HEART_RATE|FOREGROUND_SERVICE_HEALTH)"[^>]*\/>/g, '');
+        manifest = manifest.replace(/\s*<service\s+android:name=".activity.PersonalExerciseService"[\s\S]*?\/>/, '');
+        fs.writeFileSync(manifestPath, manifest);
       }
 
       // 3) Phone widget — Kotlin into .../widget/, res into res/{layout,xml,drawable}/.
@@ -156,6 +171,14 @@ function addWearableDep(config) {
       contents = contents.replace(
         /^dependencies\s*\{/m,
         'dependencies {\n    implementation("com.google.firebase:firebase-messaging")',
+      );
+    }
+    // Already present transitively through play-services-ads-api (same version).
+    // Explicit compile dependency for durable roster work; no permission edits.
+    if (!contents.includes('androidx.work:work-runtime')) {
+      contents = contents.replace(
+        /^dependencies\s*\{/m,
+        'dependencies {\n    implementation("androidx.work:work-runtime:2.7.0")',
       );
     }
 
@@ -306,6 +329,20 @@ function registerWidgetReceiver(config) {
         ],
       });
     }
+    // Keep generated projects up to date, including services created by earlier plugin versions.
+    const wearService = app.service.find(item => item.$?.['android:name'] === WEAR_COMMAND_SERVICE);
+    const receiveFilter = (action, path) => ({
+      action: [{ $: { 'android:name': `com.google.android.gms.wearable.${action}` } }],
+      data: [{ $: { 'android:scheme': 'wear', 'android:host': '*', 'android:pathPrefix': path } }],
+    });
+    wearService['intent-filter'] = [
+      receiveFilter('MESSAGE_RECEIVED', '/teamder/timer-command'),
+      receiveFilter('MESSAGE_RECEIVED', '/teamder/clock-request'),
+      receiveFilter('MESSAGE_RECEIVED', '/teamder/request-state'),
+        receiveFilter('MESSAGE_RECEIVED', '/teamder/activity-source-request'),
+        receiveFilter('DATA_CHANGED', '/teamder/standalone-activity/'),
+      receiveFilter('DATA_CHANGED', '/teamder/activity/'),
+    ];
 
     return cfg;
   });

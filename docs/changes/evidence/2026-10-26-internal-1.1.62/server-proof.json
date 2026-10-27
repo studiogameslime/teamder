@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-26T05:16:46.253431+00:00",
+  "functions": [
+    {
+      "name": "onGamePersonalActivityChanged",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-26T05:15:19.884653908Z",
+      "sourceArchiveSha256": "bdab85dbd95133e707049691fd5dc71e92e3e7a920dd1535caeee6b9e79525ff",
+      "sourceFilesVerified": 21,
+      "unauthenticatedRejected": null
+    },
+    {
+      "name": "savePersonalActivity",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-26T05:14:59.474140462Z",
+      "sourceArchiveSha256": "bdab85dbd95133e707049691fd5dc71e92e3e7a920dd1535caeee6b9e79525ff",
+      "sourceFilesVerified": 21,
+      "unauthenticatedRejected": true
+    },
+    {
+      "name": "getMyPersonalActivity",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-26T05:15:00.333513996Z",
+      "sourceArchiveSha256": "bdab85dbd95133e707049691fd5dc71e92e3e7a920dd1535caeee6b9e79525ff",
+      "sourceFilesVerified": 21,
+      "unauthenticatedRejected": true
+    },
+    {
+      "name": "onPersonalActivityOwnerDeleted",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-26T05:15:19.965638422Z",
+      "sourceArchiveSha256": "bdab85dbd95133e707049691fd5dc71e92e3e7a920dd1535caeee6b9e79525ff",
+      "sourceFilesVerified": 21,
+      "unauthenticatedRejected": null
+    },
+    {
+      "name": "onGameWidgetRosterChanged",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-26T05:15:19.784704669Z",
+      "sourceArchiveSha256": "bdab85dbd95133e707049691fd5dc71e92e3e7a920dd1535caeee6b9e79525ff",
+      "sourceFilesVerified": 21,
+      "unauthenticatedRejected": null
+    }
+  ],
+  "changed": [
+    "onGameWidgetRosterChanged",
+    "savePersonalActivity",
+    "onGamePersonalActivityChanged",
+    "onPersonalActivityOwnerDeleted",
+    "getMyPersonalActivity"
+  ],
+  "unrelatedFunctionsUnchanged": true,
+  "rulesDeployed": false,
+  "migrations": false
+}

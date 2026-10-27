@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -72,6 +73,7 @@ import androidx.wear.compose.material.Vignette
 import androidx.wear.compose.material.VignettePosition
 import coil.compose.AsyncImage
 import com.studiogameslime.soccerapp.wear.R
+import com.studiogameslime.soccerapp.wear.data.WearCommandSender
 import com.studiogameslime.soccerapp.wear.model.TimerState
 import com.studiogameslime.soccerapp.wear.model.WearGameState
 import com.studiogameslime.soccerapp.wear.model.WearPlayer
@@ -119,7 +121,11 @@ fun WearApp(
     state: WearGameState,
     onCreateOnPhone: () -> Unit,
     onTimerCommand: (action: String, gameId: String) -> Unit = { _, _ -> },
+    onStartPersonalActivity: () -> Unit = {},
+    onStopPersonalActivity: () -> Unit = {},
 ) {
+    var personalPage by remember { mutableStateOf(com.studiogameslime.soccerapp.wear.SportsActivity.ENABLED) }
+    BackHandler(enabled=com.studiogameslime.soccerapp.wear.SportsActivity.ENABLED && !personalPage){personalPage=true}
     MaterialTheme(colors = TeamderWearColors) {
         // Wear's Scaffold doesn't paint the theme background, so the window
         // stays black by default. Draw the white brand background ourselves.
@@ -133,7 +139,8 @@ fun WearApp(
                 // Hebrew-first app → lay rows/lists out right-to-left.
                 LocalLayoutDirection provides LayoutDirection.Rtl,
             ) {
-                when (state) {
+                if(personalPage) PersonalActivityScreen(onStartPersonalActivity,onStopPersonalActivity){personalPage=false}
+                else when (state) {
                     is WearGameState.Loading ->
                         CenteredScaffold { CenteredContent(loading = true, text = "טוען…") }
                     is WearGameState.Disconnected ->
@@ -142,7 +149,7 @@ fun WearApp(
                                 text = "פתח את האפליקציה בטלפון כדי לראות את המשחקים שלך",
                             )
                         }
-                    is WearGameState.Live -> StopwatchScreen(state, onTimerCommand)
+                    is WearGameState.Live -> StopwatchScreen(state, onTimerCommand, onStartPersonalActivity, onStopPersonalActivity)
                     is WearGameState.Upcoming -> NextGameScreen(state)
                     is WearGameState.Scheduled ->
                         CenteredScaffold {
@@ -164,87 +171,80 @@ fun WearApp(
 private fun StopwatchScreen(
     state: WearGameState.Live,
     onTimerCommand: (action: String, gameId: String) -> Unit,
+    onStartPersonalActivity: () -> Unit,
+    onStopPersonalActivity: () -> Unit,
 ) {
     val elapsed = rememberElapsedMs(state.timer)
-    // No BrandLogo here — on a round watch the logo + big time + status
-    // pushed the control row off the bottom of the screen. The controls are
-    // the whole point of the live screen, so we drop the logo and tighten the
-    // layout to guarantee Play/Pause/Reset are always visible without scroll.
-    CenteredScaffold {
-        Text(
-            text = state.title,
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.caption1,
-            color = TeamderInk,
-            maxLines = 1,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = formatStopwatch(elapsed),
-            textAlign = TextAlign.Center,
-            fontSize = 40.sp,
-            style = MaterialTheme.typography.display1,
-            color = MaterialTheme.colors.primary,
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            text = if (state.timer.running) "המשחק רץ" else "מושהה",
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.caption2,
-            color = MaterialTheme.colors.primary,
-        )
-        // Control row — mirrors the phone widget's button logic:
-        //   running        → [Pause] [Reset]
-        //   paused w/ time → [Play]  [Reset]
-        //   never started  → [Play]
-        // (Reset appears alongside Pause while running so a match can be stopped
-        // directly from the wrist.) Each tap sends a MessageClient command to the
-        // phone, which runs the same Firestore mutation as the widget / in-app
-        // controls. Only the controller sees buttons — a non-admin's command is
-        // rejected by the phone.
-        //
-        // Reset is DESTRUCTIVE (zeroes the clock + this round's score/goals; the
-        // evening tally survives) and sits one fat-finger away from Pause on a
-        // small round watch worn during play — so it's a TWO-TAP confirm: the
-        // first tap arms it ("לאפס?") for 3s, a second tap within that window
-        // actually resets. Any other interaction lets it disarm.
-        if (state.canControl) {
-            var resetArmed by remember { mutableStateOf(false) }
-            LaunchedEffect(resetArmed) {
-                if (resetArmed) {
-                    delay(3000)
-                    resetArmed = false
-                }
+    var page by remember(state.gameId, state.viewerId) { mutableStateOf("timer") }
+    var resetArmed by remember(state.gameId, state.roundId, state.viewerId, state.sessionGeneration) { mutableStateOf(false) }
+    BackHandler(enabled = page != "timer") { page = "timer" }
+    LaunchedEffect(resetArmed) { if (resetArmed) { delay(3000); resetArmed = false } }
+    if (page == "players") {
+        PlayersScreen(state.players, state.players.size, 0) { page = "timer" }
+        return
+    }
+    if (page == "activity") {
+        PersonalActivityScreen(onStartPersonalActivity, onStopPersonalActivity) { page = "timer" }
+        return
+    }
+    ScrollScreen {
+        item { Text(state.title, textAlign = TextAlign.Center, style = MaterialTheme.typography.caption1, maxLines = 1) }
+        item {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Text(formatStopwatch(elapsed), textAlign = TextAlign.Center, fontSize = 40.sp,
+                    style = MaterialTheme.typography.display1, color = MaterialTheme.colors.primary)
             }
-            val onReset: () -> Unit = {
-                if (resetArmed) {
-                    onTimerCommand("reset", state.gameId)
-                    resetArmed = false
-                } else {
-                    resetArmed = true
-                }
+        }
+        item {
+            Text(if (state.stale) "ממתין לעדכון מהטלפון" else if (state.timer.running) "המשחק רץ" else "מושהה",
+                textAlign = TextAlign.Center, style = MaterialTheme.typography.caption2)
+        }
+        if (WearCommandSender.feedback.value.isNotBlank()) item {
+            Text(WearCommandSender.feedback.value, textAlign = TextAlign.Center, style = MaterialTheme.typography.caption2)
+        }
+        if (state.canControl && !state.stale && !WearCommandSender.pending.value) {
+            if (resetArmed) item {
+                Text("לחצו שוב למחיקת זמן, תוצאה ושערים", textAlign = TextAlign.Center, style = MaterialTheme.typography.caption2)
             }
-            val resetLabel = if (resetArmed) "לאפס?" else "אפס"
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (state.timer.running) {
-                    TimerButton(PauseIcon, "השהה") {
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    TimerButton(if (state.timer.running) PauseIcon else Icons.Filled.PlayArrow,
+                        if (state.timer.running) "השהה" else "הפעל") {
                         resetArmed = false
-                        onTimerCommand("pause", state.gameId)
+                        onTimerCommand(if (state.timer.running) "pause" else "start", state.gameId)
                     }
-                    TimerButton(Icons.Filled.Refresh, resetLabel, armed = resetArmed, onClick = onReset)
-                } else {
-                    TimerButton(Icons.Filled.PlayArrow, "הפעל") {
-                        resetArmed = false
-                        onTimerCommand("start", state.gameId)
-                    }
-                    if (elapsed > 0L) {
-                        TimerButton(Icons.Filled.Refresh, resetLabel, armed = resetArmed, onClick = onReset)
+                    if (state.timer.running || elapsed > 0) TimerButton(Icons.Filled.Refresh, if (resetArmed) "לאפס?" else "אפס", armed = resetArmed) {
+                        if (resetArmed) { resetArmed = false; onTimerCommand("reset", state.gameId) } else resetArmed = true
                     }
                 }
             }
         }
+        if (com.studiogameslime.soccerapp.wear.SportsActivity.ENABLED) item { NavigationChip("הפעילות שלי") { page = "activity"; resetArmed = false } }
+        item { NavigationChip("רשימת שחקנים") { page = "players"; resetArmed = false } }
     }
+}
+
+@Composable
+private fun PersonalActivityScreen(onStart: () -> Unit, onStop: () -> Unit, onBack: () -> Unit) {
+    val service = com.studiogameslime.soccerapp.wear.activity.PersonalExerciseService
+    val recording by service.recording
+    val feedback by service.feedback
+    ScrollScreen {
+        item { Text("הפעילות שלי", textAlign = TextAlign.Center, style = MaterialTheme.typography.title3) }
+        item { Text("המדידה מתחילה בלחיצה ונמשכת עד לסיום שלך, ללא תלות במחזור או בטיימר. בחרו את השעון כמקור הפעילות בטלפון.", textAlign = TextAlign.Center, style = MaterialTheme.typography.body2) }
+        if (feedback.isNotBlank()) item { Text(feedback, textAlign = TextAlign.Center, style = MaterialTheme.typography.caption1) }
+        item { Text("המדידה עוברת לטלפון ונשמרת בחשבון שלך כדי להציג סיכום פרטי. אפשר לסיים אותה בכל רגע.",
+            textAlign = TextAlign.Center, style = MaterialTheme.typography.body2) }
+        item { NavigationChip(if (recording) "סיום מדידה ושמירה" else "התחלת מדידה אישית", if (recording) onStop else onStart) }
+        item { Text("המדדים הזמינים תלויים בחיישנים ובהרשאות. אין מדידת מיקום.", textAlign = TextAlign.Center, style = MaterialTheme.typography.caption2) }
+        item { NavigationChip("חזרה", onBack) }
+    }
+}
+
+@Composable
+private fun NavigationChip(label: String, action: () -> Unit) {
+    Chip(onClick = action, label = { Text(label, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+        colors = ChipDefaults.secondaryChipColors(), modifier = Modifier.fillMaxWidth())
 }
 
 // Material's "Pause" glyph lives only in material-icons-EXTENDED (a huge
@@ -318,7 +318,7 @@ private fun NextGameScreen(state: WearGameState.Upcoming) {
         item { BrandLogo() }
         item {
             Text(
-                text = "המשחק הקרוב",
+                text = when (state.registration) { "waitlisted" -> "ברשימת ההמתנה"; "pending" -> "ממתין לאישור הרשמה"; "organizer" -> "המחזור שארגנתי"; else -> "המחזור הקרוב" },
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.caption1,
                 color = MaterialTheme.colors.primary,
@@ -342,7 +342,7 @@ private fun NextGameScreen(state: WearGameState.Upcoming) {
                 onClick = { showPlayers = true },
                 label = {
                     Text(
-                        "רשימת שחקנים (${state.playersCount}/${state.maxPlayers})",
+                        "רשימת שחקנים (" + playerCount(state.playersCount, state.maxPlayers) + ")",
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -366,7 +366,7 @@ private fun PlayersScreen(
         item { BrandLogo() }
         item {
             Text(
-                text = "שחקנים ($count/$max)",
+                text = "שחקנים (" + playerCount(count, max) + ")",
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.title3,
                 color = MaterialTheme.colors.primary,
@@ -604,6 +604,7 @@ private fun BrandLogo() {
  */
 @Composable
 private fun rememberElapsedMs(timer: TimerState): Long {
+    if (!timer.clockReady) return timer.baseElapsedMs.coerceAtLeast(0)
     if (timer.baseElapsedMs < 0L) return legacyElapsedMs(timer) // old phone
 
     // Monotonic tick: re-read elapsedRealtime() every 250ms while running.
@@ -647,3 +648,5 @@ private fun formatStopwatch(ms: Long): String {
 
 private fun formatWhen(epochMs: Long): String =
     SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(Date(epochMs))
+
+private fun playerCount(count: Int, max: Int): String = if (max > 0) "\u2066$count/$max\u2069" else count.toString()

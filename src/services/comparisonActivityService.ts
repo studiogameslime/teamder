@@ -1,4 +1,4 @@
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/services/diagnosticCallable';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 import { withAuthRaceRetry } from '@/firebase/authRace';
 import { useUserStore } from '@/store/userStore';

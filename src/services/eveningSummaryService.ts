@@ -15,6 +15,8 @@ import {
   doc,
   getDoc,
   getDocs,
+  query,
+  where,
 } from 'firebase/firestore';
 import { gameService } from '@/services/gameService';
 import { userService } from '@/services/userService';
@@ -311,10 +313,17 @@ export const eveningSummaryService = {
       // The core reads (game, per-game stat, name) drive the always-present
       // sections. The roundHistory read is OPTIONAL — an old game predating it,
       // or a denied/failed read, degrades to "no contribution", never crashes.
-      const [game, statSnap, roundSnap, name, standSnap] =
+      // A get of an absent stats document cannot satisfy the existing
+      // resource.data.gameId rule. The game-scoped query is already supported
+      // by the scorers table and can distinguish missing from a failed read.
+      const [game, statDocs] = await Promise.all([
+        gameService.getGameById(gameId),
+        getDocs(query(collection(db, 'gamePlayerStats'), where('gameId', '==', gameId))),
+      ]);
+      const statSnap = statDocs.docs.find(d => d.id === `${gameId}__${uid}`);
+      if (!game || !statSnap) return null;
+      const [roundSnap, name, standSnap] =
         await Promise.all([
-          gameService.getGameById(gameId),
-          getDoc(doc(db, 'gamePlayerStats', `${gameId}__${uid}`)),
           getDocs(collection(db, 'games', gameId, 'roundHistory')).catch((caughtError580075a5c5: unknown) => { observeCaughtError(caughtError580075a5c5, {"source":"src/services/eveningSummaryService.ts","handler":"getEveningSummary","site":"eveningSummaryService:580075a5c5"}); return null; }),
           (viewerName
             ? Promise.resolve(viewerName)
@@ -326,7 +335,6 @@ export const eveningSummaryService = {
         ]);
       // Missing is not failed: a missing summary may be unavailable, while a
       // failed authoritative read must reach the screen's retry state.
-      if (!game || !statSnap.exists()) return null;
       const stand =
         standSnap && standSnap.exists()
           ? (standSnap.data() as Record<string, unknown>)
@@ -335,7 +343,7 @@ export const eveningSummaryService = {
         typeof v === 'number' && Number.isFinite(v) ? v : null;
 
       const row = readStatRow(
-        statSnap && statSnap.exists() ? statSnap.data() : undefined,
+        statSnap.data(),
       );
 
       // phase 2 — derive from round history (empty for old games)

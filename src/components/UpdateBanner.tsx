@@ -1,6 +1,7 @@
 import { observeCaughtError } from '../utils/errorObservation';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { Easing, ReduceMotion, withTiming, type EntryAnimationsValues } from 'react-native-reanimated';
 import { useIsFocused } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Line, Rect } from 'react-native-svg';
@@ -11,6 +12,21 @@ import { updateTargetKey } from '@/services/updateService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { he } from '@/i18n/he';
 import { RTL_LABEL_ALIGN } from '@/theme/rtl';
+
+const enterFromTop = (values: EntryAnimationsValues) => {
+  'worklet';
+  return {
+    // Start above the screen even when the safe area or font size changes.
+    initialValues: { originY: values.targetOriginY - values.targetGlobalOriginY - values.targetHeight - 16 },
+    animations: {
+      originY: withTiming(values.targetOriginY, {
+        duration: 420,
+        easing: Easing.out(Easing.cubic),
+        reduceMotion: ReduceMotion.System,
+      }),
+    },
+  };
+};
 
 /** Inline home-header replacement, without a modal or dimmed backdrop. */
 export function UpdateBanner() {
@@ -37,7 +53,7 @@ export function UpdateBanner() {
     observeCaughtError(caughtErrorf6c0f13fd8, {"source":"src/components/UpdateBanner.tsx","handler":"open","site":"UpdateBanner:f6c0f13fd8"}); setFailed(true); }
     finally { busyRef.current = false; setBusy(false); }
   };
-  return <View style={styles.card} testID="store-update-banner">
+  return <Animated.View entering={enterFromTop} style={styles.card} testID="store-update-banner">
     <View style={styles.watermark} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <Svg width="100%" height="100%" viewBox="0 0 160 140" accessible={false}>
         <Rect x={14} y={10} width={110} height={122} rx={2} fill="none" stroke="#A8C7E5" strokeWidth={1.2}/>
@@ -66,7 +82,7 @@ export function UpdateBanner() {
       </Pressable>
     </View>
     {failed ? <Text accessibilityRole="alert" style={styles.error}>{he.updateStoreFailed}</Text> : null}
-  </View>;
+  </Animated.View>;
 }
 
 const styles = StyleSheet.create({

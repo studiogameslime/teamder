@@ -9,7 +9,7 @@ import { decideSpotOffer } from '../../functions/src/spotOfferDecision';
 function load(file: string, deps: Record<string, any>) {
   const exports: any = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), {compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,
-    {exports,require:(id:string)=>deps[id]??{},__DEV__:false,console,Date,setTimeout,clearTimeout});
+    {exports,require:(id:string)=>{if(id.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(id.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(id==='@/services/diagnosticCallable')id='firebase/functions';return deps[id]??{};},__DEV__:false,console,Date,setTimeout,clearTimeout});
   return exports;
 }
 const gamesSource='src/services/gameService.ts';

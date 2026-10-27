@@ -1,6 +1,7 @@
 import { observedListener, observeCaughtError } from '../utils/errorObservation';
 
 import { hydrateClubAdminRatings } from './clubAdminRatings';
+import { seriesService } from './seriesService';
 import { assertCreationOwner } from './creationOwner';
 import { readPlayerIdentities } from './publicPlayerService';
 // groupService — group CRUD + community-membership operations.
@@ -501,7 +502,7 @@ export const groupService = {
     // (matching the legacy contract). The achievement bump runs
     // server-side too — kept on the client only for mock mode.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable');
     const { functions } = getFirebase();
     const fn = httpsCallable(functions, 'createGroupCallable');
     let groupId: string;
@@ -599,7 +600,7 @@ export const groupService = {
       return 'mock-personal-group';
     }
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable');
     const { functions } = getFirebase();
     const fn = httpsCallable(functions, 'ensurePersonalGroup');
     let res: { data?: { groupId?: string } };
@@ -641,7 +642,7 @@ export const groupService = {
       return { invited: input.inviteUserIds.length };
     }
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable');
     const { functions } = getFirebase();
     const fn = httpsCallable(functions, 'promoteOrphanToGroup');
     let res: { data?: { ok?: boolean; invited?: number } };
@@ -696,7 +697,7 @@ export const groupService = {
       return { invited: 0 };
     }
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable');
     const { functions } = getFirebase();
     const fn = httpsCallable(functions, 'inviteFriendsToGroup');
     let res: { data?: { invited?: number } };
@@ -1252,7 +1253,7 @@ export const groupService = {
     if (!g.adminIds.includes(callerId)) {
       throw new Error('setAdminRating: caller is not a coach');
     }
-    const { httpsCallable } = require('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable');
     await httpsCallable(getFirebase().functions, 'setClubAdminRating')({ groupId, playerId, rating: clear ? null : rating });
 
   },
@@ -1828,6 +1829,7 @@ export const groupService = {
       if ((g.creatorId ?? g.adminIds[0]) !== callerId) {
         throw new Error('NOT_CREATOR');
       }
+      await seriesService.stopForGroup(groupId);
       // Notify every member that the community is gone — distinct
       // from the per-game pushes below, since members not registered
       // to a current game wouldn't otherwise know.
@@ -1886,6 +1888,9 @@ export const groupService = {
     // removal). Instead we abort so the user can retry a still-authorised
     // delete. Tracks that condition:
     let childFailed = false;
+    // Fail closed: never delete the authority document while its weekly jobs run.
+    // This method propagates query and batch failures, unlike listForGroup.
+    await seriesService.stopForGroup(groupId);
     // 1) Find all games in this community. We notify each affected
     // user (player / waitlist / pending) and then delete the game doc
     // outright. We don't filter by status — even a 'finished' game
@@ -2194,7 +2199,7 @@ async function submitJoinByPublic(
   userId: UserId
 ): Promise<{ group: Group; status: 'pending' | 'joined' }> {
   if (!isCurrentSession(userId)) throw new StaleSessionError(userId,getFirebase().auth.currentUser?.uid??'');
-  const {httpsCallable}=require('firebase/functions');
+  const {httpsCallable}=require('@/services/diagnosticCallable');
   let serverStatus: 'joined'|'pending'|undefined;
   try {
     const result=await httpsCallable(getFirebase().functions,'joinSocialClub')({groupId});

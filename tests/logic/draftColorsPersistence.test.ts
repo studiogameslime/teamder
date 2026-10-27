@@ -23,7 +23,7 @@ function harness(mock: boolean, initial = fixture()) {
     docs:{game:()=>({})},getFirebase:()=>({db:{}}),runTransaction:async(_:unknown,fn:any)=>fn({
       get:async()=>({exists:()=>true,data:()=>structuredClone(current)}),update:(_:unknown,patch:any)=>{patches.push(patch);Object.assign(current,structuredClone(patch));},
     })};
-  vm.runInNewContext(ts.transpileModule(`module.exports={${methods.join(',')}}`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
+  vm.runInNewContext(ts.transpileModule(`module.exports={${methods.join(',')}}`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,Object.assign(context,{runDiagnosticOperation:require('@/services/diagnosticJournal').runDiagnosticOperation,diagnosticEntity:require('@/services/diagnosticJournal').diagnosticEntity}));
   return {service:context.module.exports,current,patches};
 }
 
@@ -110,7 +110,7 @@ test('the real Firestore converter round-trips choices before teams exist',()=>{
   const context:any={module:{exports:{}},Date};
   for(const match of converter.matchAll(/\b(read\w+)\(/g))context[match[1]]=(value:unknown)=>value;
   context.readDraftColors=readDraftColors;
-  vm.runInNewContext(ts.transpileModule(`module.exports=${converter}`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
+  vm.runInNewContext(ts.transpileModule(`module.exports=${converter}`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,Object.assign(context,{runDiagnosticOperation:require('@/services/diagnosticJournal').runDiagnosticOperation,diagnosticEntity:require('@/services/diagnosticJournal').diagnosticEntity}));
   const actual=context.module.exports,game={...fixture(),draftTeamColors:{...baseline,0:'white'}};
   const raw=actual.toFirestore(game);
   expect(actual.fromFirestore({id:'g',data:()=>raw}).draftTeamColors).toEqual(game.draftTeamColors);
@@ -136,7 +136,7 @@ test('an early colour subscription acknowledgement preserves the chosen opening 
     gameService:{saveDraftTeamColors:jest.fn(()=>ack)},AsyncStorage:{setItem,getItem:jest.fn()},setOpeningBusy:jest.fn(),setOpeningPlan,setOpeningLoading:jest.fn(),setGame:jest.fn(),
     openingFingerprint:require('@/utils/openingTeams').openingFingerprint,initialOpeningPlan,rotation:undefined,
     draftTeams:{...draft,teams:draft.teams.map(t=>({...t,colorKey:plan.colors[t.index]}))},toast:{error:jest.fn()}};
-  const run=(text:string)=>{vm.runInNewContext(ts.transpileModule('module.exports='+text,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);return context.module.exports;};
+  const run=(text:string)=>{vm.runInNewContext(ts.transpileModule('module.exports='+text,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,Object.assign(context,{runDiagnosticOperation:require('@/services/diagnosticJournal').runDiagnosticOperation,diagnosticEntity:require('@/services/diagnosticJournal').diagnosticEntity}));return context.module.exports;};
   const saving=run(change)(plan);
   expect(pendingOpeningColors.current).toEqual(plan);
   run(effect)(); // real subscription effect before transaction promise settles

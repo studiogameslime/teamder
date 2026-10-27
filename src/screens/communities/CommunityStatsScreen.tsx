@@ -93,6 +93,7 @@ interface ChampData {
   countedRounds: number;
   guestGoals: number;
   ownGoals: number;
+  inPlayPenalties?: number;
   players: ChampionshipRow[];
 }
 interface StatsData {
@@ -461,6 +462,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
               totalRounds: champ?.totalRounds ?? 0,
               tiedRounds: champ?.tiedRounds ?? 0,
               shootoutRounds: champ?.shootoutRounds ?? 0,
+              inPlayPenalties: champ?.inPlayPenalties ?? 0,
               scorelessRounds: champ?.scorelessRounds ?? 0,
               countedRounds: champ?.countedRounds ?? 0,
               guestGoals: champ?.guestGoals ?? 0,
@@ -672,6 +674,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
     const penTakenTotal = players.reduce((a, p) => a + (p.penTaken ?? 0), 0);
     const penScoredTotal = players.reduce((a, p) => a + (p.penScored ?? 0), 0);
     const penAccuracyPct = pctOf(penScoredTotal, penTakenTotal);
+    const inPlayPenalties = viewChamp?.inPlayPenalties ?? 0;
     // Does the "נתונים מעניינים" section have anything to print?
     //
     // Mirrors the per-row test below: a measure counts when it has a
@@ -680,7 +683,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
     const funRowCount =
       (totalGoals > 0 && totalAssists > 0 ? 1 : 0) +
       (countedRounds > 0 || scorelessRounds > 0 ? 1 : 0) +
-      (penTakenTotal > 0 ? 1 : 0);
+      (penTakenTotal > 0 ? 1 : 0) + (inPlayPenalties > 0 ? 1 : 0);
     // `players` is ranked by POINTS (goals*2+assists), so players[0] is NOT
     // necessarily the top scorer — pick the max-goals player explicitly.
     const topScorer = players.length
@@ -711,6 +714,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
       // most (a dubious crown). null when nobody has an own goal yet.
       totalOwnGoals: viewChamp?.ownGoals ?? 0,
       ownGoalKing: leaderBy(players, (p) => p.ownGoals),
+      inPlayPenalties,
       penTakenTotal,
       penAccuracyPct,
       funRowCount,
@@ -1373,6 +1377,10 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                   text: he.funScoreless,
                 },
                 {
+                  key: 'inPlayPenalties', icon: 'penalty' as const, tint: clubAccent.blue, pct: null,
+                  count: derived.inPlayPenalties, countText: (count: number) => count===1?'פנדל במהלך משחק':'פנדלים במהלך משחק', text: 'פנדלים במהלך משחק',
+                },
+                {
                   key: 'penRate',
                   icon: 'penalty' as const,
                   tint: clubAccent.purple,
@@ -1392,6 +1400,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                   pct={r.pct}
                   count={'count' in r ? r.count : undefined}
                   countText={'countText' in r ? r.countText : undefined}
+                  standaloneCount={r.key==='inPlayPenalties'}
                   tint={r.tint}
                   text={r.text}
                   last={i === rows.length - 1}
@@ -1470,6 +1479,7 @@ function FunDonutRow({
   pct,
   count,
   countText,
+  standaloneCount = false,
   tint,
   text,
   icon,
@@ -1491,6 +1501,8 @@ function FunDonutRow({
   count?: number;
   /** How to say that raw figure. Required whenever `count` can be > 0. */
   countText?: (n: number) => string;
+  /** A complete count with no percentage or sample denominator. */
+  standaloneCount?: boolean;
   tint: string;
   text: string;
   /** The reference gives every row its own glyph; the bar alone is anonymous. */
@@ -1528,7 +1540,7 @@ function FunDonutRow({
             <View style={[styles.funFill, { width: `${clamped}%`, backgroundColor: tint }]} />
           </View>
         ) : countOnly ? (
-          <Text style={styles.funPending}>{he.funRateUnknown}</Text>
+          standaloneCount ? null : <Text style={styles.funPending}>{he.funRateUnknown}</Text>
         ) : (
           <>
             {/* An empty track, visibly inactive, and a sentence saying why —

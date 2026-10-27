@@ -36,6 +36,7 @@ import { mergeAllTime, type TableSlice } from '@/utils/allTimeTable';
 import { orientPair, pairKey, winPct, type OrientedPair } from '@/utils/pairOrientation';
 import type { StatsScope } from '@/components/stats/SeasonScopeBar';
 import { comparePoints, type ChampionshipRow } from '@/utils/championship';
+import { seasonReadStamp } from '@/utils/seasonReadConsistency';
 import type { GroupId, GroupSeasons, UserId } from '@/types';
 import { mockPairCompare } from '@/data/mockPairCompare';
 
@@ -227,10 +228,13 @@ export const pairCompareService = {
 
     try {
       const [group, ua, ub] = await Promise.all([
-        groupService.get(groupId).catch((caughtError4641373cc3: unknown) => { observeCaughtError(caughtError4641373cc3, {"source":"src/services/pairCompareService.ts","handler":"load","site":"pairCompareService:4641373cc3"}); return null; }),
+        groupService.get(groupId, { fromServer: true }),
         userService.getUserById(viewerId).catch((caughtErrorc892c30930: unknown) => { observeCaughtError(caughtErrorc892c30930, {"source":"src/services/pairCompareService.ts","handler":"load","site":"pairCompareService:c892c30930"}); return null; }),
         userService.getUserById(otherId).catch((caughtError721a2341cb: unknown) => { observeCaughtError(caughtError721a2341cb, {"source":"src/services/pairCompareService.ts","handler":"load","site":"pairCompareService:721a2341cb"}); return null; }),
       ]);
+      // A missing season is unknown, not permission to scan all club history.
+      if (!group || group.seasons?.operation) throw new Error('Comparison season unavailable');
+      const seasonStamp = seasonReadStamp(group.seasons);
 
       // ── The slice ────────────────────────────────────────────────────────
       let pairTotals: PairTotals | null = null;
@@ -251,8 +255,8 @@ export const pairCompareService = {
         since = null;
       } else if (scope.k === 'all') {
         const history = await seasonHistoryService.list(groupId, true);
-        if (history === 'error' || history.filter((x) => !x.nonSeason).length < (seasons?.count ?? 0)) return null;
-        if (seasons?.hasArchivedPeriods && !history.some(x=>x.nonSeason)) return null;
+        if (history === 'error' || history.filter((x) => !x.nonSeason).length < (group.seasons?.count ?? 0)) return null;
+        if (group.seasons?.hasArchivedPeriods && !history.some(x=>x.nonSeason)) return null;
         const archiveIds = history.map((x) => x.seasonId);
         // Live + every archive. Nothing recomputes: the archives are the
         // sealed record of the seasons they closed, so this is addition over
@@ -404,6 +408,12 @@ export const pairCompareService = {
       const ranked = rankRows(players);
       const idxA = ranked.findIndex((r) => r.uid === viewerId);
       const idxB = ranked.findIndex((r) => r.uid === otherId);
+
+      // Both readers and archives can cross a rollover. Never publish that mixed slice.
+      const after = await groupService.get(groupId, { fromServer: true });
+      if (!after || after.seasons?.operation || seasonReadStamp(after.seasons) !== seasonStamp) {
+        throw new Error('Comparison season changed during read');
+      }
 
       return {
         club: { id: groupId, name: group?.name ?? '' },

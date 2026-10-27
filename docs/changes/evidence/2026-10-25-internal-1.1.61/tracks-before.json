@@ -1,0 +1,55 @@
+{
+  "production": [
+    {
+      "name": "1.1.57",
+      "versionCodes": [
+        "291"
+      ],
+      "releaseNotes": [
+        {
+          "language": "iw-IL",
+          "text": "עיצוב מעודכן למסכי המועדונים והמחזורים ולניווט. שיפורים בסיכום האישי, בתמונות המועדונים ובהרשמה. תיקונים בתהליך ההצטרפות ובהזמנות, ושיפורי יציבות."
+        }
+      ],
+      "status": "completed"
+    }
+  ],
+  "beta": [],
+  "alpha": [
+    {
+      "name": "27 (0.2.10)",
+      "versionCodes": [
+        "27"
+      ],
+      "status": "completed"
+    }
+  ],
+  "internal": [
+    {
+      "name": "1.1.60",
+      "versionCodes": [
+        "294"
+      ],
+      "status": "completed"
+    }
+  ],
+  "wear:beta": [],
+  "wear:internal": [
+    {
+      "name": "1005 (0.2.21)",
+      "versionCodes": [
+        "1005"
+      ],
+      "status": "completed"
+    }
+  ],
+  "wear:production": [
+    {
+      "name": "1.0.30",
+      "versionCodes": [
+        "1027"
+      ],
+      "status": "completed"
+    }
+  ]
+}

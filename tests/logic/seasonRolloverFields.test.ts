@@ -50,7 +50,7 @@ describe('the reset list is exactly the competition', () => {
     expect(PLAYER.sort()).toEqual([
       'asRounds', 'assists', 'cleanSheets', 'csRounds', 'eveningScoreCount',
       'eveningScoreSum', 'games', 'goals', 'losses', 'ownGoals', 'penConceded',
-      'penFaced', 'penMissed', 'penSaved', 'penScored', 'penTaken', 'rounds',
+      'penFaced', 'penInPlayScored', 'penInPlayTaken', 'penMissed', 'penSaved', 'penScored', 'penTaken', 'rounds',
       'ties', 'wins',
     ]);
   });
@@ -62,7 +62,7 @@ describe('the reset list is exactly the competition', () => {
     // own handful of 0:0 rounds by the previous season's sample and report a
     // rate near zero on its first evening.
     expect(CLUB.sort()).toEqual([
-      'countedRounds', 'goals', 'guestGoals', 'ownGoals', 'rounds',
+      'countedRounds', 'goals', 'guestGoals', 'inPlayPenalties', 'ownGoals', 'rounds',
       'scorelessRounds', 'shootoutRounds', 'tiedRounds',
     ]);
   });
@@ -118,7 +118,7 @@ describe('the reset list is exactly the competition', () => {
   it('resets every penalty counter together', () => {
     const pen = PLAYER.filter((f) => f.startsWith('pen'));
     expect(pen.sort()).toEqual([
-      'penConceded', 'penFaced', 'penMissed', 'penSaved', 'penScored',
+      'penConceded', 'penFaced', 'penInPlayScored', 'penInPlayTaken', 'penMissed', 'penSaved', 'penScored',
       'penTaken',
     ]);
   });

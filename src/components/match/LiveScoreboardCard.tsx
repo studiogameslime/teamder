@@ -43,6 +43,8 @@ import {
 import { gameService } from '@/services/gameService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { GoalEntryModal, type GoalEntry } from './GoalEntryModal';
+import { InPlayPenaltyModal, type PenaltyTeam } from './InPlayPenaltyModal';
+import type { InPlayPenalty } from '@/types';
 import { TeamShirtIllustration } from './TeamShirt';
 import { roundCommitKey } from '@/services/rotationEngine';
 import type { DraftTeamsResult, GameGuest, LiveMatchState, MatchRotation } from '@/types';
@@ -62,6 +64,7 @@ interface Props {
   canEdit: boolean;
   // ── Timer display (computed by the screen from the synced clock) ──
   timerText: string;
+  clockMs?: number;
   /** Match length in minutes → shows "מתוך X דקות" under the clock. */
   totalMinutes?: number;
   statusLabel: string;
@@ -76,6 +79,8 @@ interface Props {
    *  you were watching (Eliran's report) — this is that heading. */
   roundNumber?: number;
   goalRequest?: { side: 'A' | 'B'; key: number };
+  penaltyRequest?: {key:number};
+  onPenaltyTimer?: () => Promise<void>;
   hideGoalButtons?: boolean;
   /** Opening selection can leave either side unnamed without implying a choice. */
   sideLabels?: [string, string];
@@ -88,6 +93,9 @@ export function LiveScoreboardCard(props: Props) {
   const { gameId, live, draftTeams, rotation, playersMap, guests, minute, canEdit } = props;
   // The "הוסף גול" wizard: which side's button was pressed (null = closed).
   const [goalSide, setGoalSide] = useState<'A' | 'B' | null>(null);
+  const [penaltyEditor,setPenaltyEditor] = useState<{minute:number;key:number;hidden?:boolean}|null>(null);
+  useEffect(()=>{if(props.penaltyRequest && canEdit) setPenaltyEditor(old=>old?.hidden?{...old,hidden:false}:{minute,key:props.penaltyRequest!.key});},[props.penaltyRequest?.key]);
+  useEffect(()=>{setPenaltyEditor(null);},[gameId,rotation.roundInstanceId,rotation.round]);
   const [logOpen, setLogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   // Synchronous guard: setBusy(true) only takes effect next render, so a fast
@@ -115,6 +123,12 @@ export function LiveScoreboardCard(props: Props) {
   const [aIdx, bIdx] = rotation.playing;
   const rosterA = useMemo(() => buildRoster(aIdx, teams, rotation, resolve), [aIdx, teams, rotation, resolve]);
   const rosterB = useMemo(() => buildRoster(bIdx, teams, rotation, resolve), [bIdx, teams, rotation, resolve]);
+  const penaltyTeams: [PenaltyTeam,PenaltyTeam] = [aIdx,bIdx].map((index,i)=>({name:teamName(index,draftTeams.teams),
+    color:teamColor(index,draftTeams.teams),ink:teamTextColor(index,draftTeams.teams),players:i===0?rosterA:rosterB,
+    keeperId:Object.entries(live.assignments ?? {}).find(([,zone])=>zone===(i===0?'gkA':'gkB'))?.[0]})) as [PenaltyTeam,PenaltyTeam];
+  const penaltyLabel=(p:InPlayPenalty)=>p.outcome==='goal'?`${resolve(p.kickerId).displayName ?? 'שחקן'} (פנדל)`:
+    p.outcome==='save'?`${p.keeperId ? resolve(p.keeperId).displayName ?? 'השוער' : 'השוער'} עצר פנדל של ${resolve(p.kickerId).displayName ?? 'שחקן'}`:
+    `${resolve(p.kickerId).displayName ?? 'שחקן'} החמיץ פנדל`;
   const goals = live.goals ?? [];
 
   // ── Goal flash: a brief tinted wash over the whole card when a score ticks
@@ -318,7 +332,7 @@ export function LiveScoreboardCard(props: Props) {
       </View>
 
       {/* Collapsible scorer log. */}
-      {goals.length > 0 ? (
+      {goals.length > 0 || !!live.inPlayPenalties?.length ? (
         <View style={styles.logWrap}>
           <Pressable
             style={styles.logHeader}
@@ -328,14 +342,23 @@ export function LiveScoreboardCard(props: Props) {
             }}
           >
             <Ionicons name={logOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#D1FAE5" />
-            <Text style={styles.logHeaderText}>{he.goalScorersLog(goals.length)}</Text>
+            <Text style={styles.logHeaderText}>{live.inPlayPenalties?.length ? 'אירועי המשחק' : he.goalScorersLog(goals.length)}</Text>
           </Pressable>
           {logOpen ? (
             <ScrollView style={{maxHeight:160}} contentContainerStyle={styles.log} nestedScrollEnabled>
-              {goals
-                .slice()
-                .reverse()
-                .map((g) => (
+              {[...goals.filter(g=>!g.penaltyId).map(goal=>({kind:'goal' as const,at:goal.at,goal})),
+                ...(live.inPlayPenalties ?? []).map(penalty=>({kind:'penalty' as const,at:penalty.at,penalty}))]
+                .sort((a,b)=>b.at-a.at)
+                .map(event => {
+                  if(event.kind==='penalty') {const p=event.penalty;return <View key={p.id} style={styles.logRow}>
+                <View style={[styles.logDot,{backgroundColor:penaltyTeams[p.team==='A'?0:1].color}]}/>
+                <Text style={styles.logName}>{penaltyLabel(p)}</Text><Text style={styles.logMin}>{ltr(`${p.minute}'`)}</Text>
+                {canEdit&&<>
+                  <Pressable style={styles.undoBtn} disabled={busy} accessibilityRole="button" accessibilityState={{ disabled: busy }} hitSlop={{ top: 1, bottom: 1 }} accessibilityLabel="ביטול הפנדל" onPress={()=>appAlert('ביטול פנדל','לבטל את הבעיטה ואת השער אם הובקע?',[{text:'חזרה',style:'cancel'},{text:'ביטול הפנדל',style:'destructive',onPress:async()=>{if(busyRef.current)return;busyRef.current=true;setBusy(true);try{await gameService.saveInPlayPenalty(gameId,null,{roundId:roundCommitKey(rotation),id:p.id,previous:p});}catch(error){observeCaughtError(error,{source:'src/components/match/LiveScoreboardCard.tsx',handler:'removePenalty',site:'inPlayPenalty:remove'});toast.error('ביטול הפנדל נכשל. נסו שוב.');}finally{busyRef.current=false;setBusy(false);}}}],{football:true})}><View style={styles.undoCircle}><Ionicons name="close" size={14} color={colors.textMuted} /></View></Pressable>
+                </>}
+              </View>;}
+                  const g=event.goal;
+                  return (
                   <View key={g.id} style={styles.logRow}>
                     <View
                       style={[styles.logDot, { backgroundColor: g.team === 'A' ? teamColor(aIdx, draftTeams.teams) : teamColor(bIdx, draftTeams.teams) }]}
@@ -352,7 +375,8 @@ export function LiveScoreboardCard(props: Props) {
                       </Pressable>
                     ) : null}
                   </View>
-                ))}
+                );})}
+
             </ScrollView>
           ) : null}
         </View>
@@ -375,6 +399,12 @@ export function LiveScoreboardCard(props: Props) {
           setGoalSide(null);
         }}
       />
+      {penaltyEditor&&<InPlayPenaltyModal key={`${roundCommitKey(rotation)}:${penaltyEditor.key}`} teams={penaltyTeams} clockMs={props.clockMs ?? 0} roundNumber={props.roundNumber ?? 1}
+        running={props.running} onTimer={props.onPenaltyTimer ?? (async()=>{})}
+        visible={!penaltyEditor.hidden} onClose={retain=>setPenaltyEditor(old=>retain&&old?{...old,hidden:true}:null)} onSave={async entry=>{
+          if (!canEdit) throw new Error('הזנת הפנדל אינה זמינה כרגע. יש להמתין ולנסות שוב.');
+          await gameService.saveInPlayPenalty(gameId,entry,{roundId:roundCommitKey(rotation),id:entry.id});setLogOpen(true);
+        }}/>}
     </View>
   );
 }

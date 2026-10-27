@@ -9,8 +9,10 @@ export function savedRoundLive(live: LiveMatchState, history: RoundHistoryDoc): 
     scoreA: history.scoreA,
     scoreB: history.scoreB,
     timerRunning: false,
+    inPlayPenalties: history.inPlayPenalties ?? [],
     goals: history.goals.map((goal, index) => ({
       id: `saved:${history.roundId}:${index}`,
+      ...(goal.penaltyId ? {penaltyId:goal.penaltyId} : {}),
       scorerId: goal.scorerId ?? null,
       assisterId: goal.assisterId ?? undefined,
       ownGoal: goal.ownGoal ?? undefined,

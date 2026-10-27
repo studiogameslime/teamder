@@ -1,0 +1,20 @@
+{
+  "version": "1.1.61",
+  "includedFixes": 28,
+  "clientFixes": 25,
+  "serverFixes": 3,
+  "readbackVerified": true,
+  "screenshotsPreserved": true,
+  "pulseNotesUpdated": 23,
+  "pulseStatusUnchanged": true,
+  "at": "2026-10-25T15:06:37.940Z",
+  "prunedItems": 0,
+  "existingFloorPreserved": "1.1.56",
+  "serverFunctions": [
+    "onGameRosterChanged",
+    "commitRoundStats",
+    "onErrorLogged",
+    "getSocialPlayerProfile"
+  ],
+  "pulseInterfaceDeployed": false
+}

@@ -156,7 +156,7 @@ describe('direct previews and canonical targets',()=>{
   const h=landing('/go?g=round&s=facebook',{preview:{type:'game',id:'round'}});await flush();await h.click();expect(h.location.href).toBe('footy://go?s=facebook&g=round');expect(h.requests[0]).toContain('type=session&id=round');
  });
  test('unresolved raw short code keeps its URL in Android store transport',async()=>{
-  const h=landing('/i/offline?s=facebook',{pending:true});void h.click('storeAndroid');await flush();await h.tick();expect(referrer(h.location.href).invite_url).toBe('https://teamderfc.web.app/i/offline?s=facebook');
+  const h=landing('/i/offline?s=facebook',{pending:true});void h.click('storeAndroid');await flush();await h.tick();expect(referrer(h.location.href).invite_url).toBe('https://teamder.co.il/i/offline?s=facebook');
  });
  test('unresolved raw short code warns on clipboard failure before iOS store',async()=>{
   const h=landing('/i/offline',{pending:true,ua:'iPhone',copy:'fail',confirm:false});void h.click();await flush();await h.tick();await flush();expect(h.window.confirm).toHaveBeenCalled();expect(h.location.href).toContain('/i/offline');
@@ -183,7 +183,7 @@ describe('smart primary app opening',()=>{
  test.each(['public/invite.html','functions/templates/invite.html','public/index.html','public/c/index.html','functions/templates/community.html'])('iPhone opens first and falls back to the store with the canonical invitation: %s',async file=>{
   const h=landing('/session/round?invitedBy=sender&s=facebook&l=link',{ua:'iPhone Safari'},file);await flush();await h.click();
   expect(h.location.href).toBe('footy://session/round?invitedBy=sender&s=facebook&l=link');expect(h.writes).toHaveLength(0);
-  await h.tick();expect(h.writes[0]).toBe('https://teamderfc.web.app/session/round?invitedBy=sender&s=facebook&l=link');expect(h.location.href).toContain('apps.apple.com');
+  await h.tick();expect(h.writes[0]).toBe('https://teamder.co.il/session/round?invitedBy=sender&s=facebook&l=link');expect(h.location.href).toContain('apps.apple.com');
  });
  test.each(['Android Chrome','iPhone Safari'])('installed handoff prevents a later store redirect on returning: %s',async ua=>{
   const h=landing('/team/club',{ua});await h.click();h.visibility();await h.tick();await h.tick();expect(h.location.href).toBe('footy://team/club');expect(h.writes).toHaveLength(0);

@@ -94,7 +94,7 @@ function AuditHomeCards({onClose}:{onClose:()=>void}) {
   const stats={attendedGames:49,totalRegistered:50,attendanceRate:98,goals:38,assists:16,goalsPerEvening:0.8,distinctPlayers:20,mostPlayedWith:{uid:'demo-partner',count:12},mostWinsWith:null,biggestVictim:null,nemesis:null,mostAssistedTo:null,mostAssistedBy:null};
   return <SafeModal visible onRequestClose={onClose}><ScrollView contentContainerStyle={{padding:20,paddingTop:50,gap:20,backgroundColor:'#F5F8FF'}}>
     <Text style={{textAlign:RTL_LABEL_ALIGN}}>בדיקת דמו של רכיבי הבית האמיתיים</Text>
-    {user?<HomePersonalStats user={user} onOpen={()=>{}} preview={{stats,partner:{id:'demo-partner',name:'שותף לדוגמה'}}}/>:null}
+    {user?<HomePersonalStats user={user} onOpen={()=>{}} onProfile={()=>{}} preview={{stats,partner:{id:'demo-partner',name:'שותף לדוגמה'}}}/>:null}
     <DidYouKnowCard tips={[{title:'טיפ ראשון',text:'התוכן נשאר מוצג גם אחרי המעבר האוטומטי',icon:'football-outline'},{title:'טיפ שני',text:'אפשר לעבור בין הטיפים בלי שהטקסט ייעלם',icon:'people-outline'},{title:'טיפ שלישי',text:'כל מעבר מחזיר את שקיפות התוכן למצב גלוי',icon:'bulb-outline'}]}/>
     <Text onPress={onClose} style={{textAlign:'center',padding:16,color:'#2563EB'}}>סגור בדיקה</Text>
   </ScrollView></SafeModal>;

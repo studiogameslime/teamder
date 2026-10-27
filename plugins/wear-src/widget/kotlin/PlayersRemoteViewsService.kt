@@ -51,6 +51,7 @@ class PlayersRemoteViewsService : RemoteViewsService() {
             )
             val views = RemoteViews(context.packageName, R.layout.widget_player_item)
             views.setTextViewText(R.id.player_name, row.name)
+            views.setOnClickFillInIntent(R.id.player_name, Intent())
 
             val badge = when (row.role) {
                 "admin" -> "מנהל"
@@ -69,7 +70,7 @@ class PlayersRemoteViewsService : RemoteViewsService() {
         override fun getLoadingView(): RemoteViews? = null
         override fun getViewTypeCount(): Int = 1
         override fun getItemId(position: Int): Long = position.toLong()
-        override fun hasStableIds(): Boolean = true
+        override fun hasStableIds(): Boolean = false
 
         private fun loadRows(): List<Row> {
             val prefs = context.getSharedPreferences(

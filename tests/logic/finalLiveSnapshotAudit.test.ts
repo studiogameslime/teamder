@@ -32,11 +32,11 @@ function gameReader() {
   };
   vm.runInNewContext(compile(fs.readFileSync('src/firebase/firestore.ts', 'utf8')), {
     exports, Date,
-    require: (id: string) => ({
+    require: (id: string) => {if(id.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(id.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(id==='@/services/diagnosticCallable')id='firebase/functions';return ({
       'firebase/firestore': io,
       './config': {getFirebase: () => ({db: {}})},
       '@/types': {TEAM_SIZE_MIN: 2, TEAM_SIZE_MAX: 11},
-    } as Record<string, unknown>)[id] ?? {},
+    } as Record<string, unknown>)[id] ?? {};},
   });
   return exports.docs;
 }

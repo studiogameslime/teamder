@@ -6,22 +6,25 @@ import*as Clipboard from'expo-clipboard';
 import { RTL_LABEL_ALIGN,colors } from '../theme';
 import{getDoc}from'../services/firestoreRest';
 import{parseJournal,stepLabel,stepTime,copyJournal,kindLabels,type Journal}from'../services/diagnosticTimeline';
+import {DiagnosticIncident,DiagnosticMetadata} from './DiagnosticIncident';
 import{screenHe}from'../services/screenNames';
 
 /** Fetch large diagnostics only when requested, never in inbox list queries. */
 export function DiagnosticTimeline({docPath}:{docPath:string}){
  const[open,setOpen]=useState(false),[loading,setLoading]=useState(false),[failed,setFailed]=useState(false);
- const[data,setData]=useState<{current:Journal|null;previous:Journal|null;legacy:string}|null>(null);
+ const[data,setData]=useState<{current:Journal|null;previous:Journal|null;legacy:string;occurrences:Record<string,unknown>[];report:Record<string,unknown>} |null>(null);
+ const[occurrence,setOccurrence]=useState(-1);
  const[previous,setPrevious]=useState(false),[filter,setFilter]=useState('all'),[limit,setLimit]=useState(30),[copied,setCopied]=useState(false),[retry,setRetry]=useState(0);
  useEffect(()=>{
   if(!open)return;let alive=true;setLoading(true);setFailed(false);setData(null);
-  getDoc(docPath).then(d=>{if(alive)setData({current:parseJournal(d?.journal??d?.lastJournal),previous:parseJournal(d?.previousJournal),legacy:typeof(d?.trail??d?.lastTrail)==='string'?String(d?.trail??d?.lastTrail).slice(0,6000):''});})
+  getDoc(docPath).then(d=>{if(alive)setData({report:d??{},current:parseJournal(d?.journal??d?.lastJournal),previous:parseJournal(d?.previousJournal),occurrences:Array.isArray(d?.occurrences)?d.occurrences.slice(0,3).filter((v:unknown)=>v&&typeof v==='object'):[],legacy:typeof(d?.trail??d?.lastTrail)==='string'?String(d?.trail??d?.lastTrail).slice(0,6000):''});})
    .catch((caughtErrord2bf260d31: unknown) =>{
     observeCaughtError(caughtErrord2bf260d31, {"source":"pulse/src/components/DiagnosticTimeline.tsx","handler":"DiagnosticTimeline","site":"DiagnosticTimeline:d2bf260d31"});if(alive)setFailed(true);}).finally(()=>{if(alive)setLoading(false);});
   return()=>{alive=false;};
  },[open,docPath,retry]);
- useEffect(()=>{setPrevious(false);setFilter('all');setLimit(30);setCopied(false);},[docPath]);
- const journal=previous?data?.previous:data?.current;
+ useEffect(()=>{setOccurrence(-1);setPrevious(false);setFilter('all');setLimit(30);setCopied(false);},[docPath]);
+ const sample=occurrence>=0?data?.occurrences[occurrence]:undefined;
+ const journal=sample?parseJournal(sample.lastJournal):previous?data?.previous:data?.current;
  const filtered=useMemo(()=>journal?.entries.filter(e=>filter==='all'||(filter==='press'?(e.kind==='tap'||e.kind==='press'):e.kind===filter))??[],[journal,filter]);
  return <View style={s.card}>
   <Pressable accessibilityRole="button" accessibilityState={{expanded:open}} onPress={()=>setOpen(v=>!v)} style={s.head}>
@@ -30,8 +33,11 @@ export function DiagnosticTimeline({docPath}:{docPath:string}){
   </Pressable>
   {open?<View style={{gap:12}}>
    {loading?<ActivityIndicator color={colors.primary}/>:failed?<Pressable onPress={()=>setRetry(v=>v+1)}><Text style={s.warning}>טעינת הרצף נכשלה — נסה שוב</Text></Pressable>:<>
-    {data?.previous?<View style={s.actions}>{[false,true].map(v=><Pressable key={String(v)} onPress={()=>{setPrevious(v);setLimit(30);setCopied(false);}} style={[s.chip,previous===v&&s.selected]}><Text style={s.text}>{v?'הפעלה קודמת':'הפעלה נוכחית'}</Text></Pressable>)}</View>:null}
+    <DiagnosticMetadata report={sample??data?.report}/>
+    {data?.occurrences.length?<><Text style={s.sub}>מופעים נפרדים שנשמרו. זו דגימה מוגבלת, וספירת השגיאות עשויה להיות גבוהה יותר.</Text><View style={s.actions}>{[-1,...data.occurrences.map((_,i)=>i)].map(i=><Pressable key={i} onPress={()=>{setOccurrence(i);setPrevious(false);setLimit(30);setCopied(false);}} style={[s.chip,occurrence===i&&s.selected]}><Text style={s.text}>{i===-1?'הדיווח האחרון':`מופע ${i+1}`}</Text></Pressable>)}</View>{sample?<Text selectable style={s.code}>{String(sample.id)} · {String(sample.appVersion??'')} · {typeof sample.capturedAt==='number'?new Date(sample.capturedAt).toLocaleString('he-IL'):''}</Text>:null}</>:null}
+    {data?.previous&&occurrence<0?<View style={s.actions}>{[false,true].map(v=><Pressable key={String(v)} onPress={()=>{setPrevious(v);setLimit(30);setCopied(false);}} style={[s.chip,previous===v&&s.selected]}><Text style={s.text}>{v?'הפעלה קודמת':'הפעלה נוכחית'}</Text></Pressable>)}</View>:null}
     {journal?<>
+     <DiagnosticIncident journal={journal}/>
      <Text style={s.sub}>{journal.entries.length} צעדים זמינים מתוך {journal.total}</Text>
      {journal.omitted>0?<Text style={s.warning}>הרצף חלקי: {journal.omitted} צעדים הושמטו בגלל מגבלת גודל.</Text>:null}
      <View style={s.actions}>{[['all','הכל'],['nav','מסכים'],['press','לחיצות'],['scroll','גלילות'],['err','שגיאות']].map(([key,label])=><Pressable key={key} onPress={()=>{setFilter(key);setLimit(30);}} style={[s.chip,filter===key&&s.selected]}><Text style={s.text}>{label}</Text></Pressable>)}</View>
@@ -45,7 +51,7 @@ export function DiagnosticTimeline({docPath}:{docPath:string}){
      </View>)}
      {!filtered.length?<Text style={s.sub}>אין פעולות בסינון שנבחר</Text>:null}
      {filtered.length>limit?<Pressable style={s.copy} onPress={()=>setLimit(v=>v+30)}><Text style={s.text}>הצג עוד 30 צעדים ({filtered.length-limit} נותרו)</Text></Pressable>:null}
-    </>:data?.legacy?<><Text style={s.warning}>תיעוד מהגרסה הקודמת — ללא רצף מובנה</Text><Text selectable style={s.code}>{data.legacy}</Text></>:<Text style={s.sub}>לא צורף רצף פעולות לפריט הזה. דיווחים מגרסאות ישנות עשויים לא לכלול אותו.</Text>}
+    </>:sample?<Text style={s.sub}>למופע הזה לא נשמר יומן מלא. יש לבדוק את הדיווח האחרון ואת ההקשר שנשמר.</Text>:data?.legacy?<><Text style={s.warning}>תיעוד מהגרסה הקודמת — ללא רצף מובנה</Text><Text selectable style={s.code}>{data.legacy}</Text></>:<Text style={s.sub}>לא צורף רצף פעולות לפריט הזה. דיווחים מגרסאות ישנות עשויים לא לכלול אותו.</Text>}
    </>}
   </View>:null}
  </View>;

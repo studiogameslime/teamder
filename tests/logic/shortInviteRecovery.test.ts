@@ -39,13 +39,26 @@ jest.mock('expo-linking', () => ({
 jest.mock('@/services/storage', () => ({ storage: {} }));
 jest.mock('@/services/errorLog', () => ({ logError: () => {} }));
 
-import { resolveInviteUrl } from '@/services/deepLinkService';
+import { resolveInviteUrl, buildInviteUrl, buildAppInviteUrl, parseInviteUrl } from '@/services/deepLinkService';
 let originalFetch: typeof fetch;
 beforeEach(()=>{ originalFetch=globalThis.fetch; });
 afterEach(()=>{globalThis.fetch=originalFetch;jest.useRealTimers();});
-test('short club URL recovers target, canonical inviter and tracking',async()=>{
+test.each(['teamder.co.il', 'www.teamder.co.il', 'teamderfc.web.app', 'teamderfc.firebaseapp.com'])('short club URL on %s recovers target, canonical inviter and tracking',async host=>{
  globalThis.fetch=jest.fn(async()=>({ok:true,text:async()=>'<script>window.__INVITE__={"type":"team","id":"club1","invitedBy":"sender"};</script>'})) as any;
- expect(await resolveInviteUrl('https://teamderfc.web.app/i/Ab123xy?s=whatsapp&l=campaign-link')).toEqual({type:'team',id:'club1',invitedBy:'sender',source:'whatsapp',linkId:'campaign-link'});
+ expect(await resolveInviteUrl(`https://${host}/i/Ab123xy?s=whatsapp&l=campaign-link`)).toEqual({type:'team',id:'club1',invitedBy:'sender',source:'whatsapp',linkId:'campaign-link'});
+ expect(globalThis.fetch).toHaveBeenCalledWith(`https://${host}/i/Ab123xy?resolve=1`, expect.anything());
+});
+
+test('all new long share URLs use the canonical domain and preserve encoded identifiers', () => {
+ expect(buildAppInviteUrl('sender')).toBe('https://teamder.co.il/app?invitedBy=sender');
+ for (const type of ['team', 'session'] as const) {
+  expect(buildInviteUrl({type, id:'target + one', invitedBy:'sender'})).toBe(`https://teamder.co.il/${type}/target%20%2B%20one?invitedBy=sender`);
+ }
+});
+
+test.each(['teamder.co.il','www.teamder.co.il','teamderfc.web.app','teamderfc.firebaseapp.com'])('direct invitation parsing retains new and legacy host %s',host=>{
+ expect(parseInviteUrl(`https://${host}/session/round?invitedBy=sender`)).toEqual({type:'session',id:'round',invitedBy:'sender'});
+ expect(parseInviteUrl(`https://${host}/c/club`)).toEqual({type:'team',id:'club'});
 });
 test('foreign URLs never cause a fetch',async()=>{
  globalThis.fetch=jest.fn() as any;

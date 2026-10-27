@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { getFirestore } from 'firebase-admin/firestore';
 import { ENFORCE_APP_CHECK } from './appCheckPolicy';
-import { HttpsError, onCall, type CallableRequest } from './observedFunctions';
+import { onCall, type CallableRequest } from './observedFunctions';
+import { ExpectedCallableError as HttpsError } from './expectedCallableError';
 import { observeCaughtError } from './serverErrorLog';
 
 type Data = Record<string, any>;

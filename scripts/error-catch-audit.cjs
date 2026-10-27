@@ -7,6 +7,8 @@ const cp = require('child_process');
 const crypto = require('crypto');
 const root = path.resolve(__dirname, '..');
 const boundaries = {
+  'src/services/diagnosticRuntime.ts': 'Diagnostic environment probes must not recursively report unavailable native modules.',
+  'src/services/diagnosticCallable.ts': 'Transport rethrows the original error; callers report it with its exact operation span.',
   'src/services/crashlyticsTestService.ts': 'Explicit diagnostic test: reporter failure is returned to the user and must not report recursively.',
   'src/utils/errorIdentity.ts': 'Error identity inspection must not recursively report its own protected-property failure.',
   'functions/src/errorIdentity.ts': 'Error identity inspection recursion boundary; mirrored across runtimes.',

@@ -48,7 +48,6 @@ export function SignInScreen() {
     try {
       await signIn();
     } catch (err) {
-    observeCaughtError(err, {"source":"src/screens/auth/SignInScreen.tsx","handler":"handlePress","site":"SignInScreen:9261495028"});
       const e = err as { message?: string; code?: string };
       const code = (e?.code ?? '').toString().toLowerCase();
       const msg = (e?.message ?? '').toLowerCase();
@@ -71,6 +70,7 @@ export function SignInScreen() {
         // just had no connection; not a config bug. (error report 30.6)
         code === 'unavailable' || msg.includes('offline');
       if (!cancelled && !transient && !browserBlocked) {
+        observeCaughtError(err, {source:'src/screens/auth/SignInScreen.tsx',handler:'handlePress',site:'SignInScreen:9261495028'});
         logError('signInGoogleScreen', err, {
           screen: 'SignInScreen',
           provider: 'google',

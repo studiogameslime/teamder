@@ -32,6 +32,7 @@
 
 | פיצ׳ר | הסבר פשוט | מאחורי הקלעים |
 |---|---|---|
+| הפעילות שלי ומקור המדידה האישי | [הסבר פשוט](profile/my-activity.simple.md) | [הסבר מעמיק](profile/my-activity.md) |
 | גילוי שחקנים ופרטיות | [הסבר פשוט](profile/player-discovery.simple.md) | [הסבר מעמיק](profile/player-discovery.md) |
 | יציאה, חזרה לאורח ומחיקת חשבון | [הסבר פשוט](profile/account-lifecycle.simple.md) | [הסבר מעמיק](profile/account-lifecycle.md) |
 | ארון התארים וההישגים האישיים | [הסבר פשוט](profile/achievements.simple.md) | [הסבר מעמיק](profile/achievements.md) |

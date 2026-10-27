@@ -1,3 +1,4 @@
+import { recordDiagnostic, diagnosticErrorOperation } from '../services/diagnosticJournal';
 import { observeCaughtError } from '../utils/errorObservation';
 // Cold-start auth-race guard for Firestore reads.
 //
@@ -112,6 +113,7 @@ export async function withAuthRaceRetry<T>(run: () => Promise<T>, options?: { re
       // attempt as a new production failure.
       if (options?.retryTransientReads && !readRetried && code && READ_RETRY_CODES.has(code) && attempt < RETRY_DELAYS_MS.length) {
         readRetried = true;
+        recordDiagnostic('act','auth_read_retry',{attempt:attempt+2,operationId:diagnosticErrorOperation(err)?.id});
         await sleep(500);
         continue;
       }
@@ -123,6 +125,7 @@ export async function withAuthRaceRetry<T>(run: () => Promise<T>, options?: { re
 
       // Wait for the session if it has not landed yet, then force the token —
       // which is what actually attaches it to the Firestore channel.
+      recordDiagnostic('act','auth_retry',{attempt:attempt+2,operationId:diagnosticErrorOperation(err)?.id});
       const user = await awaitUser(RETRY_DELAYS_MS[attempt]);
       if (!user) break; // genuinely signed out
       if (options?.retryTransientReads) { assertOwner(); ownerUid = user.uid; }

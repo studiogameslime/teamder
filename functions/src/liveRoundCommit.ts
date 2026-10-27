@@ -1,3 +1,5 @@
+import { inPlayPenaltyFingerprint, type InPlayPenalty } from './inPlayPenalties';
+
 /** Exact live-board identity, independent of mutable rotation timestamps. */
 export function liveRoundKey(rotation: { round?: number; roundInstanceId?: string; updatedAt?: number }): string {
   return rotation.roundInstanceId ?? `${rotation.round ?? 'r'}:${rotation.updatedAt ?? 0}`;
@@ -27,7 +29,7 @@ export function alternativeRoundFingerprint(game: Parameters<typeof liveLineupFi
   draftTeams?: {teams?: {index:number;captainId?:string;playerIds?:readonly string[];colorKey?:string}[];method?:string;numTeams?:number;createdAt?:number;createdBy?:string;
     completionMode?:string;fillMode?:string;published?:boolean;originalTeams?:{index:number;captainId?:string;playerIds?:string[];colorKey?:string}[];
     leftHome?:{playerId:string;homeTeam?:number;at?:number}[]};
-  liveMatch?: {scoreA?:number;scoreB?:number;goals?: {id?:string;team?:string;scorerId?:string|null;assisterId?:string|null;assistStatus?:string;ownGoal?:boolean;minute?:number}[];
+  liveMatch?: {inPlayPenalties?: InPlayPenalty[];scoreA?:number;scoreB?:number;goals?: {id?:string;team?:string;scorerId?:string|null;assisterId?:string|null;assistStatus?:string;ownGoal?:boolean;minute?:number}[];
     shootout?: {firstTeam?:string;keeperA?:string|null;keeperB?:string|null;kicks?:{id?:string;team?:string;kickerId?:string|null;keeperId?:string|null;scored?:boolean;outcome?:string;at?:number}[]}};
 }):string {
   const rot=game.rotation,draft=game.draftTeams,live=game.liveMatch,shootout=live?.shootout;
@@ -45,6 +47,7 @@ export function alternativeRoundFingerprint(game: Parameters<typeof liveLineupFi
     live?.scoreA??0,live?.scoreB??0,
     (live?.goals??[]).map(goal=>[goal.id??null,goal.team,goal.scorerId??null,goal.assisterId??null,goal.assistStatus??null,!!goal.ownGoal,goal.minute??0]),
     series,
+    ...(live?.inPlayPenalties?.length ? [inPlayPenaltyFingerprint(live.inPlayPenalties)] : []),
     [rot?.wins??null,rot?.baseTeams??null,rot?.fillUsage??null,rot?.lastRoundWinners??null,rot?.lastRoundLosers??null,rot?.lastRoundAt??null,rot?.roundInstanceRound??null],
     [draft?.method??'snake',draft?.numTeams??draft?.teams?.length??0,draft?.createdAt??0,draft?.createdBy??'',draft?.completionMode??null,draft?.fillMode??null,draft?.published??null,
       draft?.originalTeams?.length?draft.originalTeams.map(team=>[team.index,team.captainId||team.playerIds?.[0]||'',team.playerIds,team.colorKey??null]):null,
@@ -56,16 +59,19 @@ export function alternativeRoundFingerprint(game: Parameters<typeof liveLineupFi
 export function matchesLiveRound(
   game: Parameters<typeof liveLineupFingerprint>[0] & { rotation?: Parameters<typeof liveRoundKey>[0]; liveMatch?: {
     goals?: { id?: string }[];
+    inPlayPenalties?: InPlayPenalty[];
     shootout?: { kicks?: { kickerId?: string | null; keeperId?: string | null; scored?: boolean; outcome?: string }[] };
   } },
   roundId: string | number | null | undefined,
   goalIds: unknown,
-  snapshot?: { rotationUpdatedAt?: number | null; penalties?: unknown; lineupFingerprint?: unknown; alternativeDecision?: {fingerprint?:unknown} },
+  snapshot?: { rotationUpdatedAt?: number | null; penalties?: unknown; inPlayPenaltySnapshot?: unknown; lineupFingerprint?: unknown; alternativeDecision?: {fingerprint?:unknown} },
 ): boolean {
   if (!Array.isArray(goalIds)) return false;
   if (!game.rotation || String(roundId) !== liveRoundKey(game.rotation)) return false;
   const stored = (game.liveMatch?.goals ?? []).map(goal => goal.id);
   if (stored.length !== goalIds.length || !stored.every((id, index) => id === goalIds[index])) return false;
+  if (game.liveMatch?.inPlayPenalties?.length && snapshot?.inPlayPenaltySnapshot !== inPlayPenaltyFingerprint(game.liveMatch.inPlayPenalties)) return false;
+  if (snapshot?.inPlayPenaltySnapshot !== undefined && snapshot.inPlayPenaltySnapshot !== inPlayPenaltyFingerprint(game.liveMatch?.inPlayPenalties)) return false;
   if (snapshot) {
     if ((game.rotation.updatedAt ?? null) !== snapshot.rotationUpdatedAt) return false;
     if (snapshot.lineupFingerprint !== undefined && snapshot.lineupFingerprint !== liveLineupFingerprint(game)) return false;

@@ -31,7 +31,7 @@ const serverExpression=(find(serverTree,node=>ts.isVariableDeclaration(node)&&no
 const clone=<T,>(value:T):T=>structuredClone(value);
 function gameConverter() {
  const exports:any={};vm.runInNewContext(compile(fs.readFileSync('src/firebase/firestore.ts','utf8')),{exports,Date,
- require:(id:string)=>({'firebase/firestore':{collection:()=>({withConverter:(converter:unknown)=>({converter})}),doc:(c:any,id:string)=>({...c,id})},'./config':{getFirebase:()=>({db:{}})},'@/types':{TEAM_SIZE_MIN:2,TEAM_SIZE_MAX:11}} as any)[id]??{}});
+ require:(id:string)=>{if(id.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(id.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(id==='@/services/diagnosticCallable')id='firebase/functions';return ({'firebase/firestore':{collection:()=>({withConverter:(converter:unknown)=>({converter})}),doc:(c:any,id:string)=>({...c,id})},'./config':{getFirebase:()=>({db:{}})},'@/types':{TEAM_SIZE_MIN:2,TEAM_SIZE_MAX:11}} as any)[id]??{};}});
  return exports.docs.game('g').converter;
 }
 function board(size=4) {
@@ -84,7 +84,7 @@ function world(mock=false,legacyServer=false,size=4) {
  alternativeRoundFingerprint:clientFingerprint,liveLineupFingerprint,buildShootoutPenaltyPayload,roundParticipantSides,
  USE_MOCK_DATA:mock,mockGamesV2:[mockGame],mockGame:{id:'other'},mockRoundHistory:history,
  saveMockRoundHistory:(...args:any[])=>{if(throwMockHistory)throw Error('history unavailable');return (saveMockRoundHistory as any)(...args);},
- getFirebase:()=>({functions:{}}),require:(name:string)=>name==='firebase/functions'?{httpsCallable:()=>call}:{},
+ getFirebase:()=>({functions:{}}),require:(name:string)=>{if(name.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(name.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(name==='@/services/diagnosticCallable')name='firebase/functions';return name==='firebase/functions'?{httpsCallable:()=>call}:{};},
  playersPerTeamFor:()=>size,effFillMode:()=> 'off',logError:jest.fn(),__DEV__:false,Date,console,setTimeout,clearTimeout};
  vm.runInNewContext(compile(`module.exports={${method('_commitRoundStatsAndClear')},${method('prepareRoundResult')}};`),context);
  const service=context.module.exports;service.getGameById=jest.fn(async()=>read());service.clearShootout=jest.fn(()=>{throw Error('must not pre-clear');});

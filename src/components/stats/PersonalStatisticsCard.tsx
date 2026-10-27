@@ -13,6 +13,7 @@ import { he } from '@/i18n/he';
 
 export type StatisticsPerson = Pick<User, 'id' | 'name' | 'avatarId' | 'photoUrl'>;
 export interface PersonalPenalties {
+  penInPlayTaken?: number; penInPlayScored?: number;
   penTaken: number; penScored: number; penFaced: number; penSaved: number; ownGoals: number; ties: number;
 }
 const BLUE = '#2467F4';
@@ -118,6 +119,7 @@ export function PersonalStatisticsCard({ user, stats, people, pen, highlightsLoa
     </View>
     {pen?<View style={s.card}>
       <Text style={s.section}>פנדלים</Text>
+      {(pen.penInPlayTaken ?? 0)>0&&<Text style={[s.personSub,{textAlign:RTL_LABEL_ALIGN,marginBottom:10}]}>שערי פנדל במשחק: {pen.penInPlayScored ?? 0} · בהכרעה: {Math.max(0,pen.penScored-(pen.penInPlayScored ?? 0))} · סך הכל: {pen.penScored}</Text>}
       <View style={s.penaltyGrid}>
         <View style={[s.penaltySmall,s.penaltyDivider]}><View style={s.personCopy}><Text style={s.personTitle}>בועט</Text><Text style={s.smallNumber}>{pen.penScored} מתוך {pen.penTaken}</Text><Text style={s.personSub}>{pen.penTaken>0?`${Math.round(pen.penScored/pen.penTaken*100)}% הבקעה`:'טרם נבעטו פנדלים'}</Text></View><StatisticsIllustration kind="ball" size={37}/></View>
         <View style={s.penaltySmall}><View style={s.personCopy}><Text style={s.personTitle}>שוער</Text><Text style={s.smallNumber}>{pen.penSaved} מתוך {pen.penFaced}</Text><Text style={s.personSub}>{pen.penFaced>0?`${Math.round(pen.penSaved/pen.penFaced*100)}% עצירה`:isOwn ? 'טרם עמדת בשער בפנדלים' : 'טרם עמד בשער בפנדלים'}</Text></View><StatisticsIllustration kind="glove" size={37}/></View>

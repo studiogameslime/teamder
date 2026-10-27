@@ -3,7 +3,7 @@ import { observeCaughtError } from '../utils/errorObservation';
 //
 // Instead of `…/session/<20-char id>?invitedBy=<28-char uid>` (~90 chars), we
 // store the {type, targetId, invitedBy} in `inviteLinks/{code}` and share
-// `https://teamderfc.web.app/i/<code>` (~34 chars). The `serveInviteCode` CF
+// `https://teamder.co.il/i/<code>` (31 chars). The `serveInviteCode` CF
 // resolves the code back to the real target + inviter, so ATTRIBUTION and the
 // WhatsApp OG preview are fully preserved — the short link is a pure alias.
 //
@@ -14,7 +14,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
 
-const HOSTING_ORIGIN = 'https://teamderfc.web.app';
+import { PUBLIC_LINK_ORIGIN as HOSTING_ORIGIN } from '@/utils/linkDomains';
 const ALPHABET =
   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
@@ -50,16 +50,12 @@ export async function createShortInviteUrl(args: {
       invitedBy: args.invitedBy ?? '',
       createdAt: Date.now(),
     });
-    // Carry the inviter in the URL too, not just inside the Firestore doc. The
-    // `serveInviteCode` CF injects the full {type,id,invitedBy} for the deep-link
-    // + OG preview, BUT if it cold-starts / the doc is missing, it serves the bare
-    // page with no injection → the invited user was NOT credited. With `?invitedBy=`
-    // in the URL, invite.html recovers the inviter client-side and still credits
-    // them (as a generic app invite), so attribution never depends on the CF.
-    const base = `${HOSTING_ORIGIN}/i/${code}`;
-    return args.invitedBy
-      ? `${base}?invitedBy=${encodeURIComponent(args.invitedBy)}`
-      : base;
+    // The canonical document owns both target and inviter. Current landing
+    // pages preserve unresolved codes in clipboard/Play referrer, and native
+    // incomingInvite persists them for retry. Repeating the UID no longer
+    // helps recovery (unverified query inviters are deliberately not credited).
+    // Keep the complete long URL only when the code could not be saved.
+    return `${HOSTING_ORIGIN}/i/${code}`;
   } catch (err) {
     observeCaughtError(err, {"source":"src/services/inviteLinkService.ts","handler":"createShortInviteUrl","site":"inviteLinkService:322e4b0ded"});
     logError('createShortInviteUrl', err, { type: args.type });

@@ -13,7 +13,7 @@ test('the actual game converter preserves creation content binding across write/
   // Run the complete real converter. Unrelated nested-domain readers return
   // their input; the creation field has no replacement reader in this adapter.
   for (const match of converter.matchAll(/\b(read\w+)\(/g)) context[match[1]] = (value: unknown) => value;
-  vm.runInNewContext(ts.transpileModule(`module.exports = ${converter}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, context);
+  vm.runInNewContext(ts.transpileModule(`module.exports = ${converter}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, Object.assign(context,{runDiagnosticOperation:require('@/services/diagnosticJournal').runDiagnosticOperation,diagnosticEntity:require('@/services/diagnosticJournal').diagnosticEntity}));
   const actual = context.module.exports;
   const game = { id: 'target', groupId: 'club', title: 'ערב', startsAt: 1, fieldName: 'מגרש', maxPlayers: 10,
     players: [], waitlist: [], pending: [], participantIds: [], matches: [], status: 'open',

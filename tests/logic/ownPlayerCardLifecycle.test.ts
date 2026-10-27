@@ -1,6 +1,7 @@
 import fs from 'fs';
 import vm from 'vm';
 import ts from 'typescript';
+import { CommonActions, StackActions, StackRouter } from '@react-navigation/routers';
 
 const file = ts.createSourceFile('card.tsx', fs.readFileSync('src/components/profile/OwnPlayerCard.tsx', 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 function evaluate(node: ts.Node, context: any) {
@@ -18,6 +19,28 @@ function deferred() {
   return { promise, resolve, reject };
 }
 const flush = () => new Promise(resolve => setImmediate(resolve));
+
+test.each([true, false])('personal card shares the resolved short link only while its account is current: %s', async stillCurrent => {
+  const link = deferred();
+  let active = true;
+  const context: any = { preview: undefined, current: () => active, user: { id:'me' },
+    sharingRef: { current:false }, setSharing:jest.fn(),
+    createShortInviteUrl:jest.fn(() => link.promise), buildAppInviteUrl:jest.fn(() => 'long'),
+    Share:{share:jest.fn()}, observeCaughtError:jest.fn(), toast:{error:jest.fn()} };
+  const node = find(n => ts.isVariableDeclaration(n) && n.name.getText(file) === 'share') as ts.VariableDeclaration;
+  const run = evaluate(node.initializer!, context);
+  const pending = run('invite');
+  await run('invite');
+  expect(context.createShortInviteUrl).toHaveBeenCalledTimes(1);
+  expect(context.createShortInviteUrl).toHaveBeenCalledWith({type:'app',invitedBy:'me',fallbackLong:'long'});
+  expect(context.Share.share).not.toHaveBeenCalled();
+  active = stillCurrent;
+  link.resolve('https://teamder.co.il/i/Ab123xy'); await pending;
+  if (stillCurrent) expect(context.Share.share).toHaveBeenCalledWith(expect.objectContaining({message:expect.stringContaining('https://teamder.co.il/i/Ab123xy')}));
+  else expect(context.Share.share).not.toHaveBeenCalled();
+  expect(context.sharingRef.current).toBe(false);
+});
+
 function fixture() {
   const data = deferred(), clubs = deferred(), referrals = deferred(), stats = deferred();
   const owner = { id: 'me' };
@@ -58,10 +81,50 @@ test('failed primary data never becomes a zero-history success', async () => {
   expect(f.context.setData).toHaveBeenLastCalledWith({ failed: true });
 });
 
-test.each(['ProfileEdit', 'Achievements', 'SocialPrivacy', 'Referrals'])('%s opens across every hosting tab without an unregistered local navigation', screen => {
+test.each(['ProfileEdit', 'SocialPrivacy', 'Referrals'])('%s opens across every hosting tab without an unregistered local navigation', screen => {
   const node = find(n => ts.isVariableDeclaration(n) && n.name.getText(file) === 'go') as ts.VariableDeclaration;
   const navigate = jest.fn();
   const go = evaluate(node.initializer!, { preview: undefined, nav: { navigate, getState: () => ({ routeNames: ['PlayerCard', 'Statistics', 'MatchDetails', 'EveningSummary'] }) } });
   go(screen);
   expect(navigate).toHaveBeenCalledWith('ProfileTab', { screen, params: undefined, initial: false });
+});
+
+test.each(['ProfileStack', 'CommunitiesStack', 'GameStack', 'ChatStack'])('cabinet back restores the originating card in %s, even after an earlier cabinet visit', host => {
+  const stack = fs.readFileSync(`src/navigation/${host}.tsx`, 'utf8');
+  expect(stack).toMatch(/name="Achievements"\s+component=\{AchievementsScreen\}/);
+  const routeNames = [...stack.matchAll(/<Stack\.Screen\b[\s\S]*?\bname="([^"]+)"/g)].map(match => match[1]);
+  const options = { routeNames, routeParamList: {}, routeGetIdList: {} };
+  const node = find(n => ts.isVariableDeclaration(n) && n.name.getText(file) === 'go') as ts.VariableDeclaration;
+  for (const visitedBefore of [false, true]) {
+    const router = StackRouter({ initialRouteName: visitedBefore ? 'Achievements' : 'PlayerCard' });
+    let state: any = router.getInitialState(options);
+    if (visitedBefore) state = router.getStateForAction(state, StackActions.push('PlayerCard', { userId: 'owner' }), options)!;
+    const origin = state.routes[state.index];
+    const push = jest.fn((name, params) => {
+      state = router.getStateForAction(state, StackActions.push(name, params), options)!;
+    });
+    const navigate = jest.fn();
+    evaluate(node.initializer!, { preview: undefined, nav: { push, navigate, getState: () => state } })('Achievements');
+    expect(state.routes[state.index].name).toBe('Achievements');
+    expect(navigate).not.toHaveBeenCalled();
+    state = router.getStateForAction(state, CommonActions.goBack(), options)!;
+    expect(state.routes[state.index]).toEqual(origin);
+    expect(state.routes[state.index].name).toBe('PlayerCard');
+  }
+});
+
+test('last-round summary opens that round in the statistics tab across every player-card host', () => {
+  const link = find(n => ts.isJsxSelfClosingElement(n) && n.tagName.getText(file) === 'Link' &&
+    n.attributes.properties.some(a => ts.isJsxAttribute(a) && a.name.getText(file) === 'title' &&
+      a.initializer?.getText(file) === '"לסיכום המחזור שלי"')) as ts.JsxSelfClosingElement;
+  const press = link.attributes.properties.find(a => ts.isJsxAttribute(a) && a.name.getText(file) === 'onPress') as ts.JsxAttribute;
+  const goNode = find(n => ts.isVariableDeclaration(n) && n.name.getText(file) === 'go') as ts.VariableDeclaration;
+  for (const host of ['ProfileStack', 'CommunitiesStack', 'GameStack', 'ChatStack']) {
+    const stack = fs.readFileSync(`src/navigation/${host}.tsx`, 'utf8');
+    expect(stack).toMatch(/name="MatchDetails"\s+component=\{MatchDetailsScreen\}/);
+    const navigate = jest.fn();
+    const go = evaluate(goNode.initializer!, { preview: undefined, nav: { navigate } });
+    evaluate((press.initializer as ts.JsxExpression).expression!, { go, last: { id: 'last-round-full-id' } })();
+    expect(navigate).toHaveBeenCalledWith('MatchDetails', { gameId: 'last-round-full-id', initialTab: 'stats' });
+  }
 });

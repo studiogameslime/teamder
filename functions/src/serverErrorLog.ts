@@ -1,8 +1,11 @@
 import { errorCauseObjects } from './errorIdentity';
+import { isExpectedCallableError } from './expectedCallableError';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash } from 'node:crypto';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { redactDiagnosticContext, redactDiagnosticText } from './diagnosticRedaction';
+import { retainOccurrences } from './diagnosticOccurrences';
+import { joinDiagnosticId } from './joinDiagnosticId';
 
 type Origin = { source: string; handler: string; site: string };
 type Incident = { error: unknown; operation: string; context: Record<string, unknown>; legacy?: boolean };
@@ -10,6 +13,7 @@ type Scope = { incidents: Incident[]; objects: WeakMap<object, Incident>; contex
 const scopes = new AsyncLocalStorage<Scope>();
 
 function record(error: unknown, operation: string, context: Record<string, unknown>): Incident | undefined {
+  if (isExpectedCallableError(error)) return undefined;
   const scope = scopes.getStore();
   if (!scope) return undefined;
   const objects = errorCauseObjects(error);
@@ -27,6 +31,7 @@ function record(error: unknown, operation: string, context: Record<string, unkno
 }
 
 export function observeCaughtError(error: unknown, origin: Origin): void {
+  if (isExpectedCallableError(error)) return;
   try {
     if (!record(error, `caught:${origin.site}`, origin)) {
       // Startup/synchronous code outside a function invocation has no lifetime
@@ -46,6 +51,7 @@ export function observedRejection<T>(handler: (error: any) => T, origin: Origin)
 }
 
 export async function reportServerError(args: { operation: string; err: unknown; context?: Record<string, unknown> }): Promise<void> {
+  if (isExpectedCallableError(args.err)) return;
   const incident = record(args.err, args.operation, args.context ?? {});
   if (incident) incident.legacy = true;
   else await persistIncident({error: args.err, operation: args.operation, context: args.context ?? {}, legacy: true});
@@ -68,7 +74,8 @@ async function persistIncident(incident: Incident, count = 1): Promise<void> {
       platform: 'server', appVersion: 'functions', lastSeen: FieldValue.serverTimestamp() };
     await db.runTransaction(async tx => {
       const previous = await tx.get(ref);
-      tx.set(ref, {...common, count: FieldValue.increment(count), ...(!previous.exists ? {status: 'new', firstSeen: FieldValue.serverTimestamp()} : {})}, {merge: true});
+      const sample={...common,id:createHash('sha256').update(`${Date.now()}|${Math.random()}`).digest('hex').slice(0,24),capturedAt:Date.now()};
+      tx.set(ref, {...common, occurrences:retainOccurrences(previous.data?.()?.occurrences,[sample]), count: FieldValue.increment(count), ...(!previous.exists ? {status: 'new', firstSeen: FieldValue.serverTimestamp()} : {})}, {merge: true});
     });
   } catch (error) {
     // The terminal transport failure is observable without recursively writing.
@@ -83,21 +90,44 @@ async function persistIncident(incident: Incident, count = 1): Promise<void> {
 /** Await reporting before Firebase completes/freezes an invocation, even on throw. */
 export function withServerErrorReporting<T extends (...args: any[]) => any>(name: string, handler: T): T {
   return function(this: unknown, ...args: Parameters<T>) {
-    const request = args[0] as {auth?: {uid?: string}; params?: Record<string, unknown>} | undefined;
+    const request = args[0] as {auth?: {uid?: string}; params?: Record<string, unknown>; data?:Record<string,unknown>} | undefined;
     const context: Record<string, unknown> = {functionKind: name};
+    const start=Date.now();
+    if(name.startsWith('onCall')&&request?.data&&typeof request.data==='object'&&!Array.isArray(request.data)){
+      const { _diagnostic, ...payload }=request.data;
+      request.data=payload;
+      const id=(_diagnostic as {requestId?:unknown}|null)?.requestId;
+      if(typeof id==='string'&&/^[a-z0-9-]{10,100}$/.test(id))context.requestId=id;
+    }
+    context.serverRevision=process.env.K_REVISION??'unknown';
+    // Join requests have a strict existing schema. Correlate using fields already
+    // accepted by its rules; never add diagnostics fields to the business write.
+    if(name.startsWith('onDocument')&&typeof request?.params?.gameId==='string'&&typeof request.params.uid==='string'&&typeof request.data?.data==='function'){
+      const data=(request.data.data as ()=>Record<string,unknown>)();
+      if(typeof data?.tappedAt==='number'&&Number.isFinite(data.tappedAt)){
+        context.requestId=joinDiagnosticId(request.params.gameId,request.params.uid,data.tappedAt);
+        context.joinTappedAt=data.tappedAt;context.joinUserId=request.params.uid;
+      }
+    }
     if (typeof request?.auth?.uid === 'string') context.userId = request.auth.uid;
     for (const key of ['gameId','groupId','roundId','seasonId','notificationId','chatId','messageId']) {
       const value = request?.params?.[key];
       if (typeof value === 'string' && value.length <= 128) context[key] = value;
     }
     return scopes.run({incidents: [], objects: new WeakMap(), context}, async () => {
+      let outcome='success',code:string|undefined;
       try {
         return await handler.apply(this, args);
       } catch (error) {
+        outcome='failure';const raw=(error as {code?:unknown}|null)?.code;
+        if(typeof raw==='string'&&/^[\w/.-]{1,100}$/.test(raw))code=raw;
         record(error, `uncaught:${name}`, {uncaughtAt: name});
         throw error;
       } finally {
         const scope = scopes.getStore()!;
+        const durationMs=Math.max(0,Date.now()-start);
+        if(context.requestId)console.info('[diagnostic-call]',{requestId:context.requestId,functionKind:name,durationMs,outcome,...(code?{code}:{}),serverRevision:context.serverRevision,incidentCount:scope.incidents.length});
+        for(const incident of scope.incidents)incident.context={...incident.context,durationMs,serverRevision:context.serverRevision};
         // Group repeated branch failures into one transaction per signature.
         const grouped = new Map<string, {incident: Incident; count: number}>();
         for (const incident of scope.incidents) {

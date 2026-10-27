@@ -1,3 +1,4 @@
+import { errorPresentation } from './errorPresentation';
 // Turns a raw error record from the app's `errors` collection into a
 // friendly, human-readable Hebrew view for the panel — WHAT happened,
 // WHERE, WHY, and WHAT the user was trying to do — while keeping all the
@@ -179,8 +180,8 @@ export interface ErrorView {
 
 export function describeError(e: ErrorRecord): ErrorView {
   const cat = categoryOf(e);
-  const title =
-    e.title || OP_TITLES[e.operation] || `${CAT_META[cat].label} · ${e.operation}`;
+  const summary = errorPresentation(e.operation, e.code, e.message);
+  const title = OP_TITLES[e.operation] || summary.title;
   const attempted: { label: string; value: string }[] = [];
   for (const [k, v] of Object.entries(e.context ?? {})) {
     if (CTX_SKIP.has(k) || v == null || v === '') continue;
@@ -198,7 +199,7 @@ export function describeError(e: ErrorRecord): ErrorView {
     whereLabel: e.screen ? SCREEN_LABELS[e.screen] : undefined,
     whereRaw: e.screen,
     operation: e.operation,
-    why: humanizeWhy(e, cat),
+    why: summary.reason,
     attempted,
   };
 }

@@ -1,4 +1,4 @@
-import { observeCaughtError } from './errorObservation';
+import { caughtErrorOrigin, observeCaughtError } from './errorObservation';
 import { pulseFetch as fetch } from './adminTransport';
 // Free-tier usage monitor. Pulls real usage from Google Cloud Monitoring
 // (Firestore reads/writes/deletes, Cloud Functions invocations) and Cloud
@@ -93,6 +93,20 @@ function nextMonthlyResetMs(ms: number): number {
 }
 
 // Sum a DELTA metric over [startMs, endMs] into a single number.
+async function quotaRead(url: string, token: string): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    } catch (error) {
+      if (attempt >= 2 || !/UnknownHostException|Network request failed|fetch failed|Failed to fetch|ECONNRESET|ETIMEDOUT/i.test(String(error))) {
+        observeCaughtError(error, { source: 'pulse/src/services/quota.ts', handler: 'quotaRead', site: 'quota:read' });
+        throw error;
+      }
+      await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 250 : 750));
+    }
+  }
+}
+
 async function metricSum(
   token: string,
   metric: string,
@@ -108,7 +122,7 @@ async function metricSum(
     `&aggregation.perSeriesAligner=ALIGN_SUM` +
     `&aggregation.crossSeriesReducer=REDUCE_SUM`;
   try {
-    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    const res = await quotaRead(url, token);
     const json = await res.json();
     if (json.error) return null;
     let sum = 0;
@@ -119,7 +133,7 @@ async function metricSum(
     }
     return sum;
   } catch (caughtError718c756796) {
-    observeCaughtError(caughtError718c756796, {"source":"pulse/src/services/quota.ts","handler":"metricSum","site":"quota:718c756796"});
+    if (!caughtErrorOrigin(caughtError718c756796)) observeCaughtError(caughtError718c756796, {"source":"pulse/src/services/quota.ts","handler":"metricSum","site":"quota:718c756796"});
     return null;
   }
 }
@@ -141,7 +155,7 @@ async function metricByType(
     `&aggregation.alignmentPeriod=${alignSec}s` +
     `&aggregation.perSeriesAligner=ALIGN_SUM`;
   try {
-    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    const res = await quotaRead(url, token);
     const json = await res.json();
     if (json.error) return null;
     const byType = new Map<string, number>();
@@ -157,7 +171,7 @@ async function metricByType(
       .map(([type, value]) => ({ type, value }))
       .sort((a, b) => b.value - a.value);
   } catch (caughtErrora67b9d63fe) {
-    observeCaughtError(caughtErrora67b9d63fe, {"source":"pulse/src/services/quota.ts","handler":"metricByType","site":"quota:a67b9d63fe"});
+    if (!caughtErrorOrigin(caughtErrora67b9d63fe)) observeCaughtError(caughtErrora67b9d63fe, {"source":"pulse/src/services/quota.ts","handler":"metricByType","site":"quota:a67b9d63fe"});
     return null;
   }
 }
@@ -190,23 +204,23 @@ function sourceHe(s: string): string {
 async function schedulerJobs(token: string): Promise<{ count: number; names: string[] } | null> {
   const names: string[] = [];
   let any = false;
+  let failed = false;
   for (const loc of SCHEDULER_LOCATIONS) {
     try {
-      const res = await fetch(
+      const res = await quotaRead(
         `https://cloudscheduler.googleapis.com/v1/projects/${PID}/locations/${loc}/jobs`,
-        { headers: { Authorization: 'Bearer ' + token } },
+        token,
       );
       const json = await res.json();
-      if (json.jobs) {
-        any = true;
-        for (const j of json.jobs) names.push(String(j.name).split('/').pop() ?? '');
-      }
+      if (!res.ok || json.error) { failed = true; continue; }
+      any = true;
+      for (const j of json.jobs ?? []) names.push(String(j.name).split('/').pop() ?? '');
     } catch (caughtError5dee9a5b38) {
-    observeCaughtError(caughtError5dee9a5b38, {"source":"pulse/src/services/quota.ts","handler":"schedulerJobs","site":"quota:5dee9a5b38"});
-      // ignore a single location failing
+    if (!caughtErrorOrigin(caughtError5dee9a5b38)) observeCaughtError(caughtError5dee9a5b38, {"source":"pulse/src/services/quota.ts","handler":"schedulerJobs","site":"quota:5dee9a5b38"});
+      failed = true;
     }
   }
-  if (!any && names.length === 0) return null;
+  if (failed || !any) return null;
   return { count: names.length, names };
 }
 

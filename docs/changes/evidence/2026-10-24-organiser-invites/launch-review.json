@@ -1,0 +1,29 @@
+{
+  "rulesVersion": "lr6",
+  "checkedAt": "2026-10-24T20:51:39.642Z",
+  "requireClean": true,
+  "blockers": [],
+  "recommendations": [
+    {
+      "code": "model_note",
+      "severity": "recommendation",
+      "scope": {
+        "kind": "campaign"
+      },
+      "params": {
+        "title": "Identical CTA and messaging across variants",
+        "detail": "All three sends use the same headline, CTA text, and core invite message. Consider differentiating the follow-up to feel fresh and motivate action from those who saw the first send."
+      },
+      "fix": {
+        "action": "edit_content"
+      },
+      "key": "model_note:send:c36bc9d699083bd9"
+    }
+  ],
+  "skipped": [],
+  "ai": {
+    "status": "ok",
+    "version": "ai5",
+    "cached": true
+  }
+}

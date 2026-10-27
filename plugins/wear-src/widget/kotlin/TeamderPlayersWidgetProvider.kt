@@ -36,6 +36,7 @@ class TeamderPlayersWidgetProvider : AppWidgetProvider() {
         manager: AppWidgetManager,
         ids: IntArray,
     ) {
+        WidgetRosterWorker.enqueueCachedIfStale(context)
         for (id in ids) {
             val views = RemoteViews(context.packageName, R.layout.widget_players)
 
@@ -48,7 +49,13 @@ class TeamderPlayersWidgetProvider : AppWidgetProvider() {
                 context, REQ_LAUNCH, launchIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
-            views.setOnClickPendingIntent(R.id.players_root, launchPi)
+            listOf(R.id.players_title, R.id.players_count, R.id.players_subtitle, R.id.players_placeholder)
+                .forEach { views.setOnClickPendingIntent(it, launchPi) }
+            val rowLaunchPi = PendingIntent.getActivity(context, REQ_LAUNCH + 1, launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
+            views.setPendingIntentTemplate(R.id.players_list, rowLaunchPi)
+            views.setOnClickPendingIntent(R.id.players_logo, TeamderWidgetProvider.refreshPi(context))
+            views.setContentDescription(R.id.players_logo, "רענון הנתונים")
 
             val state = loadState(context)
             when (state?.optString("kind")) {
@@ -76,16 +83,22 @@ class TeamderPlayersWidgetProvider : AppWidgetProvider() {
     ) {
         views.setViewVisibility(R.id.players_placeholder, View.GONE)
         views.setViewVisibility(R.id.players_list, View.VISIBLE)
+        views.setViewVisibility(R.id.players_count, View.VISIBLE)
 
         views.setTextViewText(R.id.players_title, o.optString("title"))
 
         val pc = o.optInt("playersCount")
         val mp = o.optInt("maxPlayers")
-        views.setTextViewText(R.id.players_count, "$pc/$mp")
+        views.setTextViewText(R.id.players_count, if (mp > 0) "\u2066$pc/$mp\u2069" else pc.toString())
 
         val rel = relativeTime(o.optLong("startsAt"))
         val place = o.optString("fieldName").ifEmpty { o.optString("city") }
-        val subtitle = listOf(rel, place).filter { it.isNotEmpty() }.joinToString(" · ")
+        val registration = when (o.optString("registration")) { "waitlist" -> "ברשימת המתנה"; "pending" -> "ממתין לאישור"; else -> "" }
+        val error = o.optString("widgetError").ifBlank {
+            if (System.currentTimeMillis() - o.optLong("widgetUpdatedAtMs", System.currentTimeMillis()) > 30L * 60L * 1000L)
+                "המידע אינו מעודכן. לחצו על הסמל לרענון" else ""
+        }
+        val subtitle = listOf(error.ifBlank { registration }, rel, place).filter { it.isNotEmpty() }.joinToString(" · ")
         views.setTextViewText(R.id.players_subtitle, subtitle)
 
         // Bind the ListView to the RemoteViewsService. Each widget
@@ -166,7 +179,7 @@ class TeamderPlayersWidgetProvider : AppWidgetProvider() {
     companion object {
         private const val MAIN_ACTIVITY_NAME = "com.studiogameslime.soccerapp.MainActivity"
         private const val BRAND = "Teamder"
-        private const val PLACEHOLDER = "אין משחק קרוב"
+        private const val PLACEHOLDER = "אין מחזור קרוב"
         private const val SCHEDULED_LABEL = "יפתח להרשמה ב־"
         private const val REQ_LAUNCH = 1001
 

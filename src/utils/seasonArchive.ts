@@ -38,6 +38,7 @@ export interface FinishedSeasonTable {
   totalRounds: number;
   tiedRounds: number;
   shootoutRounds: number;
+  inPlayPenalties?: number;
   scorelessRounds: number;
   /** Mini-games the two counters above were measured over. */
   countedRounds: number;
@@ -106,6 +107,8 @@ export function parseSeasonTable(
       games: num(x.games),
       penTaken: num(x.penTaken),
       penScored: num(x.penScored),
+      ...(typeof x.penInPlayTaken === 'number' ? {penInPlayTaken:num(x.penInPlayTaken)} : {}),
+      ...(typeof x.penInPlayScored === 'number' ? {penInPlayScored:num(x.penInPlayScored)} : {}),
       penFaced: num(x.penFaced),
       penSaved: num(x.penSaved),
       ownGoals: num(x.ownGoals),
@@ -123,6 +126,7 @@ export function parseSeasonTable(
     totalRounds: num(totals.rounds),
     tiedRounds: num(totals.tiedRounds),
     shootoutRounds: num(totals.shootoutRounds),
+    ...(typeof totals.inPlayPenalties === 'number' ? {inPlayPenalties:num(totals.inPlayPenalties)} : {}),
     scorelessRounds: num(totals.scorelessRounds),
     countedRounds: num(totals.countedRounds),
     guestGoals: num(totals.guestGoals),

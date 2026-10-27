@@ -5,8 +5,9 @@
 // ("Allow $(PRODUCT_NAME) to access your location"), even when we only
 // configure `locationWhenInUsePermission`.
 //
-// This app never requests always/background location — it only reads a
-// one-shot location while in use to surface nearby communities. A
+// On iOS the app only reads a one-shot location for nearby communities.
+// The Android-only phone test uses an explicitly started foreground service,
+// without ACCESS_BACKGROUND_LOCATION. A
 // generic, unused "Always" purpose string is exactly the kind of thing
 // App Review flags ("why do you need background location?"), so we
 // strip both keys after expo-location has run. Listed AFTER

@@ -13,7 +13,7 @@ import { errorCauseObjects } from '../utils/errorIdentity';
 
 import { Platform } from 'react-native';
 import { crumbErr, formatTrail } from '@/services/breadcrumbs';
-import { diagnosticAttachment, diagnosticOwner, diagnosticReportScreen } from './diagnosticJournal';
+import { diagnosticAttachment, diagnosticOwner, diagnosticReportScreen, diagnosticErrorOperation, compactCapturedDiagnosticAttachment } from './diagnosticJournal';
 import { readPendingDiagnosticErrors, savePendingDiagnosticErrors, persistDiagnosticJournal } from './diagnosticStorage';
 import Constants from 'expo-constants';
 import { httpsCallable } from 'firebase/functions';
@@ -42,6 +42,7 @@ interface Buffered {
   trail: string;
   journal: string;
   version: string;
+  occurrences?:Record<string,unknown>[];
 }
 
 const FLUSH_MS = 12000; // coalesce window
@@ -325,7 +326,8 @@ export function logError(
     const uid = currentUid();
     // A signed-out denial is retained with its cause, not silently discarded.
     const signedOutDenial = isSignedOutDenial(code, uid);
-    context = { ...caughtErrorOrigin(error), ...context, ...(transient ? { transient: true } : {}), ...(signedOutDenial ? { signedOutDenial: true } : {}) };
+    const span=diagnosticErrorOperation(error);
+    context = { ...caughtErrorOrigin(error), ...context, ...(span?{requestId:span.id,failedStage:span.name,durationMs:span.durationMs}:{}), ...(transient ? { transient: true } : {}), ...(signedOutDenial ? { signedOutDenial: true } : {}) };
     // On the report trail too — a failure is a step, and "the tap DID reach
     // something, and that something failed" is a different story from a tap
     // that reached nothing. The operation name only; the message, the stack
@@ -344,6 +346,10 @@ export function logError(
     const capturedMatches = captured && captured.uid === uid;
     const trail=sameOwner?redactDiagnosticText(capturedMatches ? captured.trail : formatTrail()).slice(-6000):'';
     const journal=sameOwner?(capturedMatches ? captured.journal : diagnosticAttachment()):'';
+    const sample={id:`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,12).padEnd(10,'0')}`,capturedAt:Date.now(),
+      lastMessage:message,lastCode:code??null,lastContext:safeContext(context),lastScreen:screen??null,
+      lastJournal:sameOwner?(capturedMatches?compactCapturedDiagnosticAttachment(captured.journal,20000):diagnosticAttachment(20000)):'',appVersion,platform:Platform.OS};
+    if(typeof sample.lastJournal==='string'&&sample.lastJournal.length>20000)sample.lastJournal='';
     if (existing) {
       existing.pending += 1;
       existing.message = message;
@@ -353,6 +359,7 @@ export function logError(
       existing.userId = uid;
       existing.screen = screen;
       existing.trail=trail;existing.journal=journal;existing.version=appVersion;
+      const samples=[...(existing.occurrences??[]),sample];existing.occurrences=samples.length<=3?samples:[samples[0],...samples.slice(-2)];
     } else {
       buffer.set(fp, {
         operation,
@@ -364,6 +371,7 @@ export function logError(
         screen,
         pending: 1,
         trail, journal, version:appVersion,
+        occurrences:[sample],
       });
     }
     persistPending();
@@ -569,7 +577,7 @@ export async function flush(): Promise<void> {
       appVersion:e.version,
     };
     try {
-      await httpsCallable(functions,'recordClientError')({...common,count:delta,deliveryId});
+      await httpsCallable(functions,'recordClientError')({...common,count:delta,deliveryId,occurrences:e.occurrences??[]});
       if(generation===ownerGeneration)flushedPerFp.set(fp, (flushedPerFp.get(fp) ?? 0) + 1);
       delivering.delete(deliveryId);
     } catch {

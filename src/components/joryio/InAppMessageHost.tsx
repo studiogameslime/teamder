@@ -39,6 +39,7 @@ import { he } from '@/i18n/he';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import { NativeCampaignView, type NativeMsg, type Btn } from './NativeCampaignView';
+import { clubInviteCampaignId, eligibleClubInvite, shareClubInviteCampaign } from '@/services/clubInviteCampaign';
 interface HtmlMsg {
   id: string;
   name: string;
@@ -51,7 +52,7 @@ interface HtmlMsg {
 
 type Msg = NativeMsg | HtmlMsg;
 
-export function InAppMessageHost(): React.ReactElement | null {
+export function InAppMessageHost({ active = true, onVisibilityChange }: { active?: boolean; onVisibilityChange?: (visible: boolean) => void }): React.ReactElement | null {
   const [msg, setMsg] = useState<Msg | null>(null);
   const fade = useRef(new Animated.Value(0)).current;
   const me = useUserStore((st) => st.currentUser);
@@ -62,8 +63,13 @@ export function InAppMessageHost(): React.ReactElement | null {
    *  screen because something finished, not because a button was pressed. */
   const [advanceTo, setAdvanceTo] = useState<string | null>(null);
   const submittingRef = useRef(false);
+  const sharingRef = useRef(false);
+
+  useEffect(() => { setMsg(null); }, [me?.id]);
 
   useEffect(() => {
+    let active = true;
+    let revision = 0;
     const off = joryio.onInAppMessage((raw) => {
       // Read `kind` off the untyped payload: narrowing the union first makes
       // the unknown-kind branch unreachable to the compiler, which is exactly
@@ -78,19 +84,36 @@ export function InAppMessageHost(): React.ReactElement | null {
         return;
       }
       if (wire.kind === 'html' && !wire.html) return;
+      const current = ++revision;
+      const actionUrl = wire.kind === 'html'
+        ? wire.html?.match(/href=["'](footy:\/\/club-invite\/[^"']+)["']/)?.[1]
+        : (raw as NativeMsg).buttons?.find(b => b.url?.startsWith('footy://club-invite/'))?.url;
+      if (actionUrl) {
+        if (!clubInviteCampaignId(actionUrl)) return;
+        void eligibleClubInvite(actionUrl).then(eligible => {
+          if (!active || revision !== current) return;
+          if (eligible) setMsg(raw as Msg);
+          else if (wire.id) joryio.trackInAppImpression(wire.id, 'dismissed');
+        }).catch(error => {
+          observeCaughtError(error, { source: 'src/components/joryio/InAppMessageHost.tsx', handler: 'clubInviteEligibility', site: 'clubInviteEligibility' });
+        });
+        return;
+      }
       setMsg(raw as Msg);
     });
     // Pull whatever is eligible now; the listener above catches the rest.
     joryio.syncInAppCampaigns();
-    return off;
+    return () => { active = false; ++revision; off(); };
   }, []);
 
   useEffect(() => {
-    if (!msg) return;
+    if (!active || !msg) return;
     fade.setValue(0);
     Animated.timing(fade, { toValue: 1, duration: 180, useNativeDriver: true }).start();
     joryio.trackInAppImpression(msg.id, 'displayed');
-  }, [msg, fade]);
+  }, [active, msg, fade]);
+
+  useEffect(() => { onVisibilityChange?.(active && !!msg); return () => onVisibilityChange?.(false); }, [active, msg, onVisibilityChange]);
 
   // The SDK classifies an interaction by SUBSTRING — an action containing
   // 'click' becomes a click, one containing 'dismiss' becomes a dismissal, and
@@ -173,23 +196,30 @@ export function InAppMessageHost(): React.ReactElement | null {
     }
   }, [vars.inviteUrl]);
 
-  const onButton = useCallback(
-    (b: Btn) => {
-      if ((b.action === 'url' || b.action === 'deep_link') && b.url) {
-        // Both land in the same place: a footy:// deep link and an https invite
-        // URL are each handled by the app's existing link routing.
-        Linking.openURL(b.url).catch((caughtErrorb4d11e15aa: unknown) => { observeCaughtError(caughtErrorb4d11e15aa, {"source":"src/components/joryio/InAppMessageHost.tsx","handler":"InAppMessageHost","site":"InAppMessageHost:b4d11e15aa"}); return undefined; });
-      }
-      // A button is a click AND a close, and the SDK's own native presenter
-      // reports both for the same tap. Report them in that order so CTR counts
-      // the tap and the dismissal still closes the delivery.
-      if (msg) joryio.trackInAppImpression(msg.id, 'clicked');
-      close('dismissed');
-    },
-    [close, msg],
-  );
+  const onCampaignClick = useCallback(async (url?: string) => {
+    if (url?.startsWith('footy://club-invite/')) {
+      if (sharingRef.current) return;
+      sharingRef.current = true;
+      try {
+        if (msg) joryio.trackInAppImpression(msg.id, 'clicked');
+        await shareClubInviteCampaign(url, msg?.id ?? '');
+        close('dismissed');
+      } catch (error) {
+        observeCaughtError(error, { source: 'src/components/joryio/InAppMessageHost.tsx', handler: 'shareClubInvite', site: 'shareClubInvite' });
+        toast.error(he.error);
+      } finally { sharingRef.current = false; }
+      return;
+    }
+    if (url) Linking.openURL(url).catch(error => observeCaughtError(error, { source: 'src/components/joryio/InAppMessageHost.tsx', handler: 'campaignLink', site: 'campaignLink' }));
+    if (msg) joryio.trackInAppImpression(msg.id, 'clicked');
+    close('dismissed');
+  }, [msg, close]);
 
-  if (!msg) return null;
+  const onButton = useCallback((button: Btn) => {
+    void onCampaignClick((button.action === 'url' || button.action === 'deep_link') ? button.url : undefined);
+  }, [onCampaignClick]);
+
+  if (!active || !msg) return null;
 
   if (msg.kind === 'html') {
     const full = msg.type === 'fullscreen';
@@ -213,11 +243,7 @@ export function InAppMessageHost(): React.ReactElement | null {
               html={msg.html}
               css={msg.css}
               fullscreen={full}
-              onClick={(url) => {
-                if (url) Linking.openURL(url).catch((caughtErrored3ab23b04: unknown) => { observeCaughtError(caughtErrored3ab23b04, {"source":"src/components/joryio/InAppMessageHost.tsx","handler":"InAppMessageHost","site":"InAppMessageHost:ed3ab23b04"}); return undefined; });
-                if (msg) joryio.trackInAppImpression(msg.id, 'clicked');
-                close('dismissed');
-              }}
+              onClick={onCampaignClick}
               onClose={() => close('dismissed')}
               onSubmit={onSubmit}
               onShare={onShare}

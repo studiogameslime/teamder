@@ -1,4 +1,5 @@
 import type {Game} from '@/types';
+import {inPlayPenaltyFingerprint} from '@/utils/inPlayPenalty';
 import {roundCommitKey} from '@/services/rotationEngine';
 import {rotationWriteSource} from '@/services/rotationWriteSource';
 import {shootoutFingerprint} from '@/utils/shootoutDecision';
@@ -23,6 +24,7 @@ export function roundDecisionContext(game:Pick<Game,'id'|'status'|'rotation'|'dr
       live?.scoreA??0,live?.scoreB??0,
       (live?.goals??[]).map(goal=>[goal.id??null,goal.team,goal.scorerId??null,goal.assisterId??null,goal.assistStatus??null,!!goal.ownGoal]),
       shootoutFingerprint(live?.shootout),
+      ...(live?.inPlayPenalties?.length ? [inPlayPenaltyFingerprint(live.inPlayPenalties)] : []),
     ]),
   };
 }

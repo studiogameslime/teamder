@@ -39,7 +39,7 @@ test('support listener waits for both typed windows, merges and cancels both sub
     'firebase/firestore': { query: (...args: any[]) => args, where: (...args: any[]) => args, orderBy: () => ({}), limit: () => ({}), Timestamp: { fromMillis: (ms: number) => ({ ms }) }, onSnapshot: (_q: any, next: any, error: any) => { callbacks.push({ next, error }); return stops[callbacks.length - 1]; } },
   };
   const module = { exports: {} as any };
-  vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/services/chatService.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText, { module, exports: module.exports, require: (name: string) => deps[name] ?? {}, console });
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/services/chatService.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText, { module, exports: module.exports, require: (name: string) => {if(name.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(name.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(name==='@/services/diagnosticCallable')name='firebase/functions';return deps[name] ?? {};}, console });
   const stop = module.exports.chatService.subscribeMessages('dm', 'alice__teamder', seen, failed);
   const snap = (id: string, createdAt: number) => ({ docs: [{ id, data: () => ({ createdAt }) }] });
   callbacks[0].next(snap('today', 200)); expect(seen).not.toHaveBeenCalled();

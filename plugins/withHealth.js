@@ -1,111 +1,85 @@
-// withHealth — wires the OS wearable-data hubs so Teamder can READ a player's
-// session movement metrics (steps / distance / speed / calories) from whatever
-// watch or band they own, to show a personal post-game physical summary.
-// NO heart-rate and NO exercise-route are requested (both removed 2026-07-14).
-//
-//   • iOS      → HealthKit: read-usage Info.plist string + the HealthKit
-//                entitlement (Apple Watch + any tracker that writes to Health).
-//   • Android  → Health Connect: READ permissions + the <queries> entry so the
-//                app can see the Health Connect provider (Samsung/Garmin/Fitbit/
-//                Xiaomi/… all sync into it).
-//
-// Read-only: no WRITE permissions are requested (we never write health data).
-// The JS binding (react-native-health-connect / react-native-health) is added
-// as a normal dependency; this plugin only declares the native capabilities so
-// a build can grant them.
-//
-// NOTE: intentionally NOT yet registered in app.json's `plugins` array — the
-// native health bindings aren't installed, and the iOS HealthKit entitlement
-// needs the App ID capability + a regenerated provisioning profile first
-// (same class as Associated Domains on the local profile). Add it to app.json
-// in the same change that installs the bindings + provisions the capability.
+// Android-only, read-only Health Connect integration. No iOS capabilities.
+const fs = require('fs');
+const path = require('path');
+const { withAndroidManifest, withMainActivity, withDangerousMod, AndroidConfig } = require('expo/config-plugins');
+const HC_READ_PERMISSIONS = ['DISTANCE', 'STEPS', 'SPEED', 'ACTIVE_CALORIES_BURNED']
+  .map(type => `android.permission.health.READ_${type}`);
 
-const {
-  withInfoPlist,
-  withEntitlementsPlist,
-  withAndroidManifest,
-  AndroidConfig,
-} = require('expo/config-plugins');
-
-// No READ_EXERCISE / READ_EXERCISE_ROUTE: the GPS heatmap was dropped, and
-// READ_EXERCISE_ROUTE is the Health Connect permission Google scrutinises most.
-// READ_HEART_RATE dropped 2026-07-14: Google's Jan-2026 policy requires each
-// health data type to be "essential to the app's primary function". Heart-rate
-// is the single hardest to justify for a game-ORGANISING app and the most
-// scrutinised, so we ask only for the movement/effort metrics the post-game
-// summary actually needs. (No READ_EXERCISE / READ_EXERCISE_ROUTE either.)
-const HC_READ_PERMISSIONS = [
-  'android.permission.health.READ_STEPS',
-  'android.permission.health.READ_DISTANCE',
-  'android.permission.health.READ_ACTIVE_CALORIES_BURNED',
-  'android.permission.health.READ_TOTAL_CALORIES_BURNED',
-  'android.permission.health.READ_SPEED',
-];
-
-function withHealthIos(config) {
-  const usage =
-    'Teamder קורא את נתוני הפעילות שלך מהשעון (מרחק, מהירות, צעדים, קלוריות) כדי להציג לך סיכום פיזי אחרי המשחק. הנתונים נשארים אישיים.';
-  config = withInfoPlist(config, (cfg) => {
-    cfg.modResults.NSHealthShareUsageDescription = usage;
-    // We never write to Health, but some HealthKit bindings expect the key to
-    // exist; keep it explicit and honest.
-    cfg.modResults.NSHealthUpdateUsageDescription = usage;
-    return cfg;
-  });
-  config = withEntitlementsPlist(config, (cfg) => {
-    cfg.modResults['com.apple.developer.healthkit'] = true;
-    cfg.modResults['com.apple.developer.healthkit.access'] = [];
-    return cfg;
-  });
-  return config;
-}
-
-function withHealthAndroid(config) {
-  return withAndroidManifest(config, (cfg) => {
-    // cfg.modResults is the WRAPPER { manifest: {...} }. uses-permission and
-    // <queries> are children of the <manifest> node — writing them on the
-    // wrapper corrupts the XML root.
-    const root = cfg.modResults;
-    const manifest = root.manifest;
-    // 1) READ permissions (uses-permission entries). The library's own config
-    //    plugin (react-native-health-connect/app.plugin.js) adds ONLY the
-    //    permissions-rationale intent-filter — NOT these READ grants, so we add
-    //    them here.
-    manifest['uses-permission'] = manifest['uses-permission'] ?? [];
-    const have = new Set(
-      manifest['uses-permission'].map((p) => p.$?.['android:name']),
-    );
+function withHealth(config) {
+  if (!require('../src/config/sportsActivity.json').enabled) return config;
+  config = withAndroidManifest(config, cfg => {
+    const manifest = cfg.modResults.manifest;
+    manifest['uses-permission'] ??= [];
     for (const name of HC_READ_PERMISSIONS) {
-      if (!have.has(name)) {
+      if (!manifest['uses-permission'].some(p => p.$['android:name'] === name)) {
         manifest['uses-permission'].push({ $: { 'android:name': name } });
       }
     }
-    // 2) <queries> so the app can see the Health Connect provider package.
-    manifest.queries = manifest.queries ?? [];
-    const hasHcQuery = manifest.queries.some((q) =>
-      (q.package ?? []).some(
-        (p) => p.$?.['android:name'] === 'com.google.android.apps.healthdata',
-      ),
-    );
-    if (!hasHcQuery) {
-      manifest.queries.push({
-        package: [{ $: { 'android:name': 'com.google.android.apps.healthdata' } }],
-      });
+    manifest.queries ??= [];
+    if (!manifest.queries.some(q => q.package?.some(p => p.$['android:name'] === 'com.google.android.apps.healthdata'))) {
+      manifest.queries.push({ package: [{ $: { 'android:name': 'com.google.android.apps.healthdata' } }] });
     }
-    // NOTE: the permissions-rationale intent-filter is intentionally NOT added
-    // here — the library's plugin already pushes it. Adding a second identical
-    // filter would just duplicate it.
+    const app = AndroidConfig.Manifest.getMainApplicationOrThrow(cfg.modResults);
+    app.activity ??= [];
+    const name = '.HealthPermissionsRationaleActivity';
+    app.activity = app.activity.filter(a => a.$['android:name'] !== name);
+    app.activity.push({ $: { 'android:name': name, 'android:exported': 'true' },
+      'intent-filter': [{ action: [{ $: { 'android:name': 'androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE' } }] }] });
+    app['activity-alias'] ??= [];
+    app['activity-alias'] = app['activity-alias'].filter(a => a.$['android:name'] !== '.ViewHealthPermissionUsageActivity');
+    app['activity-alias'].push({ $: { 'android:name': '.ViewHealthPermissionUsageActivity',
+      'android:exported': 'true', 'android:targetActivity': name,
+      'android:permission': 'android.permission.START_VIEW_PERMISSION_USAGE' },
+      'intent-filter': [{ action: [{ $: { 'android:name': 'android.intent.action.VIEW_PERMISSION_USAGE' } }],
+        category: [{ $: { 'android:name': 'android.intent.category.HEALTH_PERMISSIONS' } }] }] });
     return cfg;
   });
-}
+  config = withMainActivity(config, cfg => {
+    if (cfg.modResults.language !== 'kt') throw new Error('Health Connect requires Kotlin MainActivity');
+    let source = cfg.modResults.contents;
+    const delegate = 'HealthConnectPermissionDelegate.setPermissionDelegate(this)';
+    if (!source.includes(delegate)) {
+      const onCreate = /super\.onCreate\([^\n]*\)/;
+      if (!onCreate.test(source)) throw new Error('Missing MainActivity onCreate');
+      source = source.replace(onCreate, call => `${call}\n    ${delegate}`);
+      source = source.replace(/^(package [^\n]+\n)/, '$1import dev.matinzd.healthconnect.permissions.HealthConnectPermissionDelegate\n');
+    }
+    cfg.modResults.contents = source;
+    return cfg;
+  });
+  return withDangerousMod(config, ['android', async cfg => {
+    const packageName = cfg.android.package;
+    const folder = path.join(cfg.modRequest.platformProjectRoot, 'app/src/main/java', ...packageName.split('.'));
+    fs.mkdirSync(folder, { recursive: true });
+    fs.writeFileSync(path.join(folder, 'HealthPermissionsRationaleActivity.kt'), `package ${packageName}
 
-// Android-only for now. iOS (withHealthIos) is deferred: HealthKit needs the
-// capability enabled on the Apple App ID + a regenerated provisioning profile
-// first. Restore `config = withHealthIos(config)` here in the same change that
-// provisions the iOS capability.
-function withHealth(config) {
-  config = withHealthAndroid(config);
-  return config;
-}
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.widget.TextView
 
+/** The same policy URL as the Play listing, independent of login and React startup. */
+class HealthPermissionsRationaleActivity : Activity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    val policy = "https://teamderfc.web.app/privacy"
+    try {
+      startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(policy)))
+      finish()
+    } catch (_: ActivityNotFoundException) {
+      setContentView(TextView(this).apply {
+        text = "מדיניות הפרטיות זמינה בכתובת:\\n" + policy
+        textSize = 18f
+        setPadding(32, 48, 32, 48)
+        setTextIsSelectable(true)
+      })
+    }
+  }
+}
+`);
+    return cfg;
+  }]);
+}
 module.exports = withHealth;

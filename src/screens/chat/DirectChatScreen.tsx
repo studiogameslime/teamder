@@ -65,7 +65,8 @@ export function DirectChatScreen() {
           avatarId: u?.avatarId,
           photoUrl: u?.photoUrl,
         });
-        await chatService.markChatRead(me.id, 'dm', convId);
+        // ChatView owns read markers on focus and new messages. Waiting for
+        // the same write here delayed mounting it and then wrote it twice.
       } catch (e) {
     observeCaughtError(e, {"source":"src/screens/chat/DirectChatScreen.tsx","handler":"DirectChatScreen","site":"DirectChatScreen:3da6189220"});
         if (!alive) return;

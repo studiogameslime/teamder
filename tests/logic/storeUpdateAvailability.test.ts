@@ -42,10 +42,17 @@ test('Play ownership -10 is normal unavailability at both observation points', a
 });
 
 test('other native store failures remain visible', async () => {
-  const error = new Error('Install Error(-6): download failed');
+  const error = new Error('Install Error(-2): internal failure');
   bridge.check.mockRejectedValue(error);
   expect(await checkForUpdate()).toBeNull();
   expect(observeCaughtError).toHaveBeenCalledWith(error, expect.objectContaining({ handler: 'bounded' }));
+});
+
+test('temporary device installation restrictions leave checking retryable without an incident', async () => {
+  bridge.check.mockRejectedValueOnce(new Error('Install Error(-6): ERROR_INSTALL_NOT_ALLOWED'));
+  expect(await checkForUpdate()).toBeNull();expect(observeCaughtError).not.toHaveBeenCalled();
+  bridge.check.mockResolvedValueOnce({available:true,versionCode:284});
+  expect(await checkForUpdate()).toMatchObject({targetBuild:284});
 });
 test('config failure leaves verified store update optional', async () => {
   (getDoc as jest.Mock).mockRejectedValue(new Error('offline')); expect((await checkForUpdate())?.kind).toBe('optional');

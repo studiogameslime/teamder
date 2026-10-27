@@ -12,7 +12,7 @@ import { StaleSessionError } from './staleSession';
 // callable (added in functions). Mock mode returns a realistic fixture so the
 // UI renders and can be verified on the emulator.
 
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/services/diagnosticCallable';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { withAuthRaceRetry } from '@/firebase/authRace';
 import type { TimeBucket, WeekdayIndex } from '@/types';

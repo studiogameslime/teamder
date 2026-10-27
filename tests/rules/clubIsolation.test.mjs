@@ -18,7 +18,7 @@ import { initializeTestEnvironment, assertFails, assertSucceeds }
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { doc, getDoc, setDoc, collection, query, where, getDocs, limit }
+import { doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs, limit }
   from 'firebase/firestore';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -108,6 +108,22 @@ test('list communityPlayerStats where groupId==club: member OK, outsider denied'
   await assertSucceeds(getDocs(q(MEMBER)));
   await assertFails(getDocs(q(OUTSIDER)));
   await assertFails(getDocs(query(collection(anon(), 'communityPlayerStats'), where('groupId', '==', GID))));
+});
+
+test('game-scoped stats query distinguishes an absent personal summary without widening the audience', async () => {
+  const missing = `${GAME}__never-played`;
+  await assertFails(getDoc(doc(db(MEMBER), 'gamePlayerStats', missing)));
+  const scoped = uid => getDocs(query(collection(db(uid), 'gamePlayerStats'), where('gameId', '==', GAME)));
+  const found = await assertSucceeds(scoped(MEMBER));
+  if (found.size !== 1 || found.docs.some(d => d.id === missing)) throw new Error('Missing row must remain absent');
+  await assertFails(scoped(OUTSIDER));
+  await assertFails(getDocs(query(collection(anon(), 'gamePlayerStats'), where('gameId', '==', GAME))));
+  await env.withSecurityRulesDisabled(async ctx => {
+    await deleteDoc(doc(ctx.firestore(), 'gamePlayerStats', `${GAME}__${MEMBER}`));
+  });
+  const empty = await assertSucceeds(scoped(MEMBER));
+  if (!empty.empty) throw new Error('An empty game must stay unavailable');
+  await assertFails(scoped(OUTSIDER));
 });
 
 test('list communityPairStats where groupId==club: member OK, outsider denied', async () => {

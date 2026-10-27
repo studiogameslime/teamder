@@ -33,6 +33,7 @@ Code reads `CLAUDE.md`, which points here). Keep one copy; edit this file.
 
 - **Answer in Hebrew.** Pure Hebrew, no English mixed into prose. Code,
   identifiers and file paths stay as they are.
+- בטקסט בעברית השתמש באותיות עבריות ובסימני פיסוק רגילים בלבד. אין להשתמש בקו ארוך, במקפים מיוחדים או במירכאות מעוצבות. קוד, מזהים ונתיבי קבצים נשארים כפי שהם.
 - He runs the app himself and reads the screens. "Looks right" is not a
   finding — show the numbers, or show a screenshot.
 - He is the only one who decides what ships. See §6.

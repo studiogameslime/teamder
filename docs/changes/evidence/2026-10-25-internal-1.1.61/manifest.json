@@ -1,0 +1,20 @@
+{
+  "version": "1.1.61",
+  "versionCode": 295,
+  "files": {
+    "build-receipt.json": "de2f928efb74adc0bf26957030e5fdad7be64cfba24e957597c00e6b0a84c57f",
+    "code-checks.json": "0f170a792a59f4bf00d552159fde77a4923cda2fd543856d719e0d7b695127da",
+    "documentation-checks.json": "b636ad8e8ba280a48d0ee3c20716f495b967b60f386dea48b682d1011727d823",
+    "final-source-verification.json": "cf544577e20af274ee4851bbf61d9266680a4ddba614e42b08c483f8a6a03195",
+    "offline-binary.json": "7bae80c0b1ab0ea72ef1af63ee11f33f4d3510f1e061f58cf75a234fee77a3b9",
+    "release-log-receipt.json": "d46c190702cec6d93e9de578a87c9e2c5fe1563fd5cc53ab6ada6c9ad2c2f926",
+    "screenshot-references.json": "43db850ffaf9b68ae0bce3cdc0876361412c6a1233b168c3765f18053454c8dd",
+    "server-plan.json": "80a5dcbe34f2491b40067f80f8a4f64f63615bba9460680d64bd10f626d93b91",
+    "server-proof.json": "8585afd2fdd45e435953b6e3f372081500561cfadc833bc589b7556f92b41c27",
+    "source-before.json": "57947e6e5a1208e36cda329bd196aa8201140091e2f4acfc4b300712049900ec",
+    "source-delta.json": "7eacca75ee9ea8a17a2f7db43ee86d0afc36725427d9f36ad85e906c1598edc5",
+    "tracks-before.json": "2fb5e35a20b3fc817b1402aeb2b31f27ff216b4e3a642dfe4fe3c800d0497634",
+    "tracks-verified.json": "613f295abb3fb4d6c21b64b7c3323a3a6fc40f8143dec99605bc56f5ca7e9b65",
+    "working-source-proof.json": "b6f8f2e462e8a41d7f37f0418203c771dfe40f164fb769474a5ccc15e70a10d6"
+  }
+}

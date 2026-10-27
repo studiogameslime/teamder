@@ -30,6 +30,8 @@ export interface NamedStat {
 }
 
 export interface PlayerStatsSummary {
+  /** Consecutive attended, past registered rounds across clubs; absent if dates are incomplete. */
+  attendanceStreak?: { current: number; best: number };
   highlights?: PersonalHighlights;
   attendedGames: number;
   totalRegistered: number;
@@ -81,6 +83,16 @@ function topEntry(map: Record<string, number>): NamedStat | null {
   return best;
 }
 
+async function readStatsSource<T>(source: 'games' | 'pairs', userId: UserId, read: () => Promise<T>): Promise<T> {
+  try {
+    return await read();
+  } catch (error) {
+    observeCaughtError(error, { source: 'src/services/playerStatsService.ts', handler: 'readStatsSource', site: `playerStats:${source}` });
+    logError(`playerStats.${source}`, error, { userId });
+    throw error;
+  }
+}
+
 export const playerStatsService = {
   async compute(
     userId: UserId,
@@ -103,15 +115,25 @@ export const playerStatsService = {
       };
     }
 
+    // Independent sources start together; failure stays a failure of its source.
+    const [snap, [asA, asB]] = await Promise.all([
+      readStatsSource('games', userId, () => getDocs(
+        query(col.games(), where('participantIds', 'array-contains', userId)),
+      )),
+      readStatsSource('pairs', userId, () => Promise.all([
+        getDocs(query(col.pairStats(), where('a', '==', userId))),
+        getDocs(query(col.pairStats(), where('b', '==', userId))),
+      ])),
+    ]);
+
     // ── Games scan: attendance + co-attendance per teammate ──────────────
     let attendedGames = 0;
     const attendedRounds: PersonalRound[] = [];
     let totalRegistered = 0;
+    const attendance: Array<{ id: string; at: number; attended: boolean }> = [];
+    let attendanceDatesComplete = true;
     const withPlayer: Record<string, number> = {};
     try {
-      const snap = await getDocs(
-        query(col.games(), where('participantIds', 'array-contains', userId)),
-      );
       const now = Date.now();
       for (const d of snap.docs) {
         const g = d.data() as {
@@ -129,7 +151,11 @@ export const playerStatsService = {
         if (!didEveningHappen(g)) continue;
         totalRegistered += 1;
         // Canonical attended gate — shared with the Profile count + History.
-        if (!isAttendedGame(g, userId, now)) continue;
+        const attended = isAttendedGame(g, userId, now);
+        if (typeof g.startsAt === 'number' && Number.isFinite(g.startsAt) && g.startsAt > 0) {
+          attendance.push({ id: d.id, at: g.startsAt, attended });
+        } else attendanceDatesComplete = false;
+        if (!attended) continue;
         attendedGames += 1;
         attendedRounds.push({gameId:d.id,at:g.startsAt ?? 0,groupId:g.groupId});
         for (const pid of players) {
@@ -160,10 +186,6 @@ export const playerStatsService = {
     let mostAssistedBy: NamedStat | null = null;
     let regularPartnerResults: PersonalPartnerResults | null = null;
     try {
-      const [asA, asB] = await Promise.all([
-        getDocs(query(col.pairStats(), where('a', '==', userId))),
-        getDocs(query(col.pairStats(), where('b', '==', userId))),
-      ]);
       let bestWith = 0;
       let bestVic = 0;
       let bestNem = 0;
@@ -268,6 +290,16 @@ export const playerStatsService = {
       mostAssistedTo,
       mostAssistedBy,
     };
+    if (attendanceDatesComplete && attendance.length) {
+      let current = 0, best = 0;
+      for (const round of attendance.sort((a, b) => a.at - b.at || a.id.localeCompare(b.id))) {
+        current = round.attended ? current + 1 : 0;
+        best = Math.max(best, current);
+      }
+      base.attendanceStreak = { current, best };
+    }
+    // A blurred screen already ignores the result; do not begin its history reads.
+    if (ctx.isCurrent?.() === false) return base;
     ctx.onBase?.(base);
     const highlightRounds = ctx.recentHighlightsOnly
       ? [...attendedRounds].sort((a, b) => b.at - a.at || b.gameId.localeCompare(a.gameId)).slice(0, 5)

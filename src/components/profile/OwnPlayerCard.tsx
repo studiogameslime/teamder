@@ -16,6 +16,7 @@ import { userService } from '@/services/userService';
 import { groupService } from '@/services/groupService';
 import { socialPlayersService } from '@/services/socialPlayersService';
 import { buildAppInviteUrl } from '@/services/deepLinkService';
+import { createShortInviteUrl } from '@/services/inviteLinkService';
 import { observeCaughtError } from '@/utils/errorObservation';
 import { publicCardStats } from '@/utils/ownPlayerCard';
 import { effectiveStatus } from '@/services/gameLifecycle';
@@ -39,7 +40,7 @@ function Title({ title, icon }: { title: string; icon: Icon }) {
 }
 function Action({ title, icon, onPress, outline = false, busy = false }: { title: string; icon: Icon; onPress: () => void; outline?: boolean; busy?: boolean }) {
   return <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ disabled: busy, busy }} disabled={busy} onPress={onPress} style={({ pressed }) => [s.action, outline && s.outline, pressed && { opacity: 0.7 }]}>
-    {busy ? <ActivityIndicator color={outline ? '#2563EB' : 'white'}/> : <Ionicons name={icon} size={20} color={outline ? '#2563EB' : 'white'}/>}<Text style={[s.actionText, outline && s.blue]}>{title}</Text>
+    <Text style={[s.actionText, outline && s.blue]}>{title}</Text>{busy ? <ActivityIndicator color={outline ? '#2563EB' : 'white'}/> : <Ionicons name={icon} size={20} color={outline ? '#2563EB' : 'white'}/>}
   </Pressable>;
 }
 function Link({ title, onPress }: { title: string; onPress: () => void }) {
@@ -149,9 +150,14 @@ export function OwnPlayerCard({ user, preview }: { user: User; preview?: OwnPlay
   const fresh = data.value?.user ?? user;
   const go = (screen: string, params?: object) => {
     if (preview) return;
+    // Push a fresh cabinet so an older instance cannot pop this card off the stack.
+    if (screen === 'Achievements') {
+      nav.push(screen, params);
+      return;
+    }
     // Every host of PlayerCard can reach ProfileStack; preserve the local stack
     // for destinations already registered there (match, statistics, club).
-    if (['ProfileEdit', 'Achievements', 'SocialPrivacy', 'Referrals'].includes(screen)) {
+    if (['ProfileEdit', 'SocialPrivacy', 'Referrals'].includes(screen)) {
       if (nav.getState().routeNames.includes(screen)) nav.navigate(screen, params);
       else nav.navigate('ProfileTab', { screen, params, initial: false });
     } else nav.navigate(screen, params);
@@ -174,7 +180,10 @@ export function OwnPlayerCard({ user, preview }: { user: User; preview?: OwnPlay
     sharingRef.current = true; setSharing(true);
     try {
       if (kind === 'invite') {
-        await Share.share({ title: 'הזמנה לכדורגל', message: `בוא לשחק איתי! הצטרף דרך הקישור האישי שלי:\n${buildAppInviteUrl(user.id)}` });
+        const link = await createShortInviteUrl({
+          type: 'app', invitedBy: user.id, fallbackLong: buildAppInviteUrl(user.id),
+        });
+        if (current()) await Share.share({ title: 'הזמנה לכדורגל', message: `בוא לשחק איתי! הצטרף דרך הקישור האישי שלי:\n${link}` });
       } else {
         const Sharing = require('expo-sharing') as typeof import('expo-sharing');
         if (!await Sharing.isAvailableAsync()) { toast.info('שיתוף תמונה אינו זמין במכשיר הזה'); return; }
@@ -220,7 +229,7 @@ export function OwnPlayerCard({ user, preview }: { user: User; preview?: OwnPlay
           <LoadState remote={lastStats} retry={retry}/>
           {!lastStats.loading ? <Numbers items={[{ label: 'שערים', value: lastStats.value?.goals ?? null }, { label: 'בישולים', value: lastStats.value?.assists ?? null }, { label: 'משחקים', value: lastStats.value?.games ?? null }]}/> : null}
           {!lastStats.loading && !lastStats.value?.games && lastStats.value?.games !== 0 ? <Text style={s.caption}>נתונים שלא תועדו מוצגים כמקף.</Text> : null}
-          <Link title="לסיכום המחזור שלי" onPress={() => go('EveningSummary', { gameId: last.id })}/>
+          <Link title="לסיכום המחזור שלי" onPress={() => go('MatchDetails', { gameId: last.id, initialTab: 'stats' })}/>
         </> : <Text style={s.body}>אחרי המחזור הראשון שבו תשחק, הסיכום שלך יופיע כאן.</Text> : null}
       </View>
       <ComparisonActivitySection ownerId={user.id}/>

@@ -1,0 +1,34 @@
+{
+  "changed": [
+    "src/components/match/InPlayPenaltyModal.tsx",
+    "src/components/match/MatchEventPicker.tsx",
+    "app.json",
+    "src/components/FormSectionHeader.tsx",
+    "src/components/UpdateBanner.tsx",
+    "src/components/forms/FormDesign.tsx",
+    "src/components/match/GoalEntryModal.tsx",
+    "src/components/match/LiveTeamsEditModal.tsx",
+    "src/components/match/MatchActionPitch.tsx",
+    "src/components/match/ShootoutWizard.tsx",
+    "src/components/stats/StatisticsIllustration.tsx",
+    "src/screens/AdvancedLiveMatchScreen.tsx",
+    "src/screens/auth/EmailAuthScreen.tsx",
+    "src/screens/games/GameWizardForm.tsx",
+    "src/screens/games/MatchDetailsScreen.tsx",
+    "src/services/geocodeService.ts",
+    "src/services/homeConfigService.ts",
+    "src/services/onboardingActivity.ts",
+    "src/services/readRetry.ts",
+    "src/services/receivedInvitationsService.ts",
+    "src/services/remoteConfigService.ts",
+    "src/services/socialPlayersService.ts",
+    "src/services/updateService.ts",
+    "src/services/weatherService.ts",
+    "src/utils/expectedIntegrationError.ts"
+  ],
+  "added": [
+    "src/components/match/penaltyOutcomeButtons.tsx"
+  ],
+  "removed": [],
+  "environmentUnchanged": true
+}

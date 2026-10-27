@@ -1,3 +1,4 @@
+import { errorPresentation } from './errorPresentation';
 import { observeCaughtError } from './errorObservation';
 // The work list — EVERYTHING that needs doing, in one place.
 //
@@ -207,7 +208,7 @@ const LIST_FIELDS: Record<Exclude<WorkStream, 'chat'>, readonly string[]> = {
   task: ['title', 'notes', 'category', 'status', 'priority', 'source', 'sourceId', 'screen',
     'reporterId', 'reporterName', 'createdAt', 'doneAt', 'reviewReason',
     'claudeStatus', 'claudeNote', 'claudeAt', 'unresolved', 'unresolvedAt', 'unresolvedReason', 'unresolvedNextStep'],
-  error: ['title', 'operation', 'status', 'count', 'firstSeen', 'lastSeen',
+  error: ['title', 'operation', 'lastCode', 'status', 'count', 'firstSeen', 'lastSeen',
     'lastMessage', 'lastScreen', 'lastUserId', 'reviewReason',
     'claudeStatus', 'claudeNote', 'claudeAt', 'unresolved', 'unresolvedAt', 'unresolvedReason', 'unresolvedNextStep'],
   report: ['type', 'message', 'userName', 'userId', 'screen', 'createdAt',
@@ -316,7 +317,7 @@ function fromTask(t: Task): WorkItem {
 }
 
 function fromError(d: FsDoc): WorkItem {
-  const title = typeof d.title === 'string' && d.title ? d.title : String(d.operation ?? 'שגיאה');
+  const title = errorPresentation(String(d.operation ?? ''), String(d.lastCode ?? ''), String(d.lastMessage ?? '')).title;
   const screen = typeof d.lastScreen === 'string' ? d.lastScreen : '';
   return {
     key: `error:${d.id}`,

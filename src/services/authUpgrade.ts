@@ -221,12 +221,12 @@ export async function upgradeAnonymous(
   try {
     acquired = await acquire(method, opts?.email, opts?.password);
   } catch (err) {
-    observeCaughtError(err, {"source":"src/services/authUpgrade.ts","handler":"upgradeAnonymous","site":"authUpgrade:123c7441c6"});
     if (isCancellation(err)) return { status: 'cancelled' };
     const code = String((err as { code?: unknown })?.code ?? 'provider-failed');
     // Environment failures are reported to analytics by the caller, not to the
     // error inbox — see `isProviderEnvironmentFailure`.
     if (!isProviderEnvironmentFailure(err)) {
+      observeCaughtError(err, {source:'src/services/authUpgrade.ts',handler:'upgradeAnonymous',site:'authUpgrade:123c7441c6'});
       logError('upgradeAcquire', err, { method, code });
     }
     return { status: 'failed', code, message: (err as Error)?.message };

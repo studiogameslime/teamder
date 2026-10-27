@@ -13,7 +13,7 @@ function fixture() {
     '@/store/groupStore': {useGroupStore:{getState:()=>({requestJoinById})}},
     './gameService': {gameService:{requestJoinGame}}, './staleSession': {StaleSessionError},
   };
-  vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/services/acceptReceivedInvitation.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports,require:(name:string)=>modules[name]});
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/services/acceptReceivedInvitation.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,Object.assign({exports,require:(name:string)=>{if(name.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(name.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(name==='@/services/diagnosticCallable')name='firebase/functions';return modules[name];}},{joinDiagnosticId:require('@/utils/joinDiagnosticId').joinDiagnosticId,runDiagnosticOperation:require('@/services/diagnosticJournal').runDiagnosticOperation,diagnosticEntity:require('@/services/diagnosticJournal').diagnosticEntity}));
   return {accept:exports.acceptReceivedInvitation, requestJoinById, requestJoinGame, setUser:(value:any)=>{user=value;}};
 }
 const invite=(type='inviteToGame',status='available')=>({id:'notice',type,targetId:'target',status});

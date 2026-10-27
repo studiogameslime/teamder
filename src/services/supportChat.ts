@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/services/diagnosticCallable';
 import { randomUUID } from 'expo-crypto';
 import { create } from 'zustand';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';

@@ -48,8 +48,27 @@ test.each([true, false])('an acknowledged goal starts at the assister only when 
  mockHoldAnimation = true;
  const input = { ...props(), status: 'saved', secondary: { ...props().secondary, player: assisted ? props().secondary.player : null } };
  const ball = nodes(render(input)).find(n => n.props?.testID === 'match-action-ball');
- expect(ball.props.style[1].current.transform[0].translateX).toBeCloseTo(340 * ((assisted ? 0.25 : 0.75) - 1) + 12);
+ expect(ball.props.style[1].current.transform[0].translateX).toBeCloseTo(340 * ((assisted ? 0.25 : 0.75) - 0.5));
  expect(ball.props.style[1].current.transform[1].translateY).toBeCloseTo(248 * (assisted ? 0.59 : 0.34) - 12);
+});
+
+test.each([250, 379.43, 430])('penalty anchors are centered at native width %s before onLayout reports it', nativeWidth => {
+ const tree = render({...props(), mode:'penalty', primary:{...person,label:'בועט'}, secondary:{...person,label:'שוער'}});
+ // Resolve the horizontal RTL layout against the actual native container,
+ // while the component still holds its initial measurement of 340.
+ const center = (style: any) => {
+  const width = typeof style.width === 'string' ? parseFloat(style.width)*nativeWidth/100 : style.width;
+  const start = typeof style.start === 'string' ? parseFloat(style.start)*nativeWidth/100 : style.start;
+  return nativeWidth-start-(style.marginStart??0)-width/2;
+ };
+ const goal=nodes(tree).find(n=>n.type==='AnimatedView'&&n.props.style?.[0]?.position==='absolute'&&n.props.style?.[1]?.height===248*.15);
+ expect(center(goal.props.style[1])).toBeCloseTo(nativeWidth/2);
+ for(const slot of nodes(tree).filter(n=>typeof n.type==='function'&&n.type.name==='Participant')){
+  runtime.reset();runtime.begin();const participant=slot.type(slot.props);runtime.finish();
+  expect(center(participant.props.style[1])).toBeCloseTo(nativeWidth/2);
+ }
+ const ball=nodes(tree).find(n=>n.props?.testID==='match-action-ball');
+ expect(center(ball.props.style[0])+ball.props.style[1].current.transform[0].translateX).toBeCloseTo(nativeWidth/2);
 });
 test('the first-team preview reuses the pitch without participant controls or a stationary ball', () => {
  const tree=render({...props(),mode:'penalty',teamPreview:true,activeRole:null});
@@ -61,7 +80,7 @@ test.each([{height:140,width:250},{height:180,width:300},{height:248,width:340}]
  let tree=render(input);tree.props.onLayout({nativeEvent:{layout:{width}}});tree=render(input);
  const ball=nodes(tree).find(n=>n.props?.testID==='match-action-ball');
  const transform=ball.props.style[1].current.transform;
- const centerX=width-12+transform[0].translateX,centerY=12+transform[1].translateY;
+ const centerX=width/2+transform[0].translateX,centerY=12+transform[1].translateY;
  const slot=nodes(tree).find(n=>typeof n.type==='function' && n.type.name==='Participant' && n.props.person.label==='בועט');
  // Read the real disc's size rather than copying the component's breakpoints.
  runtime.reset();runtime.begin();const participant=slot.type(slot.props);runtime.finish();
@@ -107,7 +126,7 @@ test.each(['goal', 'save', 'miss'])('penalty %s reaches a distinct physical endp
  const tree = render(input);
  const ball = nodes(tree).find(n => n.type === 'AnimatedView' && n.props.style?.[0]?.width === 24);
  const x = ball.props.style[1].current.transform[0].translateX;
- expect(x).toBeCloseTo(outcome === 'goal' ? -110.4 : outcome === 'save' ? -178.4 : -1.6);
+ expect(x).toBeCloseTo(340 * ((outcome === 'goal' ? 0.64 : outcome === 'save' ? 0.44 : 0.96) - 0.5));
  expect(nodes(tree).some(n => n.type === 'Text' && n.props.children === (outcome === 'goal' ? 'גול!' : outcome === 'save' ? 'עצירה!' : 'מחוץ למסגרת'))).toBe(true);
 });
 test.each(['hide', 'unmount', 'new-event'])('%s cancels a stale completion callback', action => {

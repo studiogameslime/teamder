@@ -1,3 +1,4 @@
+import { retryRead } from './readRetry';
 import { observeCaughtError } from '../utils/errorObservation';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
@@ -5,7 +6,7 @@ import { useUserStore } from '@/store/userStore';
 import { StaleSessionError } from './staleSession';
 import { notificationsService } from './notificationsService';
 import { receivedInvitations } from '@/utils/receivedInvitations';
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/services/diagnosticCallable';
 import { groupService } from './groupService';
 import { gameService } from './gameService';
 import { useGroupStore } from '@/store/groupStore';
@@ -62,7 +63,7 @@ export const receivedInvitationsService = {
     };
     if (USE_MOCK_DATA) return finish(notificationsService.__getMockDispatches().map(n=>({id:n.id,data:n})));
     try {
-      const result=await httpsCallable(getFirebase().functions,'getReceivedInvitations')({});
+      const result=await retryRead(() => httpsCallable(getFirebase().functions,'getReceivedInvitations')({}), assertOwner);
       assertOwner();
       return finish(result.data as {id:string;data:Record<string,any>}[]);
     } catch(error) {

@@ -1,3 +1,4 @@
+import { MyActivityScreen } from '@/screens/profile/MyActivityScreen';
 import { FeedbackScreen } from '@/screens/FeedbackScreen';
 import { SocialPrivacyScreen } from '@/screens/profile/SocialPrivacyScreen';
 import { FriendsScreen } from '@/screens/profile/FriendsScreen';
@@ -16,6 +17,7 @@ import { GameChatScreen } from '@/screens/chat/GameChatScreen';
 import { CommunityChatScreen } from '@/screens/chat/CommunityChatScreen';
 import { DirectChatScreen } from '@/screens/chat/DirectChatScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
+import { AchievementsScreen } from '@/screens/profile/AchievementsScreen';
 import { PlayerCompareScreen } from '@/screens/players/PlayerCompareScreen';
 import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsScreen';
 import { CommunityDetailsPublicScreen } from '@/screens/communities/CommunityDetailsPublicScreen';
@@ -80,6 +82,7 @@ export function ChatStack() {
       <Stack.Screen name="CommunityChat" component={CommunityChatScreen} />
       <Stack.Screen name="DirectChat" component={DirectChatScreen} />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
+      <Stack.Screen name="Achievements" component={AchievementsScreen} />
       <Stack.Screen name="Statistics" component={StatisticsScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
       <Stack.Screen name="PlayerCompare" component={PlayerCompareScreen} />
@@ -103,6 +106,7 @@ export function ChatStack() {
       <Stack.Screen name="DraftSetup" component={DraftSetupScreen} />
       <Stack.Screen name="DraftBoard" component={DraftBoardScreen} />
       <Stack.Screen name="EveningSummary" component={EveningSummaryScreen} />
+      <Stack.Screen name="MyActivity" component={MyActivityScreen} />
       <Stack.Screen name="SeasonSummary" component={SeasonSummaryScreen} />
       <Stack.Screen name="MatchRounds" component={MatchRoundsScreen} />
       <Stack.Screen name="AddMembers" component={AddMembersScreen} />

@@ -1,0 +1,11 @@
+{
+  "refreshed": 32,
+  "refreshFailed": [],
+  "failures": 108,
+  "baselineFailures": 108,
+  "newFailures": [],
+  "resolvedFailures": [],
+  "statusFailures": [
+    "entry/landing-and-links: מקור השתנה: functions/src/invitePreviewFields.ts"
+  ]
+}

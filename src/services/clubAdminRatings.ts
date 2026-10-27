@@ -1,4 +1,4 @@
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/services/diagnosticCallable';
 import { getFirebase } from '@/firebase/config';
 import type { Group } from '@/types';
 import { StaleSessionError } from './staleSession';

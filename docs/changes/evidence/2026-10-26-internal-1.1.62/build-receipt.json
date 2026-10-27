@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-26T05:28:13.655Z",
+  "commit": "56d4189746853e211a04be98848b1c2088026a05",
+  "exitCode": 0,
+  "changedSources": [],
+  "artifact": {
+    "path": "android/app/build/outputs/bundle/release/app-release.aab",
+    "size": 109434667,
+    "sha256": "dd8fae458c4db0f742175f6c5a2dc15f13662a8c47318bb7a6902b132cb487e6"
+  },
+  "wearArtifact": {
+    "path": "android/wear/build/outputs/bundle/release/wear-release.aab",
+    "size": 9263900,
+    "sha256": "11ea1e128a207eeeec3d98d74bd7091df05829664afe94e094967dddf3c76147",
+    "version": "1.0.31",
+    "code": 1028
+  }
+}

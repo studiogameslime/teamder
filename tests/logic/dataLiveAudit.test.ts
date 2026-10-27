@@ -44,7 +44,7 @@ function liveWorld(mock: boolean, size = 4) {
   const exports: any = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/services/gameService.ts','utf8'), {
     compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS},
-  }).outputText,{exports,require:(name:string)=>dependencies[name]??{},__DEV__:false,Date,console,setTimeout,clearTimeout});
+  }).outputText,{exports,require:(name:string)=>{if(name.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(name.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(name==='@/services/diagnosticCallable')name='firebase/functions';return dependencies[name]??{};},__DEV__:false,Date,console,setTimeout,clearTimeout});
   return {state,update,io,service:exports.gameService};
 }
 
@@ -196,7 +196,7 @@ test('the actual server history preserves registered guest assists and excludes 
   const value=vm.runInNewContext(ts.transpileModule(`(${expression})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,{
     roundId:'r',fullA:['a','guest:dedicated'],fullB:['b'],teamAIndex:0,teamBIndex:1,scoreA:5,scoreB:0,winnerSide:'A',
     cappedGoals,A:['a'],B:['b'],isReal:(id:string)=>!id.startsWith('guest:'),onField:new Set(['a','b']),
-    okForDisplay:(id:string)=>['a','b','guest:dedicated'].includes(id),penalties:[],liveGoalIds:[],now:1,
+    okForDisplay:(id:string)=>['a','b','guest:dedicated'].includes(id),penalties:[],inPlayPenalties:[],liveGoalIds:[],now:1,
   });
   expect(Array.from(value.goals,(goal:any)=>goal.assisterId)).toEqual(['guest:dedicated',null,null,null,null]);
   expect(reduceRounds('guest:dedicated',[value]).bestMiniGame).toEqual({round:1,goals:0,assists:1});

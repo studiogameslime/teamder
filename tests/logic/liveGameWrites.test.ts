@@ -45,7 +45,7 @@ function serviceFixture(mock = false) {
     '@/utils/liveSubstitution': { exchangeLivePlayers, moveLivePlayer },
   };
   const exports: any = {};
-  vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/services/gameService.ts', 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, { exports, require: (id: string) => deps[id] ?? {}, __DEV__: false, Date, console, setTimeout, clearTimeout });
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/services/gameService.ts', 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, { exports, require: (id: string) => {if(id.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(id.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(id==='@/services/diagnosticCallable')id='firebase/functions';return deps[id] ?? {};}, __DEV__: false, Date, console, setTimeout, clearTimeout });
   return { state, history, update, getDoc: io.getDoc, service: exports.gameService };
 }
 

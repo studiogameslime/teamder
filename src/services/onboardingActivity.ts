@@ -1,3 +1,4 @@
+import { isTransientReadError } from './readRetry';
 import { observedRejection, observeCaughtError } from '../utils/errorObservation';
 
 /** Separate, allowlisted remote onboarding stream. Diagnostic breadcrumbs stay local. */
@@ -5,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import { onAuthStateChanged } from 'firebase/auth';
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/services/diagnosticCallable';
 import { getFirebase } from '@/firebase/config';
 import { ONBOARDING_ACTIONS, safeActivityParams } from '@/utils/onboardingActivity';
 import { getEntryContext } from '@/services/entrySource';
@@ -22,6 +23,7 @@ let awaitingPersistence: Event[] = [];
 const claimedSessions = new Map<string, string>();
 let timer: ReturnType<typeof setTimeout> | undefined;
 let retryMs = 2000;
+let transientFailures = 0;
 function retryLater() { retryMs = Math.min(60_000, retryMs * 2); schedule(); }
 
 // Linking a guest to a credential keeps its Firebase UID and its journey.
@@ -43,7 +45,7 @@ function schedule() {
   if (timer) return;
   timer = setTimeout(() => {
     timer = undefined;
-    chain = chain.then(flush).catch(observedRejection(retryLater, {"source":"src/services/onboardingActivity.ts","handler":"schedule","site":"onboardingActivity:7528c38986"}));
+    chain = chain.then(flush).catch(error => { if (!isTransientReadError(error) || ++transientFailures === 3) observeCaughtError(error, {source:'src/services/onboardingActivity.ts',handler:'schedule',site:'onboardingActivity:9544dacd45'}); retryLater(); });
   }, retryMs);
 }
 function validEvent(value: unknown): value is Event {
@@ -94,8 +96,8 @@ async function flush() {
   let acknowledged: string[];
   try { acknowledged = (await send({ events: batch, expectedUid: uid })).data.acknowledged; }
   catch (error) {
-    observeCaughtError(error, {"source":"src/services/onboardingActivity.ts","handler":"flush","site":"onboardingActivity:9544dacd45"});
     if (String((error as { code?: string }).code).endsWith('invalid-argument')) {
+      observeCaughtError(error, {source:'src/services/onboardingActivity.ts',handler:'flush',site:'onboardingActivity:invalid'});
       // A permanently rejected batch must not block later valid events forever.
       // Retry each independently to isolate the poison record.
       acknowledged = [];
@@ -108,14 +110,17 @@ async function flush() {
           await quarantine([event]); acknowledged.push(event.id);
         }
       }
-    } else throw error;
+    } else {
+      if (!isTransientReadError(error)) observeCaughtError(error, {source:'src/services/onboardingActivity.ts',handler:'flush',site:'onboardingActivity:9544dacd45'});
+      throw error;
+    }
   }
   const sent = new Set(batch.map(event => event.id));
   const accepted = new Set(acknowledged.filter(id => sent.has(id)));
   if (!accepted.size) throw new Error('Onboarding activity was not acknowledged');
   const remaining = queue.filter(event => !accepted.has(event.id));
   await AsyncStorage.setItem(KEY, JSON.stringify(remaining));
-  retryMs = 2000;
+  retryMs = 2000; transientFailures = 0;
   if (remaining.some(event => event.ownerUid === auth.currentUser?.uid)) schedule();
 }
 async function persistPending() {

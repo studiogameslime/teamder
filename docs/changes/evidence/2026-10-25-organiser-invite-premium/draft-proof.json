@@ -1,0 +1,12 @@
+{
+  "id": "b1b129e0-9db8-40e1-81a9-96564d7d48f5",
+  "status": "draft",
+  "readBackVerified": true,
+  "source": "https://api-eu1.joryio.com/api",
+  "activationApproved": false,
+  "htmlHashes": {
+    "invite_inapp": "64043ce4dc6303cd7b157861b257951898202de35fd11c06e314f3acffe134dd",
+    "invite_followup": "169c82da71695b89d2f0ac9162eb0c46b60fd2f09e8945bb65133f9e8209d4ee"
+  },
+  "activated": false
+}

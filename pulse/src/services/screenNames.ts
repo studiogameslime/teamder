@@ -14,6 +14,7 @@ const SCREEN_HE: Record<string, string> = {
   DraftBoard: 'חלוקת כוחות',
   DraftSetup: 'הגדרת חלוקת כוחות',
   Feedback: 'דיווח / משוב',
+  FeedbackPrompt: 'מה חסר לכם באפליקציה',
   Friends: 'חברים',
   GameCreate: 'יצירת משחק',
   GameEdit: 'עריכת משחק',

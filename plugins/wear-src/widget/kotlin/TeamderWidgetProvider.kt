@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
+import android.os.Bundle
 import android.view.View
 import android.widget.RemoteViews
 import com.studiogameslime.soccerapp.R
@@ -46,11 +47,18 @@ class TeamderWidgetProvider : AppWidgetProvider() {
         manager: AppWidgetManager,
         ids: IntArray,
     ) {
-        val views = buildViews(context)
-        for (id in ids) manager.updateAppWidget(id, views)
+        WidgetRosterWorker.enqueueCachedIfStale(context)
+        for (id in ids) manager.updateAppWidget(id, buildViews(context, manager.getAppWidgetOptions(id)
+            .getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 200)))
     }
 
-    private fun buildViews(context: Context): RemoteViews {
+    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
+        manager.updateAppWidget(id, buildViews(context, options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 200)))
+    }
+
+    private fun buildViews(context: Context): RemoteViews = buildViews(context, 200)
+
+    private fun buildViews(context: Context, height: Int): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_teamder)
 
         // Default: tapping the TITLE / TIMER / TEXT areas opens the app.
@@ -94,11 +102,30 @@ class TeamderWidgetProvider : AppWidgetProvider() {
         ).forEach { views.setViewVisibility(it, View.GONE) }
 
         val state = loadState(context)
+        views.setOnClickPendingIntent(R.id.widget_logo, refreshPi(context))
+        views.setContentDescription(R.id.widget_logo, "רענון הנתונים")
         when (state?.optString("kind")) {
             "live" -> renderLive(context, views, state)
             "upcoming" -> renderUpcoming(views, state)
             "scheduled" -> renderScheduled(views, state)
             else -> renderPlaceholder(views)
+        }
+        if (state != null && state.optString("kind") != "live" && state.optString("widgetError").isNotBlank()) {
+            views.setTextViewText(R.id.widget_controller, state.optString("widgetError"))
+            views.setViewVisibility(R.id.widget_controller, View.VISIBLE)
+        }
+        if (height < 180) {
+            views.setViewVisibility(R.id.widget_logo, View.GONE)
+            views.setTextViewTextSize(R.id.widget_timer, android.util.TypedValue.COMPLEX_UNIT_SP, 30f)
+            val padding = (6 * context.resources.displayMetrics.density).toInt()
+            views.setViewPadding(R.id.widget_root, padding, padding, padding, padding)
+            views.setOnClickPendingIntent(R.id.widget_title, refreshPi(context))
+            views.setContentDescription(R.id.widget_title, "רענון הנתונים")
+        }
+        if (height < 140 && state?.optString("kind") == "live") {
+            views.setViewVisibility(R.id.widget_buttons, View.GONE)
+            views.setViewVisibility(R.id.widget_controller, View.VISIBLE)
+            views.setTextViewText(R.id.widget_controller, "הגדילו את הווידגט לשליטה")
         }
         return views
     }
@@ -152,7 +179,7 @@ class TeamderWidgetProvider : AppWidgetProvider() {
         // a negative elapsed would push the Chronometer base into the future and
         // make it count DOWN toward 0.
         val clockOffsetMs = o.optLong("clockOffsetMs", 0L)
-        val baseElapsedMs = o.optLong("baseElapsedMs", -1L)
+        val baseElapsedMs = timer?.optLong("baseElapsedMs", -1L)?.takeIf { it >= 0 } ?: o.optLong("baseElapsedMs", -1L)
         val serverNowMs = o.optLong("serverNowMs", 0L)
         val nowEpoch = System.currentTimeMillis() + clockOffsetMs
         val elapsedNow = if (baseElapsedMs >= 0L) {
@@ -181,7 +208,26 @@ class TeamderWidgetProvider : AppWidgetProvider() {
         }
 
         // Buttons — visible only when we have a gameId we can target.
-        if (gameId.isNotEmpty()) {
+        val pending = WidgetStateStore.validPending(context, o)
+        val stale = System.currentTimeMillis() - o.optLong("widgetUpdatedAtMs", System.currentTimeMillis()) > 30L * 60L * 1000L
+        val armed = WidgetStateStore.armed(context, o)
+        val notice = when {
+            pending -> "שומר את הפעולה..."
+            armed -> "לאיפוס התוצאה והשערים, לחצו שוב"
+            o.optString("widgetError").isNotBlank() -> o.optString("widgetError")
+            stale -> "המידע אינו מעודכן. לחצו על הסמל לרענון"
+            else -> o.optString("widgetNotice")
+        }
+        if (notice.isNotBlank()) {
+            views.setTextViewText(R.id.widget_controller, notice)
+            views.setViewVisibility(R.id.widget_controller, View.VISIBLE)
+        }
+        views.setTextViewText(R.id.widget_btn_reset, if (armed) "לאפס?" else "↻")
+        views.setFloat(R.id.widget_btn_reset, "setTextSize", if (armed) 12f else 22f)
+        views.setContentDescription(R.id.widget_btn_play, "התחלה או המשך")
+        views.setContentDescription(R.id.widget_btn_pause, "השהיה")
+        views.setContentDescription(R.id.widget_btn_reset, if (armed) "לחיצה נוספת מאשרת איפוס משחק" else "בקשת איפוס משחק")
+        if (gameId.isNotEmpty() && o.optBoolean("canControl") && o.optString("timerRoundId").isNotBlank() && !pending && !stale) {
             views.setViewVisibility(R.id.widget_buttons, View.VISIBLE)
             val started = running || accumulatedMs > 0L || lastStartedAt > 0L
             when {
@@ -193,11 +239,11 @@ class TeamderWidgetProvider : AppWidgetProvider() {
                     views.setViewVisibility(R.id.widget_btn_reset, View.VISIBLE)
                     views.setOnClickPendingIntent(
                         R.id.widget_btn_pause,
-                        actionPi(context, REQ_PAUSE, TimerActionReceiver.ACTION_PAUSE, gameId, viewerName),
+                        actionPi(context, REQ_PAUSE, TimerActionReceiver.ACTION_PAUSE, gameId, viewerName, o),
                     )
                     views.setOnClickPendingIntent(
                         R.id.widget_btn_reset,
-                        actionPi(context, REQ_RESET, TimerActionReceiver.ACTION_RESET, gameId, viewerName),
+                        actionPi(context, REQ_RESET, TimerActionReceiver.ACTION_RESET, gameId, viewerName, o),
                     )
                 }
                 started -> {
@@ -206,11 +252,11 @@ class TeamderWidgetProvider : AppWidgetProvider() {
                     views.setViewVisibility(R.id.widget_btn_reset, View.VISIBLE)
                     views.setOnClickPendingIntent(
                         R.id.widget_btn_play,
-                        actionPi(context, REQ_PLAY, TimerActionReceiver.ACTION_START, gameId, viewerName),
+                        actionPi(context, REQ_PLAY, TimerActionReceiver.ACTION_START, gameId, viewerName, o),
                     )
                     views.setOnClickPendingIntent(
                         R.id.widget_btn_reset,
-                        actionPi(context, REQ_RESET, TimerActionReceiver.ACTION_RESET, gameId, viewerName),
+                        actionPi(context, REQ_RESET, TimerActionReceiver.ACTION_RESET, gameId, viewerName, o),
                     )
                 }
                 else -> {
@@ -218,7 +264,7 @@ class TeamderWidgetProvider : AppWidgetProvider() {
                     views.setViewVisibility(R.id.widget_btn_play, View.VISIBLE)
                     views.setOnClickPendingIntent(
                         R.id.widget_btn_play,
-                        actionPi(context, REQ_PLAY, TimerActionReceiver.ACTION_START, gameId, viewerName),
+                        actionPi(context, REQ_PLAY, TimerActionReceiver.ACTION_START, gameId, viewerName, o),
                     )
                 }
             }
@@ -239,7 +285,9 @@ class TeamderWidgetProvider : AppWidgetProvider() {
 
         val pc = o.optInt("playersCount")
         val mp = o.optInt("maxPlayers")
-        views.setTextViewText(R.id.widget_sub2, "$pc/$mp שחקנים")
+        val count = if (mp > 0) "\u2066$pc/$mp\u2069 שחקנים" else "$pc שחקנים"
+        val registration = when (o.optString("registration")) { "waitlist" -> "ברשימת המתנה"; "pending" -> "ממתין לאישור"; else -> "" }
+        views.setTextViewText(R.id.widget_sub2, listOf(registration, count).filter { it.isNotEmpty() }.joinToString(" · "))
         views.setViewVisibility(R.id.widget_sub2, View.VISIBLE)
     }
 
@@ -257,6 +305,7 @@ class TeamderWidgetProvider : AppWidgetProvider() {
         action: String,
         gameId: String,
         userName: String,
+        state: JSONObject,
     ): PendingIntent {
         // Explicit component → guaranteed routing to our receiver, no
         // ambiguity even if another package registered the same action.
@@ -265,6 +314,11 @@ class TeamderWidgetProvider : AppWidgetProvider() {
             putExtra(TimerActionReceiver.EXTRA_ACTION, action)
             putExtra(TimerActionReceiver.EXTRA_GAME_ID, gameId)
             putExtra(TimerActionReceiver.EXTRA_USER_NAME, userName)
+            putExtra("origin", "widget")
+            putExtra("viewerId", WidgetStateStore.owner(state))
+            putExtra("timerRoundId", state.optString("timerRoundId"))
+            putExtra("widgetSession", WidgetStateStore.generation(context))
+            data = android.net.Uri.parse("teamder-widget://timer/$gameId/${WidgetStateStore.owner(state)}/${WidgetStateStore.generation(context)}/${state.optString("timerRoundId")}/$action")
         }
         return PendingIntent.getBroadcast(
             context, requestCode, intent,
@@ -307,10 +361,18 @@ class TeamderWidgetProvider : AppWidgetProvider() {
          *  `TimerActionReceiver` so all three sides stay in lockstep. */
         const val PREFS = "TeamderWidgetState"
         const val KEY_JSON = "state_json"
+        /** All in-process cache writers share this lock; never hold during IO. */
+        val STATE_LOCK = Any()
+
+        fun refreshPi(context: Context): PendingIntent = PendingIntent.getBroadcast(context, 10,
+            Intent(context, TimerActionReceiver::class.java).apply {
+                action = TimerActionReceiver.ACTION_REFRESH
+                putExtra(TimerActionReceiver.EXTRA_ACTION, TimerActionReceiver.ACTION_REFRESH)
+            }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
         private const val MAIN_ACTIVITY_NAME = "com.studiogameslime.soccerapp.MainActivity"
         private const val BRAND = "Teamder"
-        private const val PLACEHOLDER = "אין משחק רשום"
+        private const val PLACEHOLDER = "אין מחזור קרוב"
         private const val SCHEDULED_LABEL = "יפתח להרשמה ב־"
 
         // PendingIntent request codes — must be distinct per (widget,

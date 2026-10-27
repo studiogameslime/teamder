@@ -53,7 +53,7 @@ test('saved summary renders the exact unequal split for all methods instead of r
   const visit=(node:ts.Node)=>{if(ts.isIfStatement(node)&&node.expression.getText(ast)==='resume && game?.draftTeams')block=node.getText(ast);ts.forEachChild(node,visit);};visit(ast);
   const context:any={module:{exports:{}},React:{createElement:(type:any,props:any,...children:any[])=>({type,props,children})},
     SafeAreaView:'SafeAreaView',ScreenHeader:'ScreenHeader',ScrollView:'ScrollView',Text:'Text',View:'View',Button:'Button',DraftTeamCard:'DraftTeamCard',
-    styles:{},resolve:(id:string)=>({id,name:id}),openCard:()=>{},nav:{navigate:()=>{}},gameId:'game',playersPerTeam:()=>5};
+    styles:{},resolve:(id:string)=>({id,name:id}),openCard:()=>{},nav:{navigate:()=>{}},gameId:'game',returnRouteKey:undefined,playersPerTeam:()=>5};
   vm.runInNewContext(ts.transpileModule(`module.exports=(game,resume,readOnly)=>{${block}}`,{compilerOptions:{target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React}}).outputText,context);
   const teams=[['a','b','c','d'],['e','f','g','h','i'],['j','k','l','m']];
   const d=createManualDraft(teams,'owner',1);d.method='snake';

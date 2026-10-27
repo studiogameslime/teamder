@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "journeyId": "b1b129e0-9db8-40e1-81a9-96564d7d48f5",
+  "name": "מארגן חדש מזמין את החבורה למועדון",
+  "status": "draft",
+  "source": "https://api-eu1.joryio.com/api",
+  "syncedAt": 1792875099629,
+  "syncMode": "manual",
+  "range": "all_time",
+  "entries": 0,
+  "active": 0,
+  "completed": 0,
+  "exited": 0,
+  "failed": 0,
+  "steps": [
+    {
+      "id": "created",
+      "label": "המארגן יצר מועדון",
+      "type": "trigger",
+      "entered": 0,
+      "proceeded": 0,
+      "sent": null,
+      "displayed": null,
+      "clicked": null
+    },
+    {
+      "id": "invite_inapp",
+      "label": "הודעה ראשונה בתוך האפליקציה",
+      "type": "in_app_message",
+      "entered": 0,
+      "proceeded": 0,
+      "sent": null,
+      "displayed": null,
+      "clicked": null
+    },
+    {
+      "id": "day_one",
+      "label": "המתנה של יום",
+      "type": "delay",
+      "entered": 0,
+      "proceeded": 0,
+      "sent": null,
+      "displayed": null,
+      "clicked": null
+    },
+    {
+      "id": "ready_day_one",
+      "label": "האם המועדון כבר הגיע ליעד?",
+      "type": "condition",
+      "entered": 0,
+      "proceeded": 0,
+      "sent": null,
+      "displayed": null,
+      "clicked": null
+    },
+    {
+      "id": "shared",
+      "label": "האם שותפה הזמנה למועדון הזה?",
+      "type": "condition",
+      "entered": 0,
+      "proceeded": 0,
+      "sent": null,
+      "displayed": null,
+      "clicked": null
+    },
+    {
+      "id": "push_allowed",
+      "label": "האם יש הרשאה להתראות?",
+      "type": "condition",
+      "entered": 0,
+      "proceeded": 0,
+      "sent": null,
+      "displayed": null,
+      "clicked": null
+    },
+    {
+      "id": "invite_push",
+      "label": "פוש אחד למי שעדיין לא שיתף",
+      "type": "message",
+      "entered": 0,
+      "proceeded": 0,
+      "sent": null,
+      "displayed": null,
+      "clicked": null
+    },
+    {
+      "id": "day_three",
+      "label": "המתנה של יומיים נוספים",
+      "type": "delay",
+      "entered": 0,
+      "proceeded": 0,
+      "sent": null,
+      "displayed": null,
+      "clicked": null
+    },
+    {
+      "id": "ready_day_three",
+      "label": "בדיקת יעד לפני התזכורת האחרונה",
+      "type": "condition",
+      "entered": 0,
+      "proceeded": 0,
+      "sent": null,
+      "displayed": null,
+      "clicked": null
+    },
+    {
+      "id": "invite_followup",
+      "label": "הודעה אחרונה בתוך האפליקציה",
+      "type": "in_app_message",
+      "entered": 0,
+      "proceeded": 0,
+      "sent": null,
+      "displayed": null,
+      "clicked": null
+    }
+  ]
+}

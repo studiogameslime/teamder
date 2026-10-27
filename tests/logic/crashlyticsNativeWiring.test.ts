@@ -51,7 +51,7 @@ function loadSdk(file: string, automaticJs = false) {
   });
   vm.runInNewContext(compiled.outputText, {
     exports: {}, console,
-    require: (id: string) => {
+    require: (id: string) => {if(id.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(id.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(id==='@/services/diagnosticCallable')id='firebase/functions';
       if (!(id in dependencies)) throw new Error(`Unexpected SDK dependency: ${id}`);
       return dependencies[id];
     },

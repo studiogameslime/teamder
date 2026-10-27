@@ -82,7 +82,7 @@ export function validateLiveTeamsFill(skeleton: RotationFillState, filled?: Live
 /** Evening-level physical activity and first-start evidence survive discarding a mini-game. */
 export function resetLiveForTeamChange(live: LiveMatchState | undefined, userId: string, userName: string, now: number): LiveMatchState {
   return { ...live, phase: 'roundReady', assignments: {}, benchOrder: [], teamASlots: {}, teamBSlots: {},
-    scoreA: 0, scoreB: 0, goals: [], shootout: undefined,
+    scoreA: 0, scoreB: 0, goals: [], inPlayPenalties: [], shootout: undefined,
     goalTally: tallyWithout(live?.goalTally, live?.goals), timerRunning: false, timerLastStartedAt: null,
     timerAccumulatedMs: 0, timerEvents: [], timerControlledBy: userId, timerControlledByName: userName,
     activeIntervals: [...(live?.activeIntervals ?? []), ...(live?.timerRunning && live.timerLastStartedAt ? [{ s: live.timerLastStartedAt, e: now }] : [])], updatedAt: now };

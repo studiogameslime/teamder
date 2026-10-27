@@ -5,7 +5,7 @@ import { socialPlayersService } from '@/services/socialPlayersService';
 // victim, nemesis). Derived by playerStatsService with history enrichment; names for
 // the relational cards are resolved here.
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,6 +48,8 @@ export function StatisticsScreen() {
   const [pen, setPen] = useState<{
     penTaken: number;
     penScored: number;
+    penInPlayTaken?: number;
+    penInPlayScored?: number;
     penFaced: number;
     penSaved: number;
     ownGoals: number;
@@ -59,9 +61,7 @@ export function StatisticsScreen() {
   const [reloadTick, setReloadTick] = useState(0);
   const ownerKey = `${localUser?.id ?? ''}:${targetId ?? ''}`;
   const statsOwnerRef = useRef(ownerKey);
-  useFocusEffect(React.useCallback(() => { if(otherPlayer){setStats(null);setPen(null);setPeople({});setLoading(true);} setReloadTick(n => n + 1); }, [targetId, localUser?.id,otherPlayer]));
-
-  useEffect(() => {
+  useFocusEffect(React.useCallback(() => {
     const uid = targetId;
     if (statsOwnerRef.current !== ownerKey) {
       statsOwnerRef.current = ownerKey;
@@ -88,6 +88,27 @@ export function StatisticsScreen() {
       return () => { alive = false; };
     }
 
+    // Names only need the base summary, not the full historical enrichment.
+    // The mock service may return without onBase, so the final result also calls this.
+    let peopleRequested = false;
+    const resolvePeople = (summary: PlayerStatsSummary) => {
+      if (!alive || peopleRequested) return;
+      peopleRequested = true;
+      const ids = Array.from(new Set([
+        summary.mostPlayedWith, summary.mostWinsWith, summary.biggestVictim,
+        summary.nemesis, summary.mostAssistedTo, summary.mostAssistedBy,
+      ].filter((x): x is NamedStat => !!x).map(x => x.uid)));
+      void Promise.all(ids.map(id => userService.getUserById(id).catch((error: unknown) => {
+        if (alive) observeCaughtError(error, { source: 'src/screens/profile/StatisticsScreen.tsx', handler: 'resolvePeople', site: 'StatisticsScreen:people' });
+        return null;
+      }))).then(fetched => {
+        if (!alive) return;
+        const map: Record<string, Resolved> = {};
+        fetched.forEach(u => { if (u) map[u.id] = u; });
+        setPeople(map);
+      });
+    };
+
     // Goals are incremented SERVER-side (commitRoundStats), so the local store
     // copy lags. Fetch the fresh user doc for an accurate goal count + goals/
     // evening rather than trusting the (possibly stale) cached stats.
@@ -102,6 +123,8 @@ export function StatisticsScreen() {
             ? {
                 penTaken: st.penTaken ?? 0,
                 penScored: st.penScored ?? 0,
+                penInPlayTaken: st.penInPlayTaken ?? 0,
+                penInPlayScored: st.penInPlayScored ?? 0,
                 penFaced: st.penFaced ?? 0,
                 penSaved: st.penSaved ?? 0,
                 ownGoals: st.ownGoals ?? 0,
@@ -117,39 +140,17 @@ export function StatisticsScreen() {
             if (!alive) return;
             setStats(base);
             setLoading(false);
+            resolvePeople(base);
           },
           onHighlights: (highlights) => {
             if (alive) setStats(base => base ? { ...base, highlights } : base);
           },
         });
       })
-      .then(async (s) => {
+      .then((s) => {
         if (!alive || !s) return;
         setStats(s);
-        // Resolve the (few) distinct uids the named cards reference.
-        const ids = Array.from(
-          new Set(
-            [
-              s.mostPlayedWith,
-              s.mostWinsWith,
-              s.biggestVictim,
-              s.nemesis,
-              s.mostAssistedTo,
-              s.mostAssistedBy,
-            ]
-              .filter((x): x is NamedStat => !!x)
-              .map((x) => x.uid),
-          ),
-        );
-        const fetched = await Promise.all(
-          ids.map((id) => userService.getUserById(id).catch((caughtError7526f9605c: unknown) => { observeCaughtError(caughtError7526f9605c, {"source":"src/screens/profile/StatisticsScreen.tsx","handler":"StatisticsScreen","site":"StatisticsScreen:7526f9605c"}); return null; })),
-        );
-        if (!alive) return;
-        const map: Record<string, Resolved> = {};
-        fetched.forEach((u) => {
-          if (u) map[u.id] = u;
-        });
-        setPeople(map);
+        resolvePeople(s);
       })
       .catch((err) => {
         if (!alive) return;
@@ -164,7 +165,7 @@ export function StatisticsScreen() {
     };
     // assists must be a dep too — the effect reads it, so an assists-only
     // server bump (no goal change) otherwise left the assist tile stale.
-  }, [localUser?.id, targetId, ownerKey, otherPlayer, localUser?.isGuest, localUser?.stats?.goals, localUser?.stats?.assists, reloadTick]);
+  }, [localUser?.id, targetId, ownerKey, otherPlayer, localUser?.isGuest, localUser?.stats?.goals, localUser?.stats?.assists, reloadTick]));
 
   const qaPreview = __DEV__ && process.env.EXPO_PUBLIC_QA_ROUTES === '1' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1'
     ? (route.params as { qaStatisticsPreview?: 'full' | 'empty' } | undefined)?.qaStatisticsPreview : undefined;

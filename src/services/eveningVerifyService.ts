@@ -28,7 +28,7 @@ export const eveningVerifyService = {
     if (!groupId) return [];
     if (USE_MOCK_DATA) return mockGamesV2.filter(g => g.groupId === groupId && eveningPlayState(g as PlayableEvening) === 'unverified')
       .sort((a,b) => a.startsAt - b.startsAt).map(g => ({ id: g.id, title: g.title, startsAt: g.startsAt }));
-    const { httpsCallable } = require('firebase/functions') as typeof import('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable') as typeof import('@/services/diagnosticCallable');
     const read = httpsCallable<{groupId: GroupId}, {items: UnverifiedEvening[]}>(getFirebase().functions, 'listSeasonUnverified');
     const result = await withAuthRaceRetry(() => read({ groupId }), { retryTransientReads: true });
     return result.data.items;
@@ -52,7 +52,7 @@ export const eveningVerifyService = {
     }
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { httpsCallable } = require('firebase/functions');
+      const { httpsCallable } = require('@/services/diagnosticCallable');
       const { functions } = getFirebase();
       await httpsCallable(functions, 'setEveningPlayed')({ gameId, played, ...(occurredAt ? { occurredAt } : {}) });
       return true;

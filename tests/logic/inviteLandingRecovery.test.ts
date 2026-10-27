@@ -14,7 +14,7 @@ test.each(['public/invite.html','functions/templates/invite.html'])('all iPhone 
  vm.runInNewContext(html.slice(start,stop)+'})();',c);
  apple.handlers.click({preventDefault(){}});
  for(let n=0;n<15;n++)await Promise.resolve();
- expect(copy).toHaveBeenCalledWith('https://teamderfc.web.app/team/club?invitedBy=sender&s=whatsapp&c=summer&l=track');
+ expect(copy).toHaveBeenCalledWith('https://teamder.co.il/team/club?invitedBy=sender&s=whatsapp&c=summer&l=track');
  expect(c.location.href).toBe('original');
  finishCopy();
  for(let n=0;n<15;n++)await Promise.resolve();

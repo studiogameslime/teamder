@@ -1,0 +1,44 @@
+{
+  "checkedAt": "2026-10-25T09:12:26.7300819Z",
+  "typecheck": {
+    "exitCode": 0,
+    "command": "node node_modules/typescript/bin/tsc --noEmit"
+  },
+  "targetedTests": {
+    "exitCode": 0,
+    "suitesPassed": 3,
+    "testsPassed": 36
+  },
+  "fullTests": {
+    "command": "node node_modules/jest/bin/jest.js --runInBand --cacheDirectory .tmp-jest-photo",
+    "suitesFailed": 1,
+    "exitCode": 1,
+    "suitesPassed": 512,
+    "failure": "tests/logic/liveScoreboardResponsive.test.tsx: control source missing",
+    "testsPassed": 5772,
+    "testsFailed": 1,
+    "scope": "Failure is in existing modified live-match files not edited by this task.",
+    "testsTotal": 5773
+  },
+  "documentation": {
+    "exitCode": 1,
+    "missingHistoricalFiles": 107,
+    "otherStaleFeatures": [
+      "rounds/fillers",
+      "rounds/live-advanced",
+      "entry/landing-and-links"
+    ],
+    "refreshedFeatures": [
+      "entry/profile-onboarding",
+      "profile/profile-edit",
+      "entry/authentication",
+      "entry/pending-actions"
+    ]
+  },
+  "runtime": {
+    "productionPhotoDeletionPerformed": false,
+    "emulatorRunPerformed": false,
+    "deploymentPerformed": false,
+    "productionProfileReadOnly": true
+  }
+}

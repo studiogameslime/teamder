@@ -16,6 +16,14 @@ it('does not upload ordinary recorded navigation or touches',()=>{
  const j=require('@/services/diagnosticJournal');j.diagnosticRoute('MatchDetails',{gameId:'g1'});j.recordDiagnostic('tap','touch_start',{x:10,y:20});jest.advanceTimersByTime(60000);
  expect(mockUpdate).not.toHaveBeenCalled();expect(mockSet).not.toHaveBeenCalled();expect(mockAdd).not.toHaveBeenCalled();
 });
+it('coalesces counts while preserving bounded independent failure-time samples',async()=>{
+ const j=require('@/services/diagnosticJournal'),e=require('@/services/errorLog');
+ for(let i=0;i<5;i++){j.diagnosticRoute('MatchDetails',{gameId:`round-${i}`});e.logError('joinGame',new Error('same bug'));}
+ j.diagnosticRoute('Profile');await e.flush();const payload=mockUpdate.mock.calls[0][1];
+ expect(payload.count).toBe(5);expect(payload.occurrences).toHaveLength(3);
+ expect(payload.occurrences.map((s:any)=>JSON.parse(s.lastJournal).context.gameId)).toEqual(['round-0','round-3','round-4']);
+ expect(JSON.stringify(payload.occurrences)).not.toContain('Profile');
+});
 it('attaches the exact failure-time journal to automatic errors',async()=>{
  const j=require('@/services/diagnosticJournal'),e=require('@/services/errorLog');
  j.diagnosticRoute('MatchDetails',{gameId:'g1'});e.logError('joinGame',new Error('actual bug'));

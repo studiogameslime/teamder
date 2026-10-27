@@ -12,6 +12,7 @@ import { roundParticipantSides } from './roundParticipants';
 export type Side = 'A' | 'B' | 'tie';
 
 export interface RoundGoalRec {
+  penaltyId?: string;
   /** null for an own goal (no scorer); a guest id (`guest:<id>`) for a guest. */
   scorerId: string | null;
   assisterId: string | null;
@@ -33,6 +34,7 @@ export interface RoundPenaltyRec {
 }
 
 export interface RoundHistoryDoc {
+  inPlayPenalties?: import('@/types').InPlayPenalty[];
   roundId: string;
   teamA: string[];
   teamB: string[];

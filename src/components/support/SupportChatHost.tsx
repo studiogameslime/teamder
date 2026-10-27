@@ -71,15 +71,17 @@ export function SupportChatHost({ active, hideBubble = false }: { active: boolea
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          const current = captureSupportContext();
+          if (cancelled || !mounted.current || useUserStore.getState().currentUser?.id !== uid) return;
           const sameSource = () => { const source = captureSupportContext(); return source.screen === draft.context.screen && source.step === draft.context.step && source.groupId === draft.context.groupId && source.gameId === draft.context.gameId; };
-          if (!sameSource()) throw new Error('Source changed');
+          if (!sameSource()) { setError('לא הצלחנו לצלם את המסך. אפשר לנסות שוב או לשלוח בלי צילום.'); return; }
           let image = await captureFullScreenBase64({ quality: 0.35, maxWidth: 540 });
           if (!image) image = await captureScreen({ format: 'jpg', quality: 0.35, result: 'base64', width: 540 });
           if (cancelled || useUserStore.getState().currentUser?.id !== uid) return;
-          if (!sameSource() || !image || image.length > 180_000) throw new Error('צילום גדול מדי או שהמסך השתנה.');
+          if (!sameSource()) { setError('לא הצלחנו לצלם את המסך. אפשר לנסות שוב או לשלוח בלי צילום.'); return; }
+          if (!image || image.length > 180_000) { setError('לא הצלחנו לצלם את המסך. אפשר לנסות שוב או לשלוח בלי צילום.'); return; }
           state.patch(uid, { image, attemptId: undefined });
         } catch (caughtErrore2a6d0817f) {
+          if (cancelled || !mounted.current || useUserStore.getState().currentUser?.id !== uid) return;
     observeCaughtError(caughtErrore2a6d0817f, {"source":"src/components/support/SupportChatHost.tsx","handler":"SupportChatHost","site":"SupportChatHost:e2a6d0817f"}); if (!cancelled) setError('לא הצלחנו לצלם את המסך. אפשר לנסות שוב או לשלוח בלי צילום.'); }
         finally { if (!cancelled && mounted.current) setCapturing(false); }
       })();

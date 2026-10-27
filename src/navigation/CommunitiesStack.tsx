@@ -1,4 +1,6 @@
+import { MyActivityScreen } from '@/screens/profile/MyActivityScreen';
 import { FeedbackScreen } from '@/screens/FeedbackScreen';
+import { AchievementsScreen } from '@/screens/profile/AchievementsScreen';
 import { StatisticsScreen } from '@/screens/profile/StatisticsScreen';
 import { ManagerDashboardScreen } from '@/screens/communities/ManagerDashboardScreen';
 // Stack inside the Communities tab. The feed is the landing screen; from
@@ -77,6 +79,7 @@ export type CommunitiesStackParamList = {
   Statistics: { userId?: string } | undefined;
   Feedback: { type?: 'bug' | 'suggestion'; playerId?: string; playerName?: string } | undefined;
   PlayerCard: { userId: string; groupId?: string };
+  Achievements: undefined;
   PlayerCompare: { groupId: string; otherUid: string; otherName?: string };
   /** Admin-only per-community player timeline (cards + equipment handoffs). */
   PlayerTimeline: { userId: string; groupId: string; name?: string };
@@ -90,9 +93,10 @@ export type CommunitiesStackParamList = {
   // caller passes and expects.
   MatchDetails: { gameId: string; initialTab?: 'info' | 'games' | 'stats' | 'players' };
   // Draft Teams (חלוקת כוחות) — reachable from MatchDetails' "קביעת כוחות".
-  DraftSetup: { gameId: string; resumeManual?: boolean };
+  DraftSetup: { gameId: string; returnRouteKey?: string; resumeManual?: boolean; editExisting?: boolean };
   DraftBoard: {
     gameId: string;
+    returnRouteKey?: string;
     captainIds: string[];
     method: 'snake' | 'regular';
     resume?: boolean;
@@ -100,6 +104,7 @@ export type CommunitiesStackParamList = {
     readOnly?: boolean;
   };
   EveningSummary: { gameId: string };
+  MyActivity: undefined;
   /** `seasonId` omitted = the season currently running. */
   SeasonSummary: { groupId: string; seasonId?: string };
   // `live` is set when the screen is opened from the live screen mid-evening.
@@ -162,6 +167,7 @@ export function CommunitiesStack() {
       <Stack.Screen name="CommunityStats" component={CommunityStatsScreen} />
       <Stack.Screen name="CommunityHistory" component={CommunityHistoryScreen} />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
+      <Stack.Screen name="Achievements" component={AchievementsScreen} />
       <Stack.Screen name="Statistics" component={StatisticsScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
       <Stack.Screen name="PlayerCompare" component={PlayerCompareScreen} />
@@ -173,6 +179,7 @@ export function CommunitiesStack() {
       <Stack.Screen name="DraftSetup" component={DraftSetupScreen} />
       <Stack.Screen name="DraftBoard" component={DraftBoardScreen} />
       <Stack.Screen name="EveningSummary" component={EveningSummaryScreen} />
+      <Stack.Screen name="MyActivity" component={MyActivityScreen} />
       <Stack.Screen name="SeasonSummary" component={SeasonSummaryScreen} />
       <Stack.Screen name="MatchRounds" component={MatchRoundsScreen} />
       <Stack.Screen name="AddMembers" component={AddMembersScreen} />

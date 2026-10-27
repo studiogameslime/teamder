@@ -1,4 +1,5 @@
 import { observeCaughtError } from '../utils/errorObservation';
+import { mapConcurrent } from '@/utils/mapConcurrent';
 import { collection, getDocs, limit, query } from 'firebase/firestore';
 import { docs } from '@/firebase/firestore';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
@@ -23,14 +24,15 @@ export async function loadManagerClubResults(group: Group, games: Game[], viewer
     if (__DEV__ && process.env.EXPO_PUBLIC_QA_ROUTES==='1') {
       for(const [i,g] of recent.entries()) results[g.id]={rows:Array.from({length:[8,10,8,12,6,8,10,8,8,6][i]},(_,j)=>({id:`demo-${j}`,scoreA:j%4===0?1:2,scoreB:j%4===0?1:j%4===1?1:(i%2===0?1:0)})),unavailable:false,truncated:false};
     }
-  } else for(let i=0;i<recent.length;i+=4) {
-    await Promise.all(recent.slice(i,i+4).map(async g=>{
+  } else {
+    await mapConcurrent(recent,4,async g=>{
+      if (getFirebase().auth.currentUser?.uid !== viewerId) throw Error('manager-session-changed');
       try {
         const snap=await withAuthRaceRetry(()=>getDocs(query(collection(docs.game(g.id),'roundHistory'),limit(501))));
         results[g.id]={rows:snap.docs.slice(0,500).map(d=>{const r=d.data();return {id:d.id,scoreA:typeof r.scoreA==='number'?r.scoreA:NaN,scoreB:typeof r.scoreB==='number'?r.scoreB:NaN};}),unavailable:false,truncated:snap.docs.length>500};
       } catch (caughtErrorb169a244ad) {
     observeCaughtError(caughtErrorb169a244ad, {"source":"src/services/managerClubResultsService.ts","handler":"loadManagerClubResults","site":"managerClubResultsService:b169a244ad"}); results[g.id]={rows:[],unavailable:true,truncated:false}; }
-    }));
+    });
   }
   await gate();
   return results;

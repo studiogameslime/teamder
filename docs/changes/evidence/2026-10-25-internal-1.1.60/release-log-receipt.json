@@ -1,0 +1,9 @@
+{
+  "version": "1.1.60",
+  "includedFixes": 40,
+  "readbackVerified": true,
+  "screenshotsPreserved": true,
+  "at": "2026-10-25T11:43:32.115Z",
+  "prunedItems": 0,
+  "reason": "Existing version floor 1.1.56 retained. No older records newly introduced."
+}

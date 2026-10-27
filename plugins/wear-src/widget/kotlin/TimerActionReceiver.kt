@@ -42,6 +42,15 @@ import org.json.JSONObject
 class TimerActionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.getStringExtra("origin") != "watch") {
+            if (intent.getStringExtra(EXTRA_ACTION) == ACTION_REFRESH) {
+                val state = WidgetStateStore.read(context)
+                WidgetRosterWorker.enqueue(context, state?.optString("gameId"), WidgetStateStore.owner(state), true)
+                return
+            }
+            WidgetTimerWorker.receive(context, intent)
+            return
+        }
         val action = intent.getStringExtra(EXTRA_ACTION) ?: return
         val gameId = intent.getStringExtra(EXTRA_GAME_ID) ?: return
         val userName = intent.getStringExtra(EXTRA_USER_NAME) ?: ""
@@ -113,6 +122,7 @@ class TimerActionReceiver : BroadcastReceiver() {
         // the user saw across the widget + in-app screen.
         val db = FirebaseFirestore.getInstance()
         val ref = db.collection("games").document(gameId)
+        var boundRound: String? = null
 
         db.runTransaction<Map<String, Any?>?> { tx ->
             val snap = tx.get(ref)
@@ -122,6 +132,19 @@ class TimerActionReceiver : BroadcastReceiver() {
             @Suppress("UNCHECKED_CAST")
             val live = snap.get("liveMatch") as? Map<String, Any?>
                 ?: return@runTransaction null
+            if (live["phase"] == "finished") return@runTransaction null
+            val rotation = snap.get("rotation") as? Map<*, *>
+            val roundKey = rotation?.let {
+                it["roundInstanceId"] as? String
+                    ?: "${it["round"] ?: "r"}:${it["updatedAt"] ?: 0}"
+            }
+            if (roundKey != null && snap.getString("lastCommittedRoundId") == roundKey) {
+                return@runTransaction null
+            }
+            val identity = roundKey?.let { "rotation:$it" }
+                ?: "plain:${live["roundNumber"] ?: 0}"
+            if (boundRound != null && boundRound != identity) return@runTransaction null
+            boundRound = identity
 
             val newLive = live.toMutableMap()
             val wasRunning = live["timerRunning"] as? Boolean == true
@@ -197,10 +220,25 @@ class TimerActionReceiver : BroadcastReceiver() {
                     // the round goal LOG together. Zeroing the clock but keeping
                     // goals[] left phantom goals that the next round-end committed
                     // to stats. The evening-long per-player BADGE (goalTally) and
-                    // the physical activeIntervals log are NOT touched.
+                    // the physical activeIntervals log is preserved.
                     newLive["scoreA"] = 0L
                     newLive["scoreB"] = 0L
+                    // Match the phone's tallyWithout: discard only this round's
+                    // credited goals, retaining goals from earlier rounds.
+                    @Suppress("UNCHECKED_CAST")
+                    val tally = ((live["goalTally"] as? Map<String, Number>) ?: emptyMap())
+                        .mapValues { it.value.toLong() }.toMutableMap()
+                    val goals = live["goals"] as? List<*> ?: emptyList<Any?>()
+                    for (entry in goals) {
+                        val goal = entry as? Map<*, *> ?: continue
+                        val scorer = goal["scorerId"] as? String ?: continue
+                        if (scorer.isEmpty() || goal["ownGoal"] == true) continue
+                        val left = (tally[scorer] ?: 0L) - 1L
+                        if (left > 0L) tally[scorer] = left else tally.remove(scorer)
+                    }
+                    newLive["goalTally"] = tally
                     newLive["goals"] = emptyList<Any?>()
+                    newLive["inPlayPenalties"] = emptyList<Any?>()
                 }
                 else -> return@runTransaction null
             }
@@ -217,7 +255,7 @@ class TimerActionReceiver : BroadcastReceiver() {
             )
         }.addOnSuccessListener { newTimer ->
             if (newTimer != null) {
-                applyOptimisticPrefsUpdate(context, newTimer, now)
+                applyOptimisticPrefsUpdate(context, gameId, uid, newTimer, now)
                 TeamderWidgetProvider.requestRefresh(context)
                 // Also push to the paired watch so the Wear tile reflects a
                 // timer change driven from the phone widget — without this,
@@ -304,43 +342,49 @@ class TimerActionReceiver : BroadcastReceiver() {
      */
     private fun applyOptimisticPrefsUpdate(
         context: Context,
+        gameId: String,
+        uid: String,
         newTimer: Map<String, Any?>,
         nowServerMs: Long,
     ) {
-        try {
-            val prefs = context.getSharedPreferences(
-                TeamderWidgetProvider.PREFS, Context.MODE_PRIVATE,
-            )
-            val current = prefs.getString(TeamderWidgetProvider.KEY_JSON, null) ?: return
-            val o = JSONObject(current)
-            if (o.optString("kind") != "live") return
-            val acc = (newTimer["timerAccumulatedMs"] as? Number)?.toLong() ?: 0L
-            val timer = o.optJSONObject("timer") ?: JSONObject()
-            timer.put("running", newTimer["timerRunning"] as? Boolean == true)
-            timer.put("lastStartedAt", (newTimer["timerLastStartedAt"] as? Number)?.toLong() ?: 0L)
-            timer.put("accumulatedMs", acc)
-            // CRITICAL when this republish is the ONLY one the watch/widget will
-            // get (app dead → no JS re-publish to self-correct): re-stamp the base
-            // at THIS instant. At both start and pause the elapsed-at-this-instant
-            // equals the accumulator, and serverNowMs must be the publish instant
-            // so the running fold (nowEpoch − serverNowMs) starts at ~0. Without
-            // this the payload kept the STALE serverNowMs / baseElapsedMs → the
-            // timer jumped forward (start) or showed a wrong frozen value (pause).
-            // The SAME prefs JSON is forwarded to BOTH the phone widget and the
-            // watch (publishToWatch), and they read baseElapsedMs from DIFFERENT
-            // places: the widget from the ROOT (o.baseElapsedMs), the watch from
-            // NESTED (timer.baseElapsedMs). Set it in both, and serverNowMs at
-            // root (both read it there), or one surface keeps the stale value.
-            timer.put("baseElapsedMs", acc)
-            o.put("timer", timer)
-            o.put("baseElapsedMs", acc)
-            o.put("serverNowMs", nowServerMs)
-            o.put("controlledBy", newTimer["timerControlledBy"] as? String ?: "")
-            o.put("controlledByName", newTimer["timerControlledByName"] as? String ?: "")
-            prefs.edit().putString(TeamderWidgetProvider.KEY_JSON, o.toString()).apply()
-        } catch (_: Exception) {
-            // Best-effort; JS bridge's next publish (if running) will
-            // make the prefs converge to the canonical Firestore value.
+        synchronized(TeamderWidgetProvider.STATE_LOCK) {
+            try {
+                val prefs = context.getSharedPreferences(
+                    TeamderWidgetProvider.PREFS, Context.MODE_PRIVATE,
+                )
+                val current = prefs.getString(TeamderWidgetProvider.KEY_JSON, null) ?: return
+                val o = JSONObject(current)
+                if (o.optString("kind") != "live" || o.optString("gameId") != gameId ||
+                    o.optJSONObject("viewer")?.optString("id") != uid ||
+                    FirebaseAuth.getInstance().currentUser?.uid != uid) return
+                val acc = (newTimer["timerAccumulatedMs"] as? Number)?.toLong() ?: 0L
+                val timer = o.optJSONObject("timer") ?: JSONObject()
+                timer.put("running", newTimer["timerRunning"] as? Boolean == true)
+                timer.put("lastStartedAt", (newTimer["timerLastStartedAt"] as? Number)?.toLong() ?: 0L)
+                timer.put("accumulatedMs", acc)
+                // CRITICAL when this republish is the ONLY one the watch/widget will
+                // get (app dead → no JS re-publish to self-correct): re-stamp the base
+                // at THIS instant. At both start and pause the elapsed-at-this-instant
+                // equals the accumulator, and serverNowMs must be the publish instant
+                // so the running fold (nowEpoch − serverNowMs) starts at ~0. Without
+                // this the payload kept the STALE serverNowMs / baseElapsedMs → the
+                // timer jumped forward (start) or showed a wrong frozen value (pause).
+                // The SAME prefs JSON is forwarded to BOTH the phone widget and the
+                // watch (publishToWatch), and they read baseElapsedMs from DIFFERENT
+                // places: the widget from the ROOT (o.baseElapsedMs), the watch from
+                // NESTED (timer.baseElapsedMs). Set it in both, and serverNowMs at
+                // root (both read it there), or one surface keeps the stale value.
+                timer.put("baseElapsedMs", acc)
+                o.put("timer", timer)
+                o.put("baseElapsedMs", acc)
+                o.put("serverNowMs", nowServerMs)
+                o.put("controlledBy", newTimer["timerControlledBy"] as? String ?: "")
+                o.put("controlledByName", newTimer["timerControlledByName"] as? String ?: "")
+                prefs.edit().putString(TeamderWidgetProvider.KEY_JSON, o.toString()).apply()
+            } catch (_: Exception) {
+                // Best-effort; JS bridge's next publish (if running) will
+                // make the prefs converge to the canonical Firestore value.
+            }
         }
     }
 
@@ -360,6 +404,7 @@ class TimerActionReceiver : BroadcastReceiver() {
         const val ACTION_START = "com.studiogameslime.soccerapp.widget.TIMER_START"
         const val ACTION_PAUSE = "com.studiogameslime.soccerapp.widget.TIMER_PAUSE"
         const val ACTION_RESET = "com.studiogameslime.soccerapp.widget.TIMER_RESET"
+        const val ACTION_REFRESH = "com.studiogameslime.soccerapp.widget.REFRESH"
 
         // Extras carried by every action intent. Set by the widget
         // provider when building the PendingIntent for each button.

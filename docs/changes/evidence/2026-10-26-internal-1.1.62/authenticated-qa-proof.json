@@ -1,0 +1,11 @@
+{
+  "newAccountCreated": false,
+  "existingQaAuthenticated": true,
+  "outsiderRejected": true,
+  "businessDataWritten": false,
+  "ownerSummaryReadVerified": false,
+  "invalidSourceRejectedBeforeTransaction": true,
+  "at": "2026-10-26T05:16:55.3329756Z",
+  "membershipChanged": false,
+  "limitation": "The available existing QA identity has no membership in the QA club. Owner summary read was not tested."
+}

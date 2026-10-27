@@ -1,5 +1,5 @@
 import { observeCaughtError } from '../utils/errorObservation';
-import { isPlayAppNotOwned } from '../utils/expectedIntegrationError';
+import { isPlayAppNotOwned, isPlayInstallNotAllowed } from '../utils/expectedIntegrationError';
 import { Linking, NativeModules, Platform } from 'react-native';
 import { doc, getDoc } from 'firebase/firestore';
 import * as Application from 'expo-application';
@@ -25,7 +25,7 @@ function bounded<T>(promise: Promise<T>, timeoutMs = 8000): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Store check timed out')), timeoutMs);
     promise.then(value => { clearTimeout(timer); resolve(value); }, error => {
-    if (!isPlayAppNotOwned(error)) observeCaughtError(error, {"source":"src/services/updateService.ts","handler":"bounded","site":"updateService:9a518dd28f"}); clearTimeout(timer); reject(error); });
+    if (!isPlayAppNotOwned(error) && !isPlayInstallNotAllowed(error)) observeCaughtError(error, {"source":"src/services/updateService.ts","handler":"bounded","site":"updateService:9a518dd28f"}); clearTimeout(timer); reject(error); });
   });
 }
 
@@ -134,7 +134,7 @@ async function resolveStoreUpdate(): Promise<StoreUpdate | null> {
     observeCaughtError(caughtError4f2a256c7f, {"source":"src/services/updateService.ts","handler":"resolveStoreUpdate","site":"updateService:4f2a256c7f"}); /* Available store update stays optional. */ }
     return available;
   } catch (err) {
-    if (Platform.OS === 'android' && isPlayAppNotOwned(err)) return null;
+    if (Platform.OS === 'android' && (isPlayAppNotOwned(err) || isPlayInstallNotAllowed(err))) return null;
     observeCaughtError(err, {"source":"src/services/updateService.ts","handler":"resolveStoreUpdate","site":"updateService:d6d7f5046d"});
     // Offline, missing Play ownership/store and unavailable country listings
     // are normal absence-of-evidence cases, not application crashes.

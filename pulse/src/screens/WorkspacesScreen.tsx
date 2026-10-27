@@ -11,6 +11,7 @@ import { StickersScreen } from './StickersScreen';
 import { PushScreen } from './PushScreen';
 import { TokenHealthScreen } from './TokenHealthScreen';
 import { NotificationsLogScreen } from './NotificationsLogScreen';
+import { JoryioJourneyScreen } from './JoryioJourneyScreen';
 
 const activity: WorkspaceSection[] = [
   { key: 'overview', label: 'סקירה', component: OverviewScreen },
@@ -18,6 +19,7 @@ const activity: WorkspaceSection[] = [
   { key: 'map', label: 'מפה', component: MapScreen },
 ];
 const growth: WorkspaceSection[] = [
+  { key: 'journeys', label: 'מסעות', component: JoryioJourneyScreen },
   { key: 'campaigns', label: 'קמפיינים', component: CampaignsScreen },
   { key: 'audiences', label: 'קהלים', component: SegmentScreen },
   { key: 'links', label: 'קישורים', component: SourcesScreen },

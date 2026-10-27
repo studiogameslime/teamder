@@ -1,3 +1,4 @@
+import { returnFromDraft } from '@/utils/draftNavigation';
 import { observeCaughtError } from '../../utils/errorObservation';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // DraftBoardScreen — Step 2 of חלוקת כוחות (the heart of the feature).
@@ -51,7 +52,7 @@ type Params = RouteProp<GameStackParamList, 'DraftBoard'>;
 
 export function DraftBoardScreen() {
   const nav = useNavigation<Nav>();
-  const { gameId, captainIds, method, resume, readOnly, expectedDraftCreatedAt } =
+  const { gameId, captainIds, method, resume, readOnly, expectedDraftCreatedAt, returnRouteKey } =
     useRoute<Params>().params;
 
   const playersMap = useGameStore((s) => s.players);
@@ -343,7 +344,7 @@ export function DraftBoardScreen() {
         published: false,
       });
       appAlert(he.draftTitle, he.draftSaved);
-      nav.navigate('MatchDetails', { gameId });
+      returnFromDraft(nav, gameId, returnRouteKey);
     } catch (err) {
     observeCaughtError(err, {"source":"src/screens/games/DraftBoardScreen.tsx","handler":"DraftBoardScreen","site":"DraftBoardScreen:b7e8bce2dd"});
       logError('draftSave', err, { gameId });
@@ -354,7 +355,7 @@ export function DraftBoardScreen() {
     // teamColors MUST be here — the summary screen sets colours AFTER this
     // callback was memoised, so without it `finish` saved the stale (empty)
     // colours and the user's picks silently vanished.
-  }, [currentUser, method, numTeams, captainIds, membersOf, gameId, nav, teamColors, picks, game?.draftTeams?.completionMode]);
+  }, [currentUser, method, numTeams, captainIds, membersOf, gameId, nav, teamColors, picks, game?.draftTeams?.completionMode, returnRouteKey]);
 
   // ── Summary view ────────────────────────────────────────────────────
   // A reused board must not display the previous saved split while its new
@@ -373,8 +374,8 @@ export function DraftBoardScreen() {
         {game.draftTeams.completionMode === 'balanced' && <Text style={styles.summarySub}>קבוצות עם השלמות · לפני כל משחק בוחרים משלימים מהקבוצות שממתינות</Text>}
         {game.draftTeams.teams.map(t=><DraftTeamCard summary key={t.index} index={t.index} colorKey={t.colorKey} captain={resolve(t.playerIds[0])} members={t.playerIds.slice(1).map(resolve)} completionCapacity={game.draftTeams?.completionMode === 'balanced' ? playersPerTeam(game.format) : undefined} onPressUser={openCard}/>)}
         {game.draftTeams.completionMode === 'balanced' && <Text style={styles.summarySub}>קבוצות הבסיס נשמרות. ההשלמות הן למשחק אחד בלבד.</Text>}
-      </ScrollView><View style={styles.footer}><Button title="לפרטי המחזור" onPress={()=>nav.navigate('MatchDetails',{gameId})} fullWidth size="lg"/>
-        {!readOnly && <Button title="עריכת הכוחות" iconLeft="options-outline" variant="outline" onPress={()=>nav.navigate('DraftSetup',{gameId,editExisting:true})} fullWidth/>}
+      </ScrollView><View style={styles.footer}><Button title={returnRouteKey ? "חזרה ללייב" : "לפרטי המחזור"} onPress={()=>returnFromDraft(nav, gameId, returnRouteKey)} fullWidth size="lg"/>
+        {!readOnly && <Button title="עריכת הכוחות" iconLeft="options-outline" variant="outline" onPress={()=>nav.navigate('DraftSetup',{gameId,editExisting:true,returnRouteKey})} fullWidth/>}
       </View></SafeAreaView>;
   }
   if (done) {

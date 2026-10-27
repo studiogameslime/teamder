@@ -11,7 +11,7 @@ import { fetchUsers, fetchUsersWithAuth } from './firebase';
 
 // Public hosting origin that serves the /go landing page (mirrors the
 // app's deepLinkService HOSTING_ORIGIN).
-const ORIGIN = 'https://teamderfc.web.app';
+const ORIGIN = 'https://teamder.co.il';
 
 export const SOURCE_PRESETS = ['whatsapp', 'facebook', 'instagram', 'telegram', 'sms', 'other'];
 

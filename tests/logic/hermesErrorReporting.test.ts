@@ -30,7 +30,7 @@ function load(hermes?: HermesHooks, polyfillThrows = false) {
   jest.doMock('firebase/functions', () => ({ httpsCallable: () => jest.fn().mockResolvedValue({}) }));
   jest.doMock('@/services/breadcrumbs', () => ({ crumbErr: jest.fn(), formatTrail: () => '' }));
   jest.doMock('@/services/diagnosticJournal', () => ({
-    diagnosticAttachment: () => '', diagnosticOwner: () => undefined, diagnosticReportScreen: () => 'test-screen',
+    diagnosticErrorOperation: () => undefined, compactCapturedDiagnosticAttachment: () => '', diagnosticAttachment: () => '', diagnosticOwner: () => undefined, diagnosticReportScreen: () => 'test-screen',
   }));
   jest.doMock('@/services/diagnosticStorage', () => ({
     readPendingDiagnosticErrors: () => Promise.resolve([]),

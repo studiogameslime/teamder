@@ -1,0 +1,43 @@
+{
+  "targets": [
+    "commitRoundStats",
+    "commitRoundStatsWithInPlayPenalties",
+    "getSocialPlayerProfile",
+    "onGameRotationChanged",
+    "onGameRosterChanged",
+    "setEveningPlayed",
+    "cronEvery60Min",
+    "startSeasonEvening",
+    "resumeClubSeason",
+    "syncClubSeason",
+    "enableClubSeasons",
+    "disableClubSeasons",
+    "updateSeasonTarget",
+    "endSeasonNow"
+  ],
+  "count": 14,
+  "newFunctions": [
+    "commitRoundStatsWithInPlayPenalties"
+  ],
+  "purpose": "פנדלים במהלך משחק, תצוגת הפירוט בפרופיל ושימור השדות בסגירה ובארכיון עונות",
+  "rulesChanged": false,
+  "migrations": false,
+  "unrelatedDeployments": false,
+  "environmentKeys": [
+    "TEAMDER_LEGACY_CLUB_RATINGS_COMPAT"
+  ],
+  "prepared": true,
+  "deployed": true,
+  "approvedByOwner": true,
+  "approvalText": "מאשר את פריסת שירותי הפנדלים",
+  "verifiedAt": "2026-10-25T11:40:59.224Z",
+  "runtimeDifferences": [
+    {
+      "name": "getSocialPlayerProfile",
+      "field": "maxInstanceCount",
+      "before": null,
+      "after": 20,
+      "reason": "Current source global maxInstances=20 also applies to the profile service; explicit reset operations completed but did not remove the cap."
+    }
+  ]
+}

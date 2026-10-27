@@ -22,7 +22,7 @@ test.each(['players', 'waitlist', 'pending'])('join success and elapsed time are
     logEvent: log, AnalyticsEvent: { GameJoinRequested: 'requested', GameJoined: 'joined' },
     onSnapshot: (_: unknown, next: typeof receive) => { receive = next; return stop; }, waitForJoinResult,
   };
-  vm.runInNewContext(ts.transpileModule(`module.exports = {${method}}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, context);
+  vm.runInNewContext(ts.transpileModule(`module.exports = {${method}}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, Object.assign(context,{joinDiagnosticId:require('@/utils/joinDiagnosticId').joinDiagnosticId,runDiagnosticOperation:require('@/services/diagnosticJournal').runDiagnosticOperation,diagnosticEntity:require('@/services/diagnosticJournal').diagnosticEntity}));
   const result = context.module.exports.requestJoinGame('round', 'viewer', 'match_details');
   await flush();
   expect(log.mock.calls.map(call => call[0])).toEqual(['requested']);
@@ -48,7 +48,7 @@ function parallelWorld(serverKickoff: number) {
     logEvent: jest.fn(), AnalyticsEvent: { GameJoinRequested: 'requested', GameJoined: 'joined' },
     onSnapshot: (_: unknown, next: typeof receive) => { receive = next; return stop; }, waitForJoinResult,
   };
-  vm.runInNewContext(ts.transpileModule(`module.exports = {${method}}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, context);
+  vm.runInNewContext(ts.transpileModule(`module.exports = {${method}}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, Object.assign(context,{joinDiagnosticId:require('@/utils/joinDiagnosticId').joinDiagnosticId,runDiagnosticOperation:require('@/services/diagnosticJournal').runDiagnosticOperation,diagnosticEntity:require('@/services/diagnosticJournal').diagnosticEntity}));
   return { conflict, service: context.module.exports,
     resolveGame: () => finishGame({ exists: () => true, data: () => ({ status: 'open', startsAt: serverKickoff }) }),
     assign: () => receive({ exists: () => true, data: () => ({ state: 'assigned', bucket: 'players' }) }),

@@ -170,7 +170,7 @@ const PLAYER_SEASON_FIELDS = [
   'cleanSheets',
   'ownGoals',
   'penTaken',
-  'penScored',
+  'penScored', 'penInPlayTaken', 'penInPlayScored',
   'penMissed',
   'penFaced',
   'penSaved',
@@ -215,7 +215,7 @@ const CLUB_SEASON_FIELDS = [
   'guestGoals',
   'ownGoals',
   'tiedRounds',
-  'shootoutRounds',
+  'shootoutRounds', 'inPlayPenalties',
   'scorelessRounds',
   // Sealed with the season, so a closed season keeps the sample its own
   // outcome counters were measured over. Without it an archived season's 0:0

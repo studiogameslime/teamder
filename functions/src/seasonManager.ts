@@ -237,7 +237,7 @@ export class SeasonManager {
         }
       }
       const poolSourceIds: string[] = s.operation?.context?.poolSourceIds ?? pool.periods.map(d => d.id);
-      if (!s.operation?.context) await ref.update({ 'seasons.operation.context': { preview, now, poolSourceIds } });
+      if (!s.operation?.context) await this.writeOperation(ref, operation.token, { operation: { context: { preview, now, poolSourceIds } } });
       const count = s.count ?? 0, oldNo = count + 1;
       const periodId = choice === 'sealNow' || choice === 'continue' ? `s${oldNo}` : `off_${count}_${now}_${s.revision ?? 0}`;
       await operation.markMutating();
@@ -248,13 +248,13 @@ export class SeasonManager {
         startsAt: preview.startsAt, completedRounds: preview.played, nonSeason: choice !== 'sealNow', deferPublication: choice === 'sealNow', now });
       const closed = count + (choice === 'sealNow' ? 1 : 0), no = closed + 1;
       const allTime = (await this.db.collection('clubRecords').doc(ref.id).get()).get('eveningsSealed') ?? 0;
-      await ref.set({ seasons: { operation: { phase: false }, enabled: true, policyVersion: SEASON_POLICY_VERSION,
+      await this.writeOperation(ref, operation.token, { operation: { phase: false }, enabled: true, policyVersion: SEASON_POLICY_VERSION,
         revision: (s.revision ?? 0) + 1, currentNo: no, currentId: `s${no}`, count: closed, startedAt,
         roundsAtStart: allTime, playedRounds: choice === 'continue' ? preview.played : 0,
         includedHistory: choice === 'continue' ? preview.played : 0, cadence: target,
         nextCadence: { ...target, ...(type === 'rounds' ? { targetRounds: Math.min(200, target.targetRounds!) } : {}) },
         hasArchivedPeriods: s.hasArchivedPeriods === true || choice === 'fresh', targetHistory: [],
-        pendingClose: del(), closureStatus: del(), manualClose: del(), dueBlockedSince: del(), targetMovedToClose: del(), reopenedAt: del() } }, { merge: true });
+        pendingClose: del(), closureStatus: del(), manualClose: del(), dueBlockedSince: del(), targetMovedToClose: del(), reopenedAt: del() });
       ok = true;
       if (choice === 'sealNow') await publishSeason(this.db, ref.id, `s${oldNo}`);
       if (choice === 'sealNow') await this.deps.announce({ groupId: ref.id, groupName: g.name ?? '', seasonId: `s${oldNo}`, seasonNo: oldNo });
@@ -295,7 +295,7 @@ export class SeasonManager {
         if (!valid.due) patch.pendingClose = del();
         else if (!s.pendingClose) patch.pendingClose = del(); // temporary operation guard is not a correction window
       }
-      await ref.set({ seasons: patch }, { merge: true }); ok = true;
+      await this.writeOperation(ref, op.token, patch); ok = true;
     } finally { await op.finish(ok); }
     await this.refresh(ref.id);
     return { ok: true, cadence: target, endsTheSeason: valid.due };
@@ -374,7 +374,20 @@ export class SeasonManager {
   private async patchIfFresh(ref: admin.firestore.DocumentReference, snap: admin.firestore.DocumentSnapshot, patch: Data) {
     try { await ref.update(Object.fromEntries(Object.entries(patch).map(([key, value]) => [`seasons.${key}`, value])), { lastUpdateTime: snap.updateTime! }); return true; }
     catch (err) {
-    observeCaughtError(err, {"source":"functions/src/seasonManager.ts","handler":"patchIfFresh","site":"seasonManager:26478a773b"}); if ((err as {code?: number}).code === 9) return false; throw err; }
+      if ((err as {code?: number | string}).code === 9 || (err as {code?: string}).code === 'failed-precondition') return false;
+      observeCaughtError(err, {source:'functions/src/seasonManager.ts',handler:'patchIfFresh',site:'seasonManager:26478a773b'});
+      throw err;
+    }
+  }
+
+  /** A lease can be recovered by another invocation while an old RPC is delayed.
+   * Ownership must still hold in the transaction that applies its configuration. */
+  private async writeOperation(ref: admin.firestore.DocumentReference, token: string, patch: Data): Promise<void> {
+    await this.db.runTransaction(async tx => {
+      const current = await tx.get(ref);
+      if (current.get('seasons.operation.token') !== token) throw new HttpsError('failed-precondition', 'season-operation:stale');
+      tx.set(ref, { seasons: patch }, { merge: true });
+    });
   }
 
   private async finish(groupId: string) {

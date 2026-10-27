@@ -1,0 +1,54 @@
+{
+  "functions": [
+    {
+      "name": "getSocialPlayerProfile",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T14:57:17.268608009Z",
+      "revision": "getsocialplayerprofile-00006-puq",
+      "sourceFilesVerified": 83,
+      "sourceArchiveSha256": "15498602375332bc256d1d02e9d8e2f42366c2296873f333d093f028d620fd74",
+      "unauthenticatedRejected": true,
+      "existingSettingsPreserved": true
+    },
+    {
+      "name": "commitRoundStats",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T15:02:28.270360365Z",
+      "revision": "commitroundstats-00061-hoz",
+      "sourceFilesVerified": 83,
+      "sourceArchiveSha256": "15498602375332bc256d1d02e9d8e2f42366c2296873f333d093f028d620fd74",
+      "unauthenticatedRejected": true,
+      "existingSettingsPreserved": true
+    },
+    {
+      "name": "onGameRosterChanged",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T15:02:32.572089900Z",
+      "revision": "ongamerosterchanged-00087-lag",
+      "sourceFilesVerified": 83,
+      "sourceArchiveSha256": "15498602375332bc256d1d02e9d8e2f42366c2296873f333d093f028d620fd74",
+      "unauthenticatedRejected": null,
+      "existingSettingsPreserved": true
+    },
+    {
+      "name": "onErrorLogged",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T15:04:00.072871255Z",
+      "revision": "onerrorlogged-00028-goq",
+      "sourceFilesVerified": 27,
+      "sourceArchiveSha256": "bd7bdbebf491c3b438866e5f27a913f23d389b7b6f08b45e378ab3850c5b9060",
+      "unauthenticatedRejected": null,
+      "existingSettingsPreserved": true
+    }
+  ],
+  "changed": [
+    "onGameRosterChanged",
+    "commitRoundStats",
+    "onErrorLogged",
+    "getSocialPlayerProfile"
+  ],
+  "unrelatedFunctionsUnchanged": true,
+  "rulesDeployed": false,
+  "migrations": false,
+  "remainingLocal": []
+}

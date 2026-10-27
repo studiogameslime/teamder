@@ -10,7 +10,7 @@ import { SEASON_POLICY_VERSION } from '@/utils/seasonPolicy';
 // which knows what the numbers mean; the client's job is to ask, and to report
 // the refusal in words a person can act on.
 
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/services/diagnosticCallable';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
 import { withAuthRaceRetry } from '@/firebase/authRace';

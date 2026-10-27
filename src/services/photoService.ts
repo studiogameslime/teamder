@@ -252,7 +252,7 @@ export async function pickAndUploadGroupCover(
   // callable verifies the admin and writes with the Admin SDK.
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable');
     const { functions } = getFirebase();
     const fn = httpsCallable(functions, 'uploadGroupCover');
     const res = (await fn({
@@ -273,8 +273,9 @@ export async function pickAndUploadGroupCover(
 /**
  * Best-effort delete of a previously-uploaded avatar. Called when
  * the user switches to a built-in avatar (so we don't leave their
- * old photo orphaned in Storage). Silently no-ops on failure — the
- * orphan is harmless and the next upload overwrites it.
+ * old photo orphaned in Storage). An absent file is already success.
+ * Other failures are reported without rejecting the completed profile save;
+ * the next upload overwrites the same path.
  */
 export async function deleteUserPhoto(uid: string): Promise<void> {
   if (!uid || USE_MOCK_DATA) return;
@@ -286,6 +287,6 @@ export async function deleteUserPhoto(uid: string): Promise<void> {
     if ((err as { code?: string })?.code === 'storage/object-not-found') return;
     observeCaughtError(err, {"source":"src/services/photoService.ts","handler":"deleteUserPhoto","site":"photoService:7585f06c2d"});
     logError('deleteUserPhoto', err, { uid });
-    // 404 / permission-denied / network — all acceptable.
+    // Cleanup failure must not undo an already acknowledged profile save.
   }
 }

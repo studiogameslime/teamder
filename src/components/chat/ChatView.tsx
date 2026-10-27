@@ -35,6 +35,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { setActiveChat } from '@/services/activeChat';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { Button } from '@/components/Button';
 import { UserAvatar } from '@/components/UserAvatar';
 import {
   chatService,
@@ -118,6 +119,7 @@ export function ChatView({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -139,6 +141,11 @@ export function ChatView({
   // Bumped to re-subscribe after a TRANSIENT listener error (network /
   // 'unavailable'), so a connectivity blip doesn't strand the chat forever.
   const [retryTick, setRetryTick] = useState(0);
+  const [reloadTick, setReloadTick] = useState(0);
+  const retryMessages = () => {
+    setRetryTick(0);
+    setReloadTick((n) => n + 1);
+  };
   const { accepted: termsAccepted, accept: acceptTerms } = useChatTermsAccepted();
   const listRef = useRef<FlatList<ChatRow>>(null);
   // True while the user is scrolled to (near) the bottom — gates auto-scroll so
@@ -154,29 +161,38 @@ export function ChatView({
   useEffect(() => {
     setLoading(true);
     setDenied(false);
+    setLoadFailed(false);
+    setMessages([]);
     setRetryTick(0);
-  }, [scope, parentId]);
+  }, [scope, parentId, me?.id]);
 
   useEffect(() => {
-    if (previewMessages) { setMessages(previewMessages); setLoading(false); return; }
+    if (previewMessages) { setMessages(previewMessages); setLoading(false); setLoadFailed(false); return; }
+    let active = true;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     const unsub = chatService.subscribeMessages(
       scope,
       parentId,
       (msgs) => {
+        if (!active) return;
+        if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
         observeMessages(msgs.map(m => m.id));
         setMessages(msgs);
         setLoading(false);
         setDenied(false);
+        setLoadFailed(false);
       },
       (err) => {
+        if (!active) return;
         // Only a genuine PERMISSION error means "no access". Everything else
         // (offline / 'unavailable' / transport errored — common on flaky
         // networks) is TRANSIENT: don't show the lock, retry a FEW times.
         const code = (err as { code?: string } | undefined)?.code;
         if (code === 'permission-denied') {
+          if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
           logEvent(AnalyticsEvent.ChatAccessDenied, { scope });
           setDenied(true);
+          setLoadFailed(false);
           setLoading(false);
           return;
         }
@@ -187,19 +203,22 @@ export function ChatView({
         });
         logError('ChatView.subscribe', err, { scope, parentId });
         setLoading(false);
+        setLoadFailed(true);
         // Cap retries so a persistent error doesn't loop forever — which felt
         // like the chat was "constantly refreshing". (We DON'T flip loading
         // back to true on retry, so the list doesn't flicker.)
+        if (retryTimer) clearTimeout(retryTimer);
         if (retryTick < 4) {
           retryTimer = setTimeout(() => setRetryTick((n) => n + 1), 3000);
         }
       },
     );
     return () => {
+      active = false;
       if (retryTimer) clearTimeout(retryTimer);
       unsub();
     };
-  }, [scope, parentId, retryTick, observeMessages, previewMessages]);
+  }, [scope, parentId, me?.id, retryTick, reloadTick, observeMessages, previewMessages]);
 
   // Per-chat mute state, my block list, read positions, and who's typing.
   useEffect(() => {
@@ -528,6 +547,10 @@ export function ChatView({
           `padding` rather than `height`: it pads the bottom by the keyboard's
           own height from the keyboard events, without re-laying-out the list. */}
       {statusBanner ? typeof statusBanner === 'string' ? <View style={{marginHorizontal:16,marginTop:10,padding:12,borderRadius:12,backgroundColor:'#EAF2FF',flexDirection:'row',alignItems:'center',gap:8}}><Text style={{flex:1,fontSize:13,fontWeight:'600',color:'#2457A6',textAlign:RTL_LABEL_ALIGN}}>{statusBanner}</Text><Ionicons name={readOnly?'lock-closed-outline':'time-outline'} size={20} color='#2563EB'/></View> : statusBanner : null}
+      {loadFailed && !denied && messages.length > 0 ? <View style={{ padding: 16, gap: 8 }}>
+        <Text style={styles.emptyText}>{he.chatLoadFailed}</Text>
+        <Button title={he.retry} onPress={retryMessages} />
+      </View> : null}
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={
@@ -546,6 +569,12 @@ export function ChatView({
           <View style={styles.center}>
             <Ionicons name="lock-closed-outline" size={36} color={colors.textMuted} />
             <Text style={styles.emptyText}>{he.chatNoAccess}</Text>
+          </View>
+        ) : loadFailed && messages.length === 0 ? (
+          <View style={styles.center}>
+            <Ionicons name="cloud-offline-outline" size={36} color={colors.textMuted} />
+            <Text style={styles.emptyText}>{he.chatLoadFailed}</Text>
+            <Button title={he.retry} onPress={retryMessages} />
           </View>
         ) : messages.length === 0 ? (
           <View style={styles.center}>

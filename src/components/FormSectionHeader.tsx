@@ -11,12 +11,14 @@ import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 export function FormSectionHeader({
   title,
   first,
+  compact,
 }: {
   title: string;
   first?: boolean;
+  compact?: boolean;
 }) {
   return (
-    <View style={[styles.row, first && styles.first]}>
+    <View style={[styles.row, first && styles.first, compact && {marginTop:0}]}>
       {/* Title first → forceRTL flips `row` so it lands on the visual RIGHT,
           with the rule filling the space to its left. */}
       <Text style={styles.text}>{title}</Text>

@@ -2,6 +2,7 @@ import { ENFORCE_APP_CHECK } from './appCheckPolicy';
 import { createHash } from 'crypto';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { retainOccurrences } from './diagnosticOccurrences';
 
 export function clientErrorFields(data: unknown): Record<string, unknown> {
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw new HttpsError('invalid-argument','Invalid error');
@@ -44,7 +45,20 @@ export const recordClientError=onCall({enforceAppCheck: ENFORCE_APP_CHECK},async
     const used=start===previous.start&&typeof previous.count==='number'?previous.count:0;
     if(used>=1000)throw new HttpsError('resource-exhausted','Diagnostic rate limit');
     tx.set(limit,{start,count:used+1,expiresAt:Timestamp.fromMillis(now+86400000)});
-    tx.set(ref,{...fields,fingerprint,lastUserId:uid,lastSeen:FieldValue.serverTimestamp(),count:FieldValue.increment(count),
+    // Only server-constructed evidence fields are retained. Identity always comes from auth.
+    const incoming=Array.isArray(request.data?.occurrences)?request.data.occurrences.slice(0,3):[];
+    const samples=incoming.flatMap((sample:unknown)=>{
+      if(!sample||typeof sample!=='object')return [];
+      const s=sample as Record<string,unknown>;
+      if(typeof s.id!=='string'||!/^[a-z0-9-]{10,100}$/.test(s.id)||typeof s.capturedAt!=='number'||!Number.isFinite(s.capturedAt))return [];
+      const safe=clientErrorFields({...s,operation:fields.operation,category:fields.category});
+      // The journal is already bounded by the client; reject oversized samples rather than truncating JSON.
+      if(typeof safe.lastJournal==='string'&&safe.lastJournal.length>20000)delete safe.lastJournal;
+      return [{...safe,id:s.id,capturedAt:s.capturedAt,userId:uid,receivedAt:now}];
+    });
+    if(!samples.length)samples.push({...fields,id:deliveryId??`${now.toString(36)}-legacy`,capturedAt:now,userId:uid,receivedAt:now});
+    const occurrences=retainOccurrences(existing.data()?.occurrences,samples);
+    tx.set(ref,{...fields,occurrences,fingerprint,lastUserId:uid,lastSeen:FieldValue.serverTimestamp(),count:FieldValue.increment(count),
       ...(!existing.exists?{status:'new',firstSeen:FieldValue.serverTimestamp()}:{}),
     },{merge:true});
     if (receipt) tx.set(receipt, {fingerprint, expiresAt: Timestamp.fromMillis(now + 30 * 86400000)});

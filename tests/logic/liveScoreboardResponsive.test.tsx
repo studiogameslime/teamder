@@ -1,4 +1,5 @@
 import React from 'react';
+jest.mock('@/components/match/InPlayPenaltyModal',()=>({InPlayPenaltyModal:'InPlayPenaltyModal'}));
 import fs from 'fs';
 import vm from 'vm';
 import ts from 'typescript';
@@ -77,19 +78,38 @@ test('compact result panels cannot capture scroll gestures and retain score, nam
 });
 
 function screenSource(){const source=fs.readFileSync('src/screens/AdvancedLiveMatchScreen.tsx','utf8');return ts.createSourceFile('AdvancedLiveMatchScreen.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);}
-function extractedControls(kind:'goals'|'controls',context:any){
+test.each([
+ [0,8,1,0,'00:00'],
+ [479999,8,8,479999,'07:59'],
+ [480000,8,9,480000,'08:00'],
+ [630000,8,11,630000,'08:00'],
+ [630000,0,11,630000,'10:30'],
+])('live event time at %i ms with %i minute limit keeps full elapsed time', (timerMs,totalMinutes,minute,clockMs,timerText)=>{
+ const file=screenSource();let attributes:ts.JsxAttributes|undefined;
+ const visit=(node:ts.Node)=>{if(ts.isJsxSelfClosingElement(node)&&node.tagName.getText(file)==='LiveScoreboardCard')attributes=node.attributes;ts.forEachChild(node,visit);};visit(file);
+ if(!attributes)throw Error('Live scoreboard missing');
+ const values:any={};const totalMs=totalMinutes*60000;
+ for(const name of ['minute','clockMs','timerText']){
+  const attribute=attributes.properties.find(prop=>ts.isJsxAttribute(prop)&&prop.name.getText(file)===name) as ts.JsxAttribute;
+  const expression=(attribute.initializer as ts.JsxExpression).expression!.getText(file);
+  values[name]=vm.runInNewContext(expression,{Math,timerMs,totalMs,clockMs:totalMs>0?Math.min(timerMs,totalMs):timerMs,formatTime:(ms:number)=>`${String(Math.floor(ms/60000)).padStart(2,'0')}:${String(Math.floor(ms/1000)%60).padStart(2,'0')}`});
+ }
+ expect(values).toEqual({minute,clockMs,timerText});
+});
+function extractedControls(kind:'event'|'picker'|'controls',context:any){
  const file=screenSource();let stylesCode='',jsx='';
  const visit=(node:ts.Node)=>{
   if(ts.isVariableDeclaration(node)&&node.name.getText(file)==='styles')stylesCode=node.initializer!.getText(file);
   if(ts.isJsxElement(node)&&node.openingElement.tagName.getText(file)==='View'){
    const source=node.getText(file),opening=node.openingElement.getText(file);
-   if(kind==='goals'&&opening==='<'+'View style={styles.row}>'&&source.includes('styles.quickGoal'))jsx=source;
    if(kind==='controls'&&opening.includes('styles.controlRow')&&source.includes('styles.quickControl'))jsx=source;
   }
+  if(kind==='event'&&ts.isJsxElement(node)&&node.openingElement.tagName.getText(file)==='Pressable'&&node.openingElement.getText(file).includes('accessibilityLabel="הוסף אירוע"'))jsx=node.getText(file);
+  if(kind==='picker'&&ts.isJsxSelfClosingElement(node)&&node.tagName.getText(file)==='MatchEventPicker')jsx=node.getText(file);
   ts.forEachChild(node,visit);
  };visit(file);if(!jsx||!stylesCode)throw Error('control source missing');
  const js=ts.transpileModule(`const styles=${stylesCode};exports.result=(${jsx});`,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
- const exports:any={};vm.runInNewContext(js,{exports,require,View:'View',Pressable:'Pressable',Text:'Text',Ionicons:'Icon',ActivityIndicator:'Busy',RTL_LABEL_ALIGN:'left',StyleSheet:{create:(value:unknown)=>value},spacing:{xs:4,sm:8,md:12,lg:16,xl:20,xxl:24},typography:{},colors:{},overlaySurfaces:{dialog:{},sheet:{}},overlayTheme:{},...context});return exports.result;
+ const exports:any={};vm.runInNewContext(js,{exports,require,View:'View',Pressable:'Pressable',Text:'Text',MatchEventPicker:'Picker',Ionicons:'Icon',ActivityIndicator:'Busy',RTL_LABEL_ALIGN:'left',StyleSheet:{create:(value:unknown)=>value},spacing:{xs:4,sm:8,md:12,lg:16,xl:20,xxl:24},typography:{},colors:{},overlaySurfaces:{dialog:{},sheet:{}},overlayTheme:{},...context});return exports.result;
 }
 
 test('small live controls keep the clock on one line and other labels flexible with actions wired',()=>{
@@ -102,11 +122,27 @@ test('small live controls keep the clock on one line and other labels flexible w
  actions.forEach(action=>action.props.onPress());expect(start).toHaveBeenCalledTimes(1);expect(swap).toHaveBeenCalledWith(true);expect(end).toHaveBeenCalledTimes(1);expect(pause).not.toHaveBeenCalled();expect(resume).not.toHaveBeenCalled();
 });
 
-test('goal controls retain team colours, white-team black ink and direct side selection with flexible labels',()=>{
- const request=jest.fn();const tree=extractedControls('goals',{compactControls:true,canEnterGoals:true,rotation:{playing:[0,1]},draftTeams:{teams:[{index:0,colorKey:'yellow'},{index:1,colorKey:'white'}]},teamName:(index:number)=>index===0?'הצהובים':'הלבנים',teamColor:(index:number)=>index===0?'#EAB308':'#E5E7EB',setGoalRequest:request,Date});
- const actions=nodes(tree,'Pressable');expect(actions.map(action=>action.props.accessibilityLabel)).toEqual(['גול לצהובים','גול ללבנים']);
- expect(actions.map(action=>flatten(action.props.style).backgroundColor)).toEqual(['#EAB308','#E5E7EB']);
- expect(nodes(tree,'Text').map(label=>flatten(label.props.style).color)).toEqual(['#FFFFFF','#000000']);
-  nodes(tree,'Text').forEach(label=>{expect(label.props.numberOfLines).toBe(1);expect(label.props.minimumFontScale).toBe(0.75);expect(label.props.adjustsFontSizeToFit).toBe(true);expect(flatten(label.props.style).flexShrink).toBe(1);expect(flatten(label.props.style).flex).toBeUndefined();});
- actions.forEach(action=>action.props.onPress());expect(request.mock.calls.map(call=>call[0].side)).toEqual(['A','B']);
+test('one event control opens the picker, keeps the plus after the label for RTL and respects permission',()=>{
+ const open=jest.fn();
+ const tree=extractedControls('event',{canEnterGoals:true,eventContext:'round-a',setEventPicker:open});
+ expect(nodes(tree,'Pressable')).toHaveLength(1);expect(content(tree)).toBe('הוסף אירוע');
+ expect(tree.props.children.map((n:any)=>n.type)).toEqual(['Text','Icon']);
+ tree.props.onPress();expect(open).toHaveBeenCalledWith({context:'round-a',visible:true});
+ const denied=extractedControls('event',{canEnterGoals:false,eventContext:'round-a',setEventPicker:open});
+ expect(denied.props.disabled).toBe(true);expect(denied.props.accessibilityState.disabled).toBe(true);
+});
+
+test('picker routes each choice to the existing flow and rejects old round context or lost permission',()=>{
+ const goal=jest.fn(),penalty=jest.fn();
+ const context={canEnterGoals:true,eventContext:'round-a',eventPicker:{context:'round-a',visible:true},rotation:{playing:[2,0]},draftTeams:{teams:[]},teamName:(i:number)=>i===2?'הירוקים':'האדומים',teamColor:()=> '#FF0000',setGoalRequest:goal,setPenaltyRequest:penalty,setEventPicker:jest.fn(),Date};
+ const picker=extractedControls('picker',context);
+ expect(picker.props.teams.map((t:any)=>t.name)).toEqual(['הירוקים','האדומים']);
+ picker.props.onSelect('A');picker.props.onSelect('B');picker.props.onSelect('penalty');
+ expect(goal.mock.calls.map(call=>call[0].side)).toEqual(['A','B']);expect(penalty).toHaveBeenCalledTimes(1);
+ goal.mockClear();penalty.mockClear();
+ for(const overrides of [{canEnterGoals:false},{eventContext:'round-b'}]){
+  const blocked=extractedControls('picker',{...context,...overrides});expect(blocked.props.visible).toBe(false);
+  blocked.props.onSelect('A');blocked.props.onSelect('penalty');
+ }
+ expect(goal).not.toHaveBeenCalled();expect(penalty).not.toHaveBeenCalled();
 });

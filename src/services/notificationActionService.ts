@@ -237,7 +237,7 @@ export async function handleFillerOpportunityAction(
   try {
     // Lazy-import the callable infra so the bundle stays lean.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable');
     const { getFirebase } = await import('@/firebase/config');
     const { functions } = getFirebase();
     const fn = httpsCallable(functions, 'submitFillerInterest');

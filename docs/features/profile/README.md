@@ -6,6 +6,7 @@
 
 | פיצ׳ר | הסבר פשוט | פירוט מעמיק |
 |---|---|---|
+| הפעילות שלי ומקור המדידה האישי | [פשוט](my-activity.simple.md) | [מעמיק](my-activity.md) |
 | עריכת כרטיס השחקן ותמונת הפרופיל | [פשוט](profile-edit.simple.md) | [מעמיק](profile-edit.md) |
 | עריכת זמינות, מקום ורדיוס | [פשוט](availability-edit.simple.md) | [מעמיק](availability-edit.md) |
 | שבוע הפנויים | [פשוט](availability-week.simple.md) | [מעמיק](availability-week.md) |

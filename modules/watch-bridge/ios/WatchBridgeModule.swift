@@ -9,6 +9,7 @@
 import Foundation
 import ExpoModulesCore
 import WatchConnectivity
+import SystemConfiguration
 
 public class WatchBridgeModule: Module, WCSessionDelegate {
   private let diagnosticLock = NSLock()
@@ -36,6 +37,16 @@ public class WatchBridgeModule: Module, WCSessionDelegate {
 
   public func definition() -> ModuleDefinition {
     Name("WatchBridge")
+
+    // Route flags only. No HTTP probes, Wi-Fi identifiers or permission prompts.
+    AsyncFunction("getNetworkDiagnostics") { () -> [String: Any] in
+      guard let route = SCNetworkReachabilityCreateWithName(nil, "0.0.0.0") else { return [:] }
+      var flags = SCNetworkReachabilityFlags()
+      guard SCNetworkReachabilityGetFlags(route, &flags) else { return [:] }
+      let connected = flags.contains(.reachable) && !flags.contains(.connectionRequired)
+      return ["networkConnected": connected, "internetReachable": "unknown",
+        "networkType": connected ? (flags.contains(.isWWAN) ? "cellular" : "other") : "none"]
+    }
 
     AsyncFunction("takeDiagnostics") { () -> [String] in
       self.takeDiagnostics()

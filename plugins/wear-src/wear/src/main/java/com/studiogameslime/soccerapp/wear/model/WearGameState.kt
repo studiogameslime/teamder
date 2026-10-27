@@ -22,6 +22,7 @@ data class TimerState(
      *  baseElapsedMs + (elapsedRealtime() - parseAnchorRealtimeMs) — depends only
      *  on the watch's monotonic clock, immune to wall-clock skew vs the phone. */
     val parseAnchorRealtimeMs: Long = 0L,
+    val clockReady: Boolean = true,
 )
 
 /** One registered player, for the players-list drill-down. */
@@ -29,6 +30,7 @@ data class WearPlayer(
     val name: String,
     val photoUrl: String, // "" when the player has no photo → show initial
     val role: String,     // "admin" | "guest" | "member"
+    val id: String = "",
 )
 
 /**
@@ -55,6 +57,13 @@ sealed interface WearGameState {
          *  Start/Pause/Reset row when false — a non-controller's command is
          *  rejected by the phone anyway, so the buttons would be dead taps. */
         val canControl: Boolean = false,
+        val viewerId: String = "",
+        val roundId: String = "",
+        val sessionGeneration: Long = -1,
+        val publishedAtMs: Long = 0,
+        val players: List<WearPlayer> = emptyList(),
+        val registration: String = "registered",
+        val stale: Boolean = false,
     ) : WearGameState
 
     /** Registered to an UPCOMING game → next-game card + details, with a
@@ -67,6 +76,7 @@ sealed interface WearGameState {
         val playersCount: Int,
         val maxPlayers: Int,
         val players: List<WearPlayer>,
+        val registration: String = "registered",
     ) : WearGameState
 
     /** Game visible to the viewer but registration hasn't opened yet

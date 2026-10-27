@@ -2,12 +2,12 @@ import { observeCaughtError } from '../../utils/errorObservation';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, AccessibilityInfo, Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Defs, Ellipse, Line, Path, RadialGradient, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import { userService } from '@/services';
 import { playerStatsService, type PlayerStatsSummary } from '@/services/playerStatsService';
 import { StatisticsIllustration } from '@/components/stats/StatisticsIllustration';
 import { UserAvatar } from '@/components/UserAvatar';
+import { HomeProfileOverview } from './HomeProfileOverview';
 import { homeStatsSlides, nextPersonalMilestone } from '@/utils/homePersonalStats';
 import { scoreTrend } from '@/utils/personalStatistics';
 import { RTL_LABEL_ALIGN } from '@/theme';
@@ -55,7 +55,7 @@ function MiniScores({ points }: { points: ScorePoint[] }) {
 }
 
 /** Read-only home entry to lifetime statistics; never turns a failed read into an empty player. */
-export function HomePersonalStats({ user, onOpen, preview }: { user: User; onOpen: () => void; preview?: Preview }) {
+export function HomePersonalStats({ user, onOpen, onProfile, preview }: { user: User; onOpen: () => void; onProfile: () => void; preview?: Preview }) {
   const [result, setResult] = useState<{ owner: string; stats: PlayerStatsSummary; partner?: Partner } | null>(null);
   const [failed, setFailed] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -95,28 +95,28 @@ export function HomePersonalStats({ user, onOpen, preview }: { user: User; onOpe
   useEffect(() => { setIndex(0); list.current?.scrollToOffset({ offset: 0, animated: false }); }, [user.id, preview]);
   const stats = data?.stats;
   const milestone = stats ? nextPersonalMilestone(stats.goals) : null;
-  const cardHeight = Math.max(204, ...(slides.length ? slides : ['empty']).map(slide => cardHeights[layoutKey + slide] ?? 0));
-  const renderCard = (slide: string) => <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel="פתיחת הסטטיסטיקה האישית" style={[s.card, { minHeight: cardHeight, width: slides.length > 1 ? width - 14 : width }]}>
+  const cardHeight = Math.max(204, ...(slides.length ? slides : ['overview']).map(slide => cardHeights[layoutKey + slide] ?? 0));
+  const renderCard = (slide: string) => {
+    const content = <>
         <PitchWatermark />
-        <View style={slide === 'numbers' ? { minHeight: cardHeight - 34 } : undefined} onLayout={e => {
+        <View onLayout={e => {
           // Measure natural content, not the stretched card, so width/font changes can shrink too.
           const height = Math.ceil(e.nativeEvent.layout.height) + 34;
           const key = layoutKey + slide;
           setCardHeights(old => old[key] === height ? old : { ...old, [key]: height });
         }}>
-          {!stats ? <View style={s.loading}>{failed ? <Text style={s.subtitle}>לא הצלחנו לטעון את הנתונים שלך</Text> : <ActivityIndicator color="#2467F4" />}</View> : !slides.length ? <>
-            <Text style={s.title}>הכדורגל שלך מתחיל כאן</Text><Text style={s.subtitle}>אחרי המחזור הראשון יתחילו להצטבר הציונים, השערים והבישולים שלך</Text>
-            <View style={s.art}><StatisticsIllustration kind="boot" size={58} /><StatisticsIllustration kind="ball" size={68} /><StatisticsIllustration kind="trophy" size={54} /></View>
-            <View style={s.labels}>{['ציונים', 'שערים', 'בישולים'].map(t => <Text key={t} style={s.label}>{t}</Text>)}</View>
-          </> : slide === 'scores' ? <><Text style={s.title}>הכושר האחרון שלך</Text><Text style={s.subtitle}>הציונים שלך ב־{stats.highlights!.recentCount} המחזורים האחרונים</Text><MiniScores points={stats.highlights!.points.slice(-5)} /><View style={s.scoreFoot}><Text style={[s.trend, { color: scoreTrend(stats.highlights!.points) === 'up' ? '#139A55' : '#607292' }]}>{stats.highlights!.points.length < 2 ? 'ציון מחזור מתוך 10' : { up: 'במגמת עלייה', down: 'במגמת ירידה', mixed: 'מגמה מעורבת', stable: 'ללא שינוי' }[scoreTrend(stats.highlights!.points)]}</Text><FootballDataIllustration /></View></> : slide === 'numbers' ? <>
-            <Text style={s.title}>המספרים שלך על המגרש</Text><Text style={s.subtitle}>כל שער, כל בישול וכל ערב של כדורגל</Text><View style={s.numbersBody}><View style={s.numbers}>{[{ n: stats.goals, t: 'שערים', k: 'ball' }, { n: stats.assists, t: 'בישולים', k: 'boot' }, { n: stats.attendedGames, t: 'מחזורים', k: 'trophy' }].map(v => <View style={s.metric} key={v.t}><StatisticsIllustration kind={v.k as 'ball' | 'boot' | 'trophy'} size={34} /><Text style={s.value}>{v.n}</Text><Text style={s.metricText}>{v.t}</Text></View>)}</View></View>
-          </> : slide === 'partner' ? <><Text style={s.title}>השותף הקבוע שלך</Text><Text style={s.subtitle}>יש אנשים שהכדורגל פשוט מחבר ביניהם</Text><View style={s.partner}><UserAvatar user={data!.partner!} size={64} /><View><Text style={s.title}>{data!.partner!.name}</Text><Text style={s.subtitle}>{stats.mostPlayedWith!.count} מחזורים יחד</Text></View></View>{stats.regularPartnerResults && <PartnerResults results={stats.regularPartnerResults} />}</> : <><Text style={s.title}>היעד הבא שלך קרוב</Text><View style={s.partner}><StatisticsIllustration kind="trophy" size={72} /><View style={{ flex: 1 }}><Text style={s.value}>עוד {milestone!.remaining}</Text><Text style={s.subtitle}>שערים עד ל־{milestone!.target} שערים</Text></View></View></>}
+          {!stats ? <View style={s.loading}>{failed ? <Text style={s.subtitle}>לא הצלחנו לטעון את הנתונים שלך</Text> : <ActivityIndicator color="#2467F4" />}</View> : slide === 'overview' ?
+            <HomeProfileOverview stats={stats} playerId={user.id} onStatistics={onOpen} onProfile={onProfile} />
+          : slide === 'scores' ? <><Text style={s.title}>הכושר האחרון שלך</Text><Text style={s.subtitle}>הציונים שלך ב־{stats.highlights!.recentCount} המחזורים האחרונים</Text><MiniScores points={stats.highlights!.points.slice(-5)} /><View style={s.scoreFoot}><Text style={[s.trend, { color: scoreTrend(stats.highlights!.points) === 'up' ? '#139A55' : '#607292' }]}>{stats.highlights!.points.length < 2 ? 'ציון מחזור מתוך 10' : { up: 'במגמת עלייה', down: 'במגמת ירידה', mixed: 'מגמה מעורבת', stable: 'ללא שינוי' }[scoreTrend(stats.highlights!.points)]}</Text><FootballDataIllustration /></View></> : slide === 'partner' ? <><Text style={s.title}>השותף הקבוע שלך</Text><Text style={s.subtitle}>יש אנשים שהכדורגל פשוט מחבר ביניהם</Text><View style={s.partner}><UserAvatar user={data!.partner!} size={64} /><View><Text style={s.title}>{data!.partner!.name}</Text><Text style={s.subtitle}>{stats.mostPlayedWith!.count} מחזורים יחד</Text></View></View>{stats.regularPartnerResults && <PartnerResults results={stats.regularPartnerResults} />}</> : slide === 'milestone' && milestone ? <><Text style={s.title}>היעד הבא שלך קרוב</Text><View style={s.partner}><StatisticsIllustration kind="trophy" size={72} /><View style={{ flex: 1 }}><Text style={s.value}>עוד {milestone.remaining}</Text><Text style={s.subtitle}>שערים עד ל־{milestone.target} שערים</Text></View></View></> : null}
         </View>
-      </Pressable>;
+      </>;
+    const cardStyle = [s.card, { minHeight: cardHeight, width: slides.length > 1 ? width - 14 : width }];
+    return slide === 'overview' ? <View style={cardStyle}>{content}</View> :
+      <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel="פתיחת הסטטיסטיקה האישית" style={cardStyle}>{content}</Pressable>;
+  };
   return <View style={s.section}>
-    <View style={s.header}><Text style={s.heading}>הכדורגל שלך</Text><Pressable onPress={onOpen} accessibilityRole="button" style={s.link}><Text style={s.linkText}>לסטטיסטיקה שלך</Text><Ionicons name="chevron-back" size={16} color="#2467F4" /></Pressable></View>
     <View onLayout={e => setWidth(Math.max(100, e.nativeEvent.layout.width))}>
-      <FlatList ref={list} horizontal data={slides.length ? slides : ['empty']} keyExtractor={item => item}
+      <FlatList ref={list} horizontal data={slides.length ? slides : ['overview']} keyExtractor={item => item}
         style={{ height: cardHeight }}
         initialNumToRender={4} maxToRenderPerBatch={4} removeClippedSubviews={false}
         renderItem={({ item }) => renderCard(item)} showsHorizontalScrollIndicator={false}
@@ -127,7 +127,7 @@ export function HomePersonalStats({ user, onOpen, preview }: { user: User; onOpe
         extraData={{ stats, width, cardHeight, layoutKey }} />
     </View>
     {failed && <Pressable onPress={() => setRetry(n => n + 1)} style={s.retry} accessibilityRole="button"><Text style={s.linkText}>נסה שוב</Text></Pressable>}
-    {slides.length > 1 && <View style={s.dots}>{slides.map((item, i) => <Pressable key={item} onPress={() => select(i)} accessibilityRole="button" accessibilityLabel={`הצגת ${['המספרים שלך', 'הציונים שלך', 'השותף שלך', 'היעד הבא'][['numbers', 'scores', 'partner', 'milestone'].indexOf(item)]}`} accessibilityState={{ selected: i === current }} style={s.dotTarget}><View style={[s.dot, i === current && s.activeDot]} /></Pressable>)}</View>}
+    {slides.length > 1 && <View style={s.dots}>{slides.map((item, i) => <Pressable key={item} onPress={() => select(i)} accessibilityRole="button" accessibilityLabel={`הצגת ${['הכדורגל שלי', 'הציונים שלך', 'השותף שלך', 'היעד הבא'][['overview', 'scores', 'partner', 'milestone'].indexOf(item)]}`} accessibilityState={{ selected: i === current }} style={s.dotTarget}><View style={[s.dot, i === current && s.activeDot]} /></Pressable>)}</View>}
   </View>;
 }
 const s = StyleSheet.create({

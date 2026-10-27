@@ -1,13 +1,15 @@
 import { onDocumentDeletedWithAuthContext } from './observedFunctions';
 import { getFirestore } from 'firebase-admin/firestore';
+import { cancelDeletedClubActivity } from './clubDeletion';
 
 // A client cannot prove that a club was deleted. Only the deletion event can.
-export const onClubDeletedNotice = onDocumentDeletedWithAuthContext('groups/{groupId}', async event => {
+export const onClubDeletedNotice = onDocumentDeletedWithAuthContext({ document: 'groups/{groupId}', retry: true, timeoutSeconds: 540 }, async event => {
   if (!event.data) return;
   const club = event.data.data();
   const recipients = [...new Set<string>([...(club.playerIds ?? []), ...(club.adminIds ?? [])]
     .filter((id): id is string => typeof id === 'string' && id !== event.authId))];
   const db = getFirestore();
+  await cancelDeletedClubActivity(db, event.params.groupId, Date.parse(event.time));
   for (let i = 0; i < recipients.length; i += 400) {
     const batch = db.batch();
     for (const uid of recipients.slice(i, i + 400)) {

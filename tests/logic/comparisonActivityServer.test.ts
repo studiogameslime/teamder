@@ -32,6 +32,7 @@ function fixture() {
     if (name === 'firebase-admin/firestore') return { getFirestore: () => db };
     if (name === './appCheckPolicy') return { ENFORCE_APP_CHECK: true };
     if (name === './observedFunctions') return { HttpsError: CallError, onCall: (_options: any, handler: any) => handler };
+    if (name === './expectedCallableError') return { ExpectedCallableError: CallError };
     if (name === 'firebase-functions/v2/https') return { HttpsError: CallError, onCall: (_options: any, handler: any) => handler };
     if (name.startsWith('firebase-functions/v2/')) return {};
     if (name === './serverErrorLog') return { observeCaughtError: jest.fn() };
@@ -64,12 +65,18 @@ test('a second visit increments totals; spoofed names/times and actor ids never 
 });
 
 test('an older transaction cannot regress newer comparison context or remove its day bucket', async () => {
-  const f = fixture(), now = Date.now(), later = now + 86400000;
-  const today = f.api.comparisonWindow(now).today, tomorrow = f.api.comparisonWindow(later).today;
-  f.store.set('playerComparisonActivity/target/viewers/viewer', { total: 5, days: { [today]: 2, [tomorrow]: 3 }, lastAt: later, lastGroupId: 'newer-club', lastGroupName: 'החדש', lastScope: 'כל הזמנים' });
-  await f.api.recordPlayerComparison(f.request());
-  const value = f.store.get('playerComparisonActivity/target/viewers/viewer');
-  expect(value).toMatchObject({ total: 6, lastAt: later, lastGroupId: 'newer-club', lastGroupName: 'החדש', days: { [today]: 3, [tomorrow]: 3 } });
+  // Keep this transaction-order test independent of DST days lasting 25 hours.
+  const clock = jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-20T12:00:00Z'));
+  try {
+    const f = fixture(), now = Date.now(), later = now + 86400000;
+    const today = f.api.comparisonWindow(now).today, tomorrow = f.api.comparisonWindow(later).today;
+    f.store.set('playerComparisonActivity/target/viewers/viewer', { total: 5, days: { [today]: 2, [tomorrow]: 3 }, lastAt: later, lastGroupId: 'newer-club', lastGroupName: 'החדש', lastScope: 'כל הזמנים' });
+    await f.api.recordPlayerComparison(f.request());
+    const value = f.store.get('playerComparisonActivity/target/viewers/viewer');
+    expect(value).toMatchObject({ total: 6, lastAt: later, lastGroupId: 'newer-club', lastGroupName: 'החדש', days: { [today]: 3, [tomorrow]: 3 } });
+  } finally {
+    clock.mockRestore();
+  }
 });
 
 test.each(['anonymous', 'wrong identity', 'self', 'nonmember viewer', 'nonmember target', 'blocked viewer', 'blocked target', 'guest', 'missing target', 'personal club', 'deleted club'])('record rejects %s without creating history', async scenario => {

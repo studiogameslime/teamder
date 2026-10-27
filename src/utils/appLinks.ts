@@ -47,14 +47,7 @@ const ROLES = new Set<string>(['organiser', 'player']);
 
 const OUR_SCHEMES = new Set(['footy', 'teamder']);
 
-/** The same hosting origins deepLinkService accepts, so an https campaign link
- *  behaves exactly like the custom-scheme one. */
-const HOSTING_DOMAINS = new Set([
-  'teamderfc.web.app',
-  'teamderfc.firebaseapp.com',
-  'teamder.web.app',
-  'teamder.firebaseapp.com',
-]);
+import { HOSTING_DOMAINS } from './linkDomains';
 
 function queryParam(query: string, key: string): string | undefined {
   for (const pair of query.split('&')) {

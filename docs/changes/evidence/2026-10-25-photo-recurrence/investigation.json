@@ -1,0 +1,131 @@
+{
+  "checkedAt": "2026-10-25T09:04:23.381965+00:00",
+  "incident": {
+    "operation": "deleteUserPhoto",
+    "appVersion": "1.1.56",
+    "platform": "ios",
+    "lastCode": "storage/object-not-found",
+    "lastSeen": "2026-10-25T08:58:28.646Z",
+    "firstSeen": "2026-10-25T08:58:28.646Z",
+    "count": "1",
+    "status": "new"
+  },
+  "incidentId": "08cec75982745b416be6841ff2378f63",
+  "relatedEvents": [
+    {
+      "seq": 151,
+      "ms": 129779,
+      "name": "avatar_changed"
+    },
+    {
+      "seq": 161,
+      "ms": 135223,
+      "name": "profile_created"
+    },
+    {
+      "seq": 162,
+      "ms": 135224,
+      "name": "onboarding_completed"
+    },
+    {
+      "seq": 163,
+      "ms": 135230,
+      "name": "profile_confirmed"
+    },
+    {
+      "seq": 165,
+      "ms": 135636,
+      "name": "deleteUserPhoto"
+    }
+  ],
+  "currentProfile": {
+    "found": true,
+    "hasPhotoUrl": false,
+    "hasBuiltInAvatar": true,
+    "onboardingCompleted": true
+  },
+  "allIncidents": [
+    {
+      "id": "07afea2b34f9abee05932db92518fd9e",
+      "appVersion": "1.1.56",
+      "platform": "android",
+      "lastCode": "storage/object-not-found",
+      "lastSeen": "2026-10-19T16:41:38.655Z",
+      "count": "1"
+    },
+    {
+      "id": "08cec75982745b416be6841ff2378f63",
+      "appVersion": "1.1.56",
+      "platform": "ios",
+      "lastCode": "storage/object-not-found",
+      "lastSeen": "2026-10-25T08:58:28.646Z",
+      "count": "1"
+    },
+    {
+      "id": "58b527241421850da03aa71d3c57cbf1",
+      "appVersion": "1.1.56",
+      "platform": "android",
+      "lastCode": "storage/object-not-found",
+      "lastSeen": "2026-10-18T09:14:17.054Z",
+      "count": "1"
+    },
+    {
+      "id": "63e67147e984b50447273bca172fd3ba",
+      "appVersion": "1.1.56",
+      "platform": "ios",
+      "lastCode": "storage/object-not-found",
+      "lastSeen": "2026-10-21T12:09:50.914Z",
+      "count": "1"
+    },
+    {
+      "id": "a25a533848e8b8c7abe3c1efaf7628e2",
+      "appVersion": "1.1.56",
+      "platform": "android",
+      "lastCode": "storage/object-not-found",
+      "lastSeen": "2026-10-18T18:59:22.010Z",
+      "count": "1"
+    },
+    {
+      "id": "a7bc4c12a71761350e35d1aa602aca42",
+      "appVersion": "1.1.56",
+      "platform": "android",
+      "lastCode": "storage/object-not-found",
+      "lastSeen": "2026-10-20T08:04:13.899Z",
+      "count": "1"
+    },
+    {
+      "id": "c24f8c1b9a0dd14dafc2b58301c987cd",
+      "appVersion": "1.1.56",
+      "platform": "android",
+      "lastCode": "storage/object-not-found",
+      "lastSeen": "2026-10-19T15:53:35.130Z",
+      "count": "1"
+    }
+  ],
+  "linkedTaskCount": 0,
+  "releaseSource": "96e94cf3066c5bcafa80fc304f654f025ea90872",
+  "oldSourceHasMissingObjectGuard": false,
+  "internalSource": "7c6f98ebfbd36463dac86000b86f6a3c847b6f7d",
+  "internalSourceHasMissingObjectGuardBeforeBothReporters": true,
+  "existingReleaseItems": [
+    {
+      "id": "codex-pulse18-8",
+      "title": "מחיקת תמונת פרופיל חסרה",
+      "text": "object-not-found משלים מחיקה; כשלים אחרים ממשיכים להירשם. תיקון מקומי בלבד, טרם הופץ. נבדק בבדיקות נסיגה; תצוגת הרכיבים החדשה נבדקה במתאם דפדפן בלבד, ללא אימות במכשיר. הבדיקות המלאות עברו: 429 חבילות, 5,016 בדיקות; טיפוסים ותיעוד נקיים.",
+      "kind": "fix",
+      "type": "fix",
+      "version": "next",
+      "area": "profile/profile-edit",
+      "createdAt": "1792339540783"
+    },
+    {
+      "id": "pulse-continuation-20261021-photo",
+      "title": "מחיקת תמונת פרופיל שכבר חסרה אינה מדווחת כתקלה — מקומי, טרם הופץ",
+      "kind": "fix",
+      "version": "next",
+      "area": "פרופיל"
+    }
+  ],
+  "productionMutationPerformed": false,
+  "productionDeletionPerformed": false
+}

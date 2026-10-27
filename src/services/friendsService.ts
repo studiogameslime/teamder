@@ -84,7 +84,7 @@ function assertFriendOwner(uid: UserId): void {
 async function callable<T>(name: string, data: Record<string, unknown>, ownerId: UserId): Promise<T> {
   assertFriendOwner(ownerId);
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { httpsCallable } = require('firebase/functions');
+  const { httpsCallable } = require('@/services/diagnosticCallable');
   const { functions } = getFirebase();
   const result = await httpsCallable(functions, name)(data) as T;
   assertFriendOwner(ownerId);
@@ -251,7 +251,7 @@ export const friendsService = {
     checkOwner();
     const u = await userService.getUserById(uid);
     checkOwner();
-    if (!u) throw new Error('Friend list owner missing');
+    if (!u) throw Object.assign(new Error('Friend list owner missing'), { name: 'FriendOwnerMissingError' });
     return u.friends ?? [];
   },
 

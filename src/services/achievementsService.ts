@@ -86,6 +86,16 @@ export interface NewlyUnlocked {
   value: number;
 }
 
+async function readAchievementSource<T>(source: string, userId: UserId, read: () => Promise<T>): Promise<T> {
+  try {
+    return await read();
+  } catch (error) {
+    observeCaughtError(error, { source: 'src/services/achievementsService.ts', handler: 'readAchievementSource', site: `achievements:${source}` });
+    logError(source, error, { userId });
+    throw error;
+  }
+}
+
 export const achievementsService = {
   /**
    * Apply an increment to one of the achievement counters and persist
@@ -219,6 +229,23 @@ export const achievementsService = {
     }
     const playersCoached = playersCoachedSet.size;
 
+    // These read-only sources are independent; keep the lazy user-service import.
+    const [candidates, pairRows, invitesSent] = await Promise.all([
+      readAchievementSource('deriveGamesJoined', userId, () => loadParticipatedGames(userId)),
+      readAchievementSource('deriveMaxWinsWithPlayer', userId, async () => {
+        if (USE_MOCK_DATA) return [];
+        const [asA, asB] = await Promise.all([
+          getDocs(query(col.pairStats(), where('a', '==', userId))),
+          getDocs(query(col.pairStats(), where('b', '==', userId))),
+        ]);
+        return [...asA.docs, ...asB.docs];
+      }),
+      readAchievementSource('deriveInvitesSent', userId, async () => {
+        const { userService } = await import('./userService');
+        return userService.getInvitedUsersCount(userId);
+      }),
+    ]);
+
     // ── gamesJoined — past finished games where the user was in the
     //    final players[] AND actually arrived (arrival != 'no_show').
     //
@@ -235,7 +262,6 @@ export const achievementsService = {
     // (regular partner) badge. Reuses the SAME games scan — no extra reads.
     const withPlayer: Record<string, number> = {};
     try {
-      const candidates = await loadParticipatedGames(userId);
       const now = Date.now();
       for (const g of candidates) {
         // Canonical attended gate — shared with the Profile count, the
@@ -265,16 +291,11 @@ export const achievementsService = {
 
     // ── maxWinsWithPlayer — best "wins together" across teammates. Lives
     //    in the server-maintained pairStats docs (keyed a__b, with `a`/`b`
-    //    uid fields), so we read both halves and take the max. Best-effort
-    //    — 0 under mock or on any failure.
+    //    uid fields), so we read both halves and take the max. Mock has no pairs.
     let maxWinsWithPlayer = 0;
     if (!USE_MOCK_DATA) {
       try {
-        const [asA, asB] = await Promise.all([
-          getDocs(query(col.pairStats(), where('a', '==', userId))),
-          getDocs(query(col.pairStats(), where('b', '==', userId))),
-        ]);
-        for (const d of [...asA.docs, ...asB.docs]) {
+        for (const d of pairRows) {
           const w = (d.data() as { winsTogether?: number }).winsTogether ?? 0;
           if (w > maxWinsWithPlayer) maxWinsWithPlayer = w;
         }
@@ -283,19 +304,6 @@ export const achievementsService = {
         logError('deriveMaxWinsWithPlayer', err, { userId });
         throw err;
       }
-    }
-
-    // ── invitesSent — real referrals (users whose invitedBy points
-    //    at me). Reuses the existing count aggregation; lazy import
-    //    avoids a circular dep with userService.
-    let invitesSent = 0;
-    try {
-      const { userService } = await import('./userService');
-      invitesSent = await userService.getInvitedUsersCount(userId);
-    } catch (err) {
-    observeCaughtError(err, {"source":"src/services/achievementsService.ts","handler":"deriveCounters","site":"achievementsService:069a93d2c3"});
-      logError('deriveInvitesSent', err, { userId });
-      throw err;
     }
 
     return {

@@ -289,7 +289,7 @@ export async function trackCampaignEvent(campaignId: string, event: CampaignEven
   if (!rcBool('feature_campaigns')) return;
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable');
     const { functions } = getFirebase();
     await httpsCallable(functions, 'trackCampaignEvent')({ campaignId, event });
   } catch (err) {

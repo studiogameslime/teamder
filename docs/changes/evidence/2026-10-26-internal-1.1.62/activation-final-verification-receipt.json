@@ -1,0 +1,47 @@
+{
+  "completedAtUtc": "2026-10-26T05:19:24.602345+00:00",
+  "checks": [
+    {
+      "name": "root-typecheck",
+      "exitCode": 0,
+      "log": "artifacts/android-personal-activity-2026-10-26/activation-final-root-typecheck.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "jest",
+      "exitCode": 0,
+      "log": "artifacts/android-personal-activity-2026-10-26/activation-final-jest.log",
+      "logSha256": "df61c8580d571947d15cf241ea1a02155e43e81e7a0949d1c73b129c289bee52"
+    }
+  ],
+  "jest": {
+    "passedSuites": 528,
+    "totalSuites": 528,
+    "passedTests": 6003,
+    "totalTests": 6003,
+    "maxWorkers": 2,
+    "reportedDurationSeconds": 222.214
+  },
+  "focusedReview": "artifacts/android-personal-activity-2026-10-26/activation-final-focused-review.json",
+  "sourceCodeModifiedByThisVerification": false,
+  "updatedDocumentationPair": "shared/native-integrations",
+  "limitations": [
+    "Kotlin callback and Gradle signing-path fixes received read-only code review.",
+    "Not proof of sensor collection, signed store artifact verification or publication."
+  ],
+  "runtimeSourceMatchesCanonical": {
+    "java/com/studiogameslime/soccerapp/wear/activity/PersonalExerciseService.kt": true,
+    "java/com/studiogameslime/soccerapp/wear/activity/NullableFutureCallback.kt": true,
+    "AndroidManifest.xml": true
+  },
+  "runtimeEvidenceReviewed": [
+    "wear-health-runtime-audit.md",
+    "wear-runtime-receipt.json",
+    "wear-runtime-nohr-final.log",
+    "wear-runtime-hr-final.log",
+    "wear-runtime-denied-final.log",
+    "wear-runtime-foreground-evidence.log"
+  ],
+  "runtimeScope": "Native service on API 35 isolated Wear OS emulator with simulated sensors; no account, paired phone or published test samples. API 36 and physical sensors not tested.",
+  "documentationStatusCardRefreshed": "shared/native-integrations"
+}

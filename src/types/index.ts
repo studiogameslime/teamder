@@ -733,13 +733,16 @@ export interface UserStats {
   /** Lifetime assists — incremented server-side by `commitRoundStats` when the
    *  admin attributes an assist to the goal during an advanced-match round. */
   assists?: number;
-  /** Penalty stats (penalty SHOOTOUTS only — not general shots/saves).
+  /** Combined penalty stats, regulation and shootout attempts (not general shots/saves).
    *  As kicker: taken = scored + missed. Keeper faced includes off-target misses;
    *  only an explicit save credits saved on new kicks (legacy misses retain their stats).
    *  All incremented server-side by `commitRoundStats`. All optional → no
    *  migration; a player with no penalties simply has them undefined. */
   penTaken?: number;
   penScored?: number;
+  /** Subset of combined penalty counters, during regulation play. */
+  penInPlayTaken?: number;
+  penInPlayScored?: number;
   penMissed?: number;
   penFaced?: number;
   penSaved?: number;
@@ -1412,8 +1415,21 @@ export interface MatchRotation {
  */
 export type PenaltyOutcome = 'goal' | 'save' | 'miss';
 
+export interface InPlayPenalty {
+  id: string;
+  team: 'A' | 'B';
+  kickerId: UserId;
+  keeperId: UserId | null;
+  outcome: PenaltyOutcome;
+  minute: number;
+  /** Exact displayed match clock when confirmed; absent on minute-only events. */
+  clockMs?: number;
+  at: number;
+}
+
 export interface RoundGoal {
   id: string;
+  penaltyId?: string;
   team: 'A' | 'B';
   scorerId: UserId | null;
   /** Player who assisted the goal (same team, not the scorer), or null when
@@ -2274,6 +2290,7 @@ export interface LiveMatchState {
    * `MatchRound.goals` and cleared when the round ends.
    */
   goals?: RoundGoal[];
+  inPlayPenalties?: InPlayPenalty[];
   /**
    * Penalty-shootout state for a drawn mini-game (the tiebreaker). Lives here
    * during the shootout and is cleared at round-end (like `goals`). `firstTeam`
@@ -2376,6 +2393,8 @@ export interface LiveMatchState {
    *  doesn't have to look the user up. Optional — legacy state has
    *  neither field. */
   timerControlledByName?: string | null;
+  /** Idempotency key for a durable native-widget command. */
+  lastWidgetCommandId?: string;
 
   /**
    * Chronological, synced log of every timer control press — drives the

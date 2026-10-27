@@ -16,7 +16,7 @@ function fixture(retry?: (fn:()=>Promise<any>)=>Promise<any>) {
   };
   const module={exports:{} as any};
   const code=ts.transpileModule(fs.readFileSync('src/services/socialPlayersService.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-  vm.runInNewContext(code,{module,exports:module.exports,require:(name:string)=>deps[name]});
+  vm.runInNewContext(code,{module,exports:module.exports,require:(name:string)=>{if(name.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(name.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(name==='@/services/diagnosticCallable')name='firebase/functions';return deps[name];}});
   return {service:module.exports.socialPlayersService,auth,state,remote,local};
 }
 test('privacy form belonging to previous account cannot write current account',async()=>{
@@ -48,12 +48,23 @@ test('multi-select remains compatible with deployed search and preserves paginat
   expect(f.remote).toHaveBeenLastCalledWith({day:3});
 });
 
-test('legacy server pages keep their cursor when existing friends are excluded locally',async()=>{
+test('server pages retain existing friends in all-player search and preserve the cursor',async()=>{
  const f=fixture(),friend={id:'friend',name:'איתי',city:'',friend:true};
  f.remote.mockResolvedValueOnce({data:{players:[friend],cursor:'after-friend'}} as any);
- expect(await f.service.search({})).toEqual({players:[],cursor:'after-friend'});
+ expect(await f.service.search({text:'איתי'})).toEqual({players:[friend],cursor:'after-friend'});
  f.remote.mockResolvedValueOnce({data:{players:[friend],cursor:null}} as any);
  expect(await f.service.search({friendsOnly:true})).toEqual({players:[friend],cursor:null});
+});
+
+test('a named friend remains findable after empty server pages',async()=>{
+ const f=fixture(),friend={id:'friend',name:'איתי לוי',city:'',friend:true};
+ f.remote.mockResolvedValueOnce({data:{players:[],cursor:'page-2'}} as any);
+ f.remote.mockResolvedValueOnce({data:{players:[],cursor:'page-3'}} as any);
+ f.remote.mockResolvedValueOnce({data:{players:[friend],cursor:null}} as any);
+ let page=await f.service.search({text:'לוי'});
+ while(page.cursor) page=await f.service.search({text:'לוי',cursor:page.cursor});
+ expect(page.players).toEqual([friend]);
+ expect(f.remote.mock.calls).toEqual([[{text:'לוי'}],[{text:'לוי',cursor:'page-2'}],[{text:'לוי',cursor:'page-3'}]]);
 });
 
 test('a server cursor which does not advance fails instead of looping forever',async()=>{

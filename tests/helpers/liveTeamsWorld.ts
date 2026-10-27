@@ -72,7 +72,7 @@ export function liveTeamsWorld(mock=false,initial=liveTeamsFixture()) {
   };
   const exports:any={};
   class TestDate extends Date { static now(){return now;} }
-  vm.runInNewContext(compiled,{exports,require:(name:string)=>dependencies[name]??{},__DEV__:false,Date:TestDate,console,setTimeout,clearTimeout});
+  vm.runInNewContext(compiled,{exports,require:(name:string)=>{if(name.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(name.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(name==='@/services/diagnosticCallable')name='firebase/functions';return dependencies[name]??{};},__DEV__:false,Date:TestDate,console,setTimeout,clearTimeout});
   const service=exports.gameService;
   service.getGameById=async()=>mock?structuredClone(state):converted();
   return{state,service,writes,events,logs,callable,committedHistory,mutate,read:()=>mock?structuredClone(state):converted(),attempts:()=>attempts,

@@ -166,7 +166,7 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
     } finally {
       setLoading(false);
     }
-  }, [groupId, me]);
+  }, [groupId, me?.id, me?.isGuest]);
 
   // Single load path: useFocusEffect fires on the initial focus AND on return,
   // so it also refreshes the roster badge after a card is revoked from a

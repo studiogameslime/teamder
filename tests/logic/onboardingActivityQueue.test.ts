@@ -41,6 +41,22 @@ test('network failure retains original event IDs and repeated clicks are separat
   expect(mockSend.mock.calls[1][0].events.map((event: any) => event.id)).toEqual(before.map((event: any) => event.id));
   expect(JSON.parse(mockStorage.get(key)!)).toEqual([]);
 });
+
+test('transient delivery failures are retained, reported once when sustained, and recover with the same event', async () => {
+  const observation = require('../../src/utils/errorObservation');
+  const observe = jest.spyOn(observation,'observeCaughtError');
+  const { recordOnboardingActivity } = require('@/services/onboardingActivity');
+  mockUser={uid:'guest'};
+  mockSend.mockRejectedValue(Object.assign(new Error('deadline-exceeded'),{code:'functions/deadline-exceeded'}));
+  recordOnboardingActivity('entry_intent_selected',{intent:'invite'});
+  await drain();await jest.advanceTimersByTimeAsync(2000);expect(observe).not.toHaveBeenCalled();
+  const id=JSON.parse(mockStorage.get(key)!)[0].id;
+  await jest.advanceTimersByTimeAsync(4000);expect(observe).not.toHaveBeenCalled();
+  await jest.advanceTimersByTimeAsync(8000);expect(observe).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(mockStorage.get(key)!)[0].id).toBe(id);
+  succeed();await jest.advanceTimersByTimeAsync(16000);expect(JSON.parse(mockStorage.get(key)!)).toEqual([]);
+  expect(observe).toHaveBeenCalledTimes(1);observe.mockRestore();
+});
 test('unrelated application actions do not enter the remote stream', async () => {
   const { recordOnboardingActivity } = require('@/services/onboardingActivity');
   recordOnboardingActivity('chat_message_sent', { text: 'private' });

@@ -33,6 +33,8 @@ import com.studiogameslime.soccerapp.wear.ui.WearApp
 class MainActivity : ComponentActivity() {
 
     private lateinit var repo: WearStateRepository
+    private var resumePersonalAfterPermission = false
+    private var requestedActivitySource: com.studiogameslime.soccerapp.wear.activity.ActivitySourceBinding? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,13 +69,69 @@ class MainActivity : ComponentActivity() {
                 WearApp(
                     state = shown,
                     onCreateOnPhone = ::openCreateOnPhone,
+                    onStartPersonalActivity = ::requestPersonalActivity,
+                    onStopPersonalActivity = {
+                        startService(Intent(this@MainActivity, com.studiogameslime.soccerapp.wear.activity.PersonalExerciseService::class.java).setAction("stop"))
+                    },
                     onTimerCommand = { action, gameId ->
                         WearCommandSender.sendTimerCommand(
-                            applicationContext, action, gameId,
+                            applicationContext, action, (shown as? WearGameState.Live) ?: return@WearApp,
                         )
                     },
                 )
             }
+        }
+    }
+
+    private fun requestPersonalActivity() {
+        if (!SportsActivity.ENABLED) return
+        val selected=com.studiogameslime.soccerapp.wear.activity.StandaloneSourceStore.binding.value
+        if(selected==null){
+            com.studiogameslime.soccerapp.wear.activity.PersonalExerciseService.feedback.value="בחרו את השעון הזה כמקור הפעילות במסך הפעילות שלי בטלפון"
+            return
+        }
+        requestedActivitySource=selected
+        val hr = if (Build.VERSION.SDK_INT >= 36) "android.permission.health.READ_HEART_RATE" else "android.permission.BODY_SENSORS"
+        val missing = arrayOf("android.permission.ACTIVITY_RECOGNITION", hr).filter {
+            checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isNotEmpty()) {
+            resumePersonalAfterPermission = true
+            requestPermissions(missing.toTypedArray(), 2)
+        } else startPersonalActivity()
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 2 && resumePersonalAfterPermission) {
+            resumePersonalAfterPermission = false
+            if (checkSelfPermission("android.permission.ACTIVITY_RECOGNITION") == android.content.pm.PackageManager.PERMISSION_GRANTED) startPersonalActivity()
+            else {
+                requestedActivitySource=null
+                com.studiogameslime.soccerapp.wear.activity.PersonalExerciseService.feedback.value = "נדרשת הרשאת פעילות גופנית למדידה. אפשר לשנות אותה בהגדרות השעון"
+            }
+        }
+        if (requestCode == 1) com.studiogameslime.soccerapp.wear.ongoing.LiveOngoingActivity.update(this, repo.state.value)
+    }
+
+    private fun startPersonalActivity() {
+        if (!SportsActivity.ENABLED) return
+        val source=com.studiogameslime.soccerapp.wear.activity.StandaloneSourceStore.binding.value
+        val expected=requestedActivitySource
+        requestedActivitySource=null
+        if(source==null || expected?.sameSource(source)!=true){
+            com.studiogameslime.soccerapp.wear.activity.PersonalExerciseService.feedback.value="בחרו את השעון הזה כמקור הפעילות במסך הפעילות שלי בטלפון"
+            return
+        }
+        try {
+            androidx.core.content.ContextCompat.startForegroundService(this, Intent(this,
+                com.studiogameslime.soccerapp.wear.activity.PersonalExerciseService::class.java).apply {
+                putExtra("mode","standalone");putExtra("userId",source.userId);putExtra("phoneNodeId",source.phoneNodeId)
+                putExtra("connectionId",source.connectionId);putExtra("sourceGeneration",source.sourceGeneration)
+                putExtra("readerInstallationId",source.readerInstallationId);putExtra("deviceId",source.deviceId)
+            })
+        } catch (_: Exception) {
+            com.studiogameslime.soccerapp.wear.activity.PersonalExerciseService.feedback.value = "לא ניתן להתחיל מדידה. בדקו הרשאות ואת גרסת השעון"
         }
     }
 
@@ -87,7 +145,7 @@ class MainActivity : ComponentActivity() {
         try {
             val intent = Intent(Intent.ACTION_VIEW)
                 .addCategory(Intent.CATEGORY_BROWSABLE)
-                .setData(Uri.parse("teamder://create"))
+                .setData(Uri.parse("teamder://open/create-game"))
             RemoteActivityHelper(this).startRemoteActivity(intent)
         } catch (e: Exception) {
             // best-effort — nothing else to do on the watch if it fails
@@ -97,6 +155,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         repo.start()
+        com.studiogameslime.soccerapp.wear.activity.ActivityJournal(applicationContext).publish()
     }
 
     override fun onPause() {

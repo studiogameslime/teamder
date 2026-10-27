@@ -1,4 +1,11 @@
 import{parseJournal,copyJournal,stepTime}from'../../scripts/pulse-ui/diagnosticTimeline';
+it('reads richer failure-time state, bounded operations and explicitly unknown connectivity',()=>{
+ const raw=JSON.stringify({schema:1,sessionId:'one',total:0,omitted:0,entries:[],context:{networkConnected:'unknown',profilePresent:false},operationsOmitted:4,
+  operations:[{id:'request-id',name:'call:join',startedAt:123,result:'failure',durationMs:42,code:'functions/unauthenticated',before:{profilePresent:false},after:{profilePresent:true}},null]});
+ const j=parseJournal(raw)!;expect(j.context).toMatchObject({networkConnected:'unknown',profilePresent:false});expect(j.operationsOmitted).toBe(4);
+ expect(j.operations).toHaveLength(1);expect(j.operations![0]).toMatchObject({durationMs:42,before:{profilePresent:false},after:{profilePresent:true}});
+ expect(copyJournal(j)).toContain('request-id');
+});
 const snapshot=(entries:unknown[],total=entries.length)=>JSON.stringify({schema:1,sessionId:'test',total,omitted:total-entries.length,entries});
 it('reads a saved real journal in order and preserves entity identifiers',()=>{
  const j=parseJournal(snapshot([{seq:2,ms:200,kind:'press',name:'round_tab',data:{gameId:'canonical-round',tab:'stats'}},{seq:1,ms:0,kind:'launch',name:'app_launch'}]));

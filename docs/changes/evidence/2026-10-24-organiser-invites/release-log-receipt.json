@@ -1,0 +1,18 @@
+{
+  "readBackVerified": true,
+  "entries": [
+    {
+      "area": "מועדונים והזמנות",
+      "shotId": "efa300e314f2468890a4454db7dc834a",
+      "proofReadBack": true
+    },
+    {
+      "area": "פולס ומסעות",
+      "shotId": "2fb0560bfd3c4e2fb9b23bd86a22c8a2",
+      "proofReadBack": true
+    }
+  ],
+  "added": 2,
+  "built": false,
+  "deployed": false
+}

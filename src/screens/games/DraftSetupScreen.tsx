@@ -1,3 +1,4 @@
+import { returnFromDraft } from '@/utils/draftNavigation';
 import { observeCaughtError } from '../../utils/errorObservation';
 // DraftSetupScreen — Step 1 of חלוקת כוחות.
 //
@@ -57,7 +58,7 @@ type Params = RouteProp<GameStackParamList, 'DraftSetup'>;
 export function DraftSetupScreen() {
   const nav = useNavigation<Nav>();
   const params = useRoute<Params>().params;
-  const { gameId } = params;
+  const { gameId, returnRouteKey } = params;
   const requestedPreview = (params as typeof params & {manualPreview?:number}).manualPreview;
   const previewCount = __DEV__ && USE_MOCK_DATA && process.env.EXPO_PUBLIC_QA_ROUTES === '1' && (requestedPreview===3||requestedPreview===4) ? requestedPreview : 0;
 
@@ -272,7 +273,7 @@ export function DraftSetupScreen() {
       order: method,
       participants: participants.length,
     });
-    nav.navigate('DraftBoard', { gameId, captainIds, method });
+    nav.navigate('DraftBoard', { gameId, captainIds, method, returnRouteKey });
   };
 
   // "אוטומטי לפי דירוג" only makes sense where the admins keep internal
@@ -385,6 +386,7 @@ export function DraftSetupScreen() {
       }
       nav.navigate('DraftBoard', {
         gameId: game.id,
+        returnRouteKey,
         captainIds: result.teams.map((t) => t.captainId),
         method: 'snake',
         resume: true,
@@ -416,6 +418,7 @@ export function DraftSetupScreen() {
     hasTeams,
     useCompletions,
     nav,
+    returnRouteKey,
   ]);
 
   if(loadingGame || openingExisting || loadFailed || !game || game.id!==gameId) return <SafeAreaView style={styles.root} edges={['top','bottom']}><ScreenHeader title={he.draftTitle}/><View style={{flex:1,alignItems:'center',justifyContent:'center',padding:24,gap:16}}>{loadFailed ? <><Text style={{color:colors.text,textAlign:'center'}}>לא הצלחנו לטעון את נתוני הכוחות</Text><Button title={he.retry} onPress={()=>setRetryLoad(value=>value+1)}/></> : <><ActivityIndicator color={colors.primary}/><Text style={{color:colors.textMuted,textAlign:'center'}}>טוענים את נתוני הכוחות</Text></>}</View></SafeAreaView>;
@@ -430,7 +433,7 @@ export function DraftSetupScreen() {
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ManualAllocation key={`${currentUser.id}:${gameId}:${game.draftTeams?.createdAt ?? 0}:${editSavedTeams}`} game={game} userId={currentUser.id} players={participants} preferSaved={editSavedTeams} count={editSavedTeams ? game.draftTeams?.teams.length || expectedCaptains : expectedCaptains}
         onEditColor={canEditColors ? setColorIndex : undefined}
-        onBack={() => {setEditSavedTeams(false);setSplitMode(null);}} onSaved={() => nav.navigate('MatchDetails', {gameId})}/>
+        onBack={() => {setEditSavedTeams(false);setSplitMode(null);}} onSaved={() => returnFromDraft(nav, gameId, returnRouteKey)}/>
       {colorEditor}
     </SafeAreaView>
   );

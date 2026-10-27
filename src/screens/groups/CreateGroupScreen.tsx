@@ -70,7 +70,6 @@ export function CreateGroupScreen() {
         { groupId, celebrate: true },
       );
     } catch (e) {
-    observeCaughtError(e, {"source":"src/screens/groups/CreateGroupScreen.tsx","handler":"createFromValues","site":"CreateGroupScreen:b5f8b480c2"});
       // Two practical failure modes, both worth their own message:
       //   `unauthenticated`  — the App Check / Play Integrity gate rejected the
       //                        callable. Common on an emulator, or before the
@@ -82,6 +81,7 @@ export function CreateGroupScreen() {
       // empty — the guard working, not the app failing. It used to reach the
       // production error panel as "יצירת מועדון נכשלה" and read like a defect.
       if (code !== 'VALIDATION_ERROR') {
+        observeCaughtError(e, {"source":"src/screens/groups/CreateGroupScreen.tsx","handler":"createFromValues","site":"CreateGroupScreen:b5f8b480c2"});
         logError('createGroup', e, {
           screen: 'CreateGroupScreen',
           code,

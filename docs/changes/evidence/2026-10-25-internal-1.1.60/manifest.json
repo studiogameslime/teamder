@@ -1,0 +1,17 @@
+{
+  "version": "1.1.60",
+  "versionCode": 294,
+  "files": {
+    "build-receipt.json": "1d6ccda34f34cbc4bd3d97d8eed0f28a256e7419b1b8b83621b2bc794e2f55ed",
+    "code-checks.json": "0b048f3249f9bf2e90cd4c74e2ad46cff88d38ad74f13e2302d32da35163a550",
+    "documentation-checks.json": "2c3776174f466eb2b36f4a450bda531b8163b0583ddffc018234bf895226bec9",
+    "offline-binary.json": "003d8768859955e01f2de41a0fce9421a3991d86ffeaad1e9b85c1b84226ce1c",
+    "profile-setting-operation-result.json": "1bf70976529ce2d1acc51207ab0183acc83e179f3fc5ddbf8889aa9d82a64ae4",
+    "release-log-receipt.json": "be0f92858e2fdbb57d2f283eeb691b0e5586e4c5cdb5550e98e79fe2e3f24186",
+    "server-plan.json": "fad48d4cb0756e39403c70752f33c73e4ac6790fdac0632cef7fb2268164045b",
+    "server-proof.json": "7f85415b0f95ca61b32b0636cce25fe9258c3e2646de310a6f7ed2fa68355372",
+    "tracks-before.json": "ff03c456255e44189310181d02cd6d685f7d479067f21c22d5c8827a8db2b893",
+    "tracks-verified.json": "ba2c6710939f4f2f3a6791b099c56a80b995988c4a4544d91f76a7bacb78cfbe",
+    "working-source-proof.json": "ee813b758d4747e6999482e6b742e21db9597866ec7b44b7c80441bda93d8dfa"
+  }
+}

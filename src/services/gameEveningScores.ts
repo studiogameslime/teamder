@@ -1,4 +1,4 @@
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/services/diagnosticCallable';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 
 /** A sealed evening score, never championship points or a club's latest score. */

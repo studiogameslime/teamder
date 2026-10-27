@@ -1,4 +1,5 @@
 import type {Game} from '@/types';
+import {inPlayPenaltyFingerprint} from '@/utils/inPlayPenalty';
 import {liveLineupFingerprint} from '@/utils/liveLineupFingerprint';
 
 /** Wire identity for an atomic replacement of a shootout. Keep parity with
@@ -20,6 +21,7 @@ export function alternativeRoundFingerprint(game: Pick<Game,'status'|'rotation'|
     live?.scoreA??0,live?.scoreB??0,
     (live?.goals??[]).map(goal=>[goal.id??null,goal.team,goal.scorerId??null,goal.assisterId??null,goal.assistStatus??null,!!goal.ownGoal,goal.minute??0]),
     series,
+    ...(live?.inPlayPenalties?.length ? [inPlayPenaltyFingerprint(live.inPlayPenalties)] : []),
     [rot?.wins??null,rot?.baseTeams??null,rot?.fillUsage??null,rot?.lastRoundWinners??null,rot?.lastRoundLosers??null,rot?.lastRoundAt??null,rot?.roundInstanceRound??null],
     [draft?.method??'snake',draft?.numTeams??draft?.teams.length??0,draft?.createdAt??0,draft?.createdBy??'',draft?.completionMode??null,draft?.fillMode??null,draft?.published??null,
       draft?.originalTeams?.length?draft.originalTeams.map(team=>[team.index,team.captainId||team.playerIds?.[0]||'',team.playerIds,team.colorKey??null]):null,

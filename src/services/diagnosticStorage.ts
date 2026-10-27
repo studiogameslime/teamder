@@ -33,7 +33,7 @@ export function savePendingDiagnosticErrors(rows:unknown[]):Promise<void>{
  const compact = retained.map((row, index) => {
   if (index >= retained.length - 3 || !row || typeof row !== 'object') return row;
   const r = row as {entry?: Record<string, unknown>};
-  return r.entry ? {...r, entry: {...r.entry, journal: '', trail: ''}} : row;
+  return r.entry ? {...r, entry: {...r.entry, journal: '', trail: '', occurrences: [], context: {...(r.entry.context as object),diagnosticEvidenceOmitted:true}}} : row;
  });
  if (rows.length > retained.length) {
   const last = retained.at(-1) as {entry?: {userId?: string; version?: string}} | undefined;

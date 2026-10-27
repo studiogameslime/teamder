@@ -1,3 +1,4 @@
+import { MyActivityScreen } from '@/screens/profile/MyActivityScreen';
 import { ManagerDashboardScreen } from '@/screens/communities/ManagerDashboardScreen';
 // Stack inside the Profile tab. The Profile screen is the landing; Stats,
 // History, Edit, Availability, Admin Approval, and PlayerCard are all
@@ -102,9 +103,10 @@ export type ProfileStackParamList = {
   // caller passes and expects.
   MatchDetails: { gameId: string; initialTab?: 'info' | 'games' | 'stats' | 'players' };
   // Draft Teams (חלוקת כוחות) — reachable from MatchDetails' "קביעת כוחות".
-  DraftSetup: { gameId: string; resumeManual?: boolean };
+  DraftSetup: { gameId: string; returnRouteKey?: string; resumeManual?: boolean; editExisting?: boolean };
   DraftBoard: {
     gameId: string;
+    returnRouteKey?: string;
     captainIds: string[];
     method: 'snake' | 'regular';
     resume?: boolean;
@@ -112,6 +114,7 @@ export type ProfileStackParamList = {
     readOnly?: boolean;
   };
   EveningSummary: { gameId: string };
+  MyActivity: undefined;
   /** `seasonId` omitted = the season currently running. */
   SeasonSummary: { groupId: string; seasonId?: string };
   // `live` is set when the screen is opened from the live screen mid-evening.
@@ -251,6 +254,7 @@ export function ProfileStack() {
       <Stack.Screen name="DraftSetup" component={DraftSetupScreen} />
       <Stack.Screen name="DraftBoard" component={DraftBoardScreen} />
       <Stack.Screen name="EveningSummary" component={EveningSummaryScreen} />
+      <Stack.Screen name="MyActivity" component={MyActivityScreen} />
       <Stack.Screen name="SeasonSummary" component={SeasonSummaryScreen} />
       <Stack.Screen name="MatchRounds" component={MatchRoundsScreen} />
       <Stack.Screen name="AddMembers" component={AddMembersScreen} />

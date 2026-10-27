@@ -9,6 +9,11 @@
     <!-- Ongoing Activity notification for a running live-match timer (Wear
          App Quality requirement — watch-face indicator + recents chip). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="android.permission.BODY_SENSORS" android:maxSdkVersion="35" />
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
     <!-- Declared to match the app-level "uses advertising ID" declaration
          in Play Console (the phone app uses AdMob). The watch shows no ads
          and never reads the ad id, but the artifact must carry the
@@ -35,6 +40,11 @@
         <meta-data
             android:name="com.google.android.wearable.standalone"
             android:value="true" />
+
+        <service
+            android:name=".activity.PersonalExerciseService"
+            android:exported="false"
+            android:foregroundServiceType="health" />
 
         <activity
             android:name=".MainActivity"
@@ -74,10 +84,26 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/teamder/activity-source" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/teamder/standalone-activity-ack/" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
                 <data
                     android:scheme="wear"
                     android:host="*"
                     android:pathPrefix="/teamder/state" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/teamder/activity-ack/" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data android:scheme="wear" android:host="*" android:path="/teamder/clock-result" />
             </intent-filter>
         </service>
     </application>

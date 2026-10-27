@@ -1,4 +1,4 @@
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/services/diagnosticCallable';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 import { withAuthRaceRetry } from '@/firebase/authRace';
 import { StaleSessionError } from './staleSession';
@@ -13,7 +13,7 @@ async function call<T>(name: string, data: unknown, expectedOwner = useUserStore
   if (!expectedOwner || owner !== expectedOwner) throw new StaleSessionError(expectedOwner ?? '', owner);
   const result = await withAuthRaceRetry(() => {
     if(auth.currentUser?.uid !== owner || useUserStore.getState().currentUser?.id !== expectedOwner) throw new StaleSessionError(owner,auth.currentUser?.uid ?? '');
-    return httpsCallable(functions, name)(data);
+    return httpsCallable(functions, name, name === 'getSocialPlayerProfile' ? {timeout:15000} : undefined)(data);
   });
   if (auth.currentUser?.uid !== owner || useUserStore.getState().currentUser?.id !== expectedOwner) throw new StaleSessionError(owner, auth.currentUser?.uid ?? '');
   return result.data as T;

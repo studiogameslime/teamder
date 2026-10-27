@@ -1,10 +1,11 @@
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/services/diagnosticCallable';
 import { getDoc, doc } from 'firebase/firestore';
 import { getFirebase } from '@/firebase/config';
 import { col } from '@/firebase/firestore';
 import { withAuthRaceRetry } from '@/firebase/authRace';
 import { StaleSessionError } from './staleSession';
 import { retryRead } from './readRetry';
+import { mapConcurrent } from '@/utils/mapConcurrent';
 import type { User } from '@/types';
 
 /** Identity only. Never substitute this response for a private user record. */
@@ -37,12 +38,16 @@ export async function readPlayerIdentities(userIds: readonly string[]): Promise<
     assertReadOwner(owner);
     return snaps.filter(s => s.exists()).map(s => ({ ...s.data()!, createdAt: 0 }));
   }
-  const rows: PlayerIdentity[] = [];
+  const batches: string[][] = [];
   for (let offset = 0; offset < ids.length; offset += 100) {
-    rows.push(...await playerReadCall<PlayerIdentity[]>('getPlayerIdentities', { userIds: ids.slice(offset, offset + 100) }, owner));
+    batches.push(ids.slice(offset, offset + 100));
   }
+  // Large rosters need several allowlisted reads; keep order without a
+  // network round trip per page or unbounded concurrent server requests.
+  const pages = await mapConcurrent(batches, 4, userIds =>
+    playerReadCall<PlayerIdentity[]>('getPlayerIdentities', { userIds }, owner));
   assertReadOwner(owner);
-  return rows;
+  return pages.flat();
 }
 
 /** Most name-only consumers resolve one existing mirror, without a callable

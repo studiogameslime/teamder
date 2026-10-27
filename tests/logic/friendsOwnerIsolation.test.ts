@@ -29,7 +29,7 @@ function fixture() {
   };
   const module = { exports: {} as any };
   const code = ts.transpileModule(fs.readFileSync('src/services/friendsService.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  vm.runInNewContext(code, { module, exports: module.exports, require: (name: string) => deps[name], __DEV__: false });
+  vm.runInNewContext(code, { module, exports: module.exports, require: (name: string) => {if(name.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(name.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(name==='@/services/diagnosticCallable')name='firebase/functions';return deps[name];}, __DEV__: false });
   return { service: module.exports.friendsService, auth, remote, write, requests, identities, user, readDoc, observeCaughtError };
 }
 

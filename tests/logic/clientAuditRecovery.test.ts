@@ -7,7 +7,7 @@ function load(file: string, deps: Record<string, any> = {}, extra: Record<string
   const source = fs.readFileSync(file, 'utf8');
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   const module = { exports: {} as any };
-  vm.runInNewContext(js, { module, exports: module.exports, require: (n: string) => deps[n] ?? {}, __DEV__: false, console, setTimeout, clearTimeout, ...extra });
+  vm.runInNewContext(js, { module, exports: module.exports, require: (n: string) => {if(n.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(n==='@/services/diagnosticCallable')n='firebase/functions';return deps[n] ?? {};}, __DEV__: false, console, setTimeout, clearTimeout, ...extra });
   return module.exports;
 }
 function ast(file: string) { return ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX); }
@@ -81,6 +81,7 @@ function achievements() {
     '@/types': types, '@/data/achievements': load('src/data/achievements.ts'),
     '@/firebase/config': { USE_MOCK_DATA: false },
     '@/firebase/firestore': { col: { games: () => ({}), pairStats: () => ({}) } },
+    './userService': { userService: { getInvitedUsersCount: async () => { throw Error('offline'); } } },
     'firebase/firestore': { query() {}, where() {}, getDocs: async () => { throw Error('offline'); } },
     '@/services/errorLog': { logError() {} },
   }).achievementsService };
@@ -131,10 +132,10 @@ test('referral first-load failure is an error, never a successful empty list', a
 
 test('statistics distinguishes compute failure from empty and retries without losing previous stats', async () => {
   const file = ast('src/screens/profile/StatisticsScreen.tsx');
-  const effect = find(file, n => ts.isCallExpression(n) && n.expression.getText(file) === 'useEffect' && !!n.arguments[0]?.getText(file).includes('playerStatsService.compute')) as ts.CallExpression;
+  const effect = find(file, n => ts.isCallExpression(n) && n.expression.getText(file) === 'useFocusEffect' && !!n.arguments[0]?.getText(file).includes('playerStatsService.compute')) as ts.CallExpression;
   let stats: any = { attendedGames: 8 }, failed = false, loading = false;
   const compute = jest.fn().mockRejectedValueOnce(Error('offline')).mockResolvedValueOnce({ attendedGames: 9 });
-  const run = expression(effect.arguments[0].getText(file), {
+  const run = expression((effect.arguments[0] as ts.CallExpression).arguments[0].getText(file), {
     targetId:'me',ownerKey:'me:me',otherPlayer:false,setRestricted(){},statsOwnerRef: { current: 'me:me' }, localUser: { id: 'me', stats: {} }, userService: { getUserById: async () => ({ stats: {} }) }, playerStatsService: { compute },
     setStats: (s: any) => { stats = s; }, setFailed: (s: boolean) => { failed = s; }, setLoading: (s: boolean) => { loading = s; }, setHighlightsLoading() {}, setPen() {}, setPeople() {}, logError() {},
   });
@@ -180,7 +181,7 @@ test('referral services propagate read errors all the way to their screens and a
 test('statistics service propagates source failures instead of reporting zero attended rounds', async () => {
   const service = load('src/services/playerStatsService.ts', {
     '@/firebase/config': { USE_MOCK_DATA: false },
-    '@/firebase/firestore': { col: { games: () => ({}) } },
+    '@/firebase/firestore': { col: { games: () => ({}), pairStats: () => ({}) } },
     'firebase/firestore': { query() {}, where() {}, getDocs: async () => { throw Error('offline'); } },
     '@/services/errorLog': { logError() {} },
   }).playerStatsService;
@@ -188,10 +189,10 @@ test('statistics service propagates source failures instead of reporting zero at
 });
 
 test('statistics clears previous account data even when the next account read fails',async()=>{
- const file=ast('src/screens/profile/StatisticsScreen.tsx');const effect=find(file,n=>ts.isCallExpression(n)&&n.expression.getText(file)==='useEffect') as ts.CallExpression;
+ const file=ast('src/screens/profile/StatisticsScreen.tsx');const effect=find(file,n=>ts.isCallExpression(n)&&n.expression.getText(file)==='useFocusEffect') as ts.CallExpression;
  let stats:any={attendedGames:99},pen:any={penTaken:20},people:any={old:{id:'old'}},failed=false;
  const ctx={targetId:'new',ownerKey:'new:new',otherPlayer:false,setRestricted(){},statsOwnerRef:{current:'old:old'},localUser:{id:'new'},setStats:(s:any)=>{stats=s;},setPen:(s:any)=>{pen=s;},setPeople:(s:any)=>{people=s;},setFailed:(s:boolean)=>{failed=s;},setLoading(){},setHighlightsLoading(){},logError(){},userService:{getUserById:async()=>{throw Error('offline');}}};
- expression(effect.arguments[0].getText(file),ctx)();await new Promise(setImmediate);
+ expression((effect.arguments[0] as ts.CallExpression).arguments[0].getText(file),ctx)();await new Promise(setImmediate);
  expect(stats).toBeNull();expect(pen).toBeNull();expect(people).toEqual({});expect(failed).toBe(true);
 });
 

@@ -1,3 +1,4 @@
+import { runDiagnosticOperation } from './diagnosticJournal';
 import { observeCaughtError } from '../utils/errorObservation';
 import { readPlayerIdentity, playerReadCall } from './publicPlayerService';
 import { StaleSessionError } from './staleSession';
@@ -22,7 +23,7 @@ import { mockCurrentUser } from '@/data/mockUsers';
 import { pickRandomAvatarId } from '@/data/avatars';
 import { storage } from './storage';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/services/diagnosticCallable';
 import {
   deleteCurrentFirebaseUser,
   ensureRecentAccountAuth,
@@ -303,6 +304,7 @@ export const userService = {
    *   Firebase Auth, then loads/creates /users/{uid}.
    */
   async signInWithGoogle(): Promise<User> {
+    return runDiagnosticOperation('sign_in_google',{},async()=>{
     if (USE_MOCK_DATA) {
       const user = { ...mockCurrentUser };
       await storage.setAuthUserJson(JSON.stringify(user));
@@ -350,9 +352,12 @@ export const userService = {
     await applyAcquisitionIfFresh(fresh.id);
     await cacheAuthUser(fresh);
     return fresh;
+  
+    });
   },
 
   async signInWithApple(): Promise<User> {
+    return runDiagnosticOperation('sign_in_apple',{},async()=>{
     if (USE_MOCK_DATA) {
       const user = { ...mockCurrentUser };
       await storage.setAuthUserJson(JSON.stringify(user));
@@ -397,6 +402,8 @@ export const userService = {
     await applyAcquisitionIfFresh(fresh.id);
     await cacheAuthUser(fresh);
     return fresh;
+  
+    });
   },
 
   /**
@@ -405,6 +412,7 @@ export const userService = {
    * never crashes on `currentUser.name`.
    */
   async signInWithEmail(email: string, password: string): Promise<User> {
+    return runDiagnosticOperation('sign_in_email',{},async()=>{
     if (USE_MOCK_DATA) {
       const user = { ...mockCurrentUser };
       await storage.setAuthUserJson(JSON.stringify(user));
@@ -441,6 +449,8 @@ export const userService = {
     }
     await cacheAuthUser(fresh);
     return fresh;
+  
+    });
   },
 
   /**
@@ -522,6 +532,7 @@ export const userService = {
     homeCityLat?: number;
     homeCityLng?: number;
   }, expectedUid?: string): Promise<User> {
+    return runDiagnosticOperation('save_profile',{},async()=>{
     // Sanitize here too — this is the PRIMARY path where every new user sets
     // their name. updateProfile sanitizes on later edits, but onboarding used
     // to only trim(), letting bidi/zero-width/impersonation chars persist.
@@ -620,6 +631,8 @@ export const userService = {
     await cacheAuthUser(next);
     assertCurrent();
     return next;
+  
+    });
   },
 
   /** Toggle whether only friends may start a DM with me. */

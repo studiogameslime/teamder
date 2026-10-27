@@ -1,3 +1,4 @@
+import { isMissingLinkHandler } from '@/utils/expectedIntegrationError';
 import { observeCaughtError } from '../../utils/errorObservation';
 import { upsertSavedGuest } from '@/utils/savedGuest';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -567,7 +568,8 @@ export function MatchDetailsScreen() {
   // Robust back: some entry paths (home hero, a push tap, a tab-switch that
   // resets the stack) land the user on MatchDetails with NO back-stack entry,
   // so `nav.goBack()` silently does nothing and the header "‹" looks dead
-  // (user report). Fall back to the parent tab, then to the games list.
+  // (user report). Preserve parent history, then use a root registered in
+  // this hosting stack. GamesList exists only in GameStack.
   const goBackSafe = React.useCallback(() => {
     if (nav.canGoBack()) {
       nav.goBack();
@@ -578,7 +580,10 @@ export function MatchDetailsScreen() {
       parent.goBack();
       return;
     }
-    nav.navigate('GamesList' as never);
+    const routeNames: readonly string[] = nav.getState().routeNames;
+    const fallback = ['GamesList', 'CommunitiesFeed', 'ChatsList', 'Profile', 'GuestHome']
+      .find((name) => routeNames.includes(name));
+    if (fallback) nav.navigate(fallback as never);
   }, [nav]);
   // Set by GameCreate after a successful create → celebrate on arrival.
   const celebrateOnArrival =
@@ -2010,7 +2015,7 @@ export function MatchDetailsScreen() {
     if (typeof fLat === 'number' && typeof fLng === 'number') {
       Linking.openURL(`waze://?ll=${fLat},${fLng}&navigate=yes`)
         .catch((caughtErrore2979a5915: unknown) =>
-          { observeCaughtError(caughtErrore2979a5915, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:e2979a5915"}); return Linking.openURL(
+          { if (!isMissingLinkHandler(caughtErrore2979a5915)) observeCaughtError(caughtErrore2979a5915, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:e2979a5915"}); return Linking.openURL(
             `https://www.google.com/maps/search/?api=1&query=${fLat},${fLng}`,
           ); },
         )
@@ -2023,7 +2028,7 @@ export function MatchDetailsScreen() {
         // bug. `geo:` is the Android intent every maps app registers for, so
         // it succeeds where a web URL has nobody to hand it to.
         .catch((caughtErrore2979a5915: unknown) =>
-          { observeCaughtError(caughtErrore2979a5915, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:e2979a5915"}); return Linking.openURL(`geo:${fLat},${fLng}?q=${fLat},${fLng}`); },
+          { if (!isMissingLinkHandler(caughtErrore2979a5915)) observeCaughtError(caughtErrore2979a5915, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:e2979a5915"}); return Linking.openURL(`geo:${fLat},${fLng}?q=${fLat},${fLng}`); },
         )
         // …and TELL them. This path logged and returned, so the button did
         // nothing at all and said nothing about it — while the text-query
@@ -2058,13 +2063,13 @@ export function MatchDetailsScreen() {
     // instead of dropping the user on the search results screen.
     Linking.openURL(`waze://?q=${q}&navigate=yes`)
       .catch((caughtError3608605c19: unknown) =>
-        { observeCaughtError(caughtError3608605c19, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:3608605c19"}); return Linking.openURL(
+        { if (!isMissingLinkHandler(caughtError3608605c19)) observeCaughtError(caughtError3608605c19, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:3608605c19"}); return Linking.openURL(
           `https://www.google.com/maps/search/?api=1&query=${q}`,
         ); },
       )
       // Same third rung as the precise path above — a text query works as a
       // `geo:` intent too, via its `q` parameter.
-      .catch((caughtError3608605c19: unknown) => { observeCaughtError(caughtError3608605c19, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:3608605c19"}); return Linking.openURL(`geo:0,0?q=${q}`); })
+      .catch((caughtError3608605c19: unknown) => { if (!isMissingLinkHandler(caughtError3608605c19)) observeCaughtError(caughtError3608605c19, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:3608605c19"}); return Linking.openURL(`geo:0,0?q=${q}`); })
       .catch((err) => { observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:3608605c19"}); return failNavigation(err, dest); });
   };
 

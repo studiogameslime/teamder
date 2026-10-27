@@ -6,7 +6,7 @@ import { observeCaughtError } from '../utils/errorObservation';
 // is for. The `getFriendsInClubs` callable resolves it with the Admin SDK and
 // returns only the caller's OWN friends — nothing else about the roster.
 
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/services/diagnosticCallable';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
 import type { ClubFriend } from '@/utils/clubCard';

@@ -1,3 +1,4 @@
+import { MyActivityScreen } from '@/screens/profile/MyActivityScreen';
 import { FeedbackScreen } from '@/screens/FeedbackScreen';
 import { StatisticsScreen } from '@/screens/profile/StatisticsScreen';
 import { ManagerDashboardScreen } from '@/screens/communities/ManagerDashboardScreen';
@@ -35,6 +36,7 @@ import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
 import { DraftSetupScreen } from '@/screens/games/DraftSetupScreen';
 import { DraftBoardScreen } from '@/screens/games/DraftBoardScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
+import { AchievementsScreen } from '@/screens/profile/AchievementsScreen';
 import { PlayerCompareScreen } from '@/screens/players/PlayerCompareScreen';
 import { PlayerTimelineScreen } from '@/screens/players/PlayerTimelineScreen';
 import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsScreen';
@@ -96,6 +98,7 @@ export type GameStackParamList = {
   /** Shareable personal "סיכום הערב" for a finished game. Registered in
    *  GameStack + ProfileStack + CommunitiesStack (shared screen). */
   EveningSummary: { gameId: string };
+  MyActivity: undefined;
   /** `seasonId` omitted = the season currently running. */
   SeasonSummary: { groupId: string; seasonId?: string };
   /** Per-game history of a finished round ("היסטוריית המשחקים"). Shared
@@ -113,10 +116,11 @@ export type GameStackParamList = {
   MatchPlayers: { gameId: string };
   /** Admin-only "ניהול משחק" surface. */
   /** Draft Teams (חלוקת כוחות) — step 1: pick captains + draft order. */
-  DraftSetup: { gameId: string; resumeManual?: boolean; editExisting?: boolean };
+  DraftSetup: { gameId: string; returnRouteKey?: string; resumeManual?: boolean; editExisting?: boolean };
   /** Draft Teams — step 2: the live draft board + summary. */
   DraftBoard: {
     gameId: string;
+    returnRouteKey?: string;
     captainIds: string[];
     method: 'snake' | 'regular';
     /** Reconstruct picks from the game's saved draftTeams → opens on the
@@ -130,6 +134,7 @@ export type GameStackParamList = {
   Statistics: { userId?: string } | undefined;
   Feedback: { type?: 'bug' | 'suggestion'; playerId?: string; playerName?: string } | undefined;
   PlayerCard: { userId: string; groupId?: string };
+  Achievements: undefined;
   PlayerCompare: { groupId: string; otherUid: string; otherName?: string };
   /** Admin-only per-community player timeline — reachable from
    *  CommunityPlayers (opened via the community-link icon). */
@@ -192,6 +197,7 @@ export function GameStack() {
       <Stack.Screen name="GameEdit" component={GameEditScreen} />
       <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
       <Stack.Screen name="EveningSummary" component={EveningSummaryScreen} />
+      <Stack.Screen name="MyActivity" component={MyActivityScreen} />
       <Stack.Screen name="SeasonSummary" component={SeasonSummaryScreen} />
       <Stack.Screen name="MatchRounds" component={MatchRoundsScreen} />
       <Stack.Screen name="LiveMatch" component={LiveMatchScreen} />
@@ -204,6 +210,7 @@ export function GameStack() {
       <Stack.Screen name="DraftSetup" component={DraftSetupScreen} />
       <Stack.Screen name="DraftBoard" component={DraftBoardScreen} />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
+      <Stack.Screen name="Achievements" component={AchievementsScreen} />
       <Stack.Screen name="Statistics" component={StatisticsScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
       <Stack.Screen name="PlayerCompare" component={PlayerCompareScreen} />

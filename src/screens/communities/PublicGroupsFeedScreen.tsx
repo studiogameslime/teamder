@@ -172,7 +172,7 @@ export function PublicGroupsFeedScreen() {
       } finally {
         if (alive) setLoading(false);
       }
-    }, 250);
+    }, text.trim().length === 0 ? 0 : 250);
     return () => {
       alive = false;
       clearTimeout(timer);

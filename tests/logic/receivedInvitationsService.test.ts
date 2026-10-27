@@ -3,11 +3,13 @@ import vm from 'vm';
 import ts from 'typescript';
 import { StaleSessionError } from '../../src/services/staleSession';
 import { receivedInvitations } from '../../src/utils/receivedInvitations';
+import { retryRead } from '../../src/services/readRetry';
 
 function fixture() {
   const user={id:'me',isGuest:false},auth={currentUser:{uid:'me'}},read=jest.fn(async()=>({docs:[]}));
   const where=jest.fn((...args:any[])=>args);
   const deps:Record<string,any>={
+    './readRetry':{retryRead},
     'firebase/firestore':{collection:()=>({}),where,query:(...x:any[])=>x,getDocs:read},
     '@/firebase/config':{USE_MOCK_DATA:false,getFirebase:()=>({db:{},auth})},
     '@/store/userStore':{useUserStore:{getState:()=>({currentUser:user})}},
@@ -17,7 +19,7 @@ function fixture() {
   };
   const module={exports:{} as any};
   const code=ts.transpileModule(fs.readFileSync('src/services/receivedInvitationsService.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-  vm.runInNewContext(code,{module,exports:module.exports,require:(name:string)=>deps[name]});
+  vm.runInNewContext(code,{module,exports:module.exports,require:(name:string)=>{if(name.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(name.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(name==='@/services/diagnosticCallable')name='firebase/functions';return deps[name];}});
   return {service:module.exports.receivedInvitationsService,read,where,user,auth};
 }
 test('received invitation query is bound to recipient; permission failures are not empty results',async()=>{
@@ -37,7 +39,7 @@ test.each([true,'true',undefined])('club invitation routes boolean and push-stri
   const nav={isReady:()=>true,navigate:jest.fn()},module={exports:{} as any};
   const deps:Record<string,any>={'react-native':{Linking:{}},'@react-navigation/native':{createNavigationContainerRef:()=>nav},'@/services/analyticsService':{AnalyticsEvent:{},logEvent:()=>{}}};
   const code=ts.transpileModule(fs.readFileSync('src/navigation/navigationRef.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-  vm.runInNewContext(code,{module,exports:module.exports,require:(name:string)=>deps[name]});
+  vm.runInNewContext(code,{module,exports:module.exports,require:(name:string)=>{if(name.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(name.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(name==='@/services/diagnosticCallable')name='firebase/functions';return deps[name];}});
   expect(module.exports.navigateForPush('groupInvitation',{groupId:'club',invitationOnly:flag})).toBe(true);
   expect(nav.navigate).toHaveBeenCalledWith('CommunitiesTab',{screen:'CommunityDetailsPublic',initial:false,params:{groupId:'club',fromInvitation:true}});
 });

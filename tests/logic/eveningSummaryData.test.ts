@@ -2,6 +2,7 @@ jest.mock('firebase/firestore', () => ({
   doc: (_db: unknown, collection: string, id: string) => `${collection}/${id}`,
   collection: (_db: unknown, ...path: string[]) => path.join('/'),
   getDoc: jest.fn(), getDocs: jest.fn(),
+  query: (path: string, filter: unknown) => ({path,filter}), where: (...args: unknown[]) => args,
 }));
 jest.mock('@/firebase/config', () => ({ USE_MOCK_DATA: false, getFirebase: () => ({ db: {} }) }));
 jest.mock('@/services/gameService', () => ({ gameService: { getGameById: jest.fn() } }));
@@ -22,7 +23,8 @@ const snap = (data?: unknown) => ({ exists: () => data != null, data: () => data
 function setup(row: unknown = stat, history: unknown[] = rounds, stand: unknown = { score: 8.9, scoreRank: 2, scoreTotal: 4 }) {
   (getDoc as jest.Mock).mockImplementation(async (path: string) => path.startsWith('gamePlayerStats/')
     ? snap(row) : path.startsWith('eveningStandings/') ? snap(stand) : snap());
-  (getDocs as jest.Mock).mockResolvedValue({ docs: history.map((data) => ({ data: () => data })) });
+  (getDocs as jest.Mock).mockImplementation(async (path: string | {path:string}) => typeof path==='object' && path.path==='gamePlayerStats'
+    ? {docs:row==null?[]:[{id:'g__u',data:()=>row}]} : { docs: history.map((data) => ({ data: () => data })) });
   (gameService.getGameById as jest.Mock).mockResolvedValue({ id: 'g', groupId: 'club', status: 'finished', startsAt: 10, title: 'מועדון' });
 }
 describe('summary data authority', () => {
@@ -84,18 +86,22 @@ describe('summary data authority', () => {
     expect(m?.score).toBe(8.9);
   });
   it('propagates a failed authoritative stat read instead of claiming the player did not play', async () => {
-    (getDoc as jest.Mock).mockImplementation(async (path: string) => {
-      if (path.startsWith('gamePlayerStats/')) throw new Error('offline');
-      return snap();
-    });
+    (getDocs as jest.Mock).mockRejectedValue(new Error('offline'));
     await expect(eveningSummaryService.getEveningSummary('g', 'u')).rejects.toThrow('offline');
   });
   it('propagates a failed game read, but treats a missing stat document as unavailable', async () => {
     (gameService.getGameById as jest.Mock).mockRejectedValue(new Error('denied'));
     await expect(eveningSummaryService.getEveningSummary('g', 'u')).rejects.toThrow('denied');
-    setup(undefined);
+    setup(null);
     (getDoc as jest.Mock).mockResolvedValue(snap());
     expect(await eveningSummaryService.getEveningSummary('g', 'u')).toBeNull();
+  });
+  it('an absent own stats row returns unavailable before any optional protected document read',async()=>{
+    setup(null);
+    expect(await eveningSummaryService.getEveningSummary('g','u')).toBeNull();
+    expect(getDoc).not.toHaveBeenCalled();
+    expect(getDocs).toHaveBeenCalledTimes(1);
+    expect(getDocs).toHaveBeenCalledWith({path:'gamePlayerStats',filter:['gameId','==','g']});
   });
   it('labels a local score estimate when the committed standings are absent or fail to load', async () => {
     setup(stat, rounds, null);

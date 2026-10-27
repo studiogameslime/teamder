@@ -4,7 +4,7 @@ import ts from 'typescript';
 
 const source=ts.createSourceFile('StatisticsScreen.tsx',fs.readFileSync('src/screens/profile/StatisticsScreen.tsx','utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 let effect='';
-function visit(n:ts.Node){if(ts.isCallExpression(n)&&n.expression.getText(source)==='useEffect'&&n.arguments[0]?.getText(source).includes('const uid = targetId'))effect=n.arguments[0].getText(source);ts.forEachChild(n,visit);}visit(source);
+function visit(n:ts.Node){if(ts.isCallExpression(n)&&n.expression.getText(source)==='useFocusEffect'&&n.arguments[0]?.getText(source).includes('const uid = targetId'))effect=(n.arguments[0] as ts.CallExpression).arguments[0].getText(source);ts.forEachChild(n,visit);}visit(source);
 function fixture(){
  let resolve!:(data:any)=>void,reject!:(error:Error)=>void;
  const fresh=new Promise((yes,no)=>{resolve=yes;reject=no;});

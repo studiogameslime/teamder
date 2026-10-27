@@ -4,7 +4,7 @@
 <meta name="description" content="מארגנים מחזורים, מחלקים כוחות ומשחקים בראש שקט. הרשמה, מועדונים, צ׳אט וסטטיסטיקות במקום אחד."/>
 <meta property="og:type" content="website"/><meta property="og:title" content="Teamder · הכדורגל שלכם. הסדר שלנו."/>
 <meta property="og:description" content="פחות התעסקות. יותר כדורגל. כל המועדון והמחזור הבא במקום אחד."/>
-<meta property="og:image" content="https://teamderfc.web.app/logo.png"/><meta property="og:locale" content="he_IL"/>
+<meta property="og:image" content="https://teamder.co.il/logo.png"/><meta property="og:locale" content="he_IL"/>
 <meta name="twitter:card" content="summary_large_image"/><meta name="theme-color" content="#1263ff"/>
 <link rel="icon" href="/logo.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -87,7 +87,7 @@
   window.getLandingShareQuery=function(){return appQuery(false);};
   var resolutionReady=!code||!!INV.type;var resolvePromise=Promise.resolve();
   function deepLink(){if(!resolutionReady||!valid)return null;return 'footy://'+pathPart+appQuery();}
-  function clipUrl(){if(!resolutionReady&&code)return 'https://teamderfc.web.app/i/'+encodeURIComponent(code)+location.search;if(!valid)return null;return 'https://teamderfc.web.app/'+pathPart+appQuery();}
+  function clipUrl(){if(!resolutionReady&&code)return 'https://teamder.co.il/i/'+encodeURIComponent(code)+location.search;if(!valid)return null;return 'https://teamder.co.il/'+pathPart+appQuery();}
   // Re-point the deep link + store referrer at the entity the code resolved to,
   // so the CTA opens the RIGHT game/community even when __INVITE__ wasn't
   // injected (e.g. the /app?code= path). No-op without an id.
@@ -96,7 +96,7 @@
     var sa=document.getElementById('storeAndroid'); if(sa)sa.href=storeHref; }
   if(valid){try{var cc=isApp?{type:'app'}:{type:type,id:id};if(invitedBy)cc.invitedBy=invitedBy;localStorage.setItem('pendingInvite',JSON.stringify(cc));}catch(_){}}
   var storeHref='https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp';
-  function buildStoreHref(){var u=['target_type='+encodeURIComponent(isApp?'app':type)];if(!isApp)u.push('target_id='+encodeURIComponent(id));if(source)u.push('utm_source='+encodeURIComponent(source));if(campaign)u.push('utm_campaign='+encodeURIComponent(campaign));if(gameTarget)u.push('g='+encodeURIComponent(gameTarget));if(linkId)u.push('l='+encodeURIComponent(linkId));if(invitedBy&&resolutionReady)u.push('by='+encodeURIComponent(invitedBy));if(!resolutionReady&&code)u.push('invite_url='+encodeURIComponent('https://teamderfc.web.app/i/'+encodeURIComponent(code)+location.search));return 'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp'+((valid||(!resolutionReady&&code))?'&referrer='+encodeURIComponent(u.join('&')):'');}
+  function buildStoreHref(){var u=['target_type='+encodeURIComponent(isApp?'app':type)];if(!isApp)u.push('target_id='+encodeURIComponent(id));if(source)u.push('utm_source='+encodeURIComponent(source));if(campaign)u.push('utm_campaign='+encodeURIComponent(campaign));if(gameTarget)u.push('g='+encodeURIComponent(gameTarget));if(linkId)u.push('l='+encodeURIComponent(linkId));if(invitedBy&&resolutionReady)u.push('by='+encodeURIComponent(invitedBy));if(!resolutionReady&&code)u.push('invite_url='+encodeURIComponent('https://teamder.co.il/i/'+encodeURIComponent(code)+location.search));return 'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp'+((valid||(!resolutionReady&&code))?'&referrer='+encodeURIComponent(u.join('&')):'');}
   storeHref=buildStoreHref();var sa=document.getElementById('storeAndroid');if(sa)sa.href=storeHref;
   if(sa)sa.addEventListener('click',async function(event){event.preventDefault();await resolvePromise;location.href=storeHref;});
   var isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent||'')||(/Macintosh/.test(navigator.userAgent||'')&&navigator.maxTouchPoints>1);

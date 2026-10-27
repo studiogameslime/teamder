@@ -39,25 +39,22 @@ export async function fetchAppleDownloads(
         `filter[reportSubType]=SUMMARY&filter[vendorNumber]=${vendor}&` +
         `filter[reportDate]=${date}`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${jwt}` } });
-      if (res.status !== 200) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + res.status}), {"source":"pulse/src/services/downloads.ts","handler":"fetchAppleDownloads","site":"downloads.ts:http:41"}); return { date, units: 0, byCountry: {} as Record<string, number> }; }
+      if (res.status === 404) return null; // Missing report is not a measured zero.
+      if (res.status !== 200) throw Object.assign(new Error('Apple report request failed'), {code: 'http/' + res.status});
       const buf = new Uint8Array(await res.arrayBuffer());
-      let tsv: string;
-      try {
-        tsv = strFromU8(gunzipSync(buf));
-      } catch (caughtError02c28001a4) {
-    observeCaughtError(caughtError02c28001a4, {"source":"pulse/src/services/downloads.ts","handler":"fetchAppleDownloads","site":"downloads:02c28001a4"});
-        tsv = strFromU8(buf);
-      }
+      const tsv = decodeAppleReport(buf);
       return parseAppleTsv(tsv, date);
     }),
   );
 
-  const daily: DailyPoint[] = perDay
+  const available = perDay.filter((d): d is NonNullable<typeof d> => d !== null);
+  if (!available.length) return null;
+  const daily: DailyPoint[] = available
     .map((d) => ({ date: d.date, value: d.units }))
     .sort((a, b) => (a.date < b.date ? -1 : 1));
   const total = daily.reduce((s, d) => s + d.value, 0);
   const countryMap: Record<string, number> = {};
-  perDay.forEach((d) =>
+  available.forEach((d) =>
     Object.entries(d.byCountry).forEach(([c, n]) => {
       countryMap[c] = (countryMap[c] ?? 0) + n;
     }),
@@ -66,12 +63,17 @@ export async function fetchAppleDownloads(
   return { total, windowDays, daily, byCountry: topMap(countryMap, 8) };
 }
 
+function decodeAppleReport(buf: Uint8Array): string {
+  return strFromU8(buf[0] === 0x1f && buf[1] === 0x8b ? gunzipSync(buf) : buf);
+}
+
 function parseAppleTsv(tsv: string, date: string) {
   const lines = tsv.trim().split('\n');
   const header = lines[0].split('\t');
   const uIdx = header.indexOf('Units');
   const ptIdx = header.indexOf('Product Type Identifier');
   const cIdx = header.indexOf('Country Code');
+  if (uIdx < 0 || ptIdx < 0 || cIdx < 0) throw new Error('Invalid Apple report columns');
   let units = 0;
   const byCountry: Record<string, number> = {};
   for (const line of lines.slice(1)) {
@@ -204,39 +206,36 @@ async function fetchIosLifetimeDownloads(): Promise<LifetimeStats['ios']> {
   const vendor = config.appStore.vendorNumber;
   const now = new Date();
 
-  const unitsFor = async (frequency: 'MONTHLY' | 'DAILY', reportDate: string): Promise<number> => {
+  const unitsFor = async (frequency: 'MONTHLY' | 'DAILY', reportDate: string): Promise<number | null> => {
     const url =
       `https://api.appstoreconnect.apple.com/v1/salesReports?` +
       `filter[frequency]=${frequency}&filter[reportType]=SALES&` +
       `filter[reportSubType]=SUMMARY&filter[vendorNumber]=${vendor}&` +
       `filter[reportDate]=${reportDate}`;
     const res = await fetch(url, { headers: { Authorization: `Bearer ${jwt}` } });
-    if (res.status !== 200) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + res.status}), {"source":"pulse/src/services/downloads.ts","handler":"unitsFor","site":"downloads.ts:http:213"}); return 0; }
+    if (res.status === 404) return null;
+    if (res.status !== 200) throw Object.assign(new Error('Apple report request failed'), {code: 'http/' + res.status});
     const buf = new Uint8Array(await res.arrayBuffer());
-    let tsv: string;
-    try {
-      tsv = strFromU8(gunzipSync(buf));
-    } catch (caughtError159b65d237) {
-    observeCaughtError(caughtError159b65d237, {"source":"pulse/src/services/downloads.ts","handler":"unitsFor","site":"downloads:159b65d237"});
-      tsv = strFromU8(buf);
-    }
+    const tsv = decodeAppleReport(buf);
     return parseAppleTsv(tsv, reportDate).units;
   };
 
-  const reqs: Promise<number>[] = [];
+  const reqs: Promise<number | null>[] = [];
   // Past 12 full months, monthly (covers the whole lifetime of a young app
   // with one cheap call each).
   for (let i = 1; i <= 12; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    reqs.push(unitsFor('MONTHLY', `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`));
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    reqs.push(unitsFor('MONTHLY', `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`));
   }
   // Current month so far, daily (the monthly report isn't issued until the
   // month closes).
-  for (let day = 1; day <= now.getDate(); day++) {
-    const d = new Date(now.getFullYear(), now.getMonth(), day);
+  for (let day = 1; day < now.getUTCDate(); day++) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), day));
     reqs.push(unitsFor('DAILY', d.toISOString().slice(0, 10)));
   }
-  const downloads = (await Promise.all(reqs)).reduce((a, b) => a + b, 0);
+  const available = (await Promise.all(reqs)).filter((n): n is number => n !== null);
+  if (!available.length) return null;
+  const downloads = available.reduce((a, b) => a + b, 0);
   return { downloads };
 }
 

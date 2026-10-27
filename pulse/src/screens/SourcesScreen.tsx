@@ -105,7 +105,7 @@ export function SourcesScreen() {
   const effectiveSource = (source === 'other' ? customSource : source).trim();
   const share = (url: string) => { Share.share({ message: url }).catch((caughtError6e3e37db93: unknown) => {
     observeCaughtError(caughtError6e3e37db93, {"source":"pulse/src/screens/SourcesScreen.tsx","handler":"share","site":"SourcesScreen:6e3e37db93"});}); };
-  const preview = effectiveSource ? 'https://teamderfc.web.app/play/XXXXXXXX' : '';
+  const preview = effectiveSource ? 'https://teamder.co.il/play/XXXXXXXX' : '';
 
   const onCreate = async () => {
     if (!effectiveSource) { Alert.alert('חסר', 'בחר מקור'); return; }

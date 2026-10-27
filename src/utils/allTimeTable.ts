@@ -19,6 +19,7 @@ export interface ClubTotals {
   totalRounds: number;
   tiedRounds: number;
   shootoutRounds: number;
+  inPlayPenalties?: number;
   scorelessRounds: number;
   countedRounds: number;
   guestGoals: number;
@@ -44,7 +45,7 @@ const SUMMED = [
   'losses',
   'games',
   'penTaken',
-  'penScored',
+  'penScored', 'penInPlayTaken', 'penInPlayScored',
   'penFaced',
   'penSaved',
   'ownGoals',
@@ -95,6 +96,7 @@ export function mergeAllTime(slices: readonly TableSlice[]): TableSlice {
     totals.totalRounds += n(s.totalRounds);
     totals.tiedRounds += n(s.tiedRounds);
     totals.shootoutRounds += n(s.shootoutRounds);
+    if (typeof s.inPlayPenalties === 'number') totals.inPlayPenalties = n(totals.inPlayPenalties) + n(s.inPlayPenalties);
     totals.scorelessRounds += n(s.scorelessRounds);
     // Summed like the rest: all-time's denominator is the sum of the samples
     // each season was measured over, not the sum of rounds played.
@@ -113,7 +115,10 @@ export function mergeAllTime(slices: readonly TableSlice[]): TableSlice {
         continue;
       }
       const next: ChampionshipRow = { ...prev };
-      for (const f of SUMMED) next[f] = n(prev[f]) + n(row[f]);
+      for (const f of SUMMED) {
+        if ((f==='penInPlayTaken'||f==='penInPlayScored') && prev[f]===undefined && row[f]===undefined) continue;
+        next[f] = n(prev[f]) + n(row[f]);
+      }
       const cs = mergeCoverage(prev.csRounds, row.csRounds);
       const as = mergeCoverage(prev.asRounds, row.asRounds);
       if (typeof cs === 'number') next.csRounds = cs;

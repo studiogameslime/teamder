@@ -19,8 +19,8 @@ import { drainNativeDiagnostics, type NativeDiagnosticBridge } from '../native/n
 //     timer is being run by someone other than the local user
 // These are added to the payload below.
 //
-// Everything here is best-effort and Android-only: on iOS, in mock mode,
-// or on a build without the native module, it silently no-ops.
+// Both Android widgets/Wear OS and the iOS WatchConnectivity bridge consume
+// this payload. Mock mode and builds without the bridge skip publishing.
 
 import { useEffect, useState } from 'react';
 import { NativeModules, Platform } from 'react-native';
@@ -33,6 +33,7 @@ import type { Game } from '@/types';
 
 /** One roster entry relayed to the watch's players-list screen. */
 type WatchPlayer = {
+  id: string;
   name: string;
   photo: string; // '' when none → watch draws an initial avatar
   role: 'admin' | 'guest' | 'member';
@@ -44,6 +45,8 @@ type Viewer = { id: string; name: string };
 
 type WatchPayload = {
   viewer: Viewer;
+  timerRoundId?: string;
+  registration?: 'organizer' | 'waitlist' | 'pending' | 'registered' | 'participant';
   /** serverNow() - localNow on THIS device, in ms. The phone-side widget
    *  (same device) and the paired watch (whose clock Wear OS keeps synced
    *  to the phone) both add this to their local clock so they reconstruct
@@ -127,11 +130,12 @@ export async function computeWatchPayload(
   myGames: Game[],
   viewer: Viewer,
 ): Promise<WatchPayload> {
-  const now = Date.now();
+  const now = serverNow();
 
   // A live session = a game carrying a liveMatch that hasn't finished.
   const live = myGames.find(
-    (g) => g.liveMatch != null && g.liveMatch.phase !== 'finished',
+    (g) => g.status !== 'finished' && g.status !== 'cancelled' &&
+      g.liveMatch != null && g.liveMatch.phase !== 'finished',
   );
   if (live && live.liveMatch) {
     const players = await resolveRoster(live);
@@ -149,6 +153,10 @@ export async function computeWatchPayload(
       clockOffsetMs: getServerOffsetMs(),
       serverNowMs: nowServer,
       kind: 'live',
+      timerRoundId: live.rotation
+        ? `rotation:${live.rotation.roundInstanceId ?? `${live.rotation.round ?? 'r'}:${live.rotation.updatedAt ?? 0}`}`
+        : `plain:${live.liveMatch.roundNumber ?? 0}`,
+      registration: registrationForWidget(live, viewer.id),
       gameId: live.id,
       title: live.title,
       timer: {
@@ -174,7 +182,7 @@ export async function computeWatchPayload(
   //   scheduled → registration hasn't opened yet ("יפתח להרשמה ב…")
   //   open/locked/active (without live phase) → standard upcoming card
   const upcoming = myGames
-    .filter((g) => g.startsAt > now && g.status !== 'finished' && g.status !== 'cancelled')
+    .filter((g) => g.startsAt >= now - 6 * 60 * 60 * 1000 && g.status !== 'finished' && g.status !== 'cancelled')
     .sort((a, b) => a.startsAt - b.startsAt)[0];
   if (upcoming) {
     if (
@@ -187,6 +195,7 @@ export async function computeWatchPayload(
         clockOffsetMs: getServerOffsetMs(),
         serverNowMs: serverNow(),
         kind: 'scheduled',
+        registration: registrationForWidget(upcoming, viewer.id),
         gameId: upcoming.id,
         title: upcoming.title,
         registrationOpensAt: upcoming.registrationOpensAt,
@@ -201,6 +210,7 @@ export async function computeWatchPayload(
       clockOffsetMs: getServerOffsetMs(),
       serverNowMs: serverNow(),
       kind: 'upcoming',
+      registration: registrationForWidget(upcoming, viewer.id),
       gameId: upcoming.id,
       title: upcoming.title,
       startsAt: upcoming.startsAt,
@@ -227,6 +237,7 @@ async function resolveRoster(game: Game): Promise<WatchPlayer[]> {
     ids.map((uid) => userService.getUserById(uid).catch((caughtError1c23754395: unknown) => { observeCaughtError(caughtError1c23754395, {"source":"src/services/watchSyncService.ts","handler":"resolveRoster","site":"watchSyncService:1c23754395"}); return null; })),
   );
   const real: WatchPlayer[] = ids.map((uid, i) => ({
+    id: uid,
     name: users[i]?.name?.trim() || 'שחקן',
     photo: users[i]?.photoUrl ?? '',
     role: uid === game.createdBy ? 'admin' : 'member',
@@ -236,11 +247,19 @@ async function resolveRoster(game: Game): Promise<WatchPlayer[]> {
   const guests: WatchPlayer[] = (game.guests ?? [])
     .filter((g) => g.waitlisted !== true)
     .map((g) => ({
+      id: g.id,
       name: g.name,
       photo: '',
       role: 'guest',
     }));
   return [...real, ...guests];
+}
+
+function registrationForWidget(game: Game, uid: string): NonNullable<WatchPayload['registration']> {
+  if (game.createdBy === uid) return 'organizer';
+  if (game.waitlist?.includes(uid)) return 'waitlist';
+  if (game.pending?.includes(uid)) return 'pending';
+  return game.players?.includes(uid) ? 'registered' : 'participant';
 }
 
 type WatchBridgeLike = NativeDiagnosticBridge & {
@@ -286,6 +305,7 @@ let lastPublishedSeq = 0;
 export async function publishWatchState(
   myGames: Game[],
   viewer: Viewer,
+  isCurrent: () => boolean = () => true,
 ): Promise<void> {
   if (USE_MOCK_DATA) return;
   // The `WatchBridge` relay differs per platform: Android is a classic RN native
@@ -302,15 +322,16 @@ export async function publishWatchState(
   // anchored to true server time even on the very first (cold-start) publish —
   // otherwise the first live payload could ship an offset of 0. De-duped +
   // cached, so it's a no-op network-wise once synced this session.
-  await syncServerClock();
   let publishingToBridge = false;
   try {
+    await syncServerClock();
+    if (!isCurrent() || seq !== publishSeq) return;
     const payload = await computeWatchPayload(myGames, viewer);
     // Out-of-order guard: two concurrent publishes (e.g. a snapshot + the
     // periodic refresh) can resolve in the wrong order and overwrite the Data
     // Layer item with an OLDER payload, freezing the watch on a stale timer.
     // Drop any publish that STARTED before the newest one we've already written.
-    if (seq < lastPublishedSeq) return;
+    if (!isCurrent() || seq !== publishSeq || seq < lastPublishedSeq) return;
     lastPublishedSeq = seq;
     const json = JSON.stringify(payload);
     publishingToBridge = true;
@@ -358,7 +379,11 @@ export function useWatchSync(userId: string | null): void {
   const [pairTick, setPairTick] = useState(0);
 
   useEffect(() => {
-    if (!userId || USE_MOCK_DATA) return;
+    if (USE_MOCK_DATA) return;
+    if (!userId) {
+      void publishWatchState([], { id: '', name: '' });
+      return;
+    }
     const bridge = resolveWatchBridge();
     if (!bridge?.publishState) return;
     // iOS: only run the Firestore listener when a Teamder Apple Watch is
@@ -388,7 +413,7 @@ export function useWatchSync(userId: string | null): void {
     }
     let alive = true;
     const viewer: Viewer = { id: userId, name: userName };
-    let latestGames: Game[] = [];
+    let latestGames: Game[] | null = null;
     const unsub = gameService.subscribeMyLiveOrUpcomingGames(
       userId,
       (games) => {
@@ -396,19 +421,18 @@ export function useWatchSync(userId: string | null): void {
         latestGames = games;
         // Fire-and-forget — publishWatchState is best-effort and any
         // hiccup is recovered by the next snapshot.
-        void publishWatchState(games, viewer);
+        void publishWatchState(games, viewer, () => alive);
       },
     );
-    // While a live match is on, re-publish every 60s even without a Firestore
+    // Re-publish loaded state every 60s even without a Firestore
     // write. A running timer produces no game-doc changes, so without this the
     // watch's server-clock offset never re-syncs and the Data-Layer freshness
     // timestamp goes stale (which the watch now uses to detect a dead phone).
     const refresh = setInterval(() => {
       if (!alive) return;
-      const hasLive = latestGames.some(
-        (g) => g.liveMatch != null && g.liveMatch.phase !== 'finished',
-      );
-      if (hasLive) void publishWatchState(latestGames, viewer);
+      // Time alone can open registration or pass kickoff without a snapshot.
+      // Never publish an invented empty list before the first real snapshot.
+      if (latestGames) void publishWatchState(latestGames, viewer, () => alive);
     }, 60_000);
     return () => {
       alive = false;
@@ -416,7 +440,7 @@ export function useWatchSync(userId: string | null): void {
       unsub();
       // Clear the watch on logout / unmount so a persisted Data-Layer item
       // can't strand the PREVIOUS account's live game on the watch face.
-      void publishWatchState([], viewer);
+      void publishWatchState([], { id: '', name: '' });
     };
   }, [userId, userName, pairTick]);
 }

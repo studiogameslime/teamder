@@ -30,7 +30,7 @@ function load(mock: boolean, options: { auth?: any; restore?: () => Promise<any>
   const source = fs.readFileSync('src/services/chatService.ts', 'utf8');
   const module = { exports: {} as any };
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText,
-    { module, exports: module.exports, require: (id: string) => deps[id] ?? {}, console, __DEV__: false });
+    { module, exports: module.exports, require: (id: string) => {if(id.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(id.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(id==='@/services/diagnosticCallable')id='firebase/functions';return deps[id] ?? {};}, console, __DEV__: false });
   return { service: module.exports.chatService, firebase, collection, snapshot, stop, write, emit: (x: any) => next?.(x), fail: (x: any) => fail?.(x) };
 }
 

@@ -69,3 +69,7 @@ describe('parseAppLink', () => {
     });
   });
 });
+
+ test.each(['teamder.co.il', 'www.teamder.co.il', 'teamderfc.web.app'])('campaign HTTPS link accepts %s', host => {
+  expect(parseAppLink(`https://${host}/open/games`)).toEqual({ dest:'games' });
+ });

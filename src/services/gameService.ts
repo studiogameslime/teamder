@@ -1,8 +1,10 @@
+import { joinDiagnosticId } from '../utils/joinDiagnosticId';
+import { runDiagnosticOperation } from './diagnosticJournal';
 import { observeCaughtError, observedListener, observeSettledErrors } from '../utils/errorObservation';
 
 
 import { seasonScheduleBoundary } from '@/utils/seasonPolicy';
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/services/diagnosticCallable';
 import { waitForJoinResult } from '@/utils/joinRequestResult';
 import { creationPayload } from '@/services/creationAttempt';
 import { assertCreationOwner } from '@/services/creationOwner';
@@ -139,6 +141,7 @@ import { he } from '@/i18n/he';
 import { enforceRateLimit } from '@/services/rateLimitService';
 import { serverNow } from '@/services/serverClock';
 import { buildShootoutPenaltyPayload } from '@/utils/penaltyStats';
+import { applyInPlayPenalty, inPlayPenaltyFingerprint } from '@/utils/inPlayPenalty';
 import { assignJoins, type RosterState } from '@/services/joinFairness';
 import { seriesService, settingsFromGame } from '@/services/seriesService';
 import { logError, logUnexpected } from '@/services/errorLog';
@@ -223,15 +226,27 @@ const myGamesFloor = (): number => Date.now() - MY_GAMES_WINDOW_MS;
  */
 const MY_GAMES_TTL_MS = 15 * 1000;
 const myGamesCache = new Map<string, { at: number; data: Game[] }>();
+const myGamesInFlight = new Map<string, Promise<Game[]>>();
+let myGamesGeneration = 0;
 function clearMyGamesCache(): void {
+  myGamesGeneration += 1;
   myGamesCache.clear();
+  myGamesInFlight.clear();
 }
 async function cachedMyGames(key: string, fn: () => Promise<Game[]>): Promise<Game[]> {
   const hit = myGamesCache.get(key);
   if (hit && Date.now() - hit.at < MY_GAMES_TTL_MS) return hit.data;
-  const data = await fn();
-  myGamesCache.set(key, { at: Date.now(), data });
-  return data;
+  const pending = myGamesInFlight.get(key);
+  if (pending) return pending;
+  const generation = myGamesGeneration;
+  const request = fn().then(data => {
+    if (generation === myGamesGeneration) myGamesCache.set(key, { at: Date.now(), data });
+    return data;
+  }).finally(() => {
+    if (myGamesInFlight.get(key) === request) myGamesInFlight.delete(key);
+  });
+  myGamesInFlight.set(key, request);
+  return request;
 }
 
 export interface RegistrationConflict {
@@ -370,9 +385,9 @@ function timerMutationFields(
       activeIntervals: [...(live.activeIntervals ?? []), { s: live.timerLastStartedAt, e: now }] };
   }
   if (!live.timerRunning && !live.timerLastStartedAt && (live.timerAccumulatedMs ?? 0) === 0 &&
-    !live.timerEvents?.length && !live.goals?.length && live.scoreA === 0 && live.scoreB === 0) return null;
+    !live.timerEvents?.length && !live.goals?.length && !live.inPlayPenalties?.length && live.scoreA === 0 && live.scoreB === 0) return null;
   return { ...controlled, timerRunning: false, timerLastStartedAt: null, timerAccumulatedMs: 0,
-    timerEvents: [], scoreA: 0, scoreB: 0, goals: [], goalTally: tallyWithout(live.goalTally, live.goals),
+    timerEvents: [], scoreA: 0, scoreB: 0, goals: [], inPlayPenalties: [], goalTally: tallyWithout(live.goalTally, live.goals),
     ...(live.timerRunning && live.timerLastStartedAt
       ? { activeIntervals: [...(live.activeIntervals ?? []), { s: live.timerLastStartedAt, e: now }] }
       : {}) };
@@ -387,7 +402,7 @@ async function mutateSharedTimer(
   userName: string,
   action: TimerWriteAction,
   expectedRoundId?: string,
-): Promise<void> {
+): Promise<LiveMatchState | null> {
   let boundRound: string | undefined;
   const mutation = (game: TimerWriteGame | undefined) => {
     if (!game || game.status === 'finished' || game.status === 'cancelled' || !game.liveMatch) {
@@ -405,22 +420,23 @@ async function mutateSharedTimer(
     boundRound = identity;
     const now = USE_MOCK_DATA ? Date.now() : serverNow();
     const fields = timerMutationFields(game.liveMatch, action, userId, userName, now);
-    return fields ? { fields, now } : null;
+    return { fields, now, live: game.liveMatch };
   };
   if (USE_MOCK_DATA) {
     const game = mockGamesV2.find(row => row.id === gameId) ?? (mockGame.id === gameId ? mockGame : undefined);
     const change = mutation(game);
-    if (game && change) { game.liveMatch = { ...game.liveMatch!, ...change.fields }; game.updatedAt = change.now; }
-    return;
+    if (game && change?.fields) { game.liveMatch = { ...game.liveMatch!, ...change.fields }; game.updatedAt = change.now; }
+    return change ? { ...change.live, ...change.fields } : null;
   }
-  await runTransaction(getFirebase().db, async tx => {
+  return runTransaction(getFirebase().db, async tx => {
     const ref = docs.game(gameId), snapshot = await tx.get(ref);
     const change = mutation(snapshot.exists() ? snapshot.data() as TimerWriteGame : undefined);
-    if (!change) return;
-    tx.update(ref, {
+    if (!change) return null;
+    if (change.fields) tx.update(ref, {
       ...Object.fromEntries(Object.entries(change.fields).map(([key, value]) => [`liveMatch.${key}`, value])),
       updatedAt: change.now,
     });
+    return { ...change.live, ...change.fields };
   });
 }
 
@@ -576,7 +592,7 @@ function playersPerTeamFor(format: GameFormat | undefined): number {
 function readyLiveRound(): LiveMatchState {
   return {
     phase: 'roundReady', assignments: {}, benchOrder: [], scoreA: 0, scoreB: 0,
-    goals: [], timerRunning: false, timerLastStartedAt: null, timerAccumulatedMs: 0, timerEvents: [],
+    goals: [], inPlayPenalties: [], timerRunning: false, timerLastStartedAt: null, timerAccumulatedMs: 0, timerEvents: [],
   };
 }
 
@@ -1636,6 +1652,7 @@ export const gameService = {
     tiedRounds: number;
     /** Mini-games decided by a penalty shootout (for the "% by penalties" fact). */
     shootoutRounds: number;
+    inPlayPenalties?: number;
     /** Mini-games the outcome counters above were actually measured over. */
     countedRounds: number;
     /** Mini-games that ended 0:0 in regulation (for the "% ended 0:0" fact). */
@@ -1746,6 +1763,7 @@ export const gameService = {
             rounds?: number;
             tiedRounds?: number;
             shootoutRounds?: number;
+            inPlayPenalties?: number;
             countedRounds?: number;
             scorelessRounds?: number;
             guestGoals?: number;
@@ -1762,7 +1780,7 @@ export const gameService = {
       const guestGoals = cs?.guestGoals ?? 0;
       // Own goals across the club → the "X שערים עצמיים" fun fact.
       const ownGoals = cs?.ownGoals ?? 0;
-      return { totalGoals, totalRounds, tiedRounds, shootoutRounds, scorelessRounds, countedRounds, guestGoals, ownGoals, players };
+      return { totalGoals, totalRounds, tiedRounds, shootoutRounds, inPlayPenalties: cs?.inPlayPenalties ?? 0, scorelessRounds, countedRounds, guestGoals, ownGoals, players };
     } catch (err) {
     observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getCommunityChampionship","site":"gameService:a0e7a06d51"});
       logError('getCommunityChampionship', err, { groupId });
@@ -1997,6 +2015,7 @@ export const gameService = {
           scoreB: Number(x.scoreB ?? 0),
           winnerSide: (x.winnerSide ?? 'tie') as RoundHistoryDoc['winnerSide'],
           goals,
+          inPlayPenalties: Array.isArray(x.inPlayPenalties) ? x.inPlayPenalties : [],
           penalties,
           at: Number(x.at ?? 0),
         } as RoundHistoryDoc;
@@ -2024,7 +2043,7 @@ export const gameService = {
   ): Promise<void> {
     if (USE_MOCK_DATA) return;
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable');
     await httpsCallable(getFirebase().functions, 'addRetroGoal')({
       gameId,
       scorerId,
@@ -2037,7 +2056,7 @@ export const gameService = {
   async removeRetroGoal(gameId: string, retroGoalId: string): Promise<void> {
     if (USE_MOCK_DATA) return;
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable');
     await httpsCallable(getFirebase().functions, 'removeRetroGoal')({
       gameId,
       retroGoalId,
@@ -2432,6 +2451,7 @@ export const gameService = {
         );
       }
     }
+    if (participatingResult.status === 'rejected' && createdResult.status === 'rejected') throw participatingResult.reason;
     return all
       .filter((g) => g.status === 'open')
       .filter((g) => !isStaleAfterStart(g))
@@ -2557,6 +2577,7 @@ export const gameService = {
         );
       }
     }
+    if (participatingResult.status === 'rejected' && createdResult.status === 'rejected') throw participatingResult.reason;
     return all;
     });
   },
@@ -4161,7 +4182,7 @@ export const gameService = {
   async notifyTeamsReady(gameId: string): Promise<void> {
     if (!gameId || USE_MOCK_DATA) return;
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable');
     await httpsCallable(getFirebase().functions, 'notifyTeamsReady')({
       gameId,
     });
@@ -4180,7 +4201,7 @@ export const gameService = {
   ): Promise<{ started: boolean; reason?: string; alreadyRunning?: boolean }> {
     if (USE_MOCK_DATA) return { started: true };
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable');
     const res = await httpsCallable(
       getFirebase().functions,
       'startGameFillerPulse',
@@ -4256,7 +4277,7 @@ export const gameService = {
     if (!user) throw new Error('adminAddMembers: not signed in');
     await user.getIdToken();
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable');
     const call = () =>
       httpsCallable(getFirebase().functions, 'adminAddPlayers')({ gameId, userIds });
     let res;
@@ -4317,7 +4338,7 @@ export const gameService = {
     if (!user) throw new Error('adminReorderRoster: not signed in');
     await user.getIdToken();
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable');
     const call = () =>
       httpsCallable(getFirebase().functions, 'adminReorderRoster')({
         gameId,
@@ -4403,6 +4424,44 @@ export const gameService = {
   // Goals accumulate on `liveMatch.goals` for the current round and bump
   // `liveMatch.scoreA/scoreB`. Admin-only is enforced by the UI + rules.
   // An own goal counts for the OPPONENT side and credits no scorer.
+
+  /** Save/edit/delete one regulation penalty together with its linked goal. */
+  async saveInPlayPenalty(gameId: string, entry: import('@/types').InPlayPenalty | null, context: {
+    roundId: string; id: string; previous?: import('@/types').InPlayPenalty;
+  }): Promise<void> {
+    const apply = (game: Game): LiveMatchState => {
+      if (!game.liveMatch || !game.rotation || roundCommitKey(game.rotation) !== context.roundId ||
+        game.status === 'finished' || game.status === 'cancelled' || game.lastCommittedRoundId === context.roundId || game.liveMatch.shootout) {
+        throw new Error('המשחק השתנה או הסתיים. יש לפתוח מחדש את הפנדל.');
+      }
+      const existing = game.liveMatch.inPlayPenalties?.find(p => p.id === context.id);
+      const equal = (a?: import('@/types').InPlayPenalty | null, b?: import('@/types').InPlayPenalty | null) =>
+        inPlayPenaltyFingerprint(a ? [a] : []) === inPlayPenaltyFingerprint(b ? [b] : []);
+      if (equal(existing, entry)) return game.liveMatch; // response lost after a successful write
+      if (!equal(existing, context.previous)) throw new Error('הפנדל עודכן במכשיר אחר. יש לפתוח אותו מחדש.');
+      if (entry) {
+        if (entry.id !== context.id || !entry.id || !['A','B'].includes(entry.team) || !['goal','save','miss'].includes(entry.outcome) ||
+          !Number.isSafeInteger(entry.minute) || entry.minute < 1 || !Number.isFinite(entry.at) ||
+          (entry.clockMs !== undefined && (!Number.isSafeInteger(entry.clockMs) || entry.clockMs < 0))) throw new Error('פרטי הפנדל אינם תקינים.');
+        assertLiveRosterMember(game, entry.team, entry.kickerId, true, 'ההרכב השתנה. יש לבחור שוב את הבועט.');
+        if (entry.keeperId) assertLiveRosterMember(game, entry.team === 'A' ? 'B' : 'A', entry.keeperId, true, 'ההרכב השתנה. יש לבחור שוב את השוער.');
+      }
+      return applyInPlayPenalty(game.liveMatch, context.id, entry);
+    };
+    if (USE_MOCK_DATA) {
+      const game = mockGamesV2.find(g => g.id === gameId) ?? (mockGame.id === gameId ? mockGame : undefined);
+      if (!game) throw new Error('המשחק אינו זמין');
+      game.liveMatch = apply(game); game.updatedAt = Date.now(); return;
+    }
+    await runTransaction(getFirebase().db, async tx => {
+      const ref = doc(getFirebase().db, 'games', gameId), snap = await tx.get(ref);
+      if (!snap.exists()) throw new Error('המשחק אינו זמין');
+      const current = snap.data() as Game, next = apply(current);
+      if (next === current.liveMatch) return;
+      tx.update(ref, {'liveMatch.inPlayPenalties': next.inPlayPenalties, 'liveMatch.goals': next.goals,
+        'liveMatch.scoreA': next.scoreA, 'liveMatch.scoreB': next.scoreB, 'liveMatch.goalTally': next.goalTally, updatedAt: Date.now()});
+    });
+  },
 
   /** Log one goal for the running round. `team` is the side it COUNTS FOR. */
   async recordGoal(
@@ -4549,6 +4608,7 @@ export const gameService = {
           throw new Error('המשחק כבר נשמר. יש להמתין למעבר למשחק הבא.');
         }
         const goneM = (m.liveMatch.goals ?? []).find((x) => x.id === goalId);
+        if (goneM?.penaltyId) {m.liveMatch=applyInPlayPenalty(m.liveMatch,goneM.penaltyId,null);m.updatedAt=Date.now();return;}
         const r = apply(m.liveMatch);
         if (r) { m.liveMatch.goals = r.goals; m.liveMatch.scoreA = r.scoreA; m.liveMatch.scoreB = r.scoreB; }
         // Roll back the evening tally for the undone goal's scorer — real OR
@@ -4572,6 +4632,11 @@ export const gameService = {
     }
     const gone = (cur.liveMatch.goals ?? []).find((x: import('@/types').RoundGoal) => x.id === goalId);
     if (!gone) return;
+    if (gone.penaltyId) {
+      const next=applyInPlayPenalty(cur.liveMatch,gone.penaltyId,null);
+      tx.update(ref,{'liveMatch.goals':next.goals,'liveMatch.inPlayPenalties':next.inPlayPenalties,'liveMatch.scoreA':next.scoreA,'liveMatch.scoreB':next.scoreB,'liveMatch.goalTally':next.goalTally,updatedAt:Date.now()});
+      return;
+    }
     // Roll back the evening tally for the undone goal's scorer — real OR guest
     // (both are tallied now). Own goals / unknown scorers credit no one, so
     // there's nothing to roll back for them. Keep symmetric with recordGoal.
@@ -4956,8 +5021,8 @@ export const gameService = {
     if (!USE_MOCK_DATA) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const { httpsCallable } = require('firebase/functions');
-        const response = await httpsCallable(getFirebase().functions, 'commitRoundStats')({
+        const { httpsCallable } = require('@/services/diagnosticCallable');
+        const response = await httpsCallable(getFirebase().functions, lm.inPlayPenalties?.length ? 'commitRoundStatsWithInPlayPenalties' : 'commitRoundStats')({
           gameId,
           // Idempotency key for the server's double-commit latch.
           //
@@ -4979,6 +5044,7 @@ export const gameService = {
           // The server binds the payload to this exact live goal log and uses
           // the game's update time as an atomic precondition on the batch.
           liveGoalIds: (lm.goals ?? []).map((goal) => goal.id),
+          ...(lm.inPlayPenalties?.length ? {inPlayPenaltySnapshot: inPlayPenaltyFingerprint(lm.inPlayPenalties)} : {}),
           liveLineupFingerprint: liveLineupFingerprint({rotation:rot,draftTeams:draft}),
           rotationUpdatedAt: rot.updatedAt ?? null,
           sideA,
@@ -4992,6 +5058,7 @@ export const gameService = {
           ...(alternativeDecision ? {alternativeDecision:{fingerprint:alternativeDecision.fingerprint}} : {}),
           goals: (lm.goals ?? []).map((gl) => ({
             scorerId: gl.scorerId ?? null,
+            ...(gl.penaltyId ? {penaltyId: gl.penaltyId} : {}),
             assisterId: gl.assisterId ?? null,
             ...(gl.assistStatus ? { assistStatus: gl.assistStatus } : {}),
             ownGoal: !!gl.ownGoal,
@@ -5071,6 +5138,7 @@ export const gameService = {
         winnerSide: winnerSide ?? 'tie',
         goals: (lm.goals ?? []).map((goal) => ({
           scorerId: goal.scorerId ?? null,
+          ...(goal.penaltyId ? {penaltyId: goal.penaltyId} : {}),
           assisterId: goal.assisterId ?? null,
           ...(goal.assistStatus ? { assistStatus: goal.assistStatus } : {}),
           ownGoal: !!goal.ownGoal,
@@ -5084,6 +5152,7 @@ export const gameService = {
             scored: !!kick.scored, team: sideA.includes(kick.kickerId!) ? 'A' : 'B',
             ...(kick.outcome ? { outcome: kick.outcome } : {}),
           })),
+        inPlayPenalties: lm.inPlayPenalties ?? [],
         at: Date.now(),
       });
       if (alternativeDecision) Object.assign(savedRound,{alternativeDecisionFingerprint:alternativeDecision.fingerprint,alternativeTieResolution:tieResolution});
@@ -5092,6 +5161,7 @@ export const gameService = {
         m.liveMatch.scoreA = 0;
         m.liveMatch.scoreB = 0;
         m.liveMatch.goals = [];
+        m.liveMatch.inPlayPenalties = [];
         m.liveMatch.shootout = undefined;
       }
       return { winnerSide: savedRound.winnerSide === 'tie' ? null : savedRound.winnerSide,
@@ -5349,52 +5419,49 @@ export const gameService = {
    *  teams and a restart begins from the reassigned (wrong) rosters. */
   async stopRotation(gameId: string): Promise<void> {
     if (!gameId) return;
-    const g = await this.getGameById(gameId);
-    const base = g?.rotation?.baseTeams;
+    // Resolve both the base roster and the open timer inside the same transaction.
+    // Reading first and patching later could restore a superseded roster or lose
+    // a concurrently resumed segment. An already stopped rotation is a no-op.
+    const changed = (g: Game): Record<string, unknown> | null => {
+      if (!g.rotation) return null;
+      if (g.status === 'finished' || g.status === 'cancelled') throw changedTimerRound();
+      const now = USE_MOCK_DATA ? Date.now() : serverNow();
+      const base = g.rotation.baseTeams;
+      const live = g.liveMatch;
+      return stripUndefined({
+        rotation: null,
+        ...(live ? { liveMatch: { ...live, phase: 'roundReady',
+          goalTally: {}, goals: [], inPlayPenalties: [], shootout: undefined,
+          scoreA: 0, scoreB: 0, assignments: {}, benchOrder: [], teamASlots: {}, teamBSlots: {},
+          roundNumber: (live.roundNumber ?? 0) + 1,
+          timerRunning: false, timerLastStartedAt: null, timerAccumulatedMs: 0, timerEvents: [],
+          activeIntervals: [...(live.activeIntervals ?? []),
+            ...(live.timerRunning && typeof live.timerLastStartedAt === 'number' && Number.isFinite(live.timerLastStartedAt) && now > live.timerLastStartedAt
+              ? [{ s: live.timerLastStartedAt, e: now }] : [])], updatedAt: now,
+        } } : {}),
+        ...(g.draftTeams && base?.length ? { draftTeams: { ...g.draftTeams,
+          teams: g.draftTeams.teams.map(team => {
+            const original = base.find(row => row.index === team.index);
+            const playerIds = original ? [...original.playerIds] : team.playerIds;
+            return { ...team, playerIds, captainId: playerIds.includes(team.captainId) ? team.captainId : playerIds[0] ?? '' };
+          }), leftHome: [],
+        } } : {}), updatedAt: now,
+      });
+    };
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId);
       if (m) {
-        m.rotation = undefined;
-        if (m.liveMatch) {
-          m.liveMatch = {
-            ...m.liveMatch,
-            goalTally: {},
-            goals: [],
-            scoreA: 0,
-            scoreB: 0,
-          };
-        }
+        const patch = changed(m);
+        if (patch) { Object.assign(m, patch); m.rotation = undefined; }
       }
       return;
     }
-    // Resetting the rotation restarts the evening → clear the evening goal
-    // tally. The uncommitted round goes with it: `goals[]` and the mini-game
-    // score are cleared in the SAME write. Clearing only the tally left the two
-    // sources contradicting each other — and worse, an empty tally made the
-    // live screen fall back to summing the stale `goals[]`, so the badge the
-    // reset had just zeroed came straight back with the leftover round's goals
-    // in it.
-    const patch: Record<string, unknown> = {
-      rotation: null,
-      'liveMatch.goalTally': {},
-      'liveMatch.goals': [],
-      'liveMatch.scoreA': 0,
-      'liveMatch.scoreB': 0,
-      updatedAt: Date.now(),
-    };
-    if (g?.draftTeams && base && base.length > 0) {
-      patch.draftTeams = {
-        ...g.draftTeams,
-        teams: g.draftTeams.teams.map((t) => {
-          const snap = base.find((s) => s.index === t.index);
-          return snap ? { ...t, playerIds: [...snap.playerIds] } : t;
-        }),
-        // Reset restores the original rosters, so anyone marked "went home"
-        // is back on the field — clear the list.
-        leftHome: [],
-      };
-    }
-    await updateGameDoc(gameId, patch);
+    await runTransaction(getFirebase().db, async tx => {
+      const ref = docs.game(gameId), snapshot = await tx.get(ref);
+      if (!snapshot.exists()) return;
+      const patch = changed(snapshot.data() as Game);
+      if (patch) tx.update(ref, patch as UpdateData<Game>);
+    });
   },
 
   /** Internal: write the engine result back (rotation + reassigned teams). */
@@ -5449,8 +5516,12 @@ export const gameService = {
         m.draftTeams = newDraft;
         m.draftTeamColors = Object.fromEntries(newDraft.teams.filter(t => t.colorKey).map(t => [t.index, t.colorKey!]));
         if (resetTimerBy && m.liveMatch) {
+          const now = Date.now();
           m.liveMatch = {
             ...m.liveMatch,
+            activeIntervals: [...(m.liveMatch.activeIntervals ?? []),
+              ...(m.liveMatch.timerRunning && typeof m.liveMatch.timerLastStartedAt === 'number' && Number.isFinite(m.liveMatch.timerLastStartedAt) && now > m.liveMatch.timerLastStartedAt
+                ? [{ s: m.liveMatch.timerLastStartedAt, e: now }] : [])],
             timerRunning: false,
             timerLastStartedAt: null,
             timerAccumulatedMs: 0,
@@ -5493,12 +5564,16 @@ export const gameService = {
         throw new Error('המשחק או ההרכב השתנו. יש לפתוח מחדש את בחירת ההרכב.');
       }
       const live = snapshot.data().liveMatch;
-      if (resetTimerBy && ((live?.goals?.length ?? 0) > 0 || (live?.scoreA ?? 0) !== 0 || (live?.scoreB ?? 0) !== 0)) {
+      if (resetTimerBy && ((live?.goals?.length ?? 0) > 0 || (live?.inPlayPenalties?.length ?? 0) > 0 || (live?.scoreA ?? 0) !== 0 || (live?.scoreB ?? 0) !== 0)) {
         // An old client can still add a goal after the server committed. A
         // transition must not zero that uncredited score while changing teams.
         throw new Error('נוספה תוצאה בזמן בחירת ההרכב. היא נשמרה בלוח ויש לבדוק אותה.');
       }
-      tx.update(ref, patch as UpdateData<Game>);
+      const now = resetTimerBy && live?.timerRunning ? serverNow() : Date.now();
+      tx.update(ref, { ...patch, updatedAt: now,
+        ...(resetTimerBy && live?.timerRunning && typeof live.timerLastStartedAt === 'number' && Number.isFinite(live.timerLastStartedAt) && now > live.timerLastStartedAt
+          ? { 'liveMatch.activeIntervals': [...(live.activeIntervals ?? []), { s: live.timerLastStartedAt, e: now }] } : {}),
+      } as UpdateData<Game>);
     });
   },
 
@@ -6204,9 +6279,11 @@ export const gameService = {
     source: JoinSource = 'unknown',
     knownStartsAt?: number,
   ): Promise<{ bucket: 'players' | 'waitlist' | 'pending' }> {
+    const tappedAt = serverNow();
+    const requestCorrelation=joinDiagnosticId(gameId,userId,tappedAt);
+    return runDiagnosticOperation('join_round',{gameId,joinTappedAt:tappedAt},async()=>{
     // Capture the tap timestamp FIRST — before any await — so network latency
     // on the pre-checks below never shifts a user's place in line.
-    const tappedAt = serverNow();
     const requestStartedAt = Date.now();
     clearMyGamesCache();
 
@@ -6344,6 +6421,8 @@ export const gameService = {
     }, observedListener(fail, {"source":"src/services/gameService.ts","handler":"requestJoinGame","site":"gameService.ts:snapshot:6270"})), () => getFirebase().auth.currentUser?.uid === userId);
     logEvent(AnalyticsEvent.GameJoined, { gameId, fair: true, source, bucket: result.bucket, requestMs, totalMs: Math.max(0, Date.now() - requestStartedAt) });
     return result;
+  
+    },requestCorrelation);
   },
 
   /**
@@ -7059,6 +7138,7 @@ export const gameService = {
    * slot is reserved-but-empty.
    */
   async cancelGameV2(gameId: string, userId: UserId): Promise<void> {
+    return runDiagnosticOperation('cancel_round',{gameId},async()=>{
     clearMyGamesCache(); // leaving removes the game from the user's list
     if (USE_MOCK_DATA) {
       const g = mockGamesV2.find((x) => x.id === gameId);
@@ -7320,6 +7400,8 @@ export const gameService = {
         deadlineHours: result.deadlineHours,
       });
     }
+  
+    });
   },
 
   /**
@@ -7613,7 +7695,7 @@ export const gameService = {
     // The server validates the offer owner/capacity and chains the next offer
     // atomically. No client permission change or write on behalf of a stranger.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable');
     await httpsCallable(functions, 'resolveSpotOffer')({ gameId, decision });
   },
 
@@ -8287,10 +8369,10 @@ export const gameService = {
    * `userId` / `userName` are denormalised onto `timerControlledBy*`
    * so other devices can render "הטיימר מופעל על ידי דני".
    */
-  async startTimer(gameId: string, userId: string, userName: string, expectedRoundId?: string): Promise<void> {
-    if (!gameId) return;
+  async startTimer(gameId: string, userId: string, userName: string, expectedRoundId?: string): Promise<LiveMatchState | null> {
+    if (!gameId) return null;
     try {
-      await mutateSharedTimer(gameId, userId, userName, 'start', expectedRoundId);
+      return await mutateSharedTimer(gameId, userId, userName, 'start', expectedRoundId);
     } catch (err) {
     observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"startTimer","site":"gameService:71aa4d92d2"});
       logError('startTimer', err, { gameId, userId, expectedRoundId });
@@ -8304,10 +8386,10 @@ export const gameService = {
    * into the running accumulator so a subsequent resume continues
    * from the right place. Idempotent: if already paused, no-op.
    */
-  async pauseTimer(gameId: string, userId: string, userName: string, expectedRoundId?: string): Promise<void> {
-    if (!gameId) return;
+  async pauseTimer(gameId: string, userId: string, userName: string, expectedRoundId?: string): Promise<LiveMatchState | null> {
+    if (!gameId) return null;
     try {
-      await mutateSharedTimer(gameId, userId, userName, 'pause', expectedRoundId);
+      return await mutateSharedTimer(gameId, userId, userName, 'pause', expectedRoundId);
     } catch (err) {
     observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"pauseTimer","site":"gameService:0fce48cf27"});
       logError('pauseTimer', err, { gameId, userId, expectedRoundId });
@@ -8385,7 +8467,7 @@ export const gameService = {
       // whether the next empty rotation actually played. A committed key is
       // excluded even if its old timer is still visible after a lost response.
       const finalRoundStarted = lm && (
-        (lm.goals?.length ?? 0) > 0 || !!lm.shootout ||
+        (lm.goals?.length ?? 0) > 0 || (lm.inPlayPenalties?.length ?? 0) > 0 || !!lm.shootout ||
         lm.timerRunning || (lm.timerAccumulatedMs ?? 0) > 0
       );
       if (lm && rot && draft && finalRoundStarted && data.lastCommittedRoundId !== roundCommitKey(rot)) {
@@ -8451,7 +8533,7 @@ export const gameService = {
           throw new Error('המשחק השתנה בזמן הסיום. יש לנסות שוב.');
         }
         // Reject any late goal that was not in the committed result.
-        if ((current.liveMatch?.goals?.length ?? 0) > 0) {
+        if ((current.liveMatch?.goals?.length ?? 0) > 0 || (current.liveMatch?.inPlayPenalties?.length ?? 0) > 0) {
           throw new Error('נוסף שער בזמן הסיום. יש לנסות שוב כדי לשמור אותו.');
         }
         if (current.rotation && current.draftTeams &&
@@ -8984,7 +9066,7 @@ export const gameService = {
     }
 
     try {
-      const { httpsCallable } = require('firebase/functions');
+      const { httpsCallable } = require('@/services/diagnosticCallable');
       await httpsCallable(
         getFirebase().functions,
         'setGuestRating',

@@ -1,3 +1,4 @@
+import { SPORTS_ACTIVITY_ENABLED } from '@/config/sportsActivity';
 import { observeCaughtError } from '../utils/errorObservation';
 // healthService — reads a player's OWN session metrics from the wearable data
 // hub on the phone (Health Connect on Android / HealthKit on iOS). The phone is
@@ -147,7 +148,7 @@ function countSprintBursts(mpsInOrder: number[]): number {
 // Health, Garmin, Fitbit, Xiaomi, Wear OS…) syncs into — independent of the
 // Teamder watch app. ⚠️ Requires the health.* permission descriptions in the
 // Play declaration + Google's Health Connect review at submit time.
-const HEALTH_ENABLED = true;
+const HEALTH_ENABLED = SPORTS_ACTIVITY_ENABLED;
 
 // Resolve the native binding once. react-native-health-connect is Android-only;
 // on iOS we return null (HealthKit not wired yet). A guarded require means a

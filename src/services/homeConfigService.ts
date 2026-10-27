@@ -1,3 +1,4 @@
+import { retryRead } from './readRetry';
 import { observeCaughtError } from '../utils/errorObservation';
 // homeConfigService — Pulse-controlled master switches for home-screen surfaces,
 // stored in Firestore under appConfig/features. The Teamder app reads them; the
@@ -12,16 +13,17 @@ import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
  *  (the weekly heatmap only — NOT the "set availability" prompt shown to users
  *  who haven't marked availability). appConfig/features.availabilityCardEnabled
  *  === false → hide the calendar for everyone. */
+let lastAvailabilityCardEnabled = true;
 export async function getAvailabilityCardEnabled(): Promise<boolean> {
   if (USE_MOCK_DATA) return true;
   try {
     const { db } = getFirebase();
-    const snap = await getDoc(doc(db, 'appConfig', 'features'));
-    if (!snap.exists()) return true;
+    const snap = await retryRead(() => getDoc(doc(db, 'appConfig', 'features')), () => {});
+    if (!snap.exists()) return lastAvailabilityCardEnabled = true;
     const data = snap.data() as { availabilityCardEnabled?: unknown };
-    return data.availabilityCardEnabled !== false;
+    return lastAvailabilityCardEnabled = data.availabilityCardEnabled !== false;
   } catch (caughtErrorf205a50faf) {
     observeCaughtError(caughtErrorf205a50faf, {"source":"src/services/homeConfigService.ts","handler":"getAvailabilityCardEnabled","site":"homeConfigService:f205a50faf"});
-    return true; // fail-open — a config read hiccup must never blank the home
+    return lastAvailabilityCardEnabled; // Preserve an explicit last-known disable; otherwise fail-open — a config read hiccup must never blank the home
   }
 }

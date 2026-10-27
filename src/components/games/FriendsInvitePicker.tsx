@@ -24,6 +24,7 @@ import { logError } from '@/services/errorLog';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
+import { isStaleSession } from '@/services/staleSession';
 import type { User } from '@/types';
 
 interface Props {
@@ -47,8 +48,10 @@ export function FriendsInvitePicker({ selected, onChange, exclude }: Props) {
   useEffect(() => {
     logEvent(AnalyticsEvent.FriendPickerOpened);
     let alive = true;
+    setFriends([]);
+    setLoading(true);
     (async () => {
-      if (!me) {
+      if (!me || me.isGuest) {
         setLoading(false);
         return;
       }
@@ -59,6 +62,7 @@ export function FriendsInvitePicker({ selected, onChange, exclude }: Props) {
           setLoading(false);
         }
       } catch (err) {
+        if (!alive || isStaleSession(err)) return;
     observeCaughtError(err, {"source":"src/components/games/FriendsInvitePicker.tsx","handler":"FriendsInvitePicker","site":"FriendsInvitePicker:c5339bee12"});
         logError('listFriendsForInvite', err, {
           screen: 'FriendsInvitePicker',

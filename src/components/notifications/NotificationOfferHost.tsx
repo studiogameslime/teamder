@@ -49,7 +49,7 @@ interface Shown {
   opts: { applicable?: boolean };
 }
 
-export function NotificationOfferHost({ active }: { active: boolean }) {
+export function NotificationOfferHost({ active, onVisibilityChange }: { active: boolean; onVisibilityChange?: (visible: boolean) => void }) {
   const [shown, setShown] = useState<Shown | null>(null);
   // Read at action time rather than subscribed: the sheet does not re-render
   // on sign-in, and the uid it needs is the one present when somebody taps.
@@ -199,7 +199,9 @@ export function NotificationOfferHost({ active }: { active: boolean }) {
   // A guest never sees this. Not because of the permission state — because
   // every context here is a completed ACCOUNT action, and a guest reaching one
   // has already become a full account by the time it completes.
-  if (!shown || isGuest) return null;
+  useEffect(() => { onVisibilityChange?.(active && !!shown && !isGuest); return () => onVisibilityChange?.(false); }, [active, shown, isGuest, onVisibilityChange]);
+
+  if (!active || !shown || isGuest) return null;
 
   return (
     <NotificationEducationSheet

@@ -57,7 +57,7 @@ export function UserDetailScreen() {
 
   // The user's personal invite link — registrations + clicks through it are
   // attributed to them (matches deepLinkService.buildAppInviteUrl on the app).
-  const inviteLink = `https://teamderfc.web.app/app?invitedBy=${userId}`;
+  const inviteLink = `https://teamder.co.il/app?invitedBy=${userId}`;
   const copyInviteLink = async () => {
     await Clipboard.setStringAsync(inviteLink);
     setCopied(true);

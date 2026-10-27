@@ -12,14 +12,14 @@ function expression(file: ts.SourceFile, name: string, context: object) {
     ts.forEachChild(node, walk);
   };
   walk(file); if (!value) throw Error(`Missing actual handler ${name}`);
-  return vm.runInNewContext(ts.transpileModule(`(${value})`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, context);
+  return vm.runInNewContext(ts.transpileModule(`(${value})`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, Object.assign(context,{runDiagnosticOperation:require('@/services/diagnosticJournal').runDiagnosticOperation,diagnosticEntity:require('@/services/diagnosticJournal').diagnosticEntity}));
 }
 const profile = source('src/screens/onboarding/PostSignInOnboardingScreen.tsx');
 function setup() {
   const user = { id: 'owner', photoUrl: 'previous.jpg', name: 'שחקן' };
   let current: typeof user | null = user;
   const context: any = { user, canSave: true, busy: false, uploading: false, name: ' שם נבחר ', city: '', photoUrl: undefined, avatarId: 'a06',
-    inFlight: { current: false }, mounted: { current: true }, prefilledRef: { current: true }, pendingKind: 'join_game',
+    inFlight: { current: false }, mounted: { current: true }, uploadedPhotoRef: { current: false }, prefilledRef: { current: true }, pendingKind: 'join_game',
     setBusy: jest.fn(), setUploading: jest.fn(), setPhotoUrl: jest.fn(), setAvatarId: jest.fn(),
     pickAndUploadAvatar: jest.fn(), deleteUserPhoto: jest.fn().mockResolvedValue(undefined),
     complete: jest.fn().mockResolvedValue(undefined), geocodeCity: jest.fn().mockResolvedValue(null),
@@ -47,6 +47,34 @@ test('a failed profile write leaves the image intact and unlocks retry without l
   const { c, run } = setup(); c.complete.mockRejectedValueOnce(Error('offline')); const save = run('handleSave');
   await save(); expect(c.deleteUserPhoto).not.toHaveBeenCalled(); expect(c.appAlert).toHaveBeenCalledTimes(1);
   expect(c.inFlight.current).toBe(false); await save(); expect(c.complete).toHaveBeenCalledTimes(2);
+});
+
+test('a new account choosing only a built-in avatar saves without attempting storage deletion', async () => {
+  const { c, run } = setup(); c.user.photoUrl = undefined;
+  await run('handleSave')();
+  expect(c.complete).toHaveBeenCalledTimes(1);
+  expect(c.deleteUserPhoto).not.toHaveBeenCalled();
+});
+
+test('an upload discarded for a built-in avatar is cleaned only after the profile is saved', async () => {
+  const { c, run } = setup(); c.user.photoUrl = undefined;
+  c.pickAndUploadAvatar.mockResolvedValue({ ok: true, url: 'new-upload.jpg' });
+  await run('handlePickPhoto')();
+  expect(c.uploadedPhotoRef.current).toBe(true);
+  run('handlePickAvatar')('a22');
+  expect(c.deleteUserPhoto).not.toHaveBeenCalled();
+  await run('handleSave')();
+  expect(c.deleteUserPhoto).toHaveBeenCalledWith('owner');
+  expect(c.complete.mock.invocationCallOrder[0]).toBeLessThan(c.deleteUserPhoto.mock.invocationCallOrder[0]);
+});
+
+test('a selected photo is retained and an abandoned upload is retained when profile save fails', async () => {
+  const { c, run } = setup(); c.user.photoUrl = undefined;
+  c.pickAndUploadAvatar.mockResolvedValue({ ok: true, url: 'new-upload.jpg' });
+  await run('handlePickPhoto')(); c.photoUrl = 'new-upload.jpg';
+  await run('handleSave')(); expect(c.deleteUserPhoto).not.toHaveBeenCalled();
+  c.photoUrl = undefined; c.complete.mockRejectedValueOnce(Error('offline'));
+  await run('handleSave')(); expect(c.deleteUserPhoto).not.toHaveBeenCalled();
 });
 test('switching identity during city lookup never submits the old form to the next user', async () => {
   const s = setup(); s.c.city = 'עיר'; s.c.geocodeCity.mockImplementationOnce(async () => { s.switch(); return { lat: 1, lng: 2 }; });
@@ -96,7 +124,7 @@ function serviceContext() {
     deleteField: () => 'DELETE_FIELD', cacheAuthUser: jest.fn().mockResolvedValue(undefined), logError: jest.fn(), mergeHomeCity: jest.fn(),
     StaleSessionError: class extends Error { constructor() { super('stale session'); this.name = 'StaleSessionError'; } },
   };
-  const service = vm.runInNewContext(ts.transpileModule(`({ ${method} })`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, context);
+  const service = vm.runInNewContext(ts.transpileModule(`({ ${method} })`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, Object.assign(context,{runDiagnosticOperation:require('@/services/diagnosticJournal').runDiagnosticOperation,diagnosticEntity:require('@/services/diagnosticJournal').diagnosticEntity}));
   service.getCurrentUser = jest.fn().mockResolvedValue(old);
   return { service, c: context, old };
 }
@@ -142,7 +170,7 @@ test.each(['owner', 'different'])('the actual store method applies a completed p
   let current = { id: 'owner' }; const set = jest.fn(), completeOnboarding = jest.fn(async () => { current = { id: finalOwner }; return { id: 'owner', onboardingCompleted: true }; });
   const context = { get: () => ({ currentUser: current }), set, userService: { completeOnboarding }, logEvent: jest.fn(), AnalyticsEvent: {},
     StaleSessionError: class extends Error { constructor() { super('stale'); this.name = 'StaleSessionError'; } } };
-  const handler = vm.runInNewContext(ts.transpileModule(`(${method})`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, context);
+  const handler = vm.runInNewContext(ts.transpileModule(`(${method})`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, Object.assign(context,{runDiagnosticOperation:require('@/services/diagnosticJournal').runDiagnosticOperation,diagnosticEntity:require('@/services/diagnosticJournal').diagnosticEntity}));
   if (finalOwner === 'owner') { await handler({ name: 'שחקן' }); expect(set).toHaveBeenCalledWith({ currentUser: { id: 'owner', onboardingCompleted: true } }); }
   else { await expect(handler({ name: 'שחקן' })).rejects.toMatchObject({ name: 'StaleSessionError' }); expect(set).not.toHaveBeenCalled(); }
   expect(completeOnboarding).toHaveBeenCalledWith({ name: 'שחקן' }, 'owner');

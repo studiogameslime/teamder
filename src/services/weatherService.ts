@@ -1,3 +1,4 @@
+import { fetchRead } from './readRetry';
 import { observeCaughtError } from '../utils/errorObservation';
 
 // weatherService — forecast lookup via Open-Meteo.
@@ -64,7 +65,7 @@ async function geocodeCity(
       `&format=json` +
       `&limit=1` +
       `&countrycodes=il`;
-    const res = await fetch(url, {
+    const res = await fetchRead(url, {
       headers: {
         'User-Agent': 'Teamder/1.0 (studiogameslime@gmail.com)',
         Accept: 'application/json',
@@ -72,7 +73,6 @@ async function geocodeCity(
     });
     if (!res.ok) {
     observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + res.status}), {"source":"src/services/weatherService.ts","handler":"geocodeCity","site":"weatherService.ts:http:72"});
-      geocodeMemo.set(trimmed, null);
       return null;
     }
     const data = await res.json();
@@ -90,7 +90,6 @@ async function geocodeCity(
     observeCaughtError(err, {"source":"src/services/weatherService.ts","handler":"geocodeCity","site":"weatherService:937d3dd56e"});
     logError('weatherGeocodeCity', err, { name: trimmed });
     if (__DEV__) console.warn('[weather] geocode failed', err);
-    geocodeMemo.set(trimmed, null);
     return null;
   }
 }
@@ -157,7 +156,7 @@ export async function getForecastFor(
     `&end_date=${date}`;
 
   try {
-    const res = await fetch(url);
+    const res = await fetchRead(url);
     if (!res.ok) {
     observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + res.status}), {"source":"src/services/weatherService.ts","handler":"getForecastFor","site":"weatherService.ts:http:159"});
       return null;

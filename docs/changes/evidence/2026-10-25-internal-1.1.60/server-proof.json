@@ -1,0 +1,172 @@
+{
+  "functions": [
+    {
+      "name": "commitRoundStats",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T11:30:06.878748693Z",
+      "revision": "commitroundstats-00060-fic",
+      "sourceFilesVerified": 82,
+      "sourceArchiveSha256": "eba94cd557ee3ac72c1cf515660c0f53a4ea3fb8b993315c373df1f379af1083",
+      "unauthenticatedRejected": true,
+      "existingSettingsPreserved": true
+    },
+    {
+      "name": "commitRoundStatsWithInPlayPenalties",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T11:29:58.444971945Z",
+      "revision": "commitroundstatswithinplaypenalties-00001-tus",
+      "sourceFilesVerified": 82,
+      "sourceArchiveSha256": "eba94cd557ee3ac72c1cf515660c0f53a4ea3fb8b993315c373df1f379af1083",
+      "unauthenticatedRejected": true,
+      "existingSettingsPreserved": false
+    },
+    {
+      "name": "getSocialPlayerProfile",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T11:38:27.414749397Z",
+      "revision": "getsocialplayerprofile-00005-civ",
+      "sourceFilesVerified": 82,
+      "sourceArchiveSha256": "eba94cd557ee3ac72c1cf515660c0f53a4ea3fb8b993315c373df1f379af1083",
+      "unauthenticatedRejected": true,
+      "existingSettingsPreserved": false
+    },
+    {
+      "name": "onGameRotationChanged",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T11:30:08.020943515Z",
+      "revision": "ongamerotationchanged-00027-nin",
+      "sourceFilesVerified": 82,
+      "sourceArchiveSha256": "eba94cd557ee3ac72c1cf515660c0f53a4ea3fb8b993315c373df1f379af1083",
+      "unauthenticatedRejected": null,
+      "existingSettingsPreserved": true
+    },
+    {
+      "name": "onGameRosterChanged",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T11:30:10.147733862Z",
+      "revision": "ongamerosterchanged-00086-kam",
+      "sourceFilesVerified": 82,
+      "sourceArchiveSha256": "eba94cd557ee3ac72c1cf515660c0f53a4ea3fb8b993315c373df1f379af1083",
+      "unauthenticatedRejected": null,
+      "existingSettingsPreserved": true
+    },
+    {
+      "name": "setEveningPlayed",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T11:30:12.536537526Z",
+      "revision": "seteveningplayed-00012-vil",
+      "sourceFilesVerified": 82,
+      "sourceArchiveSha256": "eba94cd557ee3ac72c1cf515660c0f53a4ea3fb8b993315c373df1f379af1083",
+      "unauthenticatedRejected": null,
+      "existingSettingsPreserved": true
+    },
+    {
+      "name": "cronEvery60Min",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T11:30:05.435783376Z",
+      "revision": "cronevery60min-00046-niv",
+      "sourceFilesVerified": 82,
+      "sourceArchiveSha256": "eba94cd557ee3ac72c1cf515660c0f53a4ea3fb8b993315c373df1f379af1083",
+      "unauthenticatedRejected": null,
+      "existingSettingsPreserved": true
+    },
+    {
+      "name": "startSeasonEvening",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T11:30:05.638889230Z",
+      "revision": "startseasonevening-00002-bab",
+      "sourceFilesVerified": 82,
+      "sourceArchiveSha256": "eba94cd557ee3ac72c1cf515660c0f53a4ea3fb8b993315c373df1f379af1083",
+      "unauthenticatedRejected": null,
+      "existingSettingsPreserved": true
+    },
+    {
+      "name": "resumeClubSeason",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T11:30:11.554828605Z",
+      "revision": "resumeclubseason-00002-lag",
+      "sourceFilesVerified": 82,
+      "sourceArchiveSha256": "eba94cd557ee3ac72c1cf515660c0f53a4ea3fb8b993315c373df1f379af1083",
+      "unauthenticatedRejected": null,
+      "existingSettingsPreserved": true
+    },
+    {
+      "name": "syncClubSeason",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T11:30:07.530660575Z",
+      "revision": "syncclubseason-00003-ziz",
+      "sourceFilesVerified": 82,
+      "sourceArchiveSha256": "eba94cd557ee3ac72c1cf515660c0f53a4ea3fb8b993315c373df1f379af1083",
+      "unauthenticatedRejected": null,
+      "existingSettingsPreserved": true
+    },
+    {
+      "name": "enableClubSeasons",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T11:30:06.197096656Z",
+      "revision": "enableclubseasons-00025-qid",
+      "sourceFilesVerified": 82,
+      "sourceArchiveSha256": "eba94cd557ee3ac72c1cf515660c0f53a4ea3fb8b993315c373df1f379af1083",
+      "unauthenticatedRejected": null,
+      "existingSettingsPreserved": true
+    },
+    {
+      "name": "disableClubSeasons",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T11:30:08.553265017Z",
+      "revision": "disableclubseasons-00013-bik",
+      "sourceFilesVerified": 82,
+      "sourceArchiveSha256": "eba94cd557ee3ac72c1cf515660c0f53a4ea3fb8b993315c373df1f379af1083",
+      "unauthenticatedRejected": null,
+      "existingSettingsPreserved": true
+    },
+    {
+      "name": "updateSeasonTarget",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T11:30:10.199373730Z",
+      "revision": "updateseasontarget-00018-vog",
+      "sourceFilesVerified": 82,
+      "sourceArchiveSha256": "eba94cd557ee3ac72c1cf515660c0f53a4ea3fb8b993315c373df1f379af1083",
+      "unauthenticatedRejected": null,
+      "existingSettingsPreserved": true
+    },
+    {
+      "name": "endSeasonNow",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-25T11:30:08.975326757Z",
+      "revision": "endseasonnow-00020-ret",
+      "sourceFilesVerified": 82,
+      "sourceArchiveSha256": "eba94cd557ee3ac72c1cf515660c0f53a4ea3fb8b993315c373df1f379af1083",
+      "unauthenticatedRejected": null,
+      "existingSettingsPreserved": true
+    }
+  ],
+  "changed": [
+    "updateSeasonTarget",
+    "enableClubSeasons",
+    "startSeasonEvening",
+    "onGameRosterChanged",
+    "commitRoundStats",
+    "disableClubSeasons",
+    "onGameRotationChanged",
+    "getSocialPlayerProfile",
+    "commitRoundStatsWithInPlayPenalties",
+    "resumeClubSeason",
+    "cronEvery60Min",
+    "syncClubSeason",
+    "setEveningPlayed",
+    "endSeasonNow"
+  ],
+  "runtimeDifferences": [
+    {
+      "name": "getSocialPlayerProfile",
+      "field": "maxInstanceCount",
+      "before": null,
+      "after": 20,
+      "reason": "Current source global maxInstances=20 also applies to the profile service; explicit reset operations completed but did not remove the cap."
+    }
+  ],
+  "unrelatedFunctionsUnchanged": true,
+  "rulesDeployed": false,
+  "migrations": false
+}

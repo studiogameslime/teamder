@@ -1,3 +1,4 @@
+import { SPORTS_ACTIVITY_ENABLED } from '@/config/sportsActivity';
 import { observeCaughtError } from '../../utils/errorObservation';
 import { ScrollSurface } from '@/components/ScrollSurface';
 // EveningSummaryScreen — shows the shareable "סיכום הערב" card for the
@@ -23,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { EveningSummaryCard } from '@/components/summary/EveningSummaryCard';
+import { PersonalActivityPanel } from '@/components/summary/PersonalActivityPanel';
 import { EveningScoreInfoSheet } from '@/components/summary/EveningScoreInfoSheet';
 import {
   eveningSummaryService,
@@ -61,8 +63,7 @@ export function EveningSummaryScreen() {
     setFailed(false);
     setModel(null);
     (async () => {
-      // Physical/Health-Connect ingestion was removed — the feature is disabled
-      // (no wearable data path). The summary is goals/assists/result only now.
+      // Sports measurements load independently from the private watch pipeline.
       if (!currentUser || currentUser.isGuest) {
         if (alive) setLoading(false);
         return;
@@ -166,11 +167,12 @@ export function EveningSummaryScreen() {
           </Pressable>
         </View>
       ) : !model || noPlay ? (
-        <View style={styles.center}>
+        <ScrollSurface contentContainerStyle={styles.scroll}>
           <Text style={styles.empty}>
             {!currentUser || currentUser.isGuest ? 'כדי לראות את הסיכום האישי שלך צריך להתחבר לחשבון' : noPlay ? he.summaryNoPlay : he.summaryUnavailable}
           </Text>
-        </View>
+          {SPORTS_ACTIVITY_ENABLED && currentUser && !currentUser.isGuest ? <PersonalActivityPanel key={summaryOwner} gameId={gameId} userId={currentUser.id} /> : null}
+        </ScrollSurface>
       ) : (
         <ScrollSurface contentContainerStyle={styles.scroll}>
           <EveningSummaryCard key={`${model.gameId}:${model.uid}`} ref={cardRef} model={model} user={currentUser} captureMode={sharing}
@@ -189,6 +191,7 @@ export function EveningSummaryScreen() {
             <><Text style={styles.shareTxt}>שתף את הסיכום</Text><Ionicons name="share-outline" size={22} color="#FFFFFF" /></>
             )}
           </Pressable>
+          {SPORTS_ACTIVITY_ENABLED && currentUser && !currentUser.isGuest ? <PersonalActivityPanel key={summaryOwner} gameId={gameId} userId={currentUser.id} /> : null}
         </ScrollSurface>
       )}
       <EveningScoreInfoSheet visible={ownsSummary && scoreInfoVisible} onClose={() => setScoreInfoVisible(false)} />

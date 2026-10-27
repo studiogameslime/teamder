@@ -1,0 +1,21 @@
+{
+  "verifiedAt": "2026-10-25T09:11:43.876425+00:00",
+  "incidentPath": "errors/08cec75982745b416be6841ff2378f63",
+  "handoverReadBackVerified": true,
+  "claudeStatus": "done",
+  "claudeNote": "האירוע הגיע מגרסה ישנה באייפון שבה עדיין מדווח ניסיון למחוק תמונה שאינה קיימת, והפרופיל עצמו נשמר בהצלחה. תוקן גם הגורם לבקשת המחיקה המיותרת: בחירת דמות ללא תמונה קודמת או העלאה חדשה אינה מבקשת למחוק קובץ, ותמונה שהועלתה והוחלפה בדמות מנוקה רק אחרי שמירה מוצלחת. בדיקת הטיפוסים ובדיקות התיקון עברו, ובהרצה המלאה נכשלה בדיקה נפרדת של מסך המשחק החי; התוספת מקומית וטרם הופצה, ולכן מכשירים בגרסה הישנה יכולים להמשיך לדווח עד לעדכון האפליקציה.",
+  "sourceStatusPreserved": "new",
+  "sourceAndProofImagesPreserved": true,
+  "sourceFieldsPreserved": true,
+  "releaseItemId": "codex-photo-cleanup-20261025",
+  "releaseItemVersion": "next",
+  "releaseReadBackVerified": true,
+  "previousReleaseItemsPreserved": true,
+  "testsPassed": 5772,
+  "testsFailed": 1,
+  "testsTotal": 5773,
+  "suitesPassed": 512,
+  "fullSuiteFailure": "tests/logic/liveScoreboardResponsive.test.tsx: control source missing",
+  "deploymentPerformed": false,
+  "verificationNote": "Firestore normalizes empty arrayValue to omit values; readback compared decoded values. No repeated write was made."
+}

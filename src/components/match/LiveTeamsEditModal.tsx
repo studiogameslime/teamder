@@ -29,7 +29,7 @@ export function LiveTeamsEditModal({ original, draft, roundNumber, busy, stale, 
       <Pressable style={StyleSheet.absoluteFill} onPress={back} accessibilityRole="button" accessibilityLabel="חזרה מהחלון" disabled={busy}/>
       <View testID="live-teams-sheet" style={[confirm ? overlaySurfaces.dialog : overlaySurfaces.sheet, s.sheet, { maxHeight: height * 0.9 }, confirm && s.dialog]}>
         {!confirm && <View style={s.handle}/>}
-        <View style={s.heading}><Text style={s.title}>{confirm ? `לאפס את משחק ${roundNumber}?` : picking !== null ? 'בחירת קבוצה למשחק' : 'עריכת הקבוצות והתור'}</Text>
+        <View style={s.heading}><Text style={s.title}>{confirm ? `לאפס את משחק ${roundNumber}?` : picking !== null ? 'בחירת קבוצה למשחק' : 'סדר המשחק'}</Text>
           {!confirm && <Pressable style={s.icon} onPress={back} disabled={busy} accessibilityRole="button" accessibilityLabel={picking !== null ? 'חזרה לעריכה' : 'ביטול העריכה'}><Ionicons name={picking !== null ? 'arrow-forward' : 'close'} size={24} color={colors.text}/></Pressable>}
         </View>
         <ScrollView style={s.body} contentContainerStyle={s.bodyContent}>

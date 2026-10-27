@@ -78,10 +78,10 @@ async function probeOnce(): Promise<{ offset: number; rtt: number } | null> {
     // Lazy require mirrors the rest of the app's callable call sites and
     // avoids pulling firebase/functions into bundles that never sync.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable');
     const fn = httpsCallable(getFirebase().functions, 'getServerTime');
     const t0 = Date.now();
-    const res = await fn();
+    const res = await fn({});
     const t1 = Date.now();
     const serverTime = Number((res?.data as { now?: number } | undefined)?.now);
     if (!Number.isFinite(serverTime)) return null;

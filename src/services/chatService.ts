@@ -25,7 +25,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/services/diagnosticCallable';
 
 import { docs, col } from '@/firebase/firestore';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';

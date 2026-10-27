@@ -5,8 +5,8 @@ import { observeCaughtError } from '../utils/errorObservation';
 // Two URL families both flow through `parseInviteUrl`:
 //   1. Custom scheme: teamder://session/<id>
 //                     teamder://team/<id>
-//   2. Hosting URL:   https://teamderfc.web.app/session/<id>
-//                     https://teamderfc.web.app/team/<id>
+//   2. Hosting URL:   https://teamder.co.il/session/<id>
+//                     https://teamder.co.il/team/<id>
 //
 // We deliberately do NOT use React Navigation's `linking` prop — the
 // app's navigator tree depends on auth state (RootNavigator swaps
@@ -30,21 +30,7 @@ import { storage, type PendingInvite } from './storage';
 import { logError } from './errorLog';
 import { receivePendingInvite } from './pendingAction';
 
-/** All hostnames + custom-scheme prefixes we treat as our invite links.
- *  The bare "teamder" subdomain was reserved by another Firebase project
- *  before we owned the brand, so we ship under "teamderfc" (fc =
- *  football club). The plain "teamder.web.app" is kept in the set so
- *  that any pre-existing shared link still parses (returning a usable
- *  PendingInvite) even though we can't actually serve that origin. */
-const HOSTING_DOMAINS = new Set([
-  'teamderfc.web.app',
-  'teamderfc.firebaseapp.com',
-  'teamder.web.app',
-  'teamder.firebaseapp.com',
-]);
-
-/** Public hosting origin used when building share URLs. */
-const HOSTING_ORIGIN = 'https://teamderfc.web.app';
+import { HOSTING_DOMAINS, SHORT_LINK_DOMAINS, PUBLIC_LINK_ORIGIN as HOSTING_ORIGIN } from '@/utils/linkDomains';
 
 const B64_INV: Record<string, number> = {};
 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'
@@ -205,15 +191,15 @@ export function parseInviteUrl(url: string): PendingInvite | null {
 export async function resolveInviteUrl(url: string): Promise<PendingInvite | null> {
   const direct = parseInviteUrl(url);
   if (direct) return direct;
-  let short: string[] | null = /^https:\/\/(teamderfc\.web\.app|teamderfc\.firebaseapp\.com)\/i\/([A-Za-z0-9_-]{1,80})(?:[?#].*)?$/.exec(url);
-  if (!short) {
-    const parsed = Linking.parse(url);
-    const path = (parsed.path ?? '').replace(/^\//, '');
-    const code = parsed.queryParams?.code;
-    if (['app', 'go'].includes(path) && ['teamderfc.web.app', 'teamderfc.firebaseapp.com'].includes(parsed.hostname ?? '') && typeof code === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(code)) {
-      short = [url, parsed.hostname!, code];
-    }
-  }
+  const parsed = Linking.parse(url);
+  const path = (parsed.path ?? '').replace(/^\//, '');
+  const host = (parsed.hostname ?? '').toLowerCase();
+  if (parsed.scheme !== 'https' || !SHORT_LINK_DOMAINS.has(host)) return null;
+  const pathCode = /^i\/([A-Za-z0-9_-]{1,80})$/.exec(path)?.[1];
+  const queryCode = ['app', 'go'].includes(path) ? parsed.queryParams?.code : undefined;
+  const code = pathCode ?? queryCode;
+  const short = typeof code === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(code)
+    ? [url, host, code] : null;
   if (!short) return null;
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -249,7 +235,7 @@ export async function resolveInviteUrl(url: string): Promise<PendingInvite | nul
 
 /**
  * Build a public share URL for a session or team. Points at Firebase
- * Hosting (`teamderfc.web.app`), which renders the landing page that
+ * Hosting (`teamder.co.il`), which renders the landing page that
  * tries the deep link and falls back to the Play Store. When
  * `invitedBy` is provided we append `?invitedBy=<uid>` so the new
  * user's profile picks up an inviter on signup.

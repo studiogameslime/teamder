@@ -62,17 +62,17 @@ test('actual guest trigger does not send for closed rounds or unrelated edits an
   await expect(run({guests:[]},{status:'open',createdBy:'owner',guests:[guest]},event)).rejects.toThrow('notification write failed');
 });
 test('actual notification writer deduplicates guest retries without aggregating the count',async()=>{
-  const records=new Map<string,any>();const update=jest.fn();
+  const records=new Map<string,any>();const update=jest.fn(),observeCaughtError=jest.fn();
   const db={collection:()=>({doc:(id:string)=>({create:async(data:any)=>{if(records.has(id))throw {code:6};records.set(id,data);},get:async()=>({data:()=>records.get(id)}),update})})};
   const create=compile(functionSource('createNotificationOnce')+'\nmodule.exports=createNotificationOnce;',{
-    module:{exports:{}},db,console:{log:()=>{},warn:()=>{},error:()=>{}},
+    module:{exports:{}},db,observeCaughtError,console:{log:()=>{},warn:()=>{},error:()=>{}},
     inferEntityFromPayload,dedupeIdFor,dedupeKeyFor,cooldownMsFor,
     STRICT_UNREAD_DEDUP:{},AGGREGATE_ON_DUPLICATE:{gamePlayersJoined:true},STALE_UNREAD_TTL_MS:86400000,NOTIFICATION_SCHEMA_VERSION:1,
     admin:{firestore:{FieldValue:{serverTimestamp:()=>1}}},buildAggregateUpdate:()=>({}),
   });
   const input={type:'gamePlayersJoined',recipientId:'club',reason:'guest-added:event:g',nowMs:1000,payload:{gameId:'game',guestId:'g'}};
   await create(input);await create(input);
-  expect(records.size).toBe(1);expect(update).not.toHaveBeenCalled();
+  expect(records.size).toBe(1);expect(update).not.toHaveBeenCalled();expect(observeCaughtError).not.toHaveBeenCalled();
   await create({...input,reason:'guest-added:other:h',payload:{gameId:'game',guestId:'h'}});
   expect(records.size).toBe(2);
 });

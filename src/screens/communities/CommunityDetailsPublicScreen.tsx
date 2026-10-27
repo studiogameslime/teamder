@@ -122,9 +122,9 @@ export function CommunityDetailsPublicScreen() {
     try {
       const [g, games] = await Promise.all([
         groupService.getPublic(groupId),
-        gameService
-          .getUpcomingPublicGamesForGroup(groupId)
-          .catch((caughtError530609f80d: unknown) => { observeCaughtError(caughtError530609f80d, {"source":"src/screens/communities/CommunityDetailsPublicScreen.tsx","handler":"CommunityDetailsPublicScreen","site":"CommunityDetailsPublicScreen:530609f80d"}); return [] as Game[]; }),
+        // Keep read failures distinct from a genuinely empty schedule. The
+        // existing failure state owns retrying the complete public snapshot.
+        gameService.getUpcomingPublicGamesForGroup(groupId),
       ]);
       if (generation !== loadGeneration.current) return;
       setGroup(g);

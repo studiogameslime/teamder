@@ -2,7 +2,7 @@
   "expo": {
     "name": "Teamder",
     "slug": "soccer-game",
-    "version": "1.1.59",
+    "version": "1.1.66",
     "orientation": "portrait",
     "icon": "./Logo.png",
     "scheme": [
@@ -25,7 +25,9 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "usesAppleSignIn": true,
       "associatedDomains": [
-        "applinks:teamderfc.web.app"
+        "applinks:teamderfc.web.app",
+        "applinks:teamder.co.il",
+        "applinks:www.teamder.co.il"
       ],
       "infoPlist": {
         "CFBundleDevelopmentRegion": "he",
@@ -89,6 +91,66 @@
               "scheme": "https",
               "host": "teamderfc.web.app",
               "pathPrefix": "/c/"
+            },
+            {
+              "scheme": "https",
+              "host": "teamder.co.il",
+              "pathPrefix": "/session"
+            },
+            {
+              "scheme": "https",
+              "host": "teamder.co.il",
+              "pathPrefix": "/team"
+            },
+            {
+              "scheme": "https",
+              "host": "teamder.co.il",
+              "pathPrefix": "/app"
+            },
+            {
+              "scheme": "https",
+              "host": "teamder.co.il",
+              "pathPrefix": "/i/"
+            },
+            {
+              "scheme": "https",
+              "host": "teamder.co.il",
+              "pathPrefix": "/go"
+            },
+            {
+              "scheme": "https",
+              "host": "teamder.co.il",
+              "pathPrefix": "/c/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.teamder.co.il",
+              "pathPrefix": "/session"
+            },
+            {
+              "scheme": "https",
+              "host": "www.teamder.co.il",
+              "pathPrefix": "/team"
+            },
+            {
+              "scheme": "https",
+              "host": "www.teamder.co.il",
+              "pathPrefix": "/app"
+            },
+            {
+              "scheme": "https",
+              "host": "www.teamder.co.il",
+              "pathPrefix": "/i/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.teamder.co.il",
+              "pathPrefix": "/go"
+            },
+            {
+              "scheme": "https",
+              "host": "www.teamder.co.il",
+              "pathPrefix": "/c/"
             }
           ],
           "category": [
@@ -96,6 +158,19 @@
             "DEFAULT"
           ]
         }
+      ],
+      "blockedPermissions": [
+        "android.permission.ACTIVITY_RECOGNITION",
+        "android.permission.BODY_SENSORS",
+        "android.permission.BODY_SENSORS_BACKGROUND",
+        "android.permission.FOREGROUND_SERVICE_HEALTH",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.health.READ_DISTANCE",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_SPEED",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_TOTAL_CALORIES_BURNED",
+        "android.permission.health.READ_HEART_RATE"
       ]
     },
     "plugins": [
@@ -164,7 +239,9 @@
           "configureAndroidBackup": false
         }
       ],
-      "./plugins/withAuthBackupExclusions.js"
+      "./plugins/withAuthBackupExclusions.js",
+      "./plugins/withHealth.js",
+      "./plugins/withPhoneActivity.js"
     ],
     "experiments": {
       "typedRoutes": false

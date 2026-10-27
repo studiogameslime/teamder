@@ -1,5 +1,5 @@
 // Public campaign codes are identifiers, never authentication tokens.
-export const AD_LINK_ORIGIN = 'https://teamderfc.web.app';
+export const AD_LINK_ORIGIN = 'https://teamder.co.il';
 const ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 export const SHORT_CODE_LENGTH = 8;
 export function newAdLinkCode(random: () => number = Math.random): string {

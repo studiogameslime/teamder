@@ -153,7 +153,7 @@ export function FillerInterestsSection({
     setBusyUid(candidateUid);
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { httpsCallable } = require('firebase/functions');
+      const { httpsCallable } = require('@/services/diagnosticCallable');
       const { functions } = getFirebase();
       const fn = httpsCallable(functions, 'approveFiller');
       await fn({ gameId, candidateUid });
@@ -202,7 +202,7 @@ export function FillerInterestsSection({
             setBusyUid(candidateUid);
             try {
               // eslint-disable-next-line @typescript-eslint/no-var-requires
-              const { httpsCallable } = require('firebase/functions');
+              const { httpsCallable } = require('@/services/diagnosticCallable');
               const { functions } = getFirebase();
               const fn = httpsCallable(functions, 'declineFiller');
               await fn({ gameId, candidateUid });

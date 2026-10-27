@@ -24,9 +24,10 @@ interface Props {
   // Gate the lookup until the app is past splash + on a real screen, so a
   // popup never races the cold-start navigation.
   active: boolean;
+  onVisibilityChange?: (visible: boolean) => void;
 }
 
-export function CampaignGate({ active }: Props) {
+export function CampaignGate({ active, onVisibilityChange }: Props) {
   const currentUser = useUserStore((s) => s.currentUser);
   const [popup, setPopup] = useState<PopupCampaign | null>(null);
   // Only ever auto-show one popup per app session — avoids a second popup
@@ -55,7 +56,9 @@ export function CampaignGate({ active }: Props) {
     };
   }, [active, currentUser]);
 
-  if (!popup) return null;
+  useEffect(() => { onVisibilityChange?.(active && !!popup); return () => onVisibilityChange?.(false); }, [active, popup, onVisibilityChange]);
+
+  if (!active || !popup) return null;
 
   const close = () => {
     // Seen already recorded at show-time; here we only log the engagement.

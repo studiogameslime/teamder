@@ -11,7 +11,44 @@ jest.doMock(require.resolve('firebase-admin/firestore', {paths: [process.cwd() +
 }), {virtual: true});
 const { observeCaughtError, reportServerError, withServerErrorReporting }: typeof import('../../functions/src/serverErrorLog') = require('../../functions/src/serverErrorLog');
 const origin = {source:'functions/src/example.ts',handler:'work',site:'example:one'};
+const { ExpectedCallableError } = require('../../functions/src/expectedCallableError');
+const { HttpsError } = require(require.resolve('firebase-functions/v2/https', {paths: [process.cwd() + '/functions']}));
 beforeEach(() => {mockRows.clear();mockWrite.mockClear();});
+test('strict-schema join writes correlate from existing fields without changing the document',async()=>{
+ const {joinDiagnosticId}=require('@/utils/joinDiagnosticId'),server=require('../../functions/src/joinDiagnosticId');
+ expect(server.joinDiagnosticId('round','viewer',123)).toBe(joinDiagnosticId('round','viewer',123));
+ const data={uid:'viewer',tappedAt:123,requestedAt:123,state:'queued'};
+ const info=jest.spyOn(console,'info').mockImplementation(()=>{});
+ await expect(withServerErrorReporting('onDocumentCreated:join',async(_request:unknown)=>{throw new Error('reconcile failed');})({params:{gameId:'round',uid:'viewer'},data:{data:()=>data}})).rejects.toThrow('reconcile failed');
+ expect([...mockRows.values()][0].lastContext).toMatchObject({requestId:joinDiagnosticId('round','viewer',123),joinTappedAt:123});
+ expect(data).toEqual({uid:'viewer',tappedAt:123,requestedAt:123,state:'queued'});info.mockRestore();
+});
+test('server correlation is isolated, stripped from business payload and retained with exact failure',async()=>{
+ const info=jest.spyOn(console,'info').mockImplementation(()=>{});
+ const handler=withServerErrorReporting('onCall:join',async(request:any)=>{
+  expect(request.data).toEqual({gameId:'round'});throw new Error('database failed');
+ });
+ await expect(handler({auth:{uid:'owner'},data:{gameId:'round',_diagnostic:{requestId:'request-valid-id'}}})).rejects.toThrow('database failed');
+ expect([...mockRows.values()][0].lastContext).toMatchObject({requestId:'request-valid-id',userId:'owner',durationMs:expect.any(Number),serverRevision:expect.any(String)});
+ expect(info).toHaveBeenCalledWith('[diagnostic-call]',expect.objectContaining({requestId:'request-valid-id',outcome:'failure'}));info.mockRestore();
+});
+
+test.each(['invalid-argument','unauthenticated','permission-denied','failed-precondition','resource-exhausted'])('explicit expected %s rejection preserves the response without reporting a server incident',async code=>{
+ const error=new ExpectedCallableError(code,'Rejected',{kept:true});
+ expect(error.toJSON()).toEqual(new HttpsError(code,'Rejected',{kept:true}).toJSON());
+ const call=withServerErrorReporting('comparison',async()=>{
+  observeCaughtError(error,origin);
+  await reportServerError({operation:'comparison',err:error});
+  throw error;
+ });
+ await expect(call()).rejects.toBe(error);expect(mockWrite).not.toHaveBeenCalled();
+});
+
+test('an ordinary HttpsError is still reported even when its code matches a rejected request',async()=>{
+ const error=new HttpsError('permission-denied','Unexpected database access failure');
+ await expect(withServerErrorReporting('comparison',async()=>{throw error;})()).rejects.toBe(error);
+ expect(mockWrite).toHaveBeenCalledTimes(1);
+});
 test('caught, explicitly reported and rethrown server error is one report and preserves identity', async () => {
   const failure = Object.assign(new Error('database failed'),{code: 9});
   const work = withServerErrorReporting('request', async () => {

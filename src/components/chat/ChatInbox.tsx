@@ -73,26 +73,36 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
   useEffect(()=>{ const timer=setInterval(()=>setNow(Date.now()),60000); return ()=>clearInterval(timer); },[]);
   useEffect(()=>{
     if (preview || !me) return;
-    setGames([]); setProfiles({}); setPreferences({}); setLoading(true); setFailed(false);
+    setGames([]); setPreferences({}); setLoading(true); setFailed(false);
     const fail=(err:unknown)=>{setFailed(true);setLoading(false);logError('ChatInbox',err);};
     const a=chatService.subscribeInboxGames(me.id,adminIds ? adminIds.split('|'):[], rows=>{setGames(rows);setLoading(false);},fail);
     const b=chatService.subscribePreferences(me.id,setPreferences,fail);
     return ()=>{a();b();};
   },[me?.id,adminIds,preview,retry]);
-  const otherIds = useMemo(()=>Object.values(entries).filter(e=>e.scope==='dm').map(e=>e.parentId.split('__').find(id=>id!==me?.id)).filter((id):id is string=>!!id),[entries,me?.id]);
-  useEffect(()=>{
+  // Message previews/counts change often; only changed peers should reload identities.
+  const otherIds = useMemo(()=>JSON.stringify([...new Set(Object.values(entries).filter(e=>e.scope==='dm'&&e.parentId&&me&&e.parentId.split('__').includes(me.id)).map(e=>e.parentId.split('__').find(id=>id!==me?.id)).filter((id):id is string=>!!id))].sort()),[entries,me?.id]);
+  useEffect(()=>{setProfiles({});},[me?.id,preview]);
+  useFocusEffect(useCallback(()=>{
     let live=true;
-    if (preview) return;
-    Promise.all(otherIds.map(async id=>[id,await userService.getUserById(id).catch((caughtError0862998ed1: unknown) =>{ observeCaughtError(caughtError0862998ed1, {"source":"src/components/chat/ChatInbox.tsx","handler":"ChatInbox","site":"ChatInbox:0862998ed1"}); return null; })] as const)).then(pairs=>{
-      if(live) setProfiles(Object.fromEntries(pairs.filter((p):p is readonly [string,User]=>!!p[1])));
+    const owner=me?.id;
+    if (preview || !owner) return;
+    const ids=JSON.parse(otherIds) as string[];
+    Promise.all(ids.map(async id=>[id,await userService.getUserById(id).catch((caughtError0862998ed1: unknown) =>{ if(live&&useUserStore.getState().currentUser?.id===owner) observeCaughtError(caughtError0862998ed1, {"source":"src/components/chat/ChatInbox.tsx","handler":"ChatInbox","site":"ChatInbox:0862998ed1"}); return null; })] as const)).then(pairs=>{
+      if(live&&useUserStore.getState().currentUser?.id===owner) setProfiles(Object.fromEntries(pairs.filter((p):p is readonly [string,User]=>!!p[1])));
     });
     return ()=>{live=false;};
-  },[otherIds,preview]);
+  },[otherIds,me?.id,preview,retry]));
   useEffect(()=>{
     if(mode!=='new'||preview||!me) return;
     let live=true;setFriendsLoading(true);setFriendsFailed(false);setFriends([]);
     friendsService.listFriends(me.id).then(rows=>{if(live)setFriends(rows);}).catch((caughtError3dbc2dce7d: unknown) =>{
-    observeCaughtError(caughtError3dbc2dce7d, {"source":"src/components/chat/ChatInbox.tsx","handler":"ChatInbox","site":"ChatInbox:3dbc2dce7d"});if(live)setFriendsFailed(true);}).finally(()=>{if(live)setFriendsLoading(false);});
+      if (!live || useUserStore.getState().currentUser?.id !== me.id) return;
+      // A deleted profile is unavailable, not an authoritative empty friend list.
+      if ((caughtError3dbc2dce7d as {name?: unknown})?.name !== 'FriendOwnerMissingError') {
+        observeCaughtError(caughtError3dbc2dce7d, {"source":"src/components/chat/ChatInbox.tsx","handler":"ChatInbox","site":"ChatInbox:3dbc2dce7d"});
+      }
+      setFriendsFailed(true);
+    }).finally(()=>{if(live)setFriendsLoading(false);});
     return ()=>{live=false;};
   },[mode,me?.id,preview,retry]);
   useFocusEffect(useCallback(()=>{

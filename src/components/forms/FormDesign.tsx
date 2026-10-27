@@ -72,16 +72,16 @@ export function FormSections({ children }: { children: React.ReactNode }) {
     });
   }
   flatten(children, 'fields');
-  const groups: { key: string; title?: string; nodes: React.ReactElement[]; standalone?: boolean }[] = [];
+  const groups: { key: string; title?: string; nodes: React.ReactElement[]; standalone?: boolean; compact?: boolean }[] = [];
   for (const node of nodes) {
     if (node.type === FormStandalone) groups.push({ key: String(node.key), nodes: [node], standalone: true });
-    else if (node.type === FormSectionHeader) groups.push({ key: String((node.props as { title: string }).title), title: (node.props as { title: string }).title, nodes: [] });
+    else if (node.type === FormSectionHeader) groups.push({ key: String((node.props as { title: string }).title), title: (node.props as { title: string }).title, compact: (node.props as {compact?:boolean}).compact, nodes: [] });
     else {
       if (!groups.length) groups.push({ key: 'first', nodes: [] });
       groups[groups.length - 1].nodes.push(node);
     }
   }
-  return <View style={s.sections}>{groups.filter(group => group.nodes.length).map(group => group.standalone ? <React.Fragment key={group.key}>{group.nodes}</React.Fragment> : <View key={group.key} style={s.card}>
+  return <View style={s.sections}>{groups.filter(group => group.nodes.length).map(group => group.standalone ? <React.Fragment key={group.key}>{group.nodes}</React.Fragment> : <View key={group.key} style={[s.card,group.compact && {paddingVertical:10,gap:6}]}>
     {group.title ? <View style={s.heading}><Text style={s.title}>{group.title}</Text><Ionicons name={sectionIcon(group.title)} color={FORM_BLUE} size={20} /></View> : null}
     {group.nodes}
   </View>)}</View>;

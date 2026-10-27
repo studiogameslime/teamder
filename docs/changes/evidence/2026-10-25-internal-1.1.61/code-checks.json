@@ -1,0 +1,15 @@
+{
+  "applicationTypes": true,
+  "serverTypes": true,
+  "pulseTypes": true,
+  "testSuites": 518,
+  "tests": 5835,
+  "wholeSuiteSeconds": 318.323,
+  "rulesSuites": 34,
+  "rulesTests": 353,
+  "rulesSeconds": 70.6537086,
+  "deviceInstallTested": false,
+  "nativeCrashEventTested": false,
+  "newVisualVerificationDuringRelease": false,
+  "knownExistingDiffWhitespaceFindings": 7
+}

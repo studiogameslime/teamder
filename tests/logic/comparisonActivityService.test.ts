@@ -12,12 +12,12 @@ beforeEach(() => { mockCurrent = { id: 'viewer', isGuest: false }; mockAuth = { 
 test('list always binds identity to the current account and passes the exact period/cursor', async () => {
   mockCall.mockResolvedValue({ data: { players: 1, comparisons: 2, rows: [], cursor: null } });
   await comparisonActivityService.list('viewer', 'all', 'opaque');
-  expect(mockCall).toHaveBeenCalledWith('getMyComparisonActivity', { expectedUid: 'viewer', range: 'all', cursor: 'opaque' });
+  expect(mockCall).toHaveBeenCalledWith('getMyComparisonActivity', { expectedUid: 'viewer', range: 'all', cursor: 'opaque', _diagnostic: {requestId:expect.any(String)} });
 });
 test('record preserves the same visit id and club/scope for server idempotence', async () => {
   mockCall.mockResolvedValue({ data: { recorded: true } });
   await comparisonActivityService.record({ expectedUid: 'viewer', targetId: 'target', groupId: 'club', visitId: 'unique-visit-00001', scope: { k: 'season', id: 's1' } });
-  expect(mockCall).toHaveBeenCalledWith('recordPlayerComparison', { expectedUid: 'viewer', targetId: 'target', groupId: 'club', visitId: 'unique-visit-00001', scope: { k: 'season', id: 's1' } });
+  expect(mockCall).toHaveBeenCalledWith('recordPlayerComparison', { expectedUid: 'viewer', targetId: 'target', groupId: 'club', visitId: 'unique-visit-00001', scope: { k: 'season', id: 's1' }, _diagnostic: {requestId:expect.any(String)} });
 });
 test.each(['store', 'auth', 'anonymous'])('wrong %s identity cannot issue an owner request', async mode => {
   if (mode === 'store') mockCurrent.id = 'other';

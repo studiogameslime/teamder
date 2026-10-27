@@ -18,7 +18,7 @@ import { upsertSavedGuest } from '@/utils/savedGuest';
 import { ArrivalMotion } from '@/components/anim/ArrivalMotion';
 import { ChangeMotion } from '@/components/anim/ChangeMotion';
 import { useArrivalTracker } from '@/hooks/animations/useArrivalTracker';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type GestureResponderEvent,
   Pressable,
@@ -142,6 +142,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
   const setGame = props.gameState?.setGame ?? setLocalGame;
   const controlled = !!props.gameState;
   const [loading, setLoading] = useState(!controlled);
+  const reloadRevision = useRef(0);
   const [busyOffer, setBusyOffer] = useState(false);
   // Guest being edited (rename by admin / rate by the adder).
   const [editingGuest, setEditingGuest] = useState<GameGuest | null>(null);
@@ -163,6 +164,9 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
   }, [controlled, game, hydratePlayers, observeRoster]);
 
   const reload = useCallback(async () => {
+    const owner = currentUser?.id;
+    const revision = ++reloadRevision.current;
+    const isCurrent = () => revision === reloadRevision.current && useUserStore.getState().currentUser?.id === owner;
     if (!gameId) {
       setGame(null);
       setLoading(false);
@@ -171,6 +175,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
     setLoading(true);
     try {
       const g = await gameService.getGameById(gameId);
+      if (!isCurrent()) return;
       if (g) observeRoster(g.players);
       setGame(g);
       if (g) {
@@ -192,6 +197,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
         if (uids.length > 0) hydratePlayers(uids);
       }
     } catch (err) {
+      if (!isCurrent()) return;
     observeCaughtError(err, {"source":"src/screens/games/MatchPlayersScreen.tsx","handler":"MatchPlayersScreen","site":"MatchPlayersScreen:e9c6d9c862"});
       logError('matchPlayersLoad', err, {
         screen: 'MatchPlayersScreen',
@@ -199,16 +205,15 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
       });
       setGame(null);
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
-  }, [gameId, hydratePlayers, observeRoster, setGame]);
+  }, [gameId, hydratePlayers, observeRoster, setGame, currentUser?.id]);
 
-  useEffect(() => {
-    if (!controlled) reload();
-  }, [reload, controlled]);
+  // Focus includes the first mount; a separate mount load read it twice.
   useFocusEffect(
     useCallback(() => {
-      if (!controlled) reload();
+      if (!controlled) void reload();
+      return () => { reloadRevision.current += 1; };
     }, [reload, controlled]),
   );
 

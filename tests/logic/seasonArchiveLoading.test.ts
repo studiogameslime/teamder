@@ -1,6 +1,7 @@
 import fs from 'fs';
 import vm from 'vm';
 import ts from 'typescript';
+import { mapConcurrent } from '../../src/utils/mapConcurrent';
 
 function load(file: string, deps: Record<string, unknown>) {
   const module = { exports: {} as any };
@@ -10,6 +11,7 @@ function load(file: string, deps: Record<string, unknown>) {
 }
 function reader(page: unknown) {
   return load('src/services/seasonArchiveData.ts', {
+    '@/utils/mapConcurrent': { mapConcurrent },
     'firebase/firestore': { doc: (_db: unknown, _col: string, id: string) => id, getDoc: async () => ({ data: () => page }) },
   }).readSeasonArchiveData;
 }
@@ -21,6 +23,36 @@ test('archive overflow pairs are joined to the root before totals are computed',
 });
 test.each([undefined, { groupId: 'other', seasonId: 's1' }])('a missing or foreign page fails instead of presenting partial totals', async (page) => {
   await expect(reader(page)({}, { groupId: 'g', seasonId: 's1', pairPages: ['page'] })).rejects.toThrow('Missing season pair page');
+});
+
+test('archive pages start in parallel, merge in source order, and leave the root untouched', async () => {
+  const finish: Record<string, (value: unknown) => void> = {};
+  const getDoc = jest.fn((id: string) => new Promise(resolve => { finish[id] = resolve; }));
+  const read = load('src/services/seasonArchiveData.ts', {
+    '@/utils/mapConcurrent': { mapConcurrent },
+    'firebase/firestore': { doc: (_db: unknown, _col: string, id: string) => id, getDoc },
+  }).readSeasonArchiveData;
+  const root = { groupId: 'g', seasonId: 's', pairPages: ['a', 'b', 'c', 'd', 'e'], pairs: { original: 1, duplicate: 0 } };
+  const pending = read({}, root);
+  expect(getDoc.mock.calls.map(([id]) => id)).toEqual(['a', 'b', 'c', 'd']);
+  const page = (pairs: unknown) => ({ data: () => ({ groupId: 'g', seasonId: 's', pairs }) });
+  finish.d(page({ duplicate: 4 }));
+  await new Promise(setImmediate);
+  expect(getDoc).toHaveBeenCalledTimes(5);
+  finish.e(page({ duplicate: 5 })); finish.c(page({ duplicate: 3 }));
+  finish.b(page({ duplicate: 2 })); finish.a(page({ duplicate: 1 }));
+  expect((await pending).pairs).toEqual({ original: 1, duplicate: 5 });
+  expect(root.pairs).toEqual({ original: 1, duplicate: 0 });
+});
+
+test('invalid page ids reject before any page read', async () => {
+  const getDoc = jest.fn();
+  const read = load('src/services/seasonArchiveData.ts', {
+    '@/utils/mapConcurrent': { mapConcurrent },
+    'firebase/firestore': { getDoc },
+  }).readSeasonArchiveData;
+  await expect(read({}, { pairPages: ['valid', null] })).rejects.toThrow('Invalid season pair page');
+  expect(getDoc).not.toHaveBeenCalled();
 });
 test('a requested missing historical season cannot silently return the current season', async () => {
   const getDocs = jest.fn(() => { throw new Error('must not query live statistics'); });

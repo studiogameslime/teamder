@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { commitFreshSeasonBatch } from '../../functions/src/commitFreshSeasonBatch';
 import path from 'path';
 import vm from 'vm';
 import ts from 'typescript';
@@ -92,7 +93,7 @@ function finishWorld(stage: 'attendance' | 'standings' | 'summary' | 'pairs' | u
     after: { groupId: 'club', players: ['a'], startsAt: 100, status: 'finished' },
     event: { params: { gameId: 'g' }, data: { after: { ref: w.ref('games/g') } } },
     groupOnce: async () => ({ data: () => ({}) }), stampedSeasonId: '', assertSeasonOpenForGame: () => {},
-    guardFinishSeasonBatch: async () => {},
+    guardFinishSeasonBatch: async () => {}, commitFreshSeasonBatch,
     sealRoundSummary: async () => { calls.summary++; if (stage === 'summary' && !failed) { failed = true; throw new Error('injected summary failure'); } },
     rollUpClubPairs: async () => { calls.pairs++; if (stage === 'pairs' && !failed) { failed = true; throw new Error('injected pairs failure'); } },
     createNotificationOnce: async () => {}, console: { log: () => {}, warn: () => {}, error: () => {} },
@@ -139,7 +140,7 @@ describe('real chunked chemistry rollup recovery', () => {
     let failed = false;
     w.fail(paths => { if (!failed && paths.includes('communityPairRollups/club__g/chunks/1')) { failed = true; return true; } return false; });
     const context: any = { module: { exports: {} }, db: w.db, admin,
-      guardFinishSeasonBatch: async () => {},
+      guardFinishSeasonBatch: async () => {}, commitFreshSeasonBatch,
       isPersonalGroup: async () => false, pairsFromRounds: () => entries, pairMembers: (key: string) => key.split('__'),
       console: { log: () => {} },
     };

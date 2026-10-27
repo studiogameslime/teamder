@@ -1,0 +1,14 @@
+[copy-template] copied public\c\index.html → functions\templates\community.html
+[copy-template] copied public\invite.html → functions\templates\invite.html
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in C:/Users/User/Documents/Codex/Teamder/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+PASS tests/logic/finalOnboardingAuditProfile.test.ts
+PASS tests/logic/pulse18ReadFailures.test.ts
+PASS tests/logic/photoDeletion.test.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       36 passed, 36 total
+Snapshots:   0 total
+Time:        3.359 s
+Ran all test suites matching /tests\\logic\\photoDeletion.test.ts|tests\\logic\\finalOnboardingAuditProfile.test.ts|tests\\logic\\pulse18ReadFailures.test.ts/i.

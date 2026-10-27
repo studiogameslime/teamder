@@ -17,6 +17,7 @@
  */
 
 jest.mock('react-native', () => ({ Platform: { OS: 'ios' } }), { virtual: true });
+jest.mock('@/utils/errorObservation',()=>({observeCaughtError:jest.fn()}));
 jest.mock('@/firebase/config', () => ({
   USE_MOCK_DATA: false,
   getFirebase: () => ({ auth: authStub }),
@@ -87,6 +88,18 @@ beforeEach(() => {
 });
 
 const fired = (n: string) => logEvent.mock.calls.filter((c) => c[0] === n);
+
+it.each(['8','7','NETWORK_ERROR','12501'])('provider %s never bypasses expected failure classification through observation',async code=>{
+ acquireGoogleCredential.mockRejectedValueOnce(err(code));
+ await upgradeAnonymous('google');
+ expect(require('@/utils/errorObservation').observeCaughtError).not.toHaveBeenCalled();
+ expect(require('@/services/errorLog').logError).not.toHaveBeenCalled();
+});
+
+it('unexpected provider misconfiguration remains observable',async()=>{
+ acquireGoogleCredential.mockRejectedValueOnce(err('DEVELOPER_ERROR'));await upgradeAnonymous('google');
+ expect(require('@/utils/errorObservation').observeCaughtError).toHaveBeenCalledTimes(1);
+});
 
 // ─── Case A ───────────────────────────────────────────────────────────────
 

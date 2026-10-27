@@ -1,3 +1,4 @@
+import { fetchRead } from './readRetry';
 import { observeCaughtError } from '../utils/errorObservation';
 
 // geocodeService — client-side city → lat/lng lookup.
@@ -100,7 +101,7 @@ export async function reverseGeocodeCity(
       'https://nominatim.openstreetmap.org/reverse' +
       `?lat=${lat}&lon=${lng}` +
       `&format=json&accept-language=he&zoom=14`;
-    const res = await fetch(url, {
+    const res = await fetchRead(url, {
       headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
     });
     if (!res.ok) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + res.status}), {"source":"src/services/geocodeService.ts","handler":"reverseGeocodeCity","site":"geocodeService.ts:http:105"}); return null; }
@@ -143,7 +144,7 @@ export async function reverseGeocode(
       'https://nominatim.openstreetmap.org/reverse' +
       `?lat=${lat}&lon=${lng}` +
       `&format=json&accept-language=he&zoom=18&addressdetails=1`;
-    const res = await fetch(url, {
+    const res = await fetchRead(url, {
       headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
     });
     if (!res.ok) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + res.status}), {"source":"src/services/geocodeService.ts","handler":"reverseGeocode","site":"geocodeService.ts:http:148"}); return null; }
@@ -212,7 +213,7 @@ async function lookupCity(
       `&format=json` +
       `&limit=1` +
       `&countrycodes=il`;
-    const res = await fetch(url, {
+    const res = await fetchRead(url, {
       signal,
       headers: {
         'User-Agent': USER_AGENT,

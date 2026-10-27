@@ -61,7 +61,7 @@ describe('short campaign links', () => {
     expect(query.get('c')).toBe('קמפיין א');
     expect(query.get('g')).toBe('game-one');
     expect(result.deep).toBe('footy://go' + result.query);
-    expect(result.clipboard).toBe('https://teamderfc.web.app/go' + result.query);
+    expect(result.clipboard).toBe('https://teamder.co.il/go' + result.query);
     const ref = new URLSearchParams(new URL(result.store).searchParams.get('referrer')!);
     expect(ref.get('utm_source')).toBe(source);
     expect(ref.get('l')).toBe('K7m4Q2a8');

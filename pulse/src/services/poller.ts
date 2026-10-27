@@ -45,7 +45,7 @@ async function safe<T>(label: string, fn: () => Promise<T>): Promise<T | null> {
       fn(),
       new Promise<never>((_, reject) => {
         timer = setTimeout(
-          () => reject(new Error(`timeout after ${SOURCE_TIMEOUT_MS}ms`)),
+          () => reject(new Error(`${label}: timeout after ${SOURCE_TIMEOUT_MS}ms`)),
           SOURCE_TIMEOUT_MS,
         );
       }),
@@ -221,7 +221,7 @@ export async function runPoll(opts: { silent?: boolean } = {}): Promise<PollResu
     appStats: prev.appStats,
     downloads:
       iosDl || androidDl
-        ? { ios: iosDl ?? null, android: androidDl ?? null }
+        ? { ios: iosDl ?? prev.downloads?.ios ?? null, android: androidDl ?? prev.downloads?.android ?? null }
         : prev.downloads,
     updatedAt: new Date().toISOString(),
   };

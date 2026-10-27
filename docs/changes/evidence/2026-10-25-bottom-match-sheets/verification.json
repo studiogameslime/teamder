@@ -1,0 +1,51 @@
+{
+  "localOnly": true,
+  "typeCheckPassed": true,
+  "testSuites": 516,
+  "tests": 5821,
+  "testSeconds": 241.732,
+  "sourceHashes": {
+    "src/components/match/GoalEntryModal.tsx": "efef3491fe26f961646a1737948fd1305f6a4c3d508aae150805d6d704f1cc88",
+    "src/components/match/InPlayPenaltyModal.tsx": "40e654d3ee53f90a2f4fcd3a7066d464284f5cf40e4d0744820c9cd713874562",
+    "src/components/match/ShootoutWizard.tsx": "27c1234939d60baa27d7e4af9c023f6665f28d1ad0f3e78e0c52f9bf6fbc882c"
+  },
+  "sourceRestoredExactly": true,
+  "screenshots": {
+    "bottom-match-goal-after-2026-10-25.png": "97d0f46a010686f2484da2d7c9c37507767e1e6bfcb0791de47bd9a4aa9d27db",
+    "bottom-match-goal-before-2026-10-25.png": "3217b72de472c37fd604c41e535c9e143bfb9a3b76b7536d75bac09450283081",
+    "bottom-match-penalty-after-2026-10-25.png": "eb1d35f48553df72bb8a0a0aab4ef1d4112a79db141c613a2295f725125cd46b",
+    "bottom-match-penalty-before-2026-10-25.png": "4bcc8c0bf8b114a0e814aa02bfc42f01b41eb97c231a10c67772e9413e61400a",
+    "bottom-match-shootout-after-2026-10-25.png": "06218ce883ab891db3371ae19cc34c5c255c7ba7a61e8e1ce0720b762ba1e2c9",
+    "bottom-match-shootout-before-2026-10-25.png": "79d49841040733ca3fb449bcab4dff97b25a7ac89511da4d8363313cc8ff7919"
+  },
+  "nativeDemo": {
+    "files": [
+      "docs/features/screenshots/bottom-match-goal-after-2026-10-25.png",
+      "docs/features/screenshots/bottom-match-penalty-after-2026-10-25.png",
+      "docs/features/screenshots/bottom-match-shootout-after-2026-10-25.png"
+    ],
+    "mock": true,
+    "sourceComponents": true,
+    "shootoutPreview": "Temporary tied score in memory; original decision callbacks; no end-match or kick recording",
+    "mockFixtureRestored": true,
+    "productionWrites": false
+  },
+  "releaseLog": {
+    "ids": [
+      "bottom-match-goal-2026-10-25",
+      "bottom-match-penalty-2026-10-25",
+      "bottom-match-shootout-2026-10-25"
+    ],
+    "shots": [
+      "71a1092d777e4e5aa852c5c5972eefbd",
+      "2c0a280a4aab4c3c88787e4281dcd2dc",
+      "aa56362182764521a7155f45f0f282e9"
+    ],
+    "releaseLogVerified": true,
+    "proofReadBack": true,
+    "deployed": false
+  },
+  "documentationFailures": 108,
+  "newDocumentationFailures": [],
+  "productionWrites": false
+}

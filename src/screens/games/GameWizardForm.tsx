@@ -772,7 +772,7 @@ function Step1({
           A single ON/OFF toggle (per Eliran's feedback): ON → open to
           everyone (public), OFF → community/invite-only. Clearer than two
           competing pills, and the tooltip spells out both states. */}
-      <FormSectionHeader title={he.wizardSectionVisibility} />
+      <FormSectionHeader title={he.wizardSectionVisibility} compact />
       {/* Merged toggle (Pulse #6): "open to everyone" now ALSO turns on
           filler-reach — a public game should reach nearby strangers when it's
           short on players; no reason to split them into two toggles. */}

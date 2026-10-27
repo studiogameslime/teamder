@@ -5,6 +5,7 @@ import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import com.google.firebase.messaging.RemoteMessage
+import com.google.firebase.auth.FirebaseAuth
 import expo.modules.notifications.service.ExpoFirebaseMessagingService
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
@@ -30,7 +31,16 @@ class TeamderMessagingService : ExpoFirebaseMessagingService() {
 
   override fun onMessageReceived(remoteMessage: RemoteMessage) {
     val data = remoteMessage.data
+    if (data["type"] == "widgetRosterSync") {
+      WidgetRosterWorker.enqueue(applicationContext, data["gameId"], data["viewerId"], replace = true)
+      return // Data-only invalidation: never create a visible notification.
+    }
     if (data["type"] == "timerSync") {
+      val state = WidgetStateStore.read(applicationContext)
+      if (state?.optInt("widgetProtocol") == 2) {
+        WidgetRosterWorker.enqueue(applicationContext, data["gameId"], WidgetStateStore.owner(state), true)
+        return
+      }
       try {
         handleTimerSync(applicationContext, data)
       } catch (_: Exception) {
@@ -42,134 +52,143 @@ class TeamderMessagingService : ExpoFirebaseMessagingService() {
   }
 
   private fun handleTimerSync(context: Context, data: Map<String, String>) {
-    val gameId = data["gameId"] ?: return
+    val json = synchronized(TeamderWidgetProvider.STATE_LOCK) {
+      val gameId = data["gameId"] ?: return
+      // A delayed push must not resurrect the previous account after logout.
+      // A cold auth restore may defer this update until the next phone sync.
+      val user = FirebaseAuth.getInstance().currentUser ?: return
 
-    val prefs = context.getSharedPreferences(
-      TeamderWidgetProvider.PREFS, Context.MODE_PRIVATE,
-    )
-    val existing = prefs.getString(TeamderWidgetProvider.KEY_JSON, null)?.let {
-      try { JSONObject(it) } catch (_: Exception) { null }
-    }
+      val prefs = context.getSharedPreferences(
+        TeamderWidgetProvider.PREFS, Context.MODE_PRIVATE,
+      )
+      val existing = prefs.getString(TeamderWidgetProvider.KEY_JSON, null)?.let {
+        try { JSONObject(it) } catch (_: Exception) { null }
+      }
+      val cachedViewer = existing?.optJSONObject("viewer")?.optString("id")
+      if (cachedViewer != null && cachedViewer != user.uid) return
 
-    val running = data["timerRunning"] == "true"
-    val lastStartedAt = data["timerLastStartedAt"]?.toLongOrNull() ?: 0L
-    val accumulatedMs = data["timerAccumulatedMs"]?.toLongOrNull() ?: 0L
-    val controlledBy = data["timerControlledBy"] ?: ""
-    val controlledByName = data["timerControlledByName"] ?: ""
-    val title = data["gameTitle"] ?: ""
-    // Server send time (server epoch) — the clock ANCHOR for the timer fold.
-    val msgServerNow = data["serverNowMs"]?.toLongOrNull()
-    // CHANGE time — the doc's updatedAt, stamped at write time and carried per
-    // write. This (NOT the send-time above) is the ordering key: onGameTimerChanged
-    // invocations aren't execution-ordered, so send-time can regress for an older
-    // change; updatedAt is monotonic per write.
-    val changeMs = data["updatedAtMs"]?.toLongOrNull()
+      val running = data["timerRunning"] == "true"
+      val lastStartedAt = data["timerLastStartedAt"]?.toLongOrNull() ?: 0L
+      val accumulatedMs = data["timerAccumulatedMs"]?.toLongOrNull() ?: 0L
+      val controlledBy = data["timerControlledBy"] ?: ""
+      val controlledByName = data["timerControlledByName"] ?: ""
+      val title = data["gameTitle"] ?: ""
+      // Server send time (server epoch) — the clock ANCHOR for the timer fold.
+      val msgServerNow = data["serverNowMs"]?.toLongOrNull()
+      // CHANGE time — the doc's updatedAt, stamped at write time and carried per
+      // write. This (NOT the send-time above) is the ordering key: onGameTimerChanged
+      // invocations aren't execution-ordered, so send-time can regress for an older
+      // change; updatedAt is monotonic per write.
+      val changeMs = data["updatedAtMs"]?.toLongOrNull()
 
-    // Out-of-order guard: onGameTimerChanged fires an FCM per timer change and
-    // FCM delivery is NOT ordered — a delayed older timerSync arriving after a
-    // newer one would re-assert a STALE running/paused state on the widget +
-    // watch (the JS path has publishSeq for this; the FCM path had nothing).
-    // Drop any message older than the newest we've applied FOR THIS GAME. Scoped
-    // by gameId so switching games doesn't wrongly block the new one.
-    val lastSyncGame = prefs.getString(KEY_LAST_SYNC_GAME, null)
-    val lastSyncMs = prefs.getLong(KEY_LAST_SYNC_MS, 0L)
-    if (changeMs != null && lastSyncGame == gameId && changeMs < lastSyncMs) {
-      return
-    }
-
-    // Merge into the existing payload when it's the SAME game so we keep the
-    // roster / viewer / measured clock offset the JS layer wrote. Otherwise
-    // build a minimal live payload (timer widget works; the players list
-    // fills in next time the app runs).
-    val state: JSONObject =
-      if (existing != null && existing.optString("gameId") == gameId) {
-        existing
-      } else {
-        JSONObject().apply { put("clockOffsetMs", 0L) }
+      // Out-of-order guard: onGameTimerChanged fires an FCM per timer change and
+      // FCM delivery is NOT ordered — a delayed older timerSync arriving after a
+      // newer one would re-assert a STALE running/paused state on the widget +
+      // watch (the JS path has publishSeq for this; the FCM path had nothing).
+      // Drop any message older than the newest we've applied FOR THIS GAME. Scoped
+      // by gameId so switching games doesn't wrongly block the new one.
+      val lastSyncGame = prefs.getString(KEY_LAST_SYNC_GAME, null)
+      val lastSyncMs = prefs.getLong(KEY_LAST_SYNC_MS, 0L)
+      if (changeMs != null && lastSyncGame == gameId && changeMs < lastSyncMs) {
+        return
       }
 
-    val gameEnded = data["gameEnded"] == "true"
-    if (gameEnded) {
-      // Game finished/cancelled: clear the live card so a killed-app widget/tile
-      // doesn't stay frozen on it (ending while paused changes no timer primitive,
-      // so this is the only signal these surfaces get). Downgrade to
-      // 'notRegistered' — the same terminal state the JS layer publishes on
-      // logout, which both the widget and the watch treat as "no live game".
-      // Only touch OUR game's payload: if a DIFFERENT live game is showing, leave
-      // it (the fresh-minimal `state` picked above would otherwise clobber it).
-      if (existing != null && existing.optString("gameId") != gameId) return
-      state.put("kind", "notRegistered")
-      state.put("gameId", gameId)
-      state.remove("timer")
-      state.remove("baseElapsedMs")
-      state.remove("serverNowMs")
-    } else {
-      state.put("kind", "live")
-      state.put("gameId", gameId)
-      if (title.isNotEmpty()) state.put("title", title)
-      state.put("controlledBy", controlledBy)
-      state.put("controlledByName", controlledByName)
-      val timer = state.optJSONObject("timer") ?: JSONObject()
-      timer.put("running", running)
-      timer.put("lastStartedAt", lastStartedAt)
-      timer.put("accumulatedMs", accumulatedMs)
-      // For a minimal/fresh payload (no JS-measured offset — clockOffsetMs is 0),
-      // anchor to the server's send time so a skewed DEVICE clock doesn't corrupt
-      // the fold. offset = serverNowMs(send) − deviceNow(receive). The cached
-      // JS-measured offset (RTT-corrected) is more accurate, so only derive from
-      // the message when there's no cached offset.
-      if (state.optLong("clockOffsetMs", 0L) == 0L && msgServerNow != null) {
-        state.put("clockOffsetMs", msgServerNow - System.currentTimeMillis())
-      }
-      // CRITICAL: re-stamp the resolved base + publish instant, exactly like the
-      // widget-tap path (TimerActionReceiver.applyOptimisticPrefsUpdate). This FCM
-      // merges into a payload the JS layer published earlier (root serverNowMs +
-      // nested timer.baseElapsedMs from that publish); once the app is killed the
-      // JS re-publish loop stops, so those fields go STALE. The watch fold
-      // (watchServerNow − serverNowMs) and the widget fold (nowEpoch − serverNowMs)
-      // would then add the whole age-of-last-publish to the timer — a paused-then-
-      // remotely-started clock jumps forward by that gap. Re-stamp so the fold
-      // starts at ~0. baseElapsedMs is the elapsed AT this instant: for a running
-      // timer that's accumulatedMs + (nowServer − lastStartedAt) (the FCM arrives
-      // AFTER the remote start, so fold that gap in); paused → just accumulatedMs.
-      // Written to BOTH the ROOT (widget reads it there) and NESTED timer (the
-      // watch's parseWearState reads it there).
-      val clockOffsetMs = state.optLong("clockOffsetMs", 0L)
-      val nowServer = System.currentTimeMillis() + clockOffsetMs
-      val baseElapsed =
-        if (running && lastStartedAt > 0L) {
-          accumulatedMs + (nowServer - lastStartedAt).coerceAtLeast(0L)
+      // Merge into the existing payload when it's the SAME game so we keep the
+      // roster / viewer / measured clock offset the JS layer wrote. Otherwise
+      // build a minimal live payload (timer widget works; the players list
+      // fills in next time the app runs).
+      val state: JSONObject =
+        if (existing != null && existing.optString("gameId") == gameId) {
+          existing
         } else {
-          accumulatedMs
+          JSONObject().apply { put("clockOffsetMs", 0L) }
         }
-      timer.put("baseElapsedMs", baseElapsed)
-      state.put("timer", timer)
-      state.put("baseElapsedMs", baseElapsed)
-      state.put("serverNowMs", nowServer)
 
-      // Preserve the viewer identity (same person across games) + recompute
-      // canControl so the controller still sees the Start/Pause/Reset row even on
-      // a truly-cold FRESH payload (app killed, this game never published this
-      // session) — without it, parseWearState reads canControl=false → no buttons.
-      val createdBy = data["createdBy"] ?: ""
-      val viewer = state.optJSONObject("viewer") ?: existing?.optJSONObject("viewer")
-      if (viewer != null) {
-        state.put("viewer", viewer)
-        if (createdBy.isNotEmpty()) {
-          state.put("canControl", viewer.optString("id") == createdBy)
+      val gameEnded = data["gameEnded"] == "true"
+      if (gameEnded) {
+        // Game finished/cancelled: clear the live card so a killed-app widget/tile
+        // doesn't stay frozen on it (ending while paused changes no timer primitive,
+        // so this is the only signal these surfaces get). Downgrade to
+        // 'notRegistered' — the same terminal state the JS layer publishes on
+        // logout, which both the widget and the watch treat as "no live game".
+        // Only touch OUR game's payload: if a DIFFERENT live game is showing, leave
+        // it (the fresh-minimal `state` picked above would otherwise clobber it).
+        if (existing != null && existing.optString("gameId") != gameId) return
+        state.put("kind", "notRegistered")
+        state.put("gameId", gameId)
+        state.remove("timer")
+        state.remove("baseElapsedMs")
+        state.remove("serverNowMs")
+      } else {
+        state.put("kind", "live")
+        state.put("gameId", gameId)
+        if (title.isNotEmpty()) state.put("title", title)
+        state.put("controlledBy", controlledBy)
+        state.put("controlledByName", controlledByName)
+        val timer = state.optJSONObject("timer") ?: JSONObject()
+        timer.put("running", running)
+        timer.put("lastStartedAt", lastStartedAt)
+        timer.put("accumulatedMs", accumulatedMs)
+        // For a minimal/fresh payload (no JS-measured offset — clockOffsetMs is 0),
+        // anchor to the server's send time so a skewed DEVICE clock doesn't corrupt
+        // the fold. offset = serverNowMs(send) − deviceNow(receive). The cached
+        // JS-measured offset (RTT-corrected) is more accurate, so only derive from
+        // the message when there's no cached offset.
+        if (state.optLong("clockOffsetMs", 0L) == 0L && msgServerNow != null) {
+          state.put("clockOffsetMs", msgServerNow - System.currentTimeMillis())
+        }
+        // CRITICAL: re-stamp the resolved base + publish instant, exactly like the
+        // widget-tap path (TimerActionReceiver.applyOptimisticPrefsUpdate). This FCM
+        // merges into a payload the JS layer published earlier (root serverNowMs +
+        // nested timer.baseElapsedMs from that publish); once the app is killed the
+        // JS re-publish loop stops, so those fields go STALE. The watch fold
+        // (watchServerNow − serverNowMs) and the widget fold (nowEpoch − serverNowMs)
+        // would then add the whole age-of-last-publish to the timer — a paused-then-
+        // remotely-started clock jumps forward by that gap. Re-stamp so the fold
+        // starts at ~0. baseElapsedMs is the elapsed AT this instant: for a running
+        // timer that's accumulatedMs + (nowServer − lastStartedAt) (the FCM arrives
+        // AFTER the remote start, so fold that gap in); paused → just accumulatedMs.
+        // Written to BOTH the ROOT (widget reads it there) and NESTED timer (the
+        // watch's parseWearState reads it there).
+        val clockOffsetMs = state.optLong("clockOffsetMs", 0L)
+        val nowServer = System.currentTimeMillis() + clockOffsetMs
+        val baseElapsed =
+          if (running && lastStartedAt > 0L) {
+            accumulatedMs + (nowServer - lastStartedAt).coerceAtLeast(0L)
+          } else {
+            accumulatedMs
+          }
+        timer.put("baseElapsedMs", baseElapsed)
+        state.put("timer", timer)
+        state.put("baseElapsedMs", baseElapsed)
+        state.put("serverNowMs", nowServer)
+
+        // Preserve the viewer identity (same person across games) + recompute
+        // canControl so the controller still sees the Start/Pause/Reset row even on
+        // a truly-cold FRESH payload (app killed, this game never published this
+        // session) — without it, parseWearState reads canControl=false → no buttons.
+        val createdBy = data["createdBy"] ?: ""
+        val viewer = state.optJSONObject("viewer") ?: existing?.optJSONObject("viewer")
+          ?: JSONObject().apply { put("id", user.uid); put("name", user.displayName ?: "") }
+        if (viewer != null) {
+          state.put("viewer", viewer)
+          if (createdBy.isNotEmpty()) {
+            state.put("canControl", viewer.optString("id") == createdBy)
+          }
         }
       }
-    }
 
-    val json = state.toString()
-    // Persist the applied message's CHANGE time + game so the guard above can
-    // drop a later-arriving OLDER message. Keep the previous marker if this
-    // message carried no updatedAtMs (older sender), so we never regress to 0.
-    prefs.edit()
-      .putString(TeamderWidgetProvider.KEY_JSON, json)
-      .putLong(KEY_LAST_SYNC_MS, changeMs ?: lastSyncMs)
-      .putString(KEY_LAST_SYNC_GAME, gameId)
-      .apply()
+      val nextJson = state.toString()
+      // Persist the applied message's CHANGE time + game so the guard above can
+      // drop a later-arriving OLDER message. Keep the previous marker if this
+      // message carried no updatedAtMs (older sender), so we never regress to 0.
+      prefs.edit()
+        .putString(TeamderWidgetProvider.KEY_JSON, nextJson)
+        .putLong(KEY_LAST_SYNC_MS, changeMs ?: lastSyncMs)
+        .putString(KEY_LAST_SYNC_GAME, gameId)
+        .apply()
+      nextJson
+    }
     TeamderWidgetProvider.requestRefresh(context)
     TeamderPlayersWidgetProvider.requestRefresh(context)
 
@@ -177,6 +196,11 @@ class TeamderMessagingService : ExpoFirebaseMessagingService() {
     // AWAIT the write: onMessageReceived runs on a background thread and the
     // process may be reaped the instant this method returns — a fire-and-forget
     // putDataItem would be dropped before the Data Layer flushes it.
+    relayState(context, json)
+  }
+
+  companion object {
+    fun relayState(context: Context, json: String) {
     try {
       val req = PutDataMapRequest.create("/teamder/state").apply {
         dataMap.putString("json", json)
@@ -191,7 +215,6 @@ class TeamderMessagingService : ExpoFirebaseMessagingService() {
     }
   }
 
-  companion object {
     // Newest applied timerSync's server time + its game, for the out-of-order
     // guard. Stored in the widget prefs file (same as KEY_JSON).
     private const val KEY_LAST_SYNC_MS = "timerSyncLastServerMs"

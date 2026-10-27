@@ -191,9 +191,9 @@
   {
     "path": "docs/RELEASING.md",
     "hashMode": "text-lf",
-    "sha256": "00f92699fa7ba4679c33b185b2b25aeefe347bc890c142f12221c09534e9a77d",
+    "sha256": "e67a55cb416ab8d0a27741bb35ee563ed308593e3a964f7e70cf3657586981e7",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-24"
+    "auditDate": "2026-10-27"
   },
   {
     "path": "docs/seasons/אפיון-עונות-טכני.html",
@@ -345,7 +345,7 @@
   {
     "path": "AGENTS.md",
     "hashMode": "text-lf",
-    "sha256": "60952a0de291db00d211d9bcc265ef1fc9c659c77b1e0956fc64d129a5460601",
+    "sha256": "5cc4c76b1b36e935f80268b6e82c3a8345b9eee7fa7ca3b832589437f0b0e6a5",
     "review": "reviews/additional-root-sources.md",
     "auditDate": "2026-10-24"
   },

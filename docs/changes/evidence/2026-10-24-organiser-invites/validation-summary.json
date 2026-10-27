@@ -1,0 +1,12 @@
+{
+  "typescriptApp": "passed",
+  "typescriptPulse": "passed",
+  "testSuitesPassed": 500,
+  "testsPassed": 5661,
+  "pythonTestsPassed": 3,
+  "docCheckKnownFailures": 108,
+  "featureStatusUnrelatedDrift": ["functions/src/invitePreviewFields.ts"],
+  "activated": false,
+  "built": false,
+  "deployed": false
+}

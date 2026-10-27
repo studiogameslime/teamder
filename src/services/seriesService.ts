@@ -23,6 +23,7 @@ import {
   runTransaction,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -53,6 +54,21 @@ function toSeries(id: string, data: Record<string, unknown>): GameSeries {
 }
 
 export const seriesService = {
+  /** Must finish before deleting the club, while admin permissions still exist. */
+  async stopForGroup(groupId: GroupId): Promise<void> {
+    if (USE_MOCK_DATA) {
+      mockSeries.filter(s => s.groupId === groupId).forEach(s => { s.active = false; });
+      return;
+    }
+    const { db } = getFirebase();
+    const snapshot = await getDocs(query(collection(db, COL), where('groupId', '==', groupId)));
+    const active = snapshot.docs.filter(s => s.data().active !== false);
+    for (let start = 0; start < active.length; start += 400) {
+      const batch = writeBatch(db);
+      active.slice(start, start + 400).forEach(s => batch.update(s.ref, { active: false, updatedAt: Date.now() }));
+      await batch.commit();
+    }
+  },
   /** Create and link a first occurrence atomically. Read the existing GAME,
    * never a not-yet-existing series (whose read rules require groupId). */
   async ensureForGame(gameId: string, input: {

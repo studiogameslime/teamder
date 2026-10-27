@@ -38,7 +38,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { RouteProp, useFocusEffect, useNavigation, useRoute, useIsFocused } from '@react-navigation/native';
 
 import { toast } from '@/components/Toast';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
@@ -55,6 +55,7 @@ import {
 } from '@/services/gameLifecycle';
 import { useGameEvents } from '@/services/useGameEvents';
 import { useSyncedTimer } from '@/services/useSyncedTimer';
+import { useTimerFeedback } from '@/services/useTimerFeedback';
 import { serverNow } from '@/services/serverClock';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { Game, LiveMatchState, TimerEvent } from '@/types';
@@ -228,7 +229,10 @@ function PlainLiveMatchScreen() {
   }, []);
 
   // Synced clock — derived from the three `liveMatch.timer*` primitives.
-  const timerView = useSyncedTimer(live);
+  const timerFocused = useIsFocused();
+  const timerFeedback = useTimerFeedback(live, timerFocused && gameId && me && game?.status !== 'finished' && game?.status !== 'cancelled'
+    ? JSON.stringify([gameId, me.id, (live?.roundNumber ?? 0)]) : null);
+  const timerView = useSyncedTimer(timerFeedback.visibleLive);
   const timerMs = timerView.displayMs;
   const timerRunning = timerView.running;
   const timerStarted = timerView.started;
@@ -305,7 +309,7 @@ function PlainLiveMatchScreen() {
     return () => {
       alive = false;
     };
-  }, [gameId, me, myCommunities, nav]);
+  }, [gameId, me?.id, me?.isGuest, myCommunities, nav]);
 
   // Realtime sync of the timer primitives.
   useEffect(() => {
@@ -321,9 +325,9 @@ function PlainLiveMatchScreen() {
   const lastCtrlRef = useRef<string | null>(null);
   const lastRunningRef = useRef<boolean | null>(null);
   useEffect(() => {
-    const ctrlId = timerView.controlledById;
-    const ctrlName = timerView.controlledByName;
-    const running = timerView.running;
+    const ctrlId = live?.timerControlledBy ?? null;
+    const ctrlName = live?.timerControlledByName ?? null;
+    const running = !!live?.timerRunning;
     const prevCtrl = lastCtrlRef.current;
     const prevRunning = lastRunningRef.current;
     if (prevCtrl === null && prevRunning === null) {
@@ -338,7 +342,7 @@ function PlainLiveMatchScreen() {
     }
     lastCtrlRef.current = ctrlId;
     lastRunningRef.current = running;
-  }, [timerView.controlledById, timerView.controlledByName, timerView.running, me?.id]);
+  }, [live?.timerControlledBy, live?.timerControlledByName, live?.timerRunning, me?.id]);
 
   // ─── Role detection ────────────────────────────────────────────────────
   const isAdmin = useMemo(() => {
@@ -350,15 +354,23 @@ function PlainLiveMatchScreen() {
 
   // ─── Timer controls (flow through Firestore transactions) ──────────────
   const onTimerStart = async () => {
-    if (!gameId || !me) return;
+    if (!gameId || !me || timerFeedback.isPending()) return;
     try {
       // First press flips Game.status→'active' and stamps
       // liveMatch.startedAt (and creates liveMatch if absent — required
       // before startTimer can run). Idempotent on subsequent presses.
       const firstStart = !timerStarted;
-      await gameService.markGameStarted(gameId);
+      const applied = await timerFeedback.run('start', async (isCurrent) => {
+        // First-start season validation remains required. Later rounds of an
+        // already-started evening need only the atomic timer transaction.
+        if (!(game?.status === 'active' && Number.isFinite(live?.startedAt) && (live?.startedAt ?? 0) > 0)) {
+          await gameService.markGameStarted(gameId);
+        }
+        if (!isCurrent()) return null;
+        return gameService.startTimer(gameId, me.id, me.name ?? '');
+      });
+      if (!applied) return;
       if (firstStart) logEvent(AnalyticsEvent.GameStarted, { gameId, mode: 'plain' });
-      await gameService.startTimer(gameId, me.id, me.name ?? '');
       logEvent(AnalyticsEvent.LiveTimerAction, {
         gameId,
         action: 'start',
@@ -375,13 +387,14 @@ function PlainLiveMatchScreen() {
         return;
       }
       logError('liveTimerStart', err, { gameId, userId: me?.id });
+      toast.error('פעולת השעון לא נשמרה. נסו שוב.');
       if (__DEV__) console.warn('[live] startTimer failed', err);
     }
   };
   const onTimerPause = async () => {
-    if (!gameId || !me) return;
+    if (!gameId || !me || timerFeedback.isPending()) return;
     try {
-      await gameService.pauseTimer(gameId, me.id, me.name ?? '');
+      if (!await timerFeedback.run('pause', () => gameService.pauseTimer(gameId, me.id, me.name ?? ''))) return;
       logEvent(AnalyticsEvent.LiveTimerAction, {
         gameId,
         action: 'pause',
@@ -391,13 +404,14 @@ function PlainLiveMatchScreen() {
     } catch (err) {
     observeCaughtError(err, {"source":"src/screens/LiveMatchScreen.tsx","handler":"onTimerPause","site":"LiveMatchScreen:f16f9f3258"});
       logError('liveTimerPause', err, { gameId, userId: me?.id });
+      toast.error('פעולת השעון לא נשמרה. נסו שוב.');
       if (__DEV__) console.warn('[live] pauseTimer failed', err);
     }
   };
   const onTimerResume = async () => {
-    if (!gameId || !me) return;
+    if (!gameId || !me || timerFeedback.isPending()) return;
     try {
-      await gameService.startTimer(gameId, me.id, me.name ?? '');
+      if (!await timerFeedback.run('start', () => gameService.startTimer(gameId, me.id, me.name ?? ''))) return;
       logEvent(AnalyticsEvent.LiveTimerAction, {
         gameId,
         action: 'resume',
@@ -407,11 +421,12 @@ function PlainLiveMatchScreen() {
     } catch (err) {
     observeCaughtError(err, {"source":"src/screens/LiveMatchScreen.tsx","handler":"onTimerResume","site":"LiveMatchScreen:93fcfaf2c1"});
       logError('liveTimerResume', err, { gameId, userId: me?.id });
+      toast.error('פעולת השעון לא נשמרה. נסו שוב.');
       if (__DEV__) console.warn('[live] resumeTimer failed', err);
     }
   };
   const onTimerReset = () => {
-    if (!gameId || !me) return;
+    if (!gameId || !me || timerFeedback.isPending()) return;
     // Reset is the one irreversible timer control — confirm before wiping
     // the running clock.
     appAlert(
@@ -444,7 +459,7 @@ function PlainLiveMatchScreen() {
   // ConfirmDestructiveModal owns the busy/close UX; on success we navigate
   // away (screen unmounts). On failure we log and stay in the modal.
   const onEndGame = async () => {
-    if (!gameId) return;
+    if (!gameId || timerFeedback.isPending()) return;
     try {
       await gameService.endEvening(gameId);
     } catch (err) {
@@ -551,7 +566,7 @@ function PlainLiveMatchScreen() {
     );
   }
 
-  const statusLabel = timerRunning ? 'רץ' : timerStarted ? 'מושהה' : 'מוכן';
+  const statusLabel = timerFeedback.pending ? 'מעדכן שעון...' : timerRunning ? 'רץ' : timerStarted ? 'מושהה' : 'מוכן';
   // Persistent "controlled by X" chip — visible whenever the timer has
   // been touched by another admin (running OR paused). Previously this
   // hid the moment the other admin paused the timer, which made the
@@ -690,6 +705,8 @@ function PlainLiveMatchScreen() {
             {!timerStarted ? (
               <Pressable
                 style={[styles.primaryBtn, styles.startBtn]}
+                disabled={timerFeedback.pending}
+                accessibilityState={{ disabled: timerFeedback.pending, busy: timerFeedback.pending }}
                 onPress={onTimerStart}
                 accessibilityRole="button"
               >
@@ -699,6 +716,8 @@ function PlainLiveMatchScreen() {
             ) : timerRunning ? (
               <Pressable
                 style={[styles.primaryBtn, styles.pauseBtn]}
+                disabled={timerFeedback.pending}
+                accessibilityState={{ disabled: timerFeedback.pending, busy: timerFeedback.pending }}
                 onPress={onTimerPause}
                 accessibilityRole="button"
               >
@@ -709,7 +728,9 @@ function PlainLiveMatchScreen() {
               <View style={styles.row}>
                 <Pressable
                   style={[styles.primaryBtn, styles.resumeBtn, styles.flex1]}
-                  onPress={onTimerResume}
+                  disabled={timerFeedback.pending}
+                accessibilityState={{ disabled: timerFeedback.pending, busy: timerFeedback.pending }}
+                onPress={onTimerResume}
                   accessibilityRole="button"
                 >
                   <Ionicons name="play" size={26} color="#FFFFFF" />
@@ -717,7 +738,9 @@ function PlainLiveMatchScreen() {
                 </Pressable>
                 <Pressable
                   style={styles.resetBtn}
-                  onPress={onTimerReset}
+                  disabled={timerFeedback.pending}
+                accessibilityState={{ disabled: timerFeedback.pending, busy: timerFeedback.pending }}
+                onPress={onTimerReset}
                   accessibilityRole="button"
                 >
                   <Ionicons name="refresh" size={22} color={colors.primary} />
@@ -831,6 +854,10 @@ function PlainLiveMatchScreen() {
         onClose={() => setMenuOpen(false)}
         sections={[{ id: 'live', items: [
           { id: 'liveHelp', label: 'עזרה', icon: 'headset-outline', onPress: () => { setMenuOpen(false); if (me?.id) useSupportChat.getState().open(me.id); } },
+          ...(isAdmin ? [{ id: 'liveDraftTeams', label: 'עריכת קבוצות', icon: 'people-outline' as const, onPress: () => {
+            setMenuOpen(false);
+            (nav as unknown as { navigate: (s: string, p?: unknown) => void }).navigate('DraftSetup', { gameId: game.id, returnRouteKey: route.key });
+          } }] : []),
           { id: 'liveMenuRounds', label: he.liveMenuRounds, icon: 'list', onPress: () => {
                 (nav as unknown as { navigate: (s: string, p?: unknown) => void }).navigate(
                   'MatchRounds',

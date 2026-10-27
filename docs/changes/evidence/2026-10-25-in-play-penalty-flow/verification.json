@@ -1,0 +1,32 @@
+{
+  "localOnly": true,
+  "includedInInternal1_1_60": false,
+  "tests": 5821,
+  "testSuites": 516,
+  "testSeconds": 226.842,
+  "typeCheckPassed": true,
+  "nativeDemo": {
+    "goalsAdded": 1,
+    "mock": true,
+    "mockFixtureRestored": true,
+    "modalClosed": true,
+    "penaltiesAdded": 1,
+    "productionWrites": false,
+    "scoreAdded": 1,
+    "shootoutUnchanged": true
+  },
+  "releaseLog": {
+    "id": "in-play-penalty-flow-2026-10-25",
+    "shotId": "ce45e595049346c8b31599bf12cf5f6a",
+    "releaseLogVerified": true,
+    "proofReadBack": true,
+    "updateTime": "2026-10-25T12:31:10.727013Z",
+    "deployed": false
+  },
+  "documentationFailures": 108,
+  "newDocumentationFailures": [],
+  "screenshots": {
+    "in-play-penalty-flow-after-2026-10-25.png": "6c1145ba2110f6e10e46f644887ab384fbc832fa9428cf94d40d47b81dc53fc7",
+    "in-play-penalty-flow-before-2026-10-25.png": "92705200ccde0394920f170b928c066c4f1f00a544ad48380444c5f293b24cb9"
+  }
+}

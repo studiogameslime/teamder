@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { errorPresentation } from '../../functions/src/errorPresentation';
 import vm from 'vm';
 import ts from 'typescript';
 import { redactDiagnosticText } from '../../src/utils/diagnosticRedaction';
@@ -183,9 +184,9 @@ test('legacy error trigger skips the new outbox source and still alerts on exist
   }
   walk(source); expect(handler).not.toBe('');
   const pushToAdmins = jest.fn();
-  const run = vm.runInNewContext(ts.transpileModule(`(${handler})`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, { pushToAdmins });
+  const run = vm.runInNewContext(ts.transpileModule(`(${handler})`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, { pushToAdmins, errorPresentation });
   await run({ params: { fp: 'native' }, data: { data: () => ({ source: 'crashlytics' }) } });
   expect(pushToAdmins).not.toHaveBeenCalled();
-  await run({ params: { fp: 'existing' }, data: { data: () => ({ category: 'action', title: 'existing error' }) } });
-  expect(pushToAdmins).toHaveBeenCalledWith('error', expect.any(String), 'existing error', { fp: 'existing' });
+  await run({ params: { fp: 'existing' }, data: { data: () => ({ category: 'action', title: 'existing error',operation:'caught:receivedInvitationsService:39f13a4226',lastCode:'deadline-exceeded' }) } });
+  expect(pushToAdmins).toHaveBeenCalledWith('error', expect.any(String), 'טעינת ההזמנות לא הושלמה. השרת לא השיב בזמן.', { fp: 'existing' });
 });

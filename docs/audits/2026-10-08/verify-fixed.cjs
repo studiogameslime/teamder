@@ -8,6 +8,8 @@ function load(path, mocks) {
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
   const exports = {};
   vm.runInNewContext(js, { exports, require: name => {
+    if(name.endsWith('/diagnosticJournal'))return load('src/services/diagnosticJournal.ts',{});
+    if(name==='@/services/diagnosticCallable')name='firebase/functions';
     if (name in mocks) return mocks[name];
     throw new Error('Missing isolated dependency: '+name);
   }, __DEV__: false, console, Date, setTimeout, clearTimeout }, { filename: path });

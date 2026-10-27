@@ -30,6 +30,13 @@ test('missing readable marker creates the notification', async () => {
   await notificationsService.dispatch(input);
   expect(mockSetDoc).toHaveBeenCalledWith('marker', expect.objectContaining({ recipientId: 'game', createdByUid: 'sender' }));
 });
+
+test('strict unread dedupe only queries the signed in recipients private notifications', async () => {
+  await notificationsService.dispatch(input);
+  expect(mockGetDocs).not.toHaveBeenCalled();
+  await notificationsService.dispatch({...input,recipientId:'sender'});
+  expect(mockGetDocs).toHaveBeenCalledTimes(1);
+});
 test('actual create denial is still reported', async () => {
   mockSetDoc.mockRejectedValue({ code: 'permission-denied' });
   await notificationsService.dispatch(input);

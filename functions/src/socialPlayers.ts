@@ -1,3 +1,4 @@
+import { ExpectedCallableError } from './expectedCallableError';
 import { ENFORCE_APP_CHECK } from './appCheckPolicy';
 import { createHash } from 'node:crypto';
 import { getFirestore, FieldPath, FieldValue, Filter } from 'firebase-admin/firestore';
@@ -50,7 +51,7 @@ export function socialMatches(u: Data, opts: Data): boolean {
 }
 async function session(request: CallableRequest, operation: string, cap = 100) {
   const uid = request.auth?.uid;
-  if (!uid || request.auth?.token.firebase?.sign_in_provider === 'anonymous') throw new HttpsError('unauthenticated', 'Full account required');
+  if (!uid || request.auth?.token.firebase?.sign_in_provider === 'anonymous') throw new ExpectedCallableError('unauthenticated', 'Full account required');
   const db = getFirestore();
   const snap = await db.collection('users').doc(uid).get();
   if (!snap.exists || snap.data()?.isGuest === true) throw new HttpsError('unauthenticated', 'Account missing');
@@ -229,26 +230,30 @@ export const getSocialPlayerProfile = onCall({ enforceAppCheck: ENFORCE_APP_CHEC
   const target = await db.doc(`users/${targetId}`).get();
   if (!target.exists || target.data()?.isGuest) throw new HttpsError('not-found', 'Player unavailable');
   const u = target.data()!;
-  const [clubs, games, pair] = await Promise.all([clubsFor(targetId), db.collection('games').where('participantIds', 'array-contains', targetId).get(), db.doc(`pairStats/${[uid, targetId].sort().join('__')}`).get()]);
+  const canSeeStatistics = statisticsAllowed(uid, targetId, u, viewer);
+  const [clubs, games, pair, statisticRows] = await Promise.all([clubsFor(targetId), db.collection('games').where('participantIds', 'array-contains', targetId).get(), db.doc(`pairStats/${[uid, targetId].sort().join('__')}`).get(), canSeeStatistics ? readStatisticsRows(targetId) : null]);
   const played = games.docs.filter(d => { const g = d.data(); return g.status === 'finished' && number(g.startsAt) < Date.now() && strings(g.players).includes(targetId) && g.arrivals?.[targetId] !== 'no_show' && didEveningHappen(g); });
   const shared = played.filter(d => strings(d.data().players).includes(uid) && d.data().arrivals?.[uid] !== 'no_show').length;
   const common = clubs.docs.filter(d => strings(d.data().playerIds).includes(uid) || strings(d.data().adminIds).includes(uid)).length;
   const p = pair.data();
   const gamesTogether = number(p?.sameTeam), wins = number(p?.winsTogether), losses = number(p?.lossesTogether);
   const together = p && ['sameTeam','winsTogether','lossesTogether'].every(k=>typeof p[k]==='number'&&Number.isFinite(p[k])&&p[k]>=0) && gamesTogether >= wins + losses ? { rounds: shared, games: gamesTogether, wins, losses, ties: gamesTogether - wins - losses } : null;
-  const canSeeStatistics = statisticsAllowed(uid, targetId, u, viewer);
   const registered=games.docs.filter(d=>{const g=d.data();return g.status==='finished'&&number(g.startsAt)<Date.now()&&strings(g.players).includes(targetId)&&didEveningHappen(g);}).length;
-  const statistics = canSeeStatistics ? await readStatistics(targetId, u, played, registered) : null;
+  const statistics = canSeeStatistics ? await readStatistics(targetId, u, played, registered, statisticRows!) : null;
   const sharedDates = played.filter(d => strings(d.data().players).includes(uid) && d.data().arrivals?.[uid] !== 'no_show').map(d => number(d.data().startsAt));
   return { player: socialIdentity(targetId, u, viewer, common, shared), clubs: clubs.docs.filter(d => !d.data().isPersonal && !d.data().deletedAt).map(d => ({ ...clubView(d.id, d.data()), isCommon: strings(d.data().playerIds).includes(uid) || strings(d.data().adminIds).includes(uid) })), canSeeStatistics, statisticsVisibility: socialPrivacy(u).statistics, statistics, together, pairSummary: socialPairSummary(uid, targetId, p, sharedDates) };
 });
 
-async function readStatistics(uid: string, u: Data, played: FirebaseFirestore.QueryDocumentSnapshot[], registered: number) {
+async function readStatisticsRows(uid: string) {
   const db = getFirestore();
-  const [standings, rows, asA, asB] = await Promise.all([
+  return Promise.all([
     db.collection('eveningStandings').where('userId', '==', uid).get(), db.collection('gamePlayerStats').where('userId', '==', uid).get(),
     db.collection('pairStats').where('a', '==', uid).get(), db.collection('pairStats').where('b', '==', uid).get(),
   ]);
+}
+async function readStatistics(uid: string, u: Data, played: FirebaseFirestore.QueryDocumentSnapshot[], registered: number, records: Awaited<ReturnType<typeof readStatisticsRows>>) {
+  const db = getFirestore();
+  const [standings, rows, asA, asB] = records;
   const playedIds = new Set(played.map(d => d.id));
   const co: Record<string, number> = {};
   for (const d of played) for (const id of strings(d.data().players)) if (id !== uid && d.data().arrivals?.[id] !== 'no_show') co[id] = (co[id] ?? 0) + 1;
@@ -280,7 +285,7 @@ async function readStatistics(uid: string, u: Data, played: FirebaseFirestore.Qu
   const ids=[...new Set([stats.mostPlayedWith,stats.mostWinsWith,stats.biggestVictim,stats.nemesis,stats.mostAssistedTo,stats.mostAssistedBy].flatMap(x=>x?[x.uid]:[]))];
   const people:Record<string,unknown>={};
   if(ids.length)for(const d of await db.getAll(...ids.map(id=>db.doc(`users/${id}`))))if(d.exists){const p=socialIdentity(d.id,d.data()!,{});people[d.id]={id:p.id,name:p.name,...(p.avatarId?{avatarId:p.avatarId}:{}),...(p.photoUrl?{photoUrl:p.photoUrl}:{})};}
-  return {stats,people,pen:Object.fromEntries(['penTaken','penScored','penFaced','penSaved','ownGoals','ties'].map(k=>[k,number(u.stats?.[k])]))};
+  return {stats,people,pen:Object.fromEntries(['penTaken','penScored','penInPlayTaken','penInPlayScored','penFaced','penSaved','ownGoals','ties'].map(k=>[k,number(u.stats?.[k])]))};
 }
 
 /** Invitation notification only. Existing join flow retains member approval. */

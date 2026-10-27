@@ -1,3 +1,4 @@
+import { SPORTS_ACTIVITY_ENABLED } from '@/config/sportsActivity';
 import { observeCaughtError } from '../../utils/errorObservation';
 // ProfileScreen — redesigned player card.
 //
@@ -143,7 +144,7 @@ export function ProfileScreen() {
   const qaStatsMode = __DEV__ && process.env.EXPO_PUBLIC_QA_ROUTES === '1' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1'
     ? (homeRoute.params as { qaHomeStats?: 'full' | 'empty' } | undefined)?.qaHomeStats : undefined;
   const homeStatsPreview = useMemo(() => qaStatsMode ? {
-    stats: qaStatsMode === 'full' ? personalStatisticsFixture.stats : { ...personalStatisticsFixture.stats, goals: 0, assists: 0, attendedGames: 0, highlights: undefined, mostPlayedWith: null },
+    stats: qaStatsMode === 'full' ? { ...personalStatisticsFixture.stats, attendanceStreak: { current: 4, best: 5 } } : { ...personalStatisticsFixture.stats, goals: 0, assists: 0, attendedGames: 0, totalRegistered: 0, attendanceRate: 0, distinctPlayers: 0, attendanceStreak: undefined, highlights: undefined, mostPlayedWith: null },
     partner: qaStatsMode === 'full' ? personalStatisticsFixture.people['qa-itay'] : undefined,
   } : undefined, [qaStatsMode]);
   const signOut = useUserStore((s) => s.signOut);
@@ -1245,6 +1246,12 @@ export function ProfileScreen() {
       title: he.profileMenuSectionProfile,
       items: [
         {
+          id: 'player-card',
+          label: 'כרטיס השחקן שלי',
+          icon: 'id-card-outline',
+          onPress: () => nav.navigate('PlayerCard', { userId: user.id }),
+        },
+        {
           id: 'achievements',
           label: he.profileSectionMyAchievements,
           icon: 'trophy-outline',
@@ -1259,6 +1266,7 @@ export function ProfileScreen() {
         // entries sent people to overlapping places. Checked before removing,
         // as asked. `SeasonTitlesScreen` stays registered and reachable — the
         // shelf's own "הצג הכל" still opens it.
+        ...(SPORTS_ACTIVITY_ENABLED && Platform.OS === 'android' ? [{ id: 'my-activity', label: 'הפעילות שלי', icon: 'fitness-outline' as const, onPress: () => nav.navigate('MyActivity') }] : []),
         {
           id: 'statistics',
           label: he.statsMenuLabel,
@@ -1590,7 +1598,7 @@ export function ProfileScreen() {
             <NoRoundCard onCreate={roundActions.onCreate} onFind={roundActions.onFind} />
           ) : null}
 
-          {localUser && <HomePersonalStats user={localUser} preview={homeStatsPreview} onOpen={() => nav.navigate('Statistics')} />}
+          {localUser && <HomePersonalStats user={localUser} preview={homeStatsPreview} onOpen={() => nav.navigate('Statistics')} onProfile={() => nav.push('PlayerCard', { userId: localUser.id })} />}
 
           {/* ④ Three action tiles — the quick actions, straight under the
               hero card, because these are what most visits are for. */}

@@ -34,10 +34,10 @@ object LiveOngoingActivity {
     /** Auto-dismiss the ongoing notification if it isn't refreshed within this
      *  window (longer than any match; the phone re-publishes a live match ~every
      *  60s). Prevents a leaked, forever-counting timer when the phone dies. */
-    private const val ONGOING_TTL_MS = 3L * 60L * 60L * 1000L // 3h
+    private const val ONGOING_TTL_MS = 90_000L // 3h
 
     fun update(context: Context, state: WearGameState) {
-        if (state !is WearGameState.Live) {
+        if (state !is WearGameState.Live || state.stale) {
             clear(context)
             return
         }

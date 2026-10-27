@@ -1,5 +1,17 @@
 # כיסוי מסכי המקור
 
+27.10.2026: `src/components/feedback/FeedbackPromptHost.tsx` מציג חלון משוב מעל הבית Profile דרך App.tsx. אין מסך או נתיב מחסנית חדש. [תנאים, מסלול לפולס ומגבלות](profile/feedback.md).
+
+26.10.2026: נוסף `src/screens/profile/MyActivityScreen.tsx` דרך תפריט הבית באנדרואיד ודרך כרטיס הפעילות הפרטי בסיכום המחזור. הנתיב `MyActivity` רשום בארבע המחסניות המארחות. [מצבים, מקור יחיד ומגבלות](profile/my-activity.md).
+
+25.10.2026: `src/components/home/HomeProfileOverview.tsx` מחליף את עמוד המספרים בתוך הקרוסלה הקיימת ב-`ProfileScreen` ומופיע ראשון, עם תובנה ושתי כניסות למסכים קיימים. אין מסך או נתיב ניווט חדש. [חוזה, מצבים וראיות](home/dashboard.md).
+
+25.10.2026: `src/components/match/MatchEventPicker.tsx` מוסיף חלון בחירה בתוך `AdvancedLiveMatchScreen`, עם שני כרטיסי גול ופנדל. אין מסך או מסלול ניווט חדש. [מצבים וראיות](../changes/2026-10-25-add-match-event.md).
+
+25.10.2026: `src/components/match/InPlayPenaltyModal.tsx` נוסף כחלון בתוך `AdvancedLiveMatchScreen`, ללא מסך או נתיב ניווט חדש. הכניסה דרך כפתור פנדל, עריכה דרך היומן. הנתונים מופיעים גם במסכי היסטוריה וסטטיסטיקה קיימים. [חוזה, מצבים וראיות](../changes/2026-10-25-in-play-penalties.md).
+
+24.10.2026: `pulse/src/screens/JoryioJourneyScreen.tsx` נוסף כלשונית מסעות בתוך `GrowthWorkspace` בקובץ `pulse/src/screens/WorkspacesScreen.tsx`. מציג עותק ספירות מגוריו עם זמן סנכרון ומצב טיוטה, ללא נתיב מחסנית חדש. [מסלול הנתונים ומגבלות](shared/pulse-management.md#מסע-הזמנת-חברים-למועדון-24102026).
+
 24.10.2026: `src/components/profile/ComparisonActivitySection.tsx` מוסיף סקשן היסטוריית השוואות וחלון רשימה מלאה בתוך כרטיס השחקן העצמי. אין מסלול חדש; הסקשן אינו מוצג בפרופיל ציבורי או בתמונת שיתוף. [נתונים, מצבים ומגבלות](profile/player-card.md#היסטוריית-השוואות-פרטית--24102026).
 
 24.10.2026: `src/components/match/LiveTeamsEditModal.tsx` מוסיף עריכת זוג משחקות, סדר ממתינות ואישור איפוס בתוך `AdvancedLiveMatchScreen`, ללא מסך או מסלול ניווט חדש. [מצבים, שירותים, בדיקות וצילומי אנדרואיד](rounds/live-advanced.md#עריכת-הקבוצות-והתור-בזמן-הלייב--24102026).
@@ -97,6 +109,7 @@
 | `src/screens/profile/ReferralsListScreen.tsx` | [coverage.md](coverage.md) · [profile/referrals.md](profile/referrals.md) |
 | `src/screens/profile/SeasonSummaryScreen.tsx` | [coverage.md](coverage.md) · [statistics/season-summary.md](statistics/season-summary.md) |
 | `src/screens/profile/SeasonTitlesScreen.tsx` | [coverage.md](coverage.md) · [profile/season-titles.md](profile/season-titles.md) |
+| `src/screens/profile/MyActivityScreen.tsx` | [profile/my-activity.md](profile/my-activity.md) |
 | `src/screens/profile/StatisticsScreen.tsx` | [coverage.md](coverage.md) · [statistics/personal-statistics.md](statistics/personal-statistics.md) |
 | `src/screens/RequestsScreen.tsx` | [clubs/requests-and-approvals.md](clubs/requests-and-approvals.md) · [coverage.md](coverage.md) · [profile/requests.md](profile/requests.md) |
 | `src/screens/SplashScreen.tsx` | [coverage.md](coverage.md) · [entry/boot-and-intent.md](entry/boot-and-intent.md) · [entry/legacy-and-hidden.md](entry/legacy-and-hidden.md) |
@@ -203,6 +216,7 @@
 | `History` | [ProfileStack.tsx](../../src/navigation/ProfileStack.tsx) | `HistoryScreen` |
 | `Achievements` | [ProfileStack.tsx](../../src/navigation/ProfileStack.tsx) | `AchievementsScreen` |
 | `SeasonTitles` | [ProfileStack.tsx](../../src/navigation/ProfileStack.tsx) | `SeasonTitlesScreen` |
+| `MyActivity` | [ProfileStack.tsx](../../src/navigation/ProfileStack.tsx), [GameStack.tsx](../../src/navigation/GameStack.tsx), [CommunitiesStack.tsx](../../src/navigation/CommunitiesStack.tsx), [ChatStack.tsx](../../src/navigation/ChatStack.tsx) | `MyActivityScreen` |
 | `Statistics` | [ProfileStack.tsx](../../src/navigation/ProfileStack.tsx) | `StatisticsScreen` |
 | `Friends` | [ProfileStack.tsx](../../src/navigation/ProfileStack.tsx) | `FriendsScreen` |
 | `Referrals` | [ProfileStack.tsx](../../src/navigation/ProfileStack.tsx) | `ReferralsListScreen` |
@@ -336,3 +350,23 @@
 ### לוח משימות מאוחד — 18.10.2026
 
 `TasksScreen` הוא מסך העבודה היחיד. `DevInbox` פותח את הלוח ככינוי ישן, ו־`Ideas` פותח את הפתוחות עם מסנן רעיונות. מסכי הרשימות הישנים נשארים בקוד לתאימות אך אינם כניסות בתפריט; `ErrorDetail` ממשיך לשמש פירוט פריט. תיעוד וצילומים: [לוח המשימות](shared/pulse-work-inbox.md).
+
+## ארון התארים בערימות הכרטיס — 24.10.2026
+
+המסך הקיים `src/screens/profile/AchievementsScreen.tsx` נרשם גם ב־`CommunitiesStack`, ב־`GameStack` וב־`ChatStack`, בנוסף לבית. אין קובץ מסך חדש ואין הסרת מסך. [מטרת הרישום ובדיקות החזרה](../changes/2026-10-24-cabinet-back.md).
+
+25.10.2026: חלון `InPlayPenaltyModal` הקיים משתמש ברצף בחירת בועט, שוער ותוצאה עם סגירה לאחר בעיטה אחת. אין מסך או נתיב חדש; אין עריכת פנדל מתוך היומן. [תהליך וראיות](../changes/2026-10-25-in-play-penalty-flow.md).
+
+25.10.2026: שלושת חלונות הגול והפנדלים הקיימים נפתחים כעת מלמטה וצמודים לתחתית. אין תוספת מסך או נתיב ניווט. [מימוש, צילום ובדיקות](../changes/2026-10-25-bottom-match-sheets.md).
+
+
+25.10.2026: נוסף מסלול מתפריט שני סוגי הלייב אל `DraftSetup`, באותה מחסנית ובאותו מחזור. `returnRouteKey` משמר חזרה למופע המקור דרך יצירה, סיכום ועריכה. אין מסך חדש. [התנהגות ומגבלות](rounds/draft-setup.md#עריכת-קבוצות-מהלייב---25102026).
+
+26.10.2026: בחירת אפליקציה ופרטי החיבור מוצגים כחלונית בתוך `MyActivityScreen`, עם חזרה לבחירה וללוח. לא נוסף נתיב ניווט. [תיעוד וראיות](profile/my-activity.md).
+
+26.10.2026: `src/components/activity/PhoneActivityTest.tsx` מוצג בחלונית מלאה מתוך `MyActivityScreen`. מצב בדיקת טלפון בלבד, ללא נתיב חדש במחסנית. [תיעוד](profile/my-activity.md).
+
+
+## השבתת פעילות אישית, 27.10.2026
+
+`src/screens/profile/MyActivityScreen.tsx` נשאר רשום בארבע מחסניות הניווט לצורך מצב שמור, אך מציג הודעת אי זמינות כשהמתג כבוי. הכניסה מהבית וכרטיסי הפעילות בסיכום המחזור מוסתרים. לא נוסף או הוסר קובץ מסך. זהו שינוי מקומי שטרם הופץ.

@@ -74,6 +74,8 @@ export interface ChampionshipRow {
   /** Penalty-shootout kicker: taken / scored. Drives "מלך הפנדלים". */
   penTaken: number;
   penScored: number;
+  penInPlayTaken?: number;
+  penInPlayScored?: number;
   /** Penalty-shootout keeper: faced / saved. Drives "מלך שוערי הפנדלים". */
   penFaced: number;
   penSaved: number;
@@ -142,6 +144,8 @@ export function rankChampionshipRows(
     games?: number;
     penTaken?: number;
     penScored?: number;
+    penInPlayTaken?: number;
+    penInPlayScored?: number;
     penFaced?: number;
     penSaved?: number;
     ownGoals?: number;
@@ -167,6 +171,8 @@ export function rankChampionshipRows(
     games: typeof x.games === 'number' ? x.games : 0,
     penTaken: typeof x.penTaken === 'number' ? x.penTaken : 0,
     penScored: typeof x.penScored === 'number' ? x.penScored : 0,
+    ...(typeof x.penInPlayTaken === 'number' ? {penInPlayTaken:x.penInPlayTaken} : {}),
+    ...(typeof x.penInPlayScored === 'number' ? {penInPlayScored:x.penInPlayScored} : {}),
     penFaced: typeof x.penFaced === 'number' ? x.penFaced : 0,
     penSaved: typeof x.penSaved === 'number' ? x.penSaved : 0,
     ownGoals: typeof x.ownGoals === 'number' ? x.ownGoals : 0,

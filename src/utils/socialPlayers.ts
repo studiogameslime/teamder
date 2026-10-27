@@ -18,9 +18,9 @@ export function playerAvailabilitySlots(a?: Availability): Record<number, string
   if (!days.length && !times.length) return {};
   return Object.fromEntries((days.length ? days : [0,1,2,3,4,5,6]).map(day => [day, times.length ? times : Object.keys(TIMES)]));
 }
-/** Discovery defaults to new connections; existing friends have an explicit filter. */
+/** All-player search includes friends; friendsOnly narrows the same search. */
 export function playerDiscoveryMatches(player: SocialPlayer, opts: PlayerSearch): boolean {
-  return (!player.friend || opts.friendsOnly === true) && playerSearchMatches(player, opts);
+  return playerSearchMatches(player, opts);
 }
 export function playerAvailabilityLines(a?: Pick<UserAvailability, 'preferredDays' | 'preferredTimes' | 'availabilitySlots' | 'isAvailableForInvites'>): string[] {
   if (!a || a.isAvailableForInvites === false) return [];

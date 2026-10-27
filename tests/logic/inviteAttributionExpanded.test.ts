@@ -92,9 +92,9 @@ describe('expanded attribution through actual ingress and persistent services', 
     expect(await readPendingAction()).toMatchObject({kind:'create_club',draftId:'draft1'});
     expect(await storage.getInviteAttribution('new','referral')).toMatchObject({invitedBy:'friend'});
   });
-  test('unresolved query inviter is never credited; canonical owner is used after recovery', async () => {
+  test.each(['https://teamderfc.web.app/i/code1?s=whatsapp&invitedBy=forged', 'https://teamder.co.il/i/code1?s=whatsapp'])('unresolved %s retains canonical owner after recovery', async url => {
     globalThis.fetch = jest.fn(async () => {throw new Error('offline');}) as any;
-    expect(await resolveIncomingInvite('https://teamderfc.web.app/i/code1?s=whatsapp&invitedBy=forged')).toBeNull();
+    expect(await resolveIncomingInvite(url)).toBeNull();
     expect(await storage.getInviteAttribution('new')).toBeNull();
     canonical({type:'team',id:'club1',invitedBy:'canonical-owner'});
     expect(await retryUnresolvedInvite()).toBe(true);

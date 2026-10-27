@@ -508,5 +508,11 @@
     "domain": "shared",
     "simple": "shared/pulse-management.simple.md",
     "technical": "shared/pulse-management.md"
+  },
+  {
+    "title": "הפעילות שלי ומקור המדידה האישי",
+    "domain": "profile",
+    "simple": "profile/my-activity.simple.md",
+    "technical": "profile/my-activity.md"
   }
 ]

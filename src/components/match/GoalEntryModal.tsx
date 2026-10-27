@@ -172,7 +172,7 @@ export function GoalEntryModal({ gameId, side, teamLabel, teamColor, teamInk, ot
     </View>
   </>;
 
-  return <SafeModal visible={side !== null} transparent animationType="fade" onRequestClose={close}>
+  return <SafeModal visible={side !== null} transparent animationType="slide" onRequestClose={close}>
     <View style={s.backdrop}>
       <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="סגירת חלון הגול"/>
       <View style={[s.sheet, { maxHeight: height * 0.92 }, failed && { height: height * 0.92 }]}>
@@ -214,8 +214,8 @@ export function GoalEntryModal({ gameId, side, teamLabel, teamColor, teamInk, ot
 }
 
 const s = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: '#0B122080', justifyContent: 'center', padding: 12 },
-  sheet: { backgroundColor: '#FFF', borderRadius: 24, overflow: 'hidden', flexShrink: 1 },
+  backdrop: { flex: 1, backgroundColor: '#0B122080', justifyContent: 'flex-end' },
+  sheet: { width: '100%', backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', flexShrink: 1 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 15, paddingVertical: 12 },
   compactHeader: { paddingVertical: 8, paddingHorizontal: 12, gap: 8 },
   flex: { flex: 1 },

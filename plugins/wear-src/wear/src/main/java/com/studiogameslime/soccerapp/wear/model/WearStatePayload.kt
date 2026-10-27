@@ -13,33 +13,21 @@ import org.json.JSONObject
  * Defensive: a malformed payload degrades to [WearGameState.Disconnected]
  * rather than throwing — the tile must always render something.
  */
-/** ms after which a persisted LIVE payload is treated as a dead phone — the
- *  match is surely over and the phone was killed without ever publishing a
- *  terminal state. Only LIVE ages out; upcoming/scheduled are valid for hours.
- *  The phone re-publishes a live match every ~60s, so a genuinely-live payload
- *  is never anywhere near this old. */
-private const val LIVE_STALE_MS = 3L * 60L * 60L * 1000L // 3h
-
-/**
- * Like [parseWearState] but ages out a STALE live payload using the phone's
- * publish timestamp (Data Layer "ts" key — the phone's wall clock, which Wear OS
- * keeps in sync with the watch's). Without this the watch shows a forever-
- * counting timer for a match whose phone died mid-game. `tsMs <= 0` (no ts)
- * keeps the payload as-is.
- */
-fun parseWearStateFresh(json: String, tsMs: Long): WearGameState {
-    val state = parseWearState(json)
-    if (
-        state is WearGameState.Live &&
-        tsMs > 0L &&
-        System.currentTimeMillis() - tsMs > LIVE_STALE_MS
-    ) {
-        return WearGameState.Disconnected
+/** Freshness controls authority, not whether the last known match exists. */
+fun parseWearStateFresh(json: String, tsMs: Long, watchServerOffsetMs: Long? = null): WearGameState {
+    val state = parseWearState(json, watchServerOffsetMs)
+    if (state is WearGameState.Live) {
+        val phoneOffset = try { JSONObject(json).optLong("clockOffsetMs") } catch (_: Exception) { 0L }
+        val age = if (watchServerOffsetMs != null) System.currentTimeMillis() + watchServerOffsetMs - (tsMs + phoneOffset)
+            else System.currentTimeMillis() - tsMs
+        // Keep the last known match visible; a missing phone is not a finished match.
+        return state.copy(publishedAtMs = tsMs, stale = watchServerOffsetMs == null || tsMs <= 0 || age < -60_000 || age > 90_000,
+            canControl = state.canControl && watchServerOffsetMs != null && tsMs > 0 && age in -60_000..90_000)
     }
     return state
 }
 
-fun parseWearState(json: String): WearGameState = try {
+fun parseWearState(json: String, watchServerOffsetMs: Long? = null): WearGameState = try {
     val o = JSONObject(json)
     when (o.optString("kind")) {
         "live" -> {
@@ -49,7 +37,7 @@ fun parseWearState(json: String): WearGameState = try {
             val t = o.optJSONObject("timer") ?: JSONObject()
             val running = t.optBoolean("running")
             // clockOffsetMs + serverNowMs live at the payload ROOT, not inside timer.
-            val clockOffsetMs = o.optLong("clockOffsetMs", 0L)
+            val clockOffsetMs = watchServerOffsetMs ?: o.optLong("clockOffsetMs", 0L)
             val serverNowMs = o.optLong("serverNowMs", 0L)
             val rawBase = t.optLong("baseElapsedMs", -1L)
             val accumulatedMs = t.optLong("accumulatedMs")
@@ -67,6 +55,7 @@ fun parseWearState(json: String): WearGameState = try {
             // (app / tile / ongoing) inherit a base that is correct at parse time.
             val watchServerNow = System.currentTimeMillis() + clockOffsetMs
             val resolvedBase = when {
+                running && watchServerOffsetMs == null -> if (rawBase >= 0L) rawBase else accumulatedMs
                 !running ->
                     // Paused: whatever base we were given (or accumulated).
                     if (rawBase >= 0L) rawBase else accumulatedMs
@@ -91,9 +80,15 @@ fun parseWearState(json: String): WearGameState = try {
                     // monotonic anchor carries it forward while this parse is alive.
                     baseElapsedMs = resolvedBase.coerceAtLeast(0L),
                     parseAnchorRealtimeMs = SystemClock.elapsedRealtime(),
+                    clockReady = watchServerOffsetMs != null,
                 ),
                 gameId = o.optString("gameId"),
                 canControl = o.optBoolean("canControl"),
+                viewerId = o.optString("viewerId").ifBlank { o.optJSONObject("viewer")?.optString("id").orEmpty() },
+                roundId = o.optString("timerRoundId"),
+                sessionGeneration = o.optLong("sessionGeneration", -1L),
+                players = parsePlayers(o),
+                registration = o.optString("registration", "registered"),
             )
         }
         "upcoming" -> {
@@ -101,12 +96,13 @@ fun parseWearState(json: String): WearGameState = try {
             val players = buildList {
                 if (arr != null) {
                     for (i in 0 until arr.length()) {
-                        val p = arr.getJSONObject(i)
+                        val p = arr.optJSONObject(i) ?: continue
                         add(
                             WearPlayer(
                                 name = p.optString("name"),
                                 photoUrl = p.optString("photo"),
                                 role = p.optString("role", "member"),
+                                id = p.optString("id"),
                             ),
                         )
                     }
@@ -120,6 +116,7 @@ fun parseWearState(json: String): WearGameState = try {
                 playersCount = o.optInt("playersCount"),
                 maxPlayers = o.optInt("maxPlayers"),
                 players = players,
+                registration = o.optString("registration", "registered"),
             )
         }
         "scheduled" -> WearGameState.Scheduled(
@@ -134,4 +131,14 @@ fun parseWearState(json: String): WearGameState = try {
     }
 } catch (_: Exception) {
     WearGameState.Disconnected
+}
+
+private fun parsePlayers(o: JSONObject): List<WearPlayer> = buildList {
+    val rows = o.optJSONArray("players") ?: return@buildList
+    for (i in 0 until rows.length()) {
+        val row = rows.optJSONObject(i) ?: continue
+        val name = row.optString("name")
+        if (name.isBlank()) continue
+        add(WearPlayer(name, row.optString("photo"), row.optString("role", "member"), row.optString("id")))
+    }
 }

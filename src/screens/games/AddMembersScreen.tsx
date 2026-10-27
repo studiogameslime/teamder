@@ -106,7 +106,7 @@ export function AddMembersScreen() {
     return () => {
       alive = false;
     };
-  }, [gameId, me, myCommunities]);
+  }, [gameId, me?.id, me?.isGuest, myCommunities, reserve]);
 
   // Only server-confirmed matches receive an availability badge. A failed or
   // capped lookup leaves the badge absent; it never claims unavailability.

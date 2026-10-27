@@ -36,11 +36,11 @@ function harness(mock=false, value=initial()) {
   const transaction=jest.fn(async(_db:any,callback:any)=>{
     for(let retry=0;retry<6;retry++) {
       attempts+=1;let readVersion=-1,patch:Record<string,any>|undefined;
-      await callback({get:async()=>{readVersion=version;const captured=clone(state);return{exists:()=>!!captured.id,data:()=>captured};},update:(_ref:any,next:Record<string,any>)=>{patch=next;}});
+      const result = await callback({get:async()=>{readVersion=version;const captured=clone(state);return{exists:()=>!!captured.id,data:()=>captured};},update:(_ref:any,next:Record<string,any>)=>{patch=next;}});
       if(beforeCommit&&patch){const hook=beforeCommit;beforeCommit=undefined;hook();}
       if(readVersion!==version)continue;
       if(patch){writes.push(clone(patch));apply(patch);version+=1;}
-      return;
+      return result;
     }
     throw new Error('Test transaction retry limit');
   });
@@ -65,6 +65,17 @@ test('two simultaneous starts create only one anchor and one event',async()=>{
   const h=harness();await Promise.all([h.service.startTimer('evening','one','אחד','round-one'),h.service.startTimer('evening','two','שניים','round-one')]);
   expect(h.writes).toHaveLength(1);expect(h.state.liveMatch.timerEvents).toHaveLength(1);expect(h.state.liveMatch.timerLastStartedAt).toBe(5000);
   expect(h.attempts()).toBe(3);
+});
+
+test.each([false,true])('timer returns the committed clock without another read, including idempotent writes (mock=%s)',async mock=>{
+  const h=harness(mock);
+  const started=await h.service.startTimer('evening','manager','מנהל','round-one');
+  expect(started).toEqual(h.state.liveMatch);expect(started.timerLastStartedAt).toBe(5000);
+  expect(await h.service.startTimer('evening','manager','מנהל','round-one')).toEqual(started);
+  h.setNow(8000);const stopped=await h.service.pauseTimer('evening','manager','מנהל','round-one');
+  expect(stopped).toEqual(h.state.liveMatch);expect(stopped.timerAccumulatedMs).toBe(3000);
+  expect(await h.service.pauseTimer('evening','manager','מנהל','round-one')).toEqual(stopped);
+  expect(h.directRead).not.toHaveBeenCalled();
 });
 
 test('two simultaneous pauses count the elapsed window once',async()=>{
@@ -178,6 +189,7 @@ function endRoundContext(pause:jest.Mock) {
   const screen=ts.createSourceFile('AdvancedLiveMatchScreen.tsx',fs.readFileSync('src/screens/AdvancedLiveMatchScreen.tsx','utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
   let callback='';function find(node:ts.Node){if(ts.isVariableDeclaration(node)&&node.name.getText(screen)==='onEndRound')callback=node.initializer!.getText(screen);ts.forEachChild(node,find);}find(screen);
   const context:any={module:{exports:{}},pendingSavedRound:false,fillFlowRef:{current:null},gameId:'evening',currentRoundKey:'round-one',me:{id:'manager',name:'מנהל'},
+    timerFeedback:{isPending:()=>false},
     finalizingRef:{current:false},committingRef:{current:false},winnerOpen:false,decisionOpen:false,shootoutOpen:false,
     markBusy:jest.fn(),gameService:{pauseTimer:pause,prepareRoundResult:jest.fn().mockResolvedValue({outcome:null}),startTimer:jest.fn()},
     game:{id:'evening',status:'open',players:[],guests:[]},roundDecisionContext,

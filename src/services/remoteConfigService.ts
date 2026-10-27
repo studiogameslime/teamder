@@ -1,3 +1,4 @@
+import { retryRead } from './readRetry';
 import { observeCaughtError } from '../utils/errorObservation';
 // remoteConfigService — server-tunable knobs via Firebase Remote Config.
 //
@@ -137,7 +138,7 @@ export async function initRemoteConfig(): Promise<void> {
     await inst.setDefaults(
       RC_DEFAULTS as unknown as Record<string, number | string | boolean>,
     );
-    await inst.fetchAndActivate();
+    await retryRead(() => inst.fetchAndActivate(), () => {});
   } catch (err) {
     observeCaughtError(err, {"source":"src/services/remoteConfigService.ts","handler":"initRemoteConfig","site":"remoteConfigService:a9aa06fca9"});
     // RC fetch failures are transient (network) and non-fatal — the

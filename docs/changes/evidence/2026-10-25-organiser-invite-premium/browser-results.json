@@ -1,0 +1,62 @@
+{
+  "checks": [
+    {
+      "name": "before",
+      "scheme": "light",
+      "width": 390,
+      "height": 844,
+      "overflow": false,
+      "image": true,
+      "direction": "rtl",
+      "href": "footy://club-invite/preview_club",
+      "button": 52
+    },
+    {
+      "name": "after",
+      "scheme": "light",
+      "width": 390,
+      "height": 844,
+      "overflow": false,
+      "image": true,
+      "direction": "rtl",
+      "href": "footy://club-invite/preview_club",
+      "button": 54
+    },
+    {
+      "name": "after",
+      "scheme": "dark",
+      "width": 390,
+      "height": 844,
+      "overflow": false,
+      "image": true,
+      "direction": "rtl",
+      "href": "footy://club-invite/preview_club",
+      "button": 54
+    },
+    {
+      "name": "after",
+      "scheme": "light",
+      "width": 320,
+      "height": 640,
+      "overflow": false,
+      "image": true,
+      "direction": "rtl",
+      "href": "footy://club-invite/preview_club",
+      "button": 54
+    },
+    {
+      "name": "followup",
+      "scheme": "light",
+      "width": 390,
+      "height": 844,
+      "overflow": false,
+      "image": true,
+      "direction": "rtl",
+      "href": "footy://club-invite/preview_club",
+      "button": 54
+    }
+  ],
+  "pageErrors": [],
+  "nativeDeviceVerified": false,
+  "productionSent": false
+}

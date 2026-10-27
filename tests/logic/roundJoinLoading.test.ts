@@ -21,7 +21,7 @@ function fixture(redBlocked = false) {
     __DEV__:false,reload:jest.fn(),setGame:jest.fn(),joinAudit:{current:null},
     setRegAnim:jest.fn(),successHaptic:jest.fn(),setCelebrate:jest.fn(),
     setTimeout:jest.fn(),clearTimeout:jest.fn(),JOIN_AUDIT_DELAY_MS:1000,gameRef:{current:null},logUnexpected:jest.fn()};
-  vm.runInNewContext(ts.transpileModule('exports.run='+handler,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,context);
+  vm.runInNewContext(ts.transpileModule('exports.run='+handler,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,Object.assign(context,{joinDiagnosticId:require('@/utils/joinDiagnosticId').joinDiagnosticId,runDiagnosticOperation:require('@/services/diagnosticJournal').runDiagnosticOperation,diagnosticEntity:require('@/services/diagnosticJournal').diagnosticEntity}));
   return {...context,run:context.exports.run as ()=>Promise<void>,resolve,reject,requestJoinGame,hasActiveRedCard};
 }
 test('join shows busy before the request settles and rapid presses send only one request',async()=>{

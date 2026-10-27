@@ -8,6 +8,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OpeningTeamsPanel } from '@/components/match/OpeningTeamsPanel';
 import { LiveTeamsEditModal } from '@/components/match/LiveTeamsEditModal';
+import { MatchEventPicker } from '@/components/match/MatchEventPicker';
 import { liveTeamsEditContext, liveTeamsChanged, type LiveTeamsEditContext, type LiveTeamsPlan } from '@/utils/liveTeamsEdit';
 import { initialOpeningPlan, openingFingerprint, type OpeningPlan } from '@/utils/openingTeams';
 import {
@@ -32,7 +33,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute, useIsFocused } from '@react-navigation/native';
 
 import { toast } from '@/components/Toast';
 import { gameService, resolveRosterEntry } from '@/services/gameService';
@@ -64,6 +65,7 @@ import {
 } from '@/services/gameLifecycle';
 import { useGameEvents } from '@/services/useGameEvents';
 import { useSyncedTimer } from '@/services/useSyncedTimer';
+import { useTimerFeedback } from '@/services/useTimerFeedback';
 import { serverNow } from '@/services/serverClock';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { Game, LiveMatchState, TimerEvent, MatchRotation, DraftTeamsResult, teamSizeFromFormat } from '@/types';
@@ -204,6 +206,7 @@ export function AdvancedLiveMatchScreen() {
   const [game, setGame] = useState<Game | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [live, setLive] = useState<LiveMatchState | null>(null);
+  const [rotation, setRotation] = useState<MatchRotation | null>(null);
   const [endOpen, setEndOpen] = useState(false);
   const [ending, setEnding] = useState(false);
   // After ending a COMMUNITY evening, ask who took the ball / jerseys home.
@@ -235,6 +238,8 @@ export function AdvancedLiveMatchScreen() {
   const [shootoutDecision, setShootoutDecision] = useState<ShootoutDecisionContext | null>(null);
   const [swapOpen, setSwapOpen] = useState(false);
   const [goalRequest, setGoalRequest] = useState<{ side: 'A' | 'B'; key: number }>();
+  const [penaltyRequest,setPenaltyRequest]=useState<{key:number}>();
+  const [eventPicker,setEventPicker]=useState<{context:string;visible:boolean}|null>(null);
   // Interactive team-completion flow. The modal request is render state; the
   // in-progress working rosters + queue live in a ref (mutated between popups).
   const [fillRequest, setFillRequest] = useState<FillRequestView | null>(null);
@@ -271,7 +276,10 @@ export function AdvancedLiveMatchScreen() {
   }, []);
 
   // Synced clock — derived from the three `liveMatch.timer*` primitives.
-  const timerView = useSyncedTimer(live);
+  const timerFocused = useIsFocused();
+  const timerFeedback = useTimerFeedback(live, timerFocused && gameId && me && game?.status !== 'finished' && game?.status !== 'cancelled'
+    ? JSON.stringify([gameId, me.id, (rotation ? roundCommitKey(rotation) : live?.roundNumber ?? 0)]) : null);
+  const timerView = useSyncedTimer(timerFeedback.visibleLive);
   const timerMs = timerView.displayMs;
   const timerRunning = timerView.running;
   const timerStarted = timerView.started;
@@ -296,6 +304,7 @@ export function AdvancedLiveMatchScreen() {
   // The start CTA then reads "המשך" (continue) instead of "התחל" (start a new
   // game) (user request).
   const hasLiveProgress =
+    (live?.inPlayPenalties?.length ?? 0) > 0 ||
     (live?.goals?.length ?? 0) > 0 ||
     (live?.scoreA ?? 0) > 0 ||
     (live?.scoreB ?? 0) > 0;
@@ -358,12 +367,11 @@ export function AdvancedLiveMatchScreen() {
     return () => {
       alive = false;
     };
-  }, [gameId, me, myCommunities, nav]);
+  }, [gameId, me?.id, me?.isGuest, myCommunities, nav]);
 
   // Live rotation (winner-stays teams) — separate top-level Game fields.
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
   const playersMap = useGameStore((s) => s.players);
-  const [rotation, setRotation] = useState<MatchRotation | null>(null);
   const [draftTeams, setDraftTeams] = useState<DraftTeamsResult | null>(null);
   const [lastCommittedRoundId,setLastCommittedRoundId]=useState<string>();
   const pendingSavedRound = !!rotation && lastCommittedRoundId === roundCommitKey(rotation);
@@ -578,7 +586,8 @@ export function AdvancedLiveMatchScreen() {
   // the end of the fill flow starts before the end-round handler's `finally`
   // runs, and two booleans would race to leave it stuck off.
   const busyCountRef = useRef(0);
-  const [roundBusy, setRoundBusy] = useState(false);
+  const [roundWorkBusy, setRoundBusy] = useState(false);
+  const roundBusy = roundWorkBusy || timerFeedback.pending;
   const markBusy = useCallback((delta: 1 | -1) => {
     busyCountRef.current = Math.max(0, busyCountRef.current + delta);
     setRoundBusy(busyCountRef.current > 0);
@@ -901,6 +910,7 @@ export function AdvancedLiveMatchScreen() {
   };
 
   const onEndRound = async () => {
+    if (timerFeedback.isPending()) return;
     if (pendingSavedRound && !fillFlowRef.current) { void resumeSavedRound(); return; }
     // Block re-entry while a round transition is already in flight: finalizing,
     // the manual winner picker is open, or a fill flow is mid-way. Without this
@@ -1215,9 +1225,9 @@ export function AdvancedLiveMatchScreen() {
   const lastCtrlRef = useRef<string | null>(null);
   const lastRunningRef = useRef<boolean | null>(null);
   useEffect(() => {
-    const ctrlId = timerView.controlledById;
-    const ctrlName = timerView.controlledByName;
-    const running = timerView.running;
+    const ctrlId = live?.timerControlledBy ?? null;
+    const ctrlName = live?.timerControlledByName ?? null;
+    const running = !!live?.timerRunning;
     const prevCtrl = lastCtrlRef.current;
     const prevRunning = lastRunningRef.current;
     if (prevCtrl === null && prevRunning === null) {
@@ -1232,7 +1242,7 @@ export function AdvancedLiveMatchScreen() {
     }
     lastCtrlRef.current = ctrlId;
     lastRunningRef.current = running;
-  }, [timerView.controlledById, timerView.controlledByName, timerView.running, me?.id]);
+  }, [live?.timerControlledBy, live?.timerControlledByName, live?.timerRunning, me?.id]);
 
   // ─── Role detection ────────────────────────────────────────────────────
   const isAdmin = useMemo(() => {
@@ -1323,13 +1333,22 @@ export function AdvancedLiveMatchScreen() {
   const onTimerStart = async () => {
     if (pendingSavedRound && !fillFlowRef.current) { void resumeSavedRound(); return; }
     if (fillFlowRef.current) { if(balancedRequest) setFillDeferred(false); return; }
-    if (!gameId || !me || startingRef.current || committingRef.current) return;
+    if (!gameId || !me || timerFeedback.isPending() || roundBusy || startingRef.current || committingRef.current) return;
     startingRef.current = true;
     try {
       // First press flips Game.status→'active' and stamps
       // liveMatch.startedAt (and creates liveMatch if absent — required
       // before startTimer can run). Idempotent on subsequent presses.
-      await gameService.markGameStarted(gameId);
+      const applied = await timerFeedback.run('start', async (isCurrent) => {
+        // First-start season validation remains required. Later rounds of an
+        // already-started evening need only the atomic timer transaction.
+        if (!(game?.status === 'active' && Number.isFinite(live?.startedAt) && (live?.startedAt ?? 0) > 0)) {
+          await gameService.markGameStarted(gameId);
+        }
+        if (!isCurrent()) return null;
+        return gameService.startTimer(gameId, me.id, me.name ?? '', currentRoundKey ?? undefined);
+      });
+      if (!applied) return;
       if (!timerStarted) {
         logEvent(AnalyticsEvent.GameStarted, {
           gameId,
@@ -1337,7 +1356,6 @@ export function AdvancedLiveMatchScreen() {
           teams: draftTeams?.teams.length ?? 0,
         });
       }
-      await gameService.startTimer(gameId, me.id, me.name ?? '', currentRoundKey ?? undefined);
       if (!timerStarted) logEvent(AnalyticsEvent.RoundStarted, {
         gameId, round: rotation?.round ?? 0,
         teams: draftTeams?.teams.length ?? 0, perTeam,
@@ -1348,6 +1366,7 @@ export function AdvancedLiveMatchScreen() {
         elapsedSec: Math.round(timerMs / 1000),
         isAdmin,
       });
+      return true;
     } catch (err) {
     observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onTimerStart","site":"AdvancedLiveMatchScreen:de77484b00"});
       // §4 — the season is mid-close and the club may not start an evening.
@@ -1363,15 +1382,16 @@ export function AdvancedLiveMatchScreen() {
     }
   };
   const onTimerPause = async () => {
-    if (!gameId || !me) return;
+    if (!gameId || !me || timerFeedback.isPending() || roundBusy) return;
     try {
-      await gameService.pauseTimer(gameId, me.id, me.name ?? '', currentRoundKey ?? undefined);
+      if (!await timerFeedback.run('pause', () => gameService.pauseTimer(gameId, me.id, me.name ?? '', currentRoundKey ?? undefined))) return;
       logEvent(AnalyticsEvent.LiveTimerAction, {
         gameId,
         action: 'pause',
         elapsedSec: Math.round(timerMs / 1000),
         isAdmin,
       });
+      return true;
     } catch (err) {
     observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onTimerPause","site":"AdvancedLiveMatchScreen:192732e8f0"});
       logError('liveTimerPause', err, { gameId, userId: me?.id });
@@ -1382,15 +1402,16 @@ export function AdvancedLiveMatchScreen() {
   const onTimerResume = async () => {
     if (pendingSavedRound && !fillFlowRef.current) { void resumeSavedRound(); return; }
     if (fillFlowRef.current) { if(balancedRequest) setFillDeferred(false); return; }
-    if (!gameId || !me) return;
+    if (!gameId || !me || timerFeedback.isPending() || roundBusy) return;
     try {
-      await gameService.startTimer(gameId, me.id, me.name ?? '', currentRoundKey ?? undefined);
+      if (!await timerFeedback.run('start', () => gameService.startTimer(gameId, me.id, me.name ?? '', currentRoundKey ?? undefined))) return;
       logEvent(AnalyticsEvent.LiveTimerAction, {
         gameId,
         action: 'resume',
         elapsedSec: Math.round(timerMs / 1000),
         isAdmin,
       });
+      return true;
     } catch (err) {
     observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onTimerResume","site":"AdvancedLiveMatchScreen:b4ef4aad94"});
       logError('liveTimerResume', err, { gameId, userId: me?.id });
@@ -1435,7 +1456,7 @@ export function AdvancedLiveMatchScreen() {
     if (nav.canGoBack()) nav.goBack();
   };
   const onEndGame = async () => {
-    if (!gameId) return;
+    if (!gameId || timerFeedback.isPending()) return;
     setEnding(true);
     // BEFORE the await: `endEvening` is what makes the game terminal, and the
     // entry gate can re-run the moment the club document it touches changes.
@@ -1649,7 +1670,7 @@ export function AdvancedLiveMatchScreen() {
     );
   }
 
-  const statusLabel = timerRunning ? 'רץ' : timerStarted ? 'מושהה' : 'מוכן';
+  const statusLabel = timerFeedback.pending ? 'מעדכן שעון...' : timerRunning ? 'רץ' : timerStarted ? 'מושהה' : 'מוכן';
   // Persistent "controlled by X" chip — visible whenever the timer has
   // been touched by another admin (running OR paused). Previously this
   // hid the moment the other admin paused the timer, which made the
@@ -1668,6 +1689,7 @@ export function AdvancedLiveMatchScreen() {
   const scoreboardLive: LiveMatchState | null = displayLive ?? (!pendingSavedRound && rotationActive
     ? { phase: 'roundReady', assignments: {}, benchOrder: [], scoreA: 0, scoreB: 0 }
     : null);
+  const eventContext = JSON.stringify([gameId, rotation?.roundInstanceId, rotation?.round, rotation?.playing]);
   const canEnterGoals = isAdmin && rotationActive && !!scoreboardLive && !pendingSavedRound && !roundBusy && !live?.shootout && game.status !== 'finished' && game.status !== 'cancelled';
   const totalDrafted = (draftTeams?.teams ?? []).reduce(
     (s, t) => s + t.playerIds.length,
@@ -1971,23 +1993,27 @@ export function AdvancedLiveMatchScreen() {
             rotation={rotation}
             playersMap={playersMap}
             guests={game?.guests}
-            // Goal minute from the CAPPED clock so it matches the frozen
-            // '+MM:SS' scoreboard in overtime (was raw timerMs, which kept
-            // climbing while the displayed clock was pinned).
-            //
+            // Events use full elapsed playing time, including overtime.
+            // Only the main scoreboard clock is capped at the duration.
             // 1-BASED, like football. `floor(ms/60000)` alone made every goal
             // in the opening 60 seconds "minute 0" — which both reads wrong
             // and is FALSY, so the recap simply omitted the minute for those
             // goals while later ones showed theirs. Owner report: "למה יש זמן
             // לגול רק לשער עצמי ולא לשאר הגולים?" — those other goals just
             // happened to be scored in the first minute.
-            minute={Math.floor((totalMs > 0 ? clockMs : timerMs) / 60000) + 1}
+            minute={Math.floor(timerMs / 60000) + 1}
             canEdit={canEnterGoals}
             goalRequest={goalRequest}
+            penaltyRequest={penaltyRequest}
+            onPenaltyTimer={async () => {
+              const applied = await (timerRunning ? onTimerPause() : timerStarted ? onTimerResume() : onTimerStart());
+              if (!applied) throw new Error('עדכון השעון לא אושר.');
+            }}
             hideGoalButtons
             roundNumber={rotation?.round ?? 1}
             totalMinutes={totalMinutes || undefined}
             timerText={formatTime(totalMs > 0 ? clockMs : timerMs)}
+            clockMs={timerMs}
             statusLabel={pendingSavedRound ? '' : statusLabel}
             running={timerRunning && !pendingSavedRound}
             danger={danger}
@@ -2197,19 +2223,10 @@ export function AdvancedLiveMatchScreen() {
               <Text style={styles.hintText}>הפנדלים עדיין נמשכים</Text>
               <Pressable style={[styles.timerBtn,styles.shootoutResumeBtn,roundBusy && styles.timerBtnBusy]} disabled={roundBusy} onPress={() => setShootoutOpen(true)} accessibilityRole="button" accessibilityLabel="המשך פנדלים" accessibilityState={{disabled:roundBusy}}><Text style={[styles.timerBtnText,styles.shootoutResumeText]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>המשך פנדלים</Text></Pressable>
             </View> : <>
-              <View style={styles.row}>
-                {(['A','B'] as const).map((side,index) => {
-                  const teamIndex = rotation!.playing[index];
-                  const label = `גול ל${teamName(teamIndex,draftTeams?.teams).slice(1)}`;
-                  const ink = draftTeams?.teams.find(team => team.index === teamIndex)?.colorKey === 'white' ? '#000000' : '#FFFFFF';
-                  return (
-                    <Pressable key={side} disabled={!canEnterGoals} accessibilityRole="button" accessibilityState={{disabled:!canEnterGoals}} accessibilityLabel={label} style={[styles.quickGoal,compactControls && styles.compactQuickGoal,{backgroundColor:teamColor(teamIndex,draftTeams?.teams)},!canEnterGoals && {opacity:0.5}]} onPress={()=>setGoalRequest({side,key:Date.now()})}>
-                      <Text style={[styles.quickGoalText,compactControls && styles.compactQuickGoalText,{color:ink}]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{label}</Text>
-                      <Ionicons name="football" size={19} color={ink}/>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <Pressable disabled={!canEnterGoals} accessibilityRole="button" accessibilityLabel="הוסף אירוע" accessibilityState={{disabled:!canEnterGoals}}
+                onPress={()=>setEventPicker({context:eventContext,visible:true})} style={[styles.addEvent,!canEnterGoals&&{opacity:.5}]}>
+                <Text style={styles.addEventText}>הוסף אירוע</Text><Ionicons name="add-circle" size={23} color="#FFFFFF"/>
+              </Pressable>
               <View style={[styles.controlRow, compactControls && styles.compactControlRow]}>
                 <Pressable style={[styles.quickControl,compactControls && styles.compactQuickControl,styles.quickClock]} disabled={roundBusy} onPress={timerRunning ? onTimerPause : timerStarted ? onTimerResume : onTimerStart} accessibilityRole="button"><Text style={styles.quickClockText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>{timerRunning ? 'השהיה' : timerStarted ? 'המשך' : 'התחל זמן'}</Text><Ionicons name={timerRunning ? 'pause' : 'play'} size={21} color="#FFF"/></Pressable>
                 <Pressable style={[styles.quickControl,compactControls && styles.compactQuickControl]} disabled={roundBusy} onPress={()=>setSwapOpen(true)} accessibilityRole="button"><Text style={styles.quickControlText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85}>חילוף</Text><Ionicons name="swap-horizontal" size={21} color="#1D4ED8"/></Pressable>
@@ -2225,6 +2242,14 @@ export function AdvancedLiveMatchScreen() {
       </View>
 
       </>}
+      <MatchEventPicker visible={!!eventPicker?.visible && eventPicker.context===eventContext && canEnterGoals}
+        teams={[0,1].map(slot=>({name:teamName(rotation?.playing[slot] ?? slot,draftTeams?.teams),color:teamColor(rotation?.playing[slot] ?? slot,draftTeams?.teams)})) as [{name:string;color:string},{name:string;color:string}]}
+        onClose={()=>setEventPicker(old=>old?{...old,visible:false}:null)}
+        onSelect={choice=>{
+          if(!canEnterGoals || eventPicker?.context!==eventContext) return;
+          if(choice==='penalty') setPenaltyRequest({key:Date.now()});
+          else setGoalRequest({side:choice,key:Date.now()});
+        }}/>
       {/* Stoppages history — the synced log of every start / pause / resume
           so players can see exactly when (and for how long) the clock was
           stopped. */}
@@ -2433,8 +2458,12 @@ export function AdvancedLiveMatchScreen() {
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
         sections={[{ id: 'live', items: [
-          ...(canEditLiveTeams ? [{ id: 'liveEditTeams', label: 'עריכת הקבוצות והתור', icon: 'swap-horizontal' as const, onPress: openLiveTeamsEditor }] : []),
           { id: 'liveHelp', label: 'עזרה', icon: 'headset-outline', onPress: () => { setMenuOpen(false); if (me?.id) useSupportChat.getState().open(me.id); } },
+          ...(isAdmin ? [{ id: 'liveDraftTeams', label: 'עריכת קבוצות', icon: 'people-outline' as const, onPress: () => {
+            setMenuOpen(false);
+            (nav as unknown as { navigate: (s: string, p?: unknown) => void }).navigate('DraftSetup', { gameId: gameId, returnRouteKey: route.key });
+          } }] : []),
+          ...(canEditLiveTeams ? [{ id: 'liveEditTeams', label: 'סדר המשחק', icon: 'swap-horizontal' as const, onPress: openLiveTeamsEditor }] : []),
           { id: 'liveMenuRounds', label: he.liveMenuRounds, icon: 'list', onPress: () => {
                 (nav as unknown as { navigate: (s: string, p?: unknown) => void }).navigate(
                   'MatchRounds',
@@ -2459,15 +2488,13 @@ export function AdvancedLiveMatchScreen() {
 }
 
 const styles = StyleSheet.create({
-  quickGoal: {flex:1,minHeight:48,borderRadius:12,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,padding:8},
-  quickGoalText: {flexShrink:1,minWidth:0,fontSize:16,fontWeight:'800',color:'#FFF',textAlign:'center'},
+  addEvent: {minHeight:46,borderRadius:14,backgroundColor:'#2563EB',flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,paddingHorizontal:16,paddingVertical:7},
+  addEventText: {color:'#FFFFFF',fontSize:18,fontWeight:'800',textAlign:'center'},
   quickControl: {flex:1,minHeight:48,borderRadius:12,borderWidth:1,borderColor:'#D8E5F8',backgroundColor:'#FFF',flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,paddingHorizontal:8},
   quickControlText: {flexShrink:1,minWidth:0,color:'#1D4ED8',fontSize:14,fontWeight:'800',textAlign:'center'},
   quickClock: {backgroundColor:'#2563EB',borderColor:'#2563EB'},
   quickClockText: {flexShrink:1,minWidth:0,color:'#FFF',fontSize:14,fontWeight:'800',textAlign:'center'},
   compactControls: {paddingHorizontal:12},
-  compactQuickGoal: {minHeight:56,paddingHorizontal:6},
-  compactQuickGoalText: {fontSize:14},
   compactControlRow: {gap:8},
   compactQuickControl: {minHeight:56,paddingHorizontal:6,gap:4},
   pinnedScore: { width: '100%', backgroundColor: '#F6F9FF', paddingBottom: 8 },

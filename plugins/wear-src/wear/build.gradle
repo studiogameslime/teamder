@@ -47,8 +47,8 @@ android {
     // Wear uses its own high versionCode range so it never collides with
     // the phone app (phone is ~45 and auto-increments). Bump +1 each
     // new watch release.
-    versionCode 1027
-    versionName "1.0.30"
+    versionCode 1029
+    versionName "1.0.32"
   }
 
   buildFeatures {
@@ -77,6 +77,9 @@ android {
         def credentialsJson = Paths.get(System.getenv("EAS_BUILD_WORKINGDIR")).resolve("credentials.json").toFile()
         def credentials = new groovy.json.JsonSlurper().parse(credentialsJson)
         def keystorePath = Paths.get(credentials.android.keystore.keystorePath)
+        if (!keystorePath.isAbsolute()) {
+          keystorePath = Paths.get(System.getenv("EAS_BUILD_WORKINGDIR")).resolve(keystorePath).normalize()
+        }
 
         storeFile keystorePath.toFile()
         storePassword credentials.android.keystore.keystorePassword
@@ -105,6 +108,7 @@ android {
 }
 
 dependencies {
+  implementation "androidx.health:health-services-client:1.1.0"
   implementation platform("androidx.compose:compose-bom:2024.09.00")
   implementation "androidx.compose.ui:ui"
   implementation "androidx.compose.ui:ui-tooling-preview"

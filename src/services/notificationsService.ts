@@ -244,7 +244,7 @@ export const notificationsService = {
     // ping for this logical event — pushing a second one would just
     // multiply the badge count. Reading the first push unlocks the
     // next one. Stale unread docs (older than the TTL) are ignored.
-    if (STRICT_UNREAD_DEDUP[input.type]) {
+    if (STRICT_UNREAD_DEDUP[input.type] && getFirebase().auth.currentUser?.uid === input.recipientId) {
       try {
         const dup = await getDocs(
           query(
@@ -264,12 +264,12 @@ export const notificationsService = {
           }
         }
       } catch (err) {
-    observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"dispatch","site":"notificationsService:10a09baca1"});
         // Cross-user dispatch can't read the RECIPIENT's notifications (rules
         // are self-scoped) — that's expected and the bucket-id latch below
         // still dedups. Only surface genuinely unexpected failures.
         const code = (err as { code?: string })?.code;
         if (code !== 'permission-denied') {
+          observeCaughtError(err, {source:'src/services/notificationsService.ts',handler:'dispatch',site:'notificationsService:10a09baca1'});
           logError('dispatchStrictUnreadQuery', err, {
             type: input.type,
             recipientId: input.recipientId,
@@ -354,7 +354,7 @@ export const notificationsService = {
     if (USE_MOCK_DATA || !input?.gameId) return;
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { httpsCallable } = require('firebase/functions');
+      const { httpsCallable } = require('@/services/diagnosticCallable');
       const { functions } = getFirebase();
       const fn = httpsCallable(functions, 'notifyPlayerCancelled');
       await fn({ gameId: input.gameId, reason: input.reason ?? '' });
@@ -945,7 +945,7 @@ export const notificationsService = {
     // Lazy-import the callable infra so the bundle stays lean for
     // mock-mode users.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('firebase/functions');
+    const { httpsCallable } = require('@/services/diagnosticCallable');
     const { functions } = getFirebase();
     const fn = httpsCallable(functions, 'sendGameInvite');
     try {

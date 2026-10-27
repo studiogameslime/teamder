@@ -6,14 +6,16 @@ import { AppState } from 'react-native';
 import { parseInviteUrl, resolveInviteUrl } from './deepLinkService';
 import { receivePendingInvite } from './pendingAction';
 import { storage, type PendingInvite } from './storage';
+import { SHORT_LINK_DOMAINS } from '@/utils/linkDomains';
 
 const KEY = 'footy.invite.unresolved';
-const SHORT = /^https:\/\/(teamderfc\.web\.app|teamderfc\.firebaseapp\.com)\/i\/[A-Za-z0-9_-]{1,80}(?:[?#].*)?$/;
 function isResolvableShort(url: string): boolean {
-  if (SHORT.test(url)) return true;
   try {
     const u = new URL(url);
-    return ['teamderfc.web.app', 'teamderfc.firebaseapp.com'].includes(u.hostname) && u.protocol === 'https:' && ['/app', '/go'].includes(u.pathname) && /^[A-Za-z0-9_-]{1,80}$/.test(u.searchParams.get('code') ?? '');
+    return SHORT_LINK_DOMAINS.has(u.hostname) && u.protocol === 'https:' && (
+      /^\/i\/[A-Za-z0-9_-]{1,80}$/.test(u.pathname) ||
+      ['/app', '/go'].includes(u.pathname) && /^[A-Za-z0-9_-]{1,80}$/.test(u.searchParams.get('code') ?? '')
+    );
   } catch (caughtErrorebf514760c) {
     observeCaughtError(caughtErrorebf514760c, {"source":"src/services/incomingInvite.ts","handler":"isResolvableShort","site":"incomingInvite:ebf514760c"}); return false; }
 }

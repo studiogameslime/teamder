@@ -1,3 +1,6 @@
+import { errorPresentation } from './errorPresentation';
+import { commitFreshSeasonBatch } from './commitFreshSeasonBatch';
+import { ExpectedCallableError } from './expectedCallableError';
 import { observeCaughtError, observeSettledErrors, reportServerError } from './serverErrorLog';
 
 import { ENFORCE_APP_CHECK } from './appCheckPolicy';
@@ -5,6 +8,7 @@ import { reconcileJoinAfterWindow } from './joinReconcileDispatch';
 import { applyScheduledColors } from './draftColors';
 import { creationReceiptId, fingerprintCreation } from './creationReceipt';
 import { guestJoinNotices, guestJoinMessage, joinNoticeRecipients } from './guestJoinNotice';
+import { sendWidgetRosterInvalidation } from './widgetRosterSync';
 import { clickDocumentId, clickSource } from './linkClickInput';
 import { readServerAdminRatings, prunePrivateClubRatings } from './clubAdminRatings';
 export { setClubAdminRating, getClubAdminRatings } from './clubAdminRatings';
@@ -20,6 +24,7 @@ import { clubReminderEligibility } from './clubRegistrationReminder';
 export { recordClientError } from './clientDiagnostics';
 export { syncCrashlyticsToPulse } from './crashlyticsBridge';
 import { requireRecentAuth } from './recentAuth';
+import { stopOrphanSeries, createSeriesOccurrence, createLegacyOccurrence } from './clubDeletion';
 // Cloud Functions consumer for the /notifications outbound queue + a
 // scheduled reminder job for upcoming games.
 //
@@ -65,6 +70,7 @@ import { assertSeasonOpenForGame, assertSeasonOccurrence, seasonOfEvening } from
 import { liveSeasonStamp } from './liveSeasonStamp';
 import { buildRoundSides } from './roundSides';
 import { roundParticipantSides } from './roundParticipants';
+import { verifiedInPlayPenalties, penaltyParticipants, type InPlayPenalty } from './inPlayPenalties';
 import { seasonSeed } from './seasonSeed';
 import {
   countPlayedEvenings,
@@ -686,12 +692,12 @@ async function createNotificationOnce(input: {
     );
     return { wrote: true, id };
   } catch (err) {
-    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"createNotificationOnce","site":"index:c3d53ba702"});
     // Firestore Admin throws AlreadyExists (gRPC code 6) when the
     // doc already exists. Any other code is a real failure.
     const code = (err as { code?: number | string }).code;
     const isAlreadyExists = code === 6 || code === 'already-exists';
     if (!isAlreadyExists) {
+      observeCaughtError(err, {source:'functions/src/index.ts',handler:'createNotificationOnce',site:'index:c3d53ba702'});
       console.error(
         '[createNotificationOnce] create failed',
         { type: input.type, recipientId: input.recipientId, id },
@@ -3213,6 +3219,7 @@ async function runCreateSeriesOccurrences(): Promise<void> {
     let last = sdoc.lastOccurrenceAt;
     const st = sdoc.settings;
     if (typeof last !== 'number' || !sdoc.groupId || !st) continue;
+    if (await stopOrphanSeries(db, doc.ref, sdoc.groupId, now)) continue;
 
     // Self-heal a drifted anchor before it silences the series.
     //
@@ -3281,19 +3288,6 @@ async function runCreateSeriesOccurrences(): Promise<void> {
       console.warn('[seriesOccurrences] anchor too old, skipping', doc.id);
       continue;
     }
-    // Idempotence without a latch: if this series already has an occurrence at
-    // that kickoff, we've done it. Survives retries and concurrent runs.
-    const dupe = await db
-      .collection('games')
-      .where('seriesId', '==', doc.id)
-      .where('startsAt', '==', nextStartsAt)
-      .limit(1)
-      .get();
-    if (!dupe.empty) {
-      await doc.ref.update({ lastOccurrenceAt: nextStartsAt });
-      continue;
-    }
-
     // ⚠️ MIRRORS `buildOccurrence` in src/utils/seriesSchedule.ts, which is
     //    unit-tested (tests/logic/seriesSchedule.test.ts). Keep the two in sync.
     const num = (v: unknown): number | undefined =>
@@ -3366,9 +3360,7 @@ async function runCreateSeriesOccurrences(): Promise<void> {
     opt('guestsOpenAt', at(st.guestsOpenBeforeMs));
 
     try {
-      await db.collection('games').add(game);
-      await doc.ref.update({ lastOccurrenceAt: nextStartsAt });
-      created += 1;
+      if (await createSeriesOccurrence(db, doc.ref, game, now, last)) created += 1;
     } catch (err) {
     observeCaughtError(err, {"source":"functions/src/index.ts","handler":"runCreateSeriesOccurrences","site":"index:86dd77e9e1"});
       console.error('[seriesOccurrences] create failed', doc.id, err);
@@ -3607,23 +3599,8 @@ async function runCloneRecurringGames(): Promise<void> {
       // ALREADY_EXISTS instead of producing a duplicate game for the week.
       const cloneId = `${doc.id}_w${next.startsAt}`;
       const ref = db.collection('games').doc(cloneId);
-      try {
-        await ref.create({ ...next, id: cloneId });
-      } catch (e) {
-    observeCaughtError(e, {"source":"functions/src/index.ts","handler":"runCloneRecurringGames","site":"index:a121162b5c"});
-        // ALREADY_EXISTS: this week's clone is already there (a prior partial
-        // run). Just (re)assert the latch and move on — no duplicate, no second
-        // notification. Match both the numeric gRPC code AND the string form
-        // (the SDK delivers either depending on the throw path — same dual
-        // check as createNotificationOnce / onJoinRequestCreated elsewhere).
-        const code = (e as { code?: number | string }).code;
-        if (code === 6 || code === 'already-exists') {
-          await doc.ref.update({ recurringNextCreatedAt: now, updatedAt: now });
-          continue;
-        }
-        throw e;
-      }
-      await doc.ref.update({ recurringNextCreatedAt: now, updatedAt: now });
+      const result = await createLegacyOccurrence(db, doc.ref, ref, { ...next, id: cloneId }, now);
+      if (result !== 'created') continue;
       // Notify the community now only if it opened immediately. A deferred
       // instance gets its push from flipScheduledGames when reg opens.
       if (!isDeferred) {
@@ -4693,6 +4670,14 @@ export const onGameTimerChanged = onDocumentWritten(
   },
 );
 
+/** Roster invalidation also runs when no timer field changes. */
+export const onGameWidgetRosterChanged = onDocumentWritten('games/{id}', async event => {
+  await sendWidgetRosterInvalidation(event.params.id, event.data?.before?.data(), event.data?.after?.data(), {
+    loadUsers,
+    send: message => messaging.sendEachForMulticast(message),
+  });
+});
+
 // ─── Realtime trigger: per-player wins from the live rotation ──────────
 /**
  * When a "winner-stays" round ends, the client stamps the winning team's
@@ -5554,7 +5539,11 @@ export const onGameRosterChanged = onDocumentWritten(
               deletedAt: Date.now(),
             });
         } catch (caughtError6440185207) {
-    observeCaughtError(caughtError6440185207, {"source":"functions/src/index.ts","handler":"module","site":"index:6440185207"});
+          const code = (caughtError6440185207 as {code?: number | string}).code;
+          if (code !== 6 && code !== 'already-exists') {
+            observeCaughtError(caughtError6440185207, {source:'functions/src/index.ts',handler:'module',site:'index:6440185207'});
+            throw caughtError6440185207;
+          }
           /* already recorded — a client stamped the exact deleter, or a retry */
         }
       }
@@ -6134,8 +6123,10 @@ export const onGameRosterChanged = onDocumentWritten(
       // Each additive stage owns its atomic latch. Attendance being done must
       // never prevent an unfinished standings/summary/pairs stage from retrying.
       try {
+        const creditedPlayers = after.players;
+        await commitFreshSeasonBatch(async () => {
         const batch = db.batch();
-        for (const uid of after.players) {
+        for (const uid of creditedPlayers) {
           if (arrivals[uid] === 'no_show') continue;
           batch.set(
             db.collection('communityPlayerStats').doc(`${gid}__${uid}`),
@@ -6164,7 +6155,8 @@ export const onGameRosterChanged = onDocumentWritten(
           await guardFinishSeasonBatch(batch, gid,
             (after as { seasonId?: string }).seasonId || stampedSeasonId || undefined);
         }
-        await batch.commit();
+        return batch;
+        });
       } catch (err) {
     observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:51e1327a34"});
         const code = (err as { code?: number | string }).code;
@@ -13305,16 +13297,15 @@ export const onAvailabilityUpdated = onDocumentUpdated('users/{uid}', async (eve
 // only on a genuinely new kind of failure (not every repeat occurrence).
 export const onErrorLogged = onDocumentCreated('errors/{fp}', async (event) => {
   const e = event.data?.data() as
-    | { title?: string; category?: string; operation?: string; lastScreen?: string; source?: string }
+    | { title?: string; category?: string; operation?: string; lastScreen?: string; source?: string; lastCode?:string; lastMessage?:string }
     | undefined;
   if (!e) return;
   // Native crashes have a durable, retriable delivery outbox in the importer.
   if (e.source === 'crashlytics') return;
   const emoji =
     e.category === 'crash' ? '💥' : e.category === 'silent' ? '⚠️' : '❌';
-  const title = e.title || e.operation || 'שגיאה';
-  const where = e.lastScreen ? ` · ${e.lastScreen}` : '';
-  await pushToAdmins('error', `${emoji} שגיאה חדשה`, `${title}${where}`, {
+  const summary = errorPresentation(e.operation ?? '', e.lastCode, e.lastMessage);
+  await pushToAdmins('error', `${emoji} שגיאה חדשה`, `${summary.title}. ${summary.reason}`, {
     fp: event.params.fp,
   });
 });
@@ -14132,7 +14123,7 @@ export const commitRoundStats = onCall(
   { enforceAppCheck: ENFORCE_APP_CHECK },
   async (request) => {
     const uid = request.auth?.uid;
-    if (!uid) throw new HttpsError('unauthenticated', 'sign in required');
+    if (!uid) throw new ExpectedCallableError('unauthenticated', 'sign in required');
     const {
       gameId,
       roundId,
@@ -14144,6 +14135,7 @@ export const commitRoundStats = onCall(
       goals,
       penalties,
       liveGoalIds,
+      inPlayPenaltySnapshot,
       rotationUpdatedAt,
       liveLineupFingerprint,
       alternativeDecision,
@@ -14152,6 +14144,7 @@ export const commitRoundStats = onCall(
       gameId?: string;
       roundId?: number | string | null;
       liveGoalIds?: string[];
+      inPlayPenaltySnapshot?: string;
       rotationUpdatedAt?: number | null;
       liveLineupFingerprint?: string;
       alternativeDecision?: {fingerprint:string};
@@ -14164,6 +14157,7 @@ export const commitRoundStats = onCall(
       teamBIndex?: number;
       winnerSide?: 'A' | 'B' | 'tie';
       goals?: {
+        penaltyId?: string;
         scorerId?: string | null;
         assisterId?: string | null;
         assistStatus?: 'player' | 'none' | 'unknown';
@@ -14229,17 +14223,18 @@ export const commitRoundStats = onCall(
       if (committed.exists && history?.exists) {
         assertAlternativeReceipt(committed);
         const currentRotation = game.rotation as Parameters<typeof liveRoundKey>[0] | undefined;
-        const currentGoals = (game.liveMatch as { goals?: unknown[] } | undefined)?.goals ?? [];
+        const currentGoals = [...((game.liveMatch as { goals?: unknown[] } | undefined)?.goals ?? []),
+          ...((game.liveMatch as {inPlayPenalties?:unknown[]}|undefined)?.inPlayPenalties ?? [])];
         if (liveGoalIds !== undefined && currentRotation && liveRoundKey(currentRotation) === String(roundId) &&
             currentGoals.length > 0 && (game.lastCommittedRoundId === String(roundId) ||
-            !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, lineupFingerprint: liveLineupFingerprint,alternativeDecision }))) {
+            !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, inPlayPenaltySnapshot, lineupFingerprint: liveLineupFingerprint,alternativeDecision }))) {
           throw new HttpsError('failed-precondition', 'נוספו שערים אחרי שמירת המשחק. הם נשמרו בלוח ולא נמחקו.');
         }
         // A pre-protocol-2 client might have committed statistics but lost its
         // response before clearing. Repair ONLY an exactly matching old board;
         // an uncredited late goal must remain visible and raise a conflict.
         if (liveGoalIds !== undefined && game.lastCommittedRoundId !== String(roundId) &&
-            matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, lineupFingerprint: liveLineupFingerprint,alternativeDecision })) {
+            matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, inPlayPenaltySnapshot, lineupFingerprint: liveLineupFingerprint,alternativeDecision })) {
           const goalShape = (rows: Record<string, unknown>[]) => rows.map(row => ({
             scorerId: row.scorerId ?? null, assisterId: row.assisterId ?? null,
             ownGoal: !!row.ownGoal, minute: Math.max(0, Math.floor(Number(row.minute) || 0)), team: row.team,
@@ -14253,7 +14248,7 @@ export const commitRoundStats = onCall(
             throw new HttpsError('failed-precondition', 'המשחק כבר נשמר עם תוצאה אחרת. השערים שנותרו לא נמחקו.');
           }
           await snap.ref.update({
-            'liveMatch.scoreA': 0, 'liveMatch.scoreB': 0, 'liveMatch.goals': [],
+            'liveMatch.scoreA': 0, 'liveMatch.scoreB': 0, 'liveMatch.goals': [], 'liveMatch.inPlayPenalties': [],
             'liveMatch.shootout': admin.firestore.FieldValue.delete(),
             lastCommittedRoundId: String(roundId), updatedAt: Date.now(),
           }, { lastUpdateTime: snap.updateTime! });
@@ -14271,10 +14266,23 @@ export const commitRoundStats = onCall(
       (game.liveMatch as {scoreA?:number;scoreB?:number}|undefined)?.scoreB) {
       throw new HttpsError('failed-precondition','המשחק כבר אינו בתיקו. יש לבדוק את התוצאה המעודכנת.');
     }
-    if (liveGoalIds !== undefined && !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, lineupFingerprint: liveLineupFingerprint,alternativeDecision })) {
+    if (liveGoalIds !== undefined && !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, inPlayPenaltySnapshot, lineupFingerprint: liveLineupFingerprint,alternativeDecision })) {
       throw new HttpsError('failed-precondition', 'המשחק השתנה. יש לנסות שוב עם התוצאה המעודכנת.');
     }
 
+    let inPlayPenalties: InPlayPenalty[] = [];
+    try { if ((game.liveMatch as {inPlayPenalties?:unknown[]}|undefined)?.inPlayPenalties?.length || inPlayPenaltySnapshot !== undefined) inPlayPenalties = verifiedInPlayPenalties(game.liveMatch as Parameters<typeof verifiedInPlayPenalties>[0], inPlayPenaltySnapshot); }
+    catch(error) { observeCaughtError(error,{source:'functions/src/index.ts',handler:'commitRoundStats',site:'inPlayPenalty:validate'}); throw new HttpsError('failed-precondition', 'פרטי הפנדלים השתנו. יש לרענן ולנסות שוב.'); }
+    const participationEvents = inPlayPenalties.length ? penaltyParticipants(inPlayPenalties) : [];
+    // A penalty goal has exactly one server-verified event and no assist.
+    for (const p of inPlayPenalties) {
+      const linked = (goals ?? []).filter(g => g.penaltyId === p.id);
+      if (linked.length !== (p.outcome === 'goal' ? 1 : 0) || linked.some(g => g.scorerId !== p.kickerId ||
+        g.team !== p.team || g.assisterId || g.ownGoal)) throw new HttpsError('failed-precondition','שער הפנדל אינו תואם לבעיטה.');
+    }
+    if ((goals ?? []).some(g => g.penaltyId && !inPlayPenalties.some(p => p.id === g.penaltyId))) {
+      throw new HttpsError('failed-precondition','לא נמצאה בעיטת הפנדל של השער.');
+    }
     // §12 — results cannot be written into a season that has been archived.
     //
     // The realistic route here is not an admin editing history; it is a RETRY.
@@ -14323,7 +14331,7 @@ export const commitRoundStats = onCall(
     const { A, B, restored } = buildRoundSides({
       sideA: sideA ?? [],
       sideB: sideB ?? [],
-      goals: cappedGoals,
+      goals: [...cappedGoals, ...participationEvents],
       roster,
       arrivals,
       isReal,
@@ -14378,7 +14386,7 @@ export const commitRoundStats = onCall(
     const { teamA: fullA, teamB: fullB } = roundParticipantSides({
       teamA: [...(sideA ?? []), ...A],
       teamB: [...(sideB ?? []), ...B],
-      goals: cappedGoals,
+      goals: [...cappedGoals, ...participationEvents],
       eligible: okForDisplay,
       maxSide: MAX_DISPLAY_SIDE,
     });
@@ -14511,6 +14519,7 @@ export const commitRoundStats = onCall(
               .map((g) => ({
                 // null for own goals; the guest/real id otherwise.
                 scorerId: g.scorerId ?? null,
+                ...(g.penaltyId ? {penaltyId:g.penaltyId} : {}),
                 ...(g.assistStatus ? { assistStatus: g.assistStatus } : {}),
                 assisterId:
                   !g.ownGoal && g.scorerId && g.assisterId && g.assisterId !== g.scorerId && okForDisplay(g.assisterId)
@@ -14540,6 +14549,7 @@ export const commitRoundStats = onCall(
             // `okForDisplay` is the same anti-forgery gate the roster uses, and
             // the side comes from `fullA` (guests included) — `A` is real-only,
             // so every guest kicker would have been labelled team B.
+            inPlayPenalties: inPlayPenalties.filter(p => okForDisplay(p.kickerId)).map(p => ({...p,keeperId:p.keeperId && okForDisplay(p.keeperId) ? p.keeperId : null})),
             penalties: (penalties ?? [])
               .filter((p) => p.kickerId && okForDisplay(p.kickerId))
               .slice(0, Array.isArray(liveGoalIds) ? undefined : 100)
@@ -14631,6 +14641,7 @@ export const commitRoundStats = onCall(
           // numerator and the denominator always describe the same sample. It
           // also makes partial coverage detectable: `countedRounds < rounds`
           // says so exactly, and by how much.
+          inPlayPenalties: inPlayPenalties.length,
           countedRounds: 1,
         },
       );
@@ -14666,6 +14677,23 @@ export const commitRoundStats = onCall(
         s.faced += 1;
         if (scored) s.conceded += 1;
         else if (p.outcome !== 'miss') s.saved += 1;
+      }
+    }
+    // Regulation attempts feed the SAME combined counters as shootouts.
+    // Their goals were already credited by the normal goal loop above.
+    for (const p of inPlayPenalties) {
+      const scored = p.outcome === 'goal';
+      if (isReal(p.kickerId) && onField.has(p.kickerId)) {
+        const s = (kickerPen[p.kickerId] ??= {taken:0,scored:0,missed:0});
+        s.taken++; if (scored) s.scored++; else s.missed++;
+        const fields = {penInPlayTaken:1,penInPlayScored:scored ? 1 : 0};
+        sb.bump(uRef(p.kickerId), {}, {'stats.penInPlayTaken':1,'stats.penInPlayScored':fields.penInPlayScored});
+        if (groupId) sb.bump(cpsRef(p.kickerId), {groupId,userId:p.kickerId,updatedAt:now}, fields);
+        sb.bump(gpsRef(p.kickerId), {gameId,userId:p.kickerId,updatedAt:now}, fields);
+      }
+      if (p.keeperId && isReal(p.keeperId) && onField.has(p.keeperId)) {
+        const s = (keeperPen[p.keeperId] ??= {faced:0,saved:0,conceded:0});
+        s.faced++; if (scored) s.conceded++; else if (p.outcome === 'save') s.saved++;
       }
     }
     for (const [kicker, s] of Object.entries(kickerPen)) {
@@ -15051,7 +15079,7 @@ export const commitRoundStats = onCall(
             ...(pendingLiveSeasonStamp ? { seasonId: pendingLiveSeasonStamp } : {}),
             'liveMatch.scoreA': 0,
             'liveMatch.scoreB': 0,
-            'liveMatch.goals': [],
+            'liveMatch.goals': [], 'liveMatch.inPlayPenalties': [],
             'liveMatch.shootout': admin.firestore.FieldValue.delete(),
             lastCommittedRoundId: String(roundId),
             updatedAt: now,
@@ -16041,3 +16069,8 @@ export { onClubDeletedNotice } from './clubDeletedNotice';
 
 // Pulse administration has a separate, not-yet-deployed entry point (pulseEntry.ts).
 export { onSupportClubCreated, onSupportOutreachConfigChanged, cronSupportOutreach } from './supportOutreach';
+
+// Requires deployment before clients can finalize a regulation-penalty round.
+export const commitRoundStatsWithInPlayPenalties = commitRoundStats;
+export { onGamePersonalActivityChanged, savePersonalActivity, getMyPersonalActivity, onPersonalActivityOwnerDeleted } from './personalActivity';
+export { getMyActivityState, setMyActivitySource, saveMyActivityRecords, onMyActivityOwnerDeleted } from './myActivity';

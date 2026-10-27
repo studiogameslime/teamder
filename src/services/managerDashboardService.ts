@@ -1,4 +1,5 @@
-import { observedListener, observeSettledErrors } from '../utils/errorObservation';
+import { observedListener, observeSettledErrors, observeCaughtError } from '../utils/errorObservation';
+import { mapConcurrent } from '@/utils/mapConcurrent';
 
 import { getDocs, query, where, orderBy, limit, collection, onSnapshot } from 'firebase/firestore';
 import { col, docs } from '@/firebase/firestore';
@@ -44,12 +45,15 @@ export async function loadManagerDashboard(groupId:string, viewerId:string):Prom
   const scoreGames = games.filter(didEveningHappen).sort((a,b)=>b.startsAt-a.startsAt);
   const scores:ManagerData['scores'] = {};
   let scoresIncomplete=false;
-  // Bound concurrent callable reads. No account-crossing global cache.
-  for(let i=0;i<scoreGames.length;i+=4) {
-    const batch=scoreGames.slice(i,i+4);
-    const results=await Promise.allSettled(batch.map(g=>getGameEveningScores(g.id))).then(results => observeSettledErrors(results, {"source":"src/services/managerDashboardService.ts","handler":"loadManagerDashboard","site":"managerDashboardService:ebc1777423"}));
-    results.forEach((r,j)=>{ if(r.status==='fulfilled') scores[batch[j].id]=r.value; else scoresIncomplete=true; });
-  }
+  // Fill a free slot immediately; one slow read must not stall a whole wave.
+  await mapConcurrent(scoreGames,4,async g=>{
+    if (!USE_MOCK_DATA && getFirebase().auth.currentUser?.uid !== viewerId) throw new Error('manager-session-changed');
+    try { scores[g.id]=await getGameEveningScores(g.id); }
+    catch (error) {
+      observeCaughtError(error, {"source":"src/services/managerDashboardService.ts","handler":"loadManagerDashboard","site":"managerDashboardService:ebc1777423"});
+      scoresIncomplete=true;
+    }
+  });
   if (!USE_MOCK_DATA && getFirebase().auth.currentUser?.uid !== viewerId) throw new Error('manager-session-changed');
   const latest = await groupService.get(groupId);
   if (!USE_MOCK_DATA && getFirebase().auth.currentUser?.uid !== viewerId) throw new Error('manager-session-changed');

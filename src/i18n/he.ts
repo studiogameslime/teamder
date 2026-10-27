@@ -4994,6 +4994,7 @@ export const he = {
   chatNoAccess: 'אין לך גישה לצ׳אט הזה',
   chatEmpty: 'המגרש פנוי — שלחו את ההודעה הראשונה ⚽',
   chatLoadingTitle: 'טוען צ׳אט…',
+  chatLoadFailed: 'לא הצלחנו לעדכן את השיחה. בדקו את החיבור ונסו שוב.',
   chatGameUnavailable: 'הצ׳אט לא זמין — ייתכן שהמחזור נמחק או שאין לך גישה',
   chatInputPlaceholder: 'כתבו הודעה…',
   chatSendA11y: 'שליחת הודעה',
