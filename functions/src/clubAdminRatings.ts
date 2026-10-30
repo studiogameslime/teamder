@@ -47,10 +47,11 @@ export const setClubAdminRating = onCall({ enforceAppCheck: ENFORCE_APP_CHECK },
   return { ok: true };
 });
 
-export async function readServerAdminRatings(groupId: string): Promise<Record<string, number>> {
-  if (legacyClubRatingsCompat()) return cleanAdminRatings((await getFirestore().doc(`groups/${groupId}`).get()).data()?.adminRatings);
-  const snap = await getFirestore().doc(`groups/${groupId}/private/adminRatings`).get();
-  return cleanAdminRatings(snap.data()?.ratings);
+export async function readServerAdminRatings(groupId: string, tx?: FirebaseFirestore.Transaction): Promise<Record<string, number>> {
+  const legacy = legacyClubRatingsCompat();
+  const ref = getFirestore().doc(legacy ? `groups/${groupId}` : `groups/${groupId}/private/adminRatings`);
+  const snap = tx ? await tx.get(ref) : await ref.get();
+  return cleanAdminRatings(legacy ? snap.data()?.adminRatings : snap.data()?.ratings);
 }
 
 export async function prunePrivateClubRatings(groupId: string): Promise<void> {

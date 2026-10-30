@@ -65,7 +65,7 @@ function world(mock: boolean, callback: 'onTieWinner' | 'resolveTie', mutateAfte
   });
   const context: any = {module: {exports: {}}, ...rotationEngine, rotationWriteSource, matchesRoundDecision, roundDecisionContext, shootoutFingerprint,
     USE_MOCK_DATA: mock, mockGamesV2: [mockGame], mockGame: {id: 'other'},
-    docs: {game: () => 'g'}, getFirebase: () => ({db: {}}),
+    docs: {game: () => 'g'}, getFirebase: () => ({db: {}}), withAuthRaceRetry: (read: () => Promise<unknown>) => read(),
     runTransaction: async (_db: unknown, fn: any) => fn({get: async () => ({exists: () => true, data}), update}),
     getDocFromServer, getDoc: jest.fn(), deleteField: () => ({deleted: true}), onSnapshot, setTimeout, clearTimeout,
     playersPerTeamFor: () => 4, effFillMode: () => 'off', Date, console,

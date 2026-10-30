@@ -22,6 +22,7 @@ import {
 } from '@/components/match/PlayerActionMenu';
 import {
   buildRoster,
+  buildOffPitchRoster,
   draftRoster,
   firstName,
   makeResolver,
@@ -125,7 +126,7 @@ export function RotationPanel({
   // "Filler" only applies to TEMPORARY fill mode (a borrowed player who returns
   // home). In PERMANENT mode a player who completed a team has actually moved
   // there — they're not a filler, so never star them.
-  const temporary = (draftTeams.fillMode ?? 'temporary') === 'temporary';
+  const temporary = (fillMode ?? draftTeams.fillMode ?? 'temporary') === 'temporary';
   const clean = (r: RosterMember[]) =>
     temporary ? r : r.map((m) => ({ ...m, isFiller: false, fromTeam: undefined }));
   const rosterA = clean(buildRoster(aIdx, teams, rotation, resolve));
@@ -153,9 +154,9 @@ export function RotationPanel({
       ? openSlots(effectiveSize, perTeam as number)
       : 0;
 
-  // Filler legend — name the specific player(s) + their home team, so it's
-  // clear WHO is completing the team.
-  const fillers = [...rosterA, ...rosterB].filter((m) => m.isFiller && m.fromTeam != null);
+  const departedIds = new Set((draftTeams.leftHome ?? []).map(p => p.playerId));
+  const offPitch = (teamIdx: number) => temporary
+    ? buildOffPitchRoster(teamIdx, teams, rotation, resolve, departedIds) : [];
 
   const openRoster: RosterMember[] =
     openTeam != null ? draftRoster(openTeam, teams, resolve) : [];
@@ -280,6 +281,8 @@ export function RotationPanel({
                 teamIdx={aIdx}
                 teams={draftTeams.teams}
                 roster={rosterA}
+                offPitchRoster={offPitch(aIdx)}
+                onOffPitchPlayerPress={onPlayerCard ? m => { if (isRegistered(m.id)) onPlayerCard(m.id); } : undefined}
                 wins={winsOf(aIdx)}
                 align="right"
                 variant="list"
@@ -304,6 +307,8 @@ export function RotationPanel({
                 teamIdx={bIdx}
                 teams={draftTeams.teams}
                 roster={rosterB}
+                offPitchRoster={offPitch(bIdx)}
+                onOffPitchPlayerPress={onPlayerCard ? m => { if (isRegistered(m.id)) onPlayerCard(m.id); } : undefined}
                 wins={winsOf(bIdx)}
                 align="left"
                 variant="list"
@@ -323,18 +328,6 @@ export function RotationPanel({
               />
             </View>
           </View>
-          {fillers.length > 0 ? (
-            <View style={styles.legend}>
-              {fillers.map((m) => (
-                <View key={m.id} style={styles.legendRow}>
-                  <Ionicons name="star" size={12} color="#1D4ED8" />
-                  <Text style={styles.legendText}>
-                    {he.rotationFillerNamed(m.name, teamName(m.fromTeam as number, draftTeams?.teams))}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          ) : null}
         </Card>
       </View>
 
@@ -641,14 +634,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#E2E8F0',
     marginHorizontal: 8,
   },
-  legend: {
-    gap: 4,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.divider,
-    paddingTop: spacing.sm,
-  },
-  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'flex-start' },
-  legendText: { ...typography.caption, color: '#475569', fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
 
   waitHeader: {
     flexDirection: 'row',

@@ -1,4 +1,5 @@
 import { observeCaughtError } from '../utils/errorObservation';
+import { retryRead } from './readRetry';
 import { isPlayAppNotOwned, isPlayInstallNotAllowed } from '../utils/expectedIntegrationError';
 import { Linking, NativeModules, Platform } from 'react-native';
 import { doc, getDoc } from 'firebase/firestore';
@@ -23,7 +24,7 @@ export const isReleaseVersion = (value: unknown): value is string =>
 
 function bounded<T>(promise: Promise<T>, timeoutMs = 8000): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Store check timed out')), timeoutMs);
+    const timer = setTimeout(() => reject(Object.assign(new Error('Store check timed out'), { code: 'deadline-exceeded' })), timeoutMs);
     promise.then(value => { clearTimeout(timer); resolve(value); }, error => {
     if (!isPlayAppNotOwned(error) && !isPlayInstallNotAllowed(error)) observeCaughtError(error, {"source":"src/services/updateService.ts","handler":"bounded","site":"updateService:9a518dd28f"}); clearTimeout(timer); reject(error); });
   });
@@ -126,7 +127,7 @@ async function resolveStoreUpdate(): Promise<StoreUpdate | null> {
     // A failed/missing config cannot suppress the store-backed optional banner.
     try {
       const { db } = getFirebase();
-      const snap = await bounded(getDoc(doc(db, 'appConfig', Platform.OS)), 3000);
+      const snap = await retryRead(() => bounded(getDoc(doc(db, 'appConfig', Platform.OS)), 3000), () => {});
       const minimum = snap.exists() ? snap.data().minimumSupportedVersion : null;
       if (isReleaseVersion(minimum) && compareVersions(current, minimum) < 0 &&
           (!available.targetVersion || compareVersions(available.targetVersion, minimum) >= 0)) available.kind = 'force';

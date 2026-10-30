@@ -819,6 +819,8 @@ const VALID_ZONES: LiveMatchZone[] = [
   'teamC',
   'teamD',
   'teamE',
+  'teamF',
+  'teamG',
   'bench',
   'gkA',
   'gkB',

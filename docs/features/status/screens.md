@@ -31,6 +31,7 @@
 | [pulse/src/screens/OnboardingActivityScreen.tsx](../../../pulse/src/screens/OnboardingActivityScreen.tsx) | [מסלול ההצטרפות בפולס](shared.md#shared-onboarding-activity) · [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/OverviewScreen.tsx](../../../pulse/src/screens/OverviewScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/PersonJourneyScreen.tsx](../../../pulse/src/screens/PersonJourneyScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
+| [pulse/src/screens/ProPlanningScreen.tsx](../../../pulse/src/screens/ProPlanningScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/PushScreen.tsx](../../../pulse/src/screens/PushScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/QaUserDetailScreen.tsx](../../../pulse/src/screens/QaUserDetailScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/QaUsersScreen.tsx](../../../pulse/src/screens/QaUsersScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |

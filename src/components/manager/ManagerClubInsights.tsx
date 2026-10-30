@@ -12,6 +12,8 @@ import { balancePercentages, clubBalance, managerClubInsights, type ClubResults 
 import { loadManagerClubResults } from '@/services/managerClubResultsService';
 import type { ManagerData } from '@/services/managerDashboardService';
 import type { User } from '@/types';
+import {managerRoster} from '@/utils/managerWorkspace';
+import {ManagerDetail, ManagerLabel, ManagerProgress, u} from './ManagerUi';
 
 const BLUE='#2467F5',GREEN='#13834A',AMBER='#A66709';
 const date=(at:number)=>new Date(at).toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});
@@ -19,8 +21,9 @@ function Label({children,style}:{children:React.ReactNode;style?:any}) { return 
 function Card({title,icon,children}:{title:string;icon:keyof typeof Ionicons.glyphMap;children:React.ReactNode}) {
   return <View style={s.card}><View style={s.headingRow}><Label style={s.heading}>{title}</Label><Ionicons name={icon} size={21} color={BLUE}/></View>{children}</View>;
 }
-export function ManagerClubInsights({data,viewerId,now,onRound,onApprovals,onRate,onResolved}:{data:ManagerData;viewerId:string;now:number;onRound:(id:string)=>void;onApprovals:()=>void;onRate:(user:User)=>void;onResolved:()=>void}) {
+export function ManagerClubInsights({data,viewerId,now,onRound,onApprovals,onRate,onResolved,showAttention=true}:{data:ManagerData;viewerId:string;now:number;onRound:(id:string)=>void;onApprovals:()=>void;onRate:(user:User)=>void;onResolved:()=>void;showAttention?:boolean}) {
   const insights=useMemo(()=>managerClubInsights(data.group,data.games,now),[data,now]);
+  const roster=useMemo(()=>managerRoster(data.group,data.games,now),[data,now]);
   const [results,setResults]=useState<ClubResults>({}),[loading,setLoading]=useState(true),[error,setError]=useState(false),[details,setDetails]=useState(false);
   useEffect(()=>{
     let alive=true;setResults({});setLoading(true);setError(false);setDetails(false);
@@ -36,7 +39,7 @@ export function ManagerClubInsights({data,viewerId,now,onRound,onApprovals,onRat
   return <>
     <Label style={s.pageTitle}>תמונת מועדון</Label>
     <Label style={s.muted}>נתונים ותובנות מהמחזורים שהתקיימו</Label>
-    <ManagerAttention data={data} now={now} onApprovals={onApprovals} onRate={onRate} onResolved={onResolved}/>
+    {showAttention&&<ManagerAttention data={data} now={now} onApprovals={onApprovals} onRate={onRate} onResolved={onResolved}/>}
     {insights.recent.length>0?<>
       <Card title={insights.recent.length===10?'סיכום 10 המחזורים האחרונים':`סיכום ${insights.recent.length} המחזורים האחרונים`} icon="stats-chart-outline">
         <Label style={s.muted}>{date(insights.recent[insights.recent.length-1].startsAt)} — {date(insights.recent[0].startsAt)}</Label>
@@ -44,10 +47,12 @@ export function ManagerClubInsights({data,viewerId,now,onRound,onApprovals,onRat
         {insights.previousAverage!==null&&<View style={s.insight}><Label style={s.insightText}>{insights.average!>insights.previousAverage?'יותר נרשמים':insights.average!<insights.previousAverage?'פחות נרשמים':'ממוצע הרשמה ללא שינוי'}: {insights.average!.toLocaleString('he-IL',{maximumFractionDigits:1})} לעומת {insights.previousAverage.toLocaleString('he-IL',{maximumFractionDigits:1})} בעשרת המחזורים הקודמים</Label><Ionicons name={insights.average!>insights.previousAverage?'trending-up':insights.average!<insights.previousAverage?'trending-down':'remove-outline'} size={22} color={BLUE}/></View>}
         {insights.returned.length>0&&<View style={s.insight}><Label style={s.insightText}>{insights.returned.length===1?'שחקן אחד נרשם שוב אחרי הפסקה':`${insights.returned.length} שחקנים נרשמו שוב אחרי הפסקה`}</Label><Ionicons name="refresh-outline" size={21} color={GREEN}/></View>}
         <Label style={s.foot}>לפי רשימות ההרשמה שנשמרו; אין אישור נוכחות. הממוצע והתפוסה כוללים אורחים פעילים. שחקנים שונים אינם כוללים אורחים ללא חשבון.</Label>
+        {roster.occupancyPercent!==null?<><ManagerLabel style={u.name}>{roster.occupancyPercent}% תפוסה מצטברת</ManagerLabel><ManagerProgress value={roster.occupancyPercent}/><ManagerLabel style={u.sub}>{roster.registrations} הרשמות מתוך {roster.capacity} מקומות אפשריים</ManagerLabel></>:<ManagerLabel style={u.sub}>לא לכל המחזורים יש קיבולת תקפה, ולכן לא מחושב אחוז תפוסה.</ManagerLabel>}
+        <ManagerDetail label="הרשמות חברי הסגל הנוכחי" value={String(roster.memberRegistrations)}/><ManagerDetail label="הרשמות אורחים וחיצוניים" value={String(roster.outsideRegistrations)}/><ManagerLabel style={u.sub}>מספר הרשמות במחזורים, לא שחקנים ייחודיים. חברות נבדקת לפי הסגל הנוכחי.</ManagerLabel>
         <ManagerRoundNumbers embedded games={insights.recent} results={results} loading={loading} error={error} onRound={onRound}/>
         <Pressable accessibilityRole="button" onPress={()=>setDetails(true)} style={s.link}><Label style={s.linkText}>לנתונים המלאים</Label><Ionicons name="chevron-back" size={18} color={BLUE}/></Pressable>
       </Card>
-      <Card title="איכות חלוקת הכוחות" icon="football-outline">
+      <Card title="עד כמה המשחקים צמודים?" icon="football-outline">
         {loading?<View style={s.loading}><ActivityIndicator color={BLUE}/><Label style={s.muted}>טוען תוצאות משחקים…</Label></View>:error?<><Label style={s.muted}>לא ניתן לטעון כרגע את התוצאות</Label></>:<>
           <Label style={s.muted}>{balance.total} משחקים עם תוצאה תקפה מתוך {balance.covered} מחזורים · נבדקו {insights.recent.length} מחזורים אחרונים</Label>
           {balance.total>0?<>

@@ -9,8 +9,9 @@ export const REGULAR_WINDOW = 10;
 export const REGULAR_MINIMUM = 7;
 export const memberIds = (group: Group) => [...new Set([...group.adminIds, ...group.playerIds])];
 export const registered = (g: Game, uid: string) => g.players.includes(uid) && !g.cancellations?.[uid];
-export function registrationState(g: Game, uid: string) {
-  if (g.players.includes(uid)) return 'registered';
+export type RegistrationState = 'registered' | 'waitlist' | 'pending' | 'rejected' | 'cancelled' | 'none';
+export function registrationState(g: Game, uid: string): RegistrationState {
+  if (registered(g, uid)) return 'registered';
   if (g.waitlist.includes(uid)) return 'waitlist';
   if (g.pending?.includes(uid)) return 'pending';
   if (g.rejectedPlayerIds?.includes(uid)) return 'rejected';

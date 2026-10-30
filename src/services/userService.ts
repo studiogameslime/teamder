@@ -1,4 +1,5 @@
 import { runDiagnosticOperation } from './diagnosticJournal';
+import { retryRead } from './readRetry';
 import { observeCaughtError } from '../utils/errorObservation';
 import { readPlayerIdentity, playerReadCall } from './publicPlayerService';
 import { StaleSessionError } from './staleSession';
@@ -144,17 +145,24 @@ export const userService = {
     // live doc refreshes once the network returns.
     let snap: import('firebase/firestore').DocumentSnapshot<User> | null = null;
     let readTimer: ReturnType<typeof setTimeout> | undefined;
+    let readExpired = false;
+    const assertReadCurrent = () => {
+      if (getFirebase().auth.currentUser?.uid !== fbUser.uid) throw new StaleSessionError(fbUser.uid, getFirebase().auth.currentUser?.uid ?? '');
+      if (readExpired) throw new Error('getCurrentUser: read timeout');
+    };
     try {
       snap = await Promise.race([
-        getDoc(ref),
+        retryRead(() => getDoc(ref), assertReadCurrent),
         new Promise<never>((_, reject) =>
-          { readTimer = setTimeout(() => reject(new Error('getCurrentUser: read timeout')), 8000); },
+          { readTimer = setTimeout(() => { readExpired = true; reject(new Error('getCurrentUser: read timeout')); }, 8000); },
         ),
       ]);
     } catch (err) {
+      if (getFirebase().auth.currentUser?.uid !== fbUser.uid) throw new StaleSessionError(fbUser.uid, getFirebase().auth.currentUser?.uid ?? '');
     observeCaughtError(err, {"source":"src/services/userService.ts","handler":"getCurrentUser","site":"userService:c2f30c2c24"});
       if (__DEV__) console.warn('[auth] getCurrentUser read timed out', err);
       const cached = await readCachedAuthUser(fbUser.uid);
+      if (getFirebase().auth.currentUser?.uid !== fbUser.uid) throw new StaleSessionError(fbUser.uid, getFirebase().auth.currentUser?.uid ?? '');
       if (cached) return cached;
       // A restored account whose profile is unavailable is not signed out.
       throw err;
@@ -709,7 +717,9 @@ export const userService = {
     if (uid !== owner) {
       return readPlayerIdentity(uid);
     }
-    const snap = await getDoc(docs.user(uid));
+    const snap = await retryRead(() => getDoc(docs.user(uid)), () => {
+      if (getFirebase().auth.currentUser?.uid !== owner) throw new StaleSessionError(owner ?? '', getFirebase().auth.currentUser?.uid ?? '');
+    });
     if (getFirebase().auth.currentUser?.uid !== owner) throw new StaleSessionError(owner ?? '', getFirebase().auth.currentUser?.uid ?? '');
     return snap.exists() ? snap.data() : null;
   },

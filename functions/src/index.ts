@@ -12,6 +12,7 @@ import { sendWidgetRosterInvalidation } from './widgetRosterSync';
 import { clickDocumentId, clickSource } from './linkClickInput';
 import { readServerAdminRatings, prunePrivateClubRatings } from './clubAdminRatings';
 export { setClubAdminRating, getClubAdminRatings } from './clubAdminRatings';
+export { onManagerRoundChanged, getManagerRoundHistory } from './managerRoundHistory';
 export { recordPlayerComparison, getMyComparisonActivity } from './comparisonActivity';
 import { roundJoinAccess, validManagerInvitation, roundAcceptsInvitations, INVITATION_TTL_MS } from './invitationPolicy';
 import { assertSocialContact, sendClubInvitation } from './socialPlayers';
@@ -62,7 +63,7 @@ import { decideSpotOffer } from './spotOfferDecision';
 import { eveningScoreServer } from './eveningScoreCore';
 import { prepareRetroScores } from './retroScores';
 import { readGameEveningScores, EveningScoresAccessError } from './gameEveningScores';
-import { occupancyOf, inFillerQuietHours } from './fillerRules';
+import { occupancyOf, inFillerQuietHours, hasFillerRegistrationConflict, canOfferFiller } from './fillerRules';
 import { promoteWaitingGuests } from './guestPromotion';
 import { SeasonManager } from './seasonManager';
 
@@ -7362,6 +7363,7 @@ interface BalanceGameDoc {
 interface GuestDoc {
   id: string;
   name: string;
+  waitlisted?: boolean;
   estimatedRating?: number | null;
   addedBy: string;
   createdAt: number;
@@ -7415,6 +7417,8 @@ type BalanceZone =
   | 'teamC'
   | 'teamD'
   | 'teamE'
+  | 'teamF'
+  | 'teamG'
   | 'bench';
 
 /**
@@ -7456,7 +7460,7 @@ function balanceTeamsV1(
   // on-field matchup and C/D/E as the waiting queue — each balanced team gets
   // its zone instead of overflow being dumped on the bench (which left "team 3"
   // visually empty even though enough players were registered).
-  const ZONES: BalanceZone[] = ['teamA', 'teamB', 'teamC', 'teamD', 'teamE'];
+  const ZONES: BalanceZone[] = ['teamA', 'teamB', 'teamC', 'teamD', 'teamE', 'teamF', 'teamG'];
   core.teams.forEach((ids, i) => {
     const zone = ZONES[i];
     if (!zone) {
@@ -7545,6 +7549,7 @@ async function loadRecentSplits(
 async function loadGroupRatings(
   groupId: string,
   uids: string[],
+  tx?: FirebaseFirestore.Transaction,
 ): Promise<Record<string, number>> {
   if (uids.length === 0) return {};
   const out: Record<string, number> = {};
@@ -7554,7 +7559,7 @@ async function loadGroupRatings(
   const refs = uids.map((u) =>
     db.collection('groups').doc(groupId).collection('ratings').doc(u),
   );
-  const snaps = await db.getAll(...refs);
+  const snaps = tx ? await tx.getAll(...refs) : await db.getAll(...refs);
   snaps.forEach((s, i) => {
     if (!s.exists) return;
     const d = s.data() as RatingSummaryDoc;
@@ -7563,6 +7568,26 @@ async function loadGroupRatings(
     }
   });
   return out;
+}
+
+/** Re-check the scheduling route against the transactional game snapshot. */
+function scheduledBalanceDue(data: BalanceGameDoc, route: 'draft' | 'legacy'): boolean {
+  if (data.status !== 'open' || !data.groupId || data.autoTeamsGeneratedAt || data.teamsEditedManually || data.draftTeams) return false;
+  const now = Date.now();
+  if (route === 'draft') return typeof data.autoTeamsAt === 'number' && data.autoTeamsAt > 0 && data.autoTeamsAt <= now + 1000;
+  if (typeof data.autoTeamsAt === 'number' && data.autoTeamsAt > 0) return false;
+  const startsAt = data.startsAt ?? 0;
+  const triggerAt = startsAt - (data.autoTeamGenerationMinutesBeforeStart ?? DEFAULT_AUTO_BALANCE_MINUTES) * 60 * 1000;
+  return startsAt >= now && now >= triggerAt;
+}
+
+/** Ratings and roster belong to the same transaction, including newly joined players. */
+async function loadScheduledBalanceRatings(tx: FirebaseFirestore.Transaction, data: BalanceGameDoc): Promise<Record<string, number>> {
+  if (data.autoTeamsMethod === 'random') return {};
+  const group = await tx.get(db.collection('groups').doc(data.groupId!));
+  if (!group.exists) throw new Error('BALANCE_GROUP_NOT_FOUND');
+  if (group.data()?.internalRating) return readServerAdminRatings(data.groupId!, tx);
+  return loadGroupRatings(data.groupId!, data.players ?? [], tx);
 }
 
 /**
@@ -7711,35 +7736,7 @@ async function generateForGame(
   g: BalanceGameDoc,
 ): Promise<void> {
   try {
-    // Load ratings BEFORE the transaction so the transaction body
-    // stays small and fast (transactions retry; we don't want to
-    // re-read every rating doc each retry).
-    const players = g.players ?? [];
-    // Ratings live on the group's `adminRatings` map since the peer-vote system
-    // was removed. Reading the dead `groups/{id}/ratings` subcollection returns
-    // {} → everyone neutral → effectively random teams despite admin ratings
-    // (audit #14). Branch on internalRating like generateDraftTeamsForGame does;
-    // fall back to the legacy subcollection only for non-internal groups.
-    const grpSnap = await db.collection('groups').doc(g.groupId!).get();
-    const grpData = grpSnap.data() as
-      | { internalRating?: boolean; adminRatings?: Record<string, number> }
-      | undefined;
-    let ratings: Record<string, number>;
-    if (grpData?.internalRating) {
-      const privateRatings = await readServerAdminRatings(g.groupId!);
-      ratings = {};
-      for (const uid of players) {
-        const r = privateRatings[uid];
-        if (typeof r === 'number' && r > 0) ratings[uid] = r;
-      }
-    } else {
-      ratings = await loadGroupRatings(g.groupId!, players);
-    }
-    const perTeam = perTeamSize(g.format);
-    const numberOfTeams =
-      typeof g.numberOfTeams === 'number' && g.numberOfTeams >= 2
-        ? g.numberOfTeams
-        : 2;
+    if (!g.groupId) return;
     // Same variety history the draft-shaped generator uses, so a club gets the
     // same "don't rebuild last week's teams" behaviour whichever path seeds its
     // teams. Read outside the transaction — a query inside joins the read set.
@@ -7749,6 +7746,9 @@ async function generateForGame(
       const fresh = await tx.get(ref);
       if (!fresh.exists) return false;
       const data = fresh.data() as BalanceGameDoc;
+      if (!scheduledBalanceDue(data, 'legacy') || data.groupId !== g.groupId) return false;
+      const perTeam = perTeamSize(data.format);
+      const numberOfTeams = typeof data.numberOfTeams === 'number' && data.numberOfTeams >= 2 ? data.numberOfTeams : 2;
       // Re-check inside the transaction so a concurrent function
       // run, or a coach edit between the outer query and this write,
       // can't be clobbered.
@@ -7763,8 +7763,8 @@ async function generateForGame(
       // slot.
       const existingPhase = (data as { liveMatch?: { phase?: string } }).liveMatch?.phase;
       if (existingPhase && existingPhase !== 'organizing') return false;
-      const freshPlayers = data.players ?? players;
-      const freshGuests = data.guests ?? [];
+      const freshPlayers = data.players ?? [];
+      const freshGuests = (data.guests ?? []).filter(guest => !guest.waitlisted);
       if (freshPlayers.length === 0 && freshGuests.length === 0) return false;
 
       // Compose the roster: real users keep their uid; guests are
@@ -7788,14 +7788,15 @@ async function generateForGame(
         }
       }
       const rosterIds = [...freshPlayers, ...guestRoster];
-      const combinedRatings = { ...ratings, ...guestRatings };
+      const ratings = await loadScheduledBalanceRatings(tx, data);
+      const combinedRatings = data.autoTeamsMethod === 'random' ? {} : { ...ratings, ...guestRatings };
 
       const result = balanceTeamsV1(
         rosterIds,
         combinedRatings,
         numberOfTeams,
         perTeam,
-        history,
+        data.autoTeamsMethod === 'random' ? undefined : history,
       );
       const liveMatch = {
         phase: 'organizing' as const,
@@ -7882,7 +7883,7 @@ function buildDraftTeamsFromBalance(
   numberOfTeams: number,
   createdBy: string,
 ): DraftTeamDoc[] {
-  const ZONES = ['teamA', 'teamB', 'teamC', 'teamD', 'teamE'];
+  const ZONES = ['teamA', 'teamB', 'teamC', 'teamD', 'teamE', 'teamF', 'teamG'];
   // Unrated → neutral 3 (the 1–5 midpoint). The old default 5.5 sat ABOVE the
   // 1–5 max, so on the new scale every unrated player out-sorted every rated
   // one and wrongly became captain (B17). Rated values are normalised off any
@@ -8113,52 +8114,24 @@ async function generateDraftTeamsForGame(
   g: BalanceGameDoc,
 ): Promise<void> {
   try {
-    const groupId = g.groupId!;
-    const grpSnap = await db.collection('groups').doc(groupId).get();
-    if (!grpSnap.exists) return;
-    const grp = grpSnap.data() as {
-      internalRating?: boolean;
-      adminRatings?: Record<string, number>;
-    };
-    const players = g.players ?? [];
-
-    // Ratings depend on the admin-picked method:
-    //  • 'random' → no ratings at all → balanceTeamsV1 splits evenly + random.
-    //  • 'rating' (default) → internal admin ratings (or peer-vote fallback).
-    let ratings: Record<string, number>;
-    if (g.autoTeamsMethod === 'random') {
-      ratings = {};
-    } else if (grp.internalRating) {
-      const privateRatings = await readServerAdminRatings(groupId);
-      ratings = {};
-      for (const uid of players) {
-        const r = privateRatings[uid];
-        if (typeof r === 'number' && r > 0) ratings[uid] = r;
-      }
-    } else {
-      ratings = await loadGroupRatings(groupId, players);
-    }
-
-    const perTeam = perTeamSize(g.format);
-    const numberOfTeams =
-      typeof g.numberOfTeams === 'number' && g.numberOfTeams >= 2
-        ? g.numberOfTeams
-        : 2;
-
+    if (!g.groupId) return;
     // Loaded outside the transaction on purpose: a query inside one joins the
     // read set and would make the whole generation contend on every past game.
-    const history = await loadRecentSplits(groupId, ref.id);
+    const history = await loadRecentSplits(g.groupId, ref.id);
 
     const built = await db.runTransaction(async (tx) => {
       const fresh = await tx.get(ref);
       if (!fresh.exists) return null;
       const data = fresh.data() as BalanceGameDoc;
+      if (!scheduledBalanceDue(data, 'draft') || data.groupId !== g.groupId) return null;
+      const perTeam = perTeamSize(data.format);
+      const numberOfTeams = typeof data.numberOfTeams === 'number' && data.numberOfTeams >= 2 ? data.numberOfTeams : 2;
       if (data.autoTeamsGeneratedAt) return null;
       if (data.teamsEditedManually) return null;
       // Manual teams win — never overwrite a split an admin already made.
       if (data.draftTeams) return null;
-      const freshPlayers = data.players ?? players;
-      const freshGuests = data.guests ?? [];
+      const freshPlayers = data.players ?? [];
+      const freshGuests = (data.guests ?? []).filter(guest => !guest.waitlisted);
       if (freshPlayers.length === 0 && freshGuests.length === 0) return null;
 
       const guestRoster = freshGuests.map((gu) => `${GUEST_ID_PREFIX}${gu.id}`);
@@ -8181,7 +8154,8 @@ async function generateDraftTeamsForGame(
       // empty captainId. Need at least 2 players to form two teams.
       if (rosterIds.length < 2) return null;
       const effTeams = Math.min(numberOfTeams, rosterIds.length);
-      const combinedRatings = { ...ratings, ...guestRatings };
+      const ratings = await loadScheduledBalanceRatings(tx, data);
+      const combinedRatings = data.autoTeamsMethod === 'random' ? {} : { ...ratings, ...guestRatings };
       // Size so nobody benches — mirrors the client `balanceTeams`.
       const fitPerTeam = Math.max(
         perTeam,
@@ -8193,19 +8167,19 @@ async function generateDraftTeamsForGame(
         effTeams,
         fitPerTeam,
         // 'random' is meant to be a genuine draw — no ratings, no history.
-        g.autoTeamsMethod === 'random' ? undefined : history,
+        data.autoTeamsMethod === 'random' ? undefined : history,
       );
       const teams = applyScheduledColors(buildDraftTeamsFromBalance(
         result.assignments,
         combinedRatings,
         effTeams,
-        g.createdBy ?? 'system',
+        data.createdBy ?? 'system',
       ).filter((t) => t.playerIds.length > 0), (data as BalanceGameDoc & {draftTeamColors?: unknown}).draftTeamColors);
       const draftTeams: DraftTeamsResultDoc = {
         method: 'snake',
         numTeams: teams.length,
         createdAt: Date.now(),
-        createdBy: g.createdBy ?? 'system',
+        createdBy: data.createdBy ?? 'system',
         teams,
         // Freeze the split as generated. `teams` is mutated all evening by
         // went-home / swaps, so it is NOT a record of who started together —
@@ -8237,7 +8211,7 @@ async function generateDraftTeamsForGame(
           band: result.band,
           repeat: Math.round(result.repeat * 100) / 100,
           fallback: result.fallback,
-          historyGames: history.length,
+          historyGames: data.autoTeamsMethod === 'random' ? 0 : history.length,
         },
         updatedAt: Date.now(),
       });
@@ -11117,8 +11091,8 @@ async function revokeDisciplineCardsFor(
 // Three Cloud Functions implement the flow:
 //
 //   1. `findFillerCandidates` — scheduled, every 30 min. Scans games
-//      whose `acceptsFillers === true` and roster is below the
-//      shortage threshold (minPlayers OR 80% of maxPlayers). Pushes
+//      whose `acceptsFillers === true` and occupancy is at least 70%
+//      but below capacity. Pushes
 //      `fillerOpportunity` notifications to up to 10 candidate users
 //      who match the game's city, opted into filler push, and clear
 //      the configured min trust score. Tracks who got pushed in
@@ -11413,6 +11387,15 @@ interface FillerGameDoc {
 // production bug, and both are pure, so they belong where a test can reach them.
 
 
+async function hasFillerConflict(uid: string, gameId: string, startsAt?: number): Promise<boolean> {
+  // Fresh confirmed registrations, including legacy docs without participantIds.
+  // No limit: old registrations must never hide a current commitment.
+  // Query failures propagate and stop delivery rather than pretending the user is free.
+  const registrations = await db.collection('games').where('players', 'array-contains', uid).get();
+  return hasFillerRegistrationConflict(uid, { id: gameId, startsAt },
+    registrations.docs.map(d => ({ ...d.data(), id: d.id })), Date.now());
+}
+
 async function runFindFillerCandidates(): Promise<void> {
   const now = Date.now();
   if (inFillerQuietHours(now)) {
@@ -11448,21 +11431,10 @@ async function runFindFillerCandidates(): Promise<void> {
   for (const doc of snap.docs) {
     const game = doc.data() as FillerGameDoc;
     if (game.acceptsFillers !== true) continue;
-    const players = game.players ?? [];
     // Guests INCLUDED — a guest holds a spot exactly like a registered player.
     const taken = occupancyOf(game);
     const maxPlayers = game.maxPlayers ?? 0;
-    if (maxPlayers <= 0) continue;
-    if (taken >= maxPlayers) continue; // already full
-
-    // Shortage threshold:
-    //  • if `minPlayers` set: shortage when taken < minPlayers
-    //  • else: shortage when taken < 80% of maxPlayers
-    const threshold =
-      typeof game.minPlayers === 'number' && game.minPlayers > 0
-        ? game.minPlayers
-        : Math.floor(maxPlayers * 0.8);
-    if (taken >= threshold) continue;
+    if (!canOfferFiller(game)) continue;
 
     processed += 1;
 
@@ -11602,6 +11574,7 @@ async function runFindFillerCandidates(): Promise<void> {
       // Respect the per-user daily cap, shared atomically with the pulse
       // engine so a player never receives more than FILLER_DAILY_CAP filler
       // pushes across BOTH matchers in a day.
+      if (await hasFillerConflict(uid, doc.id, game.startsAt)) continue;
       const reserved = await reserveFillerPush(uid, fillerDayKey(now));
       if (!reserved) continue;
 
@@ -11618,8 +11591,7 @@ async function runFindFillerCandidates(): Promise<void> {
           startsAt: game.startsAt,
           city,
           // Open spots until the game is FULL (maxPlayers − taken), e.g.
-          // 10/15 → 5. NOT `threshold − taken` (threshold is the shortage
-          // trigger = minPlayers or 80%, which overstated the gap), and NOT
+          // 11/15 → 4. NOT `minPlayers − taken`, and NOT
           // `maxPlayers − players.length`, which ignored guests and announced
           // "חסרים 20 שחקנים" for a game that was already full of them.
           shortBy: Math.max(0, maxPlayers - taken),
@@ -11773,10 +11745,10 @@ async function runFillerPulseBatch(
     chainSnap.exists && (chainSnap.data() as { manual?: boolean }).manual === true;
   if (!isManualChain && lead > PULSE_MAX_LEAD_MS) return null; // too far out — sweep handles it
 
-  const players = game.players ?? [];
   const maxPlayers = game.maxPlayers ?? 0;
   if (maxPlayers <= 0) return null;
-  if (players.length >= maxPlayers) return null; // FULL → stop
+  const taken = occupancyOf(game);
+  if (!canOfferFiller(game)) return null;
 
   const city = typeof game.city === 'string' ? game.city.trim() : '';
   if (!city) return null;
@@ -11880,6 +11852,7 @@ async function runFillerPulseBatch(
     }
     if (!withinRange) continue;
 
+    if (await hasFillerConflict(uid, gameId, startsAt)) continue;
     eligibleUids.push(uid);
   }
 
@@ -11904,7 +11877,7 @@ async function runFillerPulseBatch(
         gameTitle: game.title,
         startsAt: game.startsAt,
         city,
-        shortBy: maxPlayers - players.length,
+        shortBy: maxPlayers - taken,
       },
     });
     newlyPushed[uid] = now;
@@ -11981,6 +11954,7 @@ async function maybeStartFillerPulse(
     status?: string;
     startsAt?: number;
     players?: string[];
+    guests?: unknown[];
     maxPlayers?: number;
   },
 ): Promise<void> {
@@ -11991,9 +11965,7 @@ async function maybeStartFillerPulse(
   if (!startsAt) return;
   const lead = startsAt - Date.now();
   if (lead <= PULSE_STOP_BEFORE_MS || lead > PULSE_MAX_LEAD_MS) return;
-  const players = g.players ?? [];
-  const maxPlayers = g.maxPlayers ?? 0;
-  if (maxPlayers <= 0 || players.length >= maxPlayers) return;
+  if (!canOfferFiller(g)) return;
   // Create-once marker: the creation trigger is at-least-once, so a duplicate
   // delivery must NOT fork a second (permanent, self-rescheduling) pulse
   // chain. `.create()` throws ALREADY_EXISTS if a chain is already running.
@@ -12047,6 +12019,7 @@ export const startGameFillerPulse = onCall(
       status?: string;
       startsAt?: number;
       players?: string[];
+      guests?: unknown[];
       maxPlayers?: number;
       acceptsFillers?: boolean;
       city?: string;
@@ -12071,9 +12044,9 @@ export const startGameFillerPulse = onCall(
     // No upper-bound (12h) gate on the MANUAL pulse — admins can send to all
     // available players any time before kickoff. The chain is marked `manual`
     // below so runFillerPulseBatch also bypasses the 12h window when sending.
-    const players = game.players ?? [];
     const maxPlayers = game.maxPlayers ?? 0;
-    if (maxPlayers > 0 && players.length >= maxPlayers) return { started: false, reason: 'GAME_FULL' };
+    if (maxPlayers > 0 && occupancyOf(game) >= maxPlayers) return { started: false, reason: 'GAME_FULL' };
+    if (!canOfferFiller(game)) return { started: false, reason: 'INSUFFICIENT_OCCUPANCY' };
 
     // Make sure the engine will accept fillers for this game.
     if (game.acceptsFillers !== true) {

@@ -24,6 +24,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -2026,9 +2027,10 @@ export function MatchDetailsScreen() {
         // was not installed AND nothing claimed the https link — which is an
         // ordinary state on a device with no browser set as default, not a
         // bug. `geo:` is the Android intent every maps app registers for, so
-        // it succeeds where a web URL has nobody to hand it to.
+        // it succeeds where a web URL has nobody to hand it to. iOS instead
+        // uses Apple Maps; geo: has no handler on that platform.
         .catch((caughtErrore2979a5915: unknown) =>
-          { if (!isMissingLinkHandler(caughtErrore2979a5915)) observeCaughtError(caughtErrore2979a5915, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:e2979a5915"}); return Linking.openURL(`geo:${fLat},${fLng}?q=${fLat},${fLng}`); },
+          { if (!isMissingLinkHandler(caughtErrore2979a5915)) observeCaughtError(caughtErrore2979a5915, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:e2979a5915"}); return Linking.openURL(Platform.OS === 'ios' ? `https://maps.apple.com/?daddr=${fLat},${fLng}&dirflg=d` : `geo:${fLat},${fLng}?q=${fLat},${fLng}`); },
         )
         // …and TELL them. This path logged and returned, so the button did
         // nothing at all and said nothing about it — while the text-query
@@ -2068,8 +2070,8 @@ export function MatchDetailsScreen() {
         ); },
       )
       // Same third rung as the precise path above — a text query works as a
-      // `geo:` intent too, via its `q` parameter.
-      .catch((caughtError3608605c19: unknown) => { if (!isMissingLinkHandler(caughtError3608605c19)) observeCaughtError(caughtError3608605c19, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:3608605c19"}); return Linking.openURL(`geo:0,0?q=${q}`); })
+      // `geo:` intent too, via its `q` parameter. iOS uses Apple Maps.
+      .catch((caughtError3608605c19: unknown) => { if (!isMissingLinkHandler(caughtError3608605c19)) observeCaughtError(caughtError3608605c19, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:3608605c19"}); return Linking.openURL(Platform.OS === 'ios' ? `https://maps.apple.com/?daddr=${q}&dirflg=d` : `geo:0,0?q=${q}`); })
       .catch((err) => { observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:3608605c19"}); return failNavigation(err, dest); });
   };
 

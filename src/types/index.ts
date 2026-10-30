@@ -2242,10 +2242,10 @@ export type LiveMatchPhase =
   | 'finished'
   | 'live';
 /**
- * Per-player zones supported by the live-match screen. Up to 5 teams
- * (A..E) can exist in the roster; only the first two (A & B) appear on
+ * Per-player zones supported by the live-match screen. Up to 7 teams
+ * (A..G) can exist in the roster; only the first two (A & B) appear on
  * the pitch at a time. The dedicated GK zones are scoped to those two
- * — waiting teams (C..E) hold their full roster in `team{X}` and pick a
+ * — waiting teams (C..G) hold their full roster in `team{X}` and pick a
  * keeper at swap-onto-field time.
  */
 export type LiveMatchZone =
@@ -2254,6 +2254,8 @@ export type LiveMatchZone =
   | 'teamC'
   | 'teamD'
   | 'teamE'
+  | 'teamF'
+  | 'teamG'
   | 'bench'
   | 'gkA'
   | 'gkB';

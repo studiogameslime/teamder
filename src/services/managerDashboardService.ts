@@ -26,7 +26,7 @@ export async function loadManagerDashboard(groupId:string, viewerId:string):Prom
     throw new Error('manager-access-denied');
   // Never query equipment or sealed scores until the canonical membership gate passed.
   const [users, rows, eventResult] = await Promise.all([
-    groupService.hydrateUsers(memberIds(group)),
+    groupService.hydrateUsers([...new Set([...memberIds(group), ...(group.ballHolderIds ?? []), ...(group.jerseysHolderIds ?? [])])]),
     USE_MOCK_DATA ? Promise.resolve(mockGamesV2.filter(g=>g.groupId===groupId).map(g=>({...g,matches:[]}) as Game)) :
       // limitToLast reverses the server order, so the groupId/startsAt ASC
       // index cannot serve it. Use the deployed club history index instead;
@@ -36,7 +36,7 @@ export async function loadManagerDashboard(groupId:string, viewerId:string):Prom
         orderBy('startsAt','desc'),limit(201))))
         .then(s=>s.docs.map(d=>({...d.data(),matches:[]}) as Game)),
     USE_MOCK_DATA ? import('./communityEventsService').then(m=>Promise.all(memberIds(group).map(id=>m.communityEventsService.getPlayerTimeline(groupId,id)))).then(v=>({status:'fulfilled' as const,value:v.flat()})) :
-      Promise.allSettled([withAuthRaceRetry(()=>getDocs(query(collection(getFirebase().db,'communityPlayerEvents'),where('groupId','==',groupId),where('type','in',['ball','jerseys']),orderBy('at','desc'),limit(1001))))]).then(results => observeSettledErrors(results, {"source":"src/services/managerDashboardService.ts","handler":"loadManagerDashboard","site":"managerDashboardService:96038994ba"})).then(([r])=>r.status==='fulfilled' ? {status:'fulfilled' as const,value:r.value.docs.map(d=>({...d.data(),id:d.id}) as CommunityPlayerEvent)} : r),
+      Promise.allSettled([withAuthRaceRetry(()=>getDocs(query(collection(getFirebase().db,'communityPlayerEvents'),where('groupId','==',groupId),where('type','in',group.cardsEnabled?['ball','jerseys','yellow','red']:['ball','jerseys']),orderBy('at','desc'),limit(1001))))]).then(results => observeSettledErrors(results, {"source":"src/services/managerDashboardService.ts","handler":"loadManagerDashboard","site":"managerDashboardService:96038994ba"})).then(([r])=>r.status==='fulfilled' ? {status:'fulfilled' as const,value:r.value.docs.map(d=>({...d.data(),id:d.id}) as CommunityPlayerEvent)} : r),
   ]);
   if (USE_MOCK_DATA && __DEV__ && process.env.EXPO_PUBLIC_QA_ROUTES === '1') {
     return (await import('@/data/managerDashboardDemo')).managerDashboardDemo(group,users);

@@ -21938,5 +21938,301 @@
       "small ברוחב 320 וגובה 640; היתר ברוחב 430 וגובה 900."
     ],
     "sha256": "d9d90a8b27b90f22d6a0fa15e0652a9a4e4dd2bfbb1729eadff2da1e55fce0ea"
+  },
+  {
+    "file": "manager-workspace-overview-2026-10-28.png",
+    "source": "artifacts/manager-implementation-2026-10-28/after-overview.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב מסך המנהל המקורי בחבילת תצוגה מקומית נפרדת, נתוני הדגמה, כיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-28",
+    "notes": [
+      "צילום מסך מקורי ללא שינוי פיקסלים. החבילה com.studiogameslime.soccerapp.activitypreview, מכשיר Teamder_API_35.",
+      "ManagerDashboardScreen ורכיבי הפירוט החדשים מרונדרים באנדרואיד המקורי. המעטפת מספקת ניווט בסיסי וסרגל תחתון; השירותים מוחלפים בנתוני בדיקה.",
+      "אין כאן בדיקת מסד חי, הרשאות שרת, ניווט מלא לכל מסך חיצוני או הפצה. מדדי ההיסטוריה משתמשים בנתוני הדגמה מפורשים."
+    ],
+    "sha256": "d4031feb5a23d338dd8686955b686ecfff922c7db614495be35770324b90c9d3"
+  },
+  {
+    "file": "manager-workspace-readiness-2026-10-28.png",
+    "source": "artifacts/manager-implementation-2026-10-28/after-readiness.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב מסך המנהל המקורי בחבילת תצוגה מקומית נפרדת, נתוני הדגמה, כיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-28",
+    "notes": [
+      "צילום מסך מקורי ללא שינוי פיקסלים. החבילה com.studiogameslime.soccerapp.activitypreview, מכשיר Teamder_API_35.",
+      "ManagerDashboardScreen ורכיבי הפירוט החדשים מרונדרים באנדרואיד המקורי. המעטפת מספקת ניווט בסיסי וסרגל תחתון; השירותים מוחלפים בנתוני בדיקה.",
+      "אין כאן בדיקת מסד חי, הרשאות שרת, ניווט מלא לכל מסך חיצוני או הפצה. מדדי ההיסטוריה משתמשים בנתוני הדגמה מפורשים."
+    ],
+    "sha256": "e4cc6d10823e668a3162e43a60471ce996fd4da6ba3d538330f6c7756d6d0510"
+  },
+  {
+    "file": "manager-workspace-roster-2026-10-28.png",
+    "source": "artifacts/manager-implementation-2026-10-28/after-roster.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב מסך המנהל המקורי בחבילת תצוגה מקומית נפרדת, נתוני הדגמה, כיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-28",
+    "notes": [
+      "צילום מסך מקורי ללא שינוי פיקסלים. החבילה com.studiogameslime.soccerapp.activitypreview, מכשיר Teamder_API_35.",
+      "ManagerDashboardScreen ורכיבי הפירוט החדשים מרונדרים באנדרואיד המקורי. המעטפת מספקת ניווט בסיסי וסרגל תחתון; השירותים מוחלפים בנתוני בדיקה.",
+      "אין כאן בדיקת מסד חי, הרשאות שרת, ניווט מלא לכל מסך חיצוני או הפצה. מדדי ההיסטוריה משתמשים בנתוני הדגמה מפורשים."
+    ],
+    "sha256": "25e6bcc434b58204e5316ecba759d815ef1fbadefb9510cd014b60f932e7ee68"
+  },
+  {
+    "file": "manager-workspace-cards-2026-10-28.png",
+    "source": "artifacts/manager-implementation-2026-10-28/after-cards.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב מסך המנהל המקורי בחבילת תצוגה מקומית נפרדת, נתוני הדגמה, כיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-28",
+    "notes": [
+      "צילום מסך מקורי ללא שינוי פיקסלים. החבילה com.studiogameslime.soccerapp.activitypreview, מכשיר Teamder_API_35.",
+      "ManagerDashboardScreen ורכיבי הפירוט החדשים מרונדרים באנדרואיד המקורי. המעטפת מספקת ניווט בסיסי וסרגל תחתון; השירותים מוחלפים בנתוני בדיקה.",
+      "אין כאן בדיקת מסד חי, הרשאות שרת, ניווט מלא לכל מסך חיצוני או הפצה. מדדי ההיסטוריה משתמשים בנתוני הדגמה מפורשים."
+    ],
+    "sha256": "301e65214f4c1b9f7b6546d4f6b4b2975b5f2ae0f06f083d1ec876fe54819d42"
+  },
+  {
+    "file": "manager-workspace-player-2026-10-28.png",
+    "source": "artifacts/manager-implementation-2026-10-28/after-player.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב מסך המנהל המקורי בחבילת תצוגה מקומית נפרדת, נתוני הדגמה, כיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-28",
+    "notes": [
+      "צילום מסך מקורי ללא שינוי פיקסלים. החבילה com.studiogameslime.soccerapp.activitypreview, מכשיר Teamder_API_35.",
+      "ManagerDashboardScreen ורכיבי הפירוט החדשים מרונדרים באנדרואיד המקורי. המעטפת מספקת ניווט בסיסי וסרגל תחתון; השירותים מוחלפים בנתוני בדיקה.",
+      "אין כאן בדיקת מסד חי, הרשאות שרת, ניווט מלא לכל מסך חיצוני או הפצה. מדדי ההיסטוריה משתמשים בנתוני הדגמה מפורשים."
+    ],
+    "sha256": "fe3ee0e1410b46ebfccf8e1c45bc25cb57872ed019578004b890f2582511a8f6"
+  },
+  {
+    "file": "manager-workspace-newcomers-2026-10-28.png",
+    "source": "artifacts/manager-implementation-2026-10-28/after-newcomers.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב מסך המנהל המקורי בחבילת תצוגה מקומית נפרדת, נתוני הדגמה, כיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-28",
+    "notes": [
+      "צילום מסך מקורי ללא שינוי פיקסלים. החבילה com.studiogameslime.soccerapp.activitypreview, מכשיר Teamder_API_35.",
+      "ManagerDashboardScreen ורכיבי הפירוט החדשים מרונדרים באנדרואיד המקורי. המעטפת מספקת ניווט בסיסי וסרגל תחתון; השירותים מוחלפים בנתוני בדיקה.",
+      "אין כאן בדיקת מסד חי, הרשאות שרת, ניווט מלא לכל מסך חיצוני או הפצה. מדדי ההיסטוריה משתמשים בנתוני הדגמה מפורשים."
+    ],
+    "sha256": "e5a4bf0284866ebe136f19bd84f150d31cbb60b59f50a5ef6b0d308514f5d0ab"
+  },
+  {
+    "file": "manager-workspace-equipment-2026-10-28.png",
+    "source": "artifacts/manager-implementation-2026-10-28/after-equipment.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב מסך המנהל המקורי בחבילת תצוגה מקומית נפרדת, נתוני הדגמה, כיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-28",
+    "notes": [
+      "צילום מסך מקורי ללא שינוי פיקסלים. החבילה com.studiogameslime.soccerapp.activitypreview, מכשיר Teamder_API_35.",
+      "ManagerDashboardScreen ורכיבי הפירוט החדשים מרונדרים באנדרואיד המקורי. המעטפת מספקת ניווט בסיסי וסרגל תחתון; השירותים מוחלפים בנתוני בדיקה.",
+      "אין כאן בדיקת מסד חי, הרשאות שרת, ניווט מלא לכל מסך חיצוני או הפצה. מדדי ההיסטוריה משתמשים בנתוני הדגמה מפורשים."
+    ],
+    "sha256": "601ecd75bb528d0a3eff624113a1d834891c4fc8adcab4937d9f49ffc0ce48c3"
+  },
+  {
+    "file": "manager-workspace-ratings-2026-10-28.png",
+    "source": "artifacts/manager-implementation-2026-10-28/after-ratings.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב מסך המנהל המקורי בחבילת תצוגה מקומית נפרדת, נתוני הדגמה, כיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-28",
+    "notes": [
+      "צילום מסך מקורי ללא שינוי פיקסלים. החבילה com.studiogameslime.soccerapp.activitypreview, מכשיר Teamder_API_35.",
+      "ManagerDashboardScreen ורכיבי הפירוט החדשים מרונדרים באנדרואיד המקורי. המעטפת מספקת ניווט בסיסי וסרגל תחתון; השירותים מוחלפים בנתוני בדיקה.",
+      "אין כאן בדיקת מסד חי, הרשאות שרת, ניווט מלא לכל מסך חיצוני או הפצה. מדדי ההיסטוריה משתמשים בנתוני הדגמה מפורשים."
+    ],
+    "sha256": "3a884ce94da32d1a9688aa364fbbe5d74597784b085a7f684c73c11787943cea"
+  },
+  {
+    "file": "manager-workspace-activity-2026-10-28.png",
+    "source": "artifacts/manager-implementation-2026-10-28/after-activity.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב מסך המנהל המקורי בחבילת תצוגה מקומית נפרדת, נתוני הדגמה, כיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-28",
+    "notes": [
+      "צילום מסך מקורי ללא שינוי פיקסלים. החבילה com.studiogameslime.soccerapp.activitypreview, מכשיר Teamder_API_35.",
+      "ManagerDashboardScreen ורכיבי הפירוט החדשים מרונדרים באנדרואיד המקורי. המעטפת מספקת ניווט בסיסי וסרגל תחתון; השירותים מוחלפים בנתוני בדיקה.",
+      "אין כאן בדיקת מסד חי, הרשאות שרת, ניווט מלא לכל מסך חיצוני או הפצה. מדדי ההיסטוריה משתמשים בנתוני הדגמה מפורשים."
+    ],
+    "sha256": "2cf614ab0c7b152d16074095bf7dd84cae4fb75ab1e69515b6d19def86f7aaf0"
+  },
+  {
+    "file": "manager-workspace-season-2026-10-28.png",
+    "source": "artifacts/manager-implementation-2026-10-28/after-season.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב מסך המנהל המקורי בחבילת תצוגה מקומית נפרדת, נתוני הדגמה, כיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-28",
+    "notes": [
+      "צילום מסך מקורי ללא שינוי פיקסלים. החבילה com.studiogameslime.soccerapp.activitypreview, מכשיר Teamder_API_35.",
+      "ManagerDashboardScreen ורכיבי הפירוט החדשים מרונדרים באנדרואיד המקורי. המעטפת מספקת ניווט בסיסי וסרגל תחתון; השירותים מוחלפים בנתוני בדיקה.",
+      "אין כאן בדיקת מסד חי, הרשאות שרת, ניווט מלא לכל מסך חיצוני או הפצה. מדדי ההיסטוריה משתמשים בנתוני הדגמה מפורשים."
+    ],
+    "sha256": "41554a5b3adc0120dc1ce231f7027e0f6d4032ded3cf7f88014408fae000dc76"
+  },
+  {
+    "file": "manager-workspace-demand-2026-10-28.png",
+    "source": "artifacts/manager-implementation-2026-10-28/after-demand.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב מסך המנהל המקורי בחבילת תצוגה מקומית נפרדת, נתוני הדגמה, כיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-28",
+    "notes": [
+      "צילום מסך מקורי ללא שינוי פיקסלים. החבילה com.studiogameslime.soccerapp.activitypreview, מכשיר Teamder_API_35.",
+      "ManagerDashboardScreen ורכיבי הפירוט החדשים מרונדרים באנדרואיד המקורי. המעטפת מספקת ניווט בסיסי וסרגל תחתון; השירותים מוחלפים בנתוני בדיקה.",
+      "אין כאן בדיקת מסד חי, הרשאות שרת, ניווט מלא לכל מסך חיצוני או הפצה. מדדי ההיסטוריה משתמשים בנתוני הדגמה מפורשים."
+    ],
+    "sha256": "530423b1b3c350e4f6eb802c47536af6c760eb16d28888b05f391e33d3ee267d"
+  },
+  {
+    "file": "manager-workspace-attendance-2026-10-28.png",
+    "source": "artifacts/manager-implementation-2026-10-28/after-attendance.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב מסך המנהל המקורי בחבילת תצוגה מקומית נפרדת, נתוני הדגמה, כיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-28",
+    "notes": [
+      "צילום מסך מקורי ללא שינוי פיקסלים. החבילה com.studiogameslime.soccerapp.activitypreview, מכשיר Teamder_API_35.",
+      "ManagerDashboardScreen ורכיבי הפירוט החדשים מרונדרים באנדרואיד המקורי. המעטפת מספקת ניווט בסיסי וסרגל תחתון; השירותים מוחלפים בנתוני בדיקה.",
+      "אין כאן בדיקת מסד חי, הרשאות שרת, ניווט מלא לכל מסך חיצוני או הפצה. מדדי ההיסטוריה משתמשים בנתוני הדגמה מפורשים."
+    ],
+    "sha256": "ac608e328b88cb05537cdf15f4e0b6516d7937d7eb6011ab2669540ddcc74736"
+  },
+  {
+    "file": "manager-workspace-retention-2026-10-28.png",
+    "source": "artifacts/manager-implementation-2026-10-28/after-retention.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב מסך המנהל המקורי בחבילת תצוגה מקומית נפרדת, נתוני הדגמה, כיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-28",
+    "notes": [
+      "צילום מסך מקורי ללא שינוי פיקסלים. החבילה com.studiogameslime.soccerapp.activitypreview, מכשיר Teamder_API_35.",
+      "ManagerDashboardScreen ורכיבי הפירוט החדשים מרונדרים באנדרואיד המקורי. המעטפת מספקת ניווט בסיסי וסרגל תחתון; השירותים מוחלפים בנתוני בדיקה.",
+      "אין כאן בדיקת מסד חי, הרשאות שרת, ניווט מלא לכל מסך חיצוני או הפצה. מדדי ההיסטוריה משתמשים בנתוני הדגמה מפורשים."
+    ],
+    "sha256": "9dcb88a18c3821e50cc2be594e7cf130dd84a6d5dfb96e2680113b55355d85d6"
+  },
+  {
+    "file": "manager-no-position-before-2026-10-28.png",
+    "source": "artifacts/manager-remove-position-2026-10-28/before.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב מסך המנהל המקורי בחבילת תצוגה נפרדת, נתוני הדגמה וכיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-28",
+    "notes": [
+      "צילום מקורי ללא שינוי פיקסלים. חבילת התצוגה com.studiogameslime.soccerapp.activitypreview.",
+      "אותו פירוט מוכנות ואותם נתוני הדגמה לפני ואחרי. הכרטיס הוסר והקישור לפרטי המחזור נשאר זמין.",
+      "אין בדיקת מסד חי, התקנה מהחנות או הפצה."
+    ],
+    "sha256": "13f420a5fd86e5984c79457b3b66c8222d49e1cc9d92864bcec560cb4466255e"
+  },
+  {
+    "file": "manager-no-position-after-2026-10-28.png",
+    "source": "artifacts/manager-remove-position-2026-10-28/after.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב מסך המנהל המקורי בחבילת תצוגה נפרדת, נתוני הדגמה וכיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-28",
+    "notes": [
+      "צילום מקורי ללא שינוי פיקסלים. חבילת התצוגה com.studiogameslime.soccerapp.activitypreview.",
+      "אותו פירוט מוכנות ואותם נתוני הדגמה לפני ואחרי. הכרטיס הוסר והקישור לפרטי המחזור נשאר זמין.",
+      "אין בדיקת מסד חי, התקנה מהחנות או הפצה."
+    ],
+    "sha256": "6e5625cdd79154982a8fe3031b1ab6a8f17880d03edede9879cb2447c0b4d2c0"
+  },
+  {
+    "file": "live-substitutes-before-2026-10-29.png",
+    "source": "artifacts/live-substitutes-2026-10-29/before.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב ההרכבים המקורי בחבילת תצוגה נפרדת, נתוני הדגמה וכיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-29",
+    "notes": [
+      "צילום מקורי ללא שינוי פיקסלים, בחבילה com.studiogameslime.soccerapp.activitypreview.",
+      "אותו תרחיש של שני חילופים זמניים בקבוצה האדומה, מול הירוקים והכחולים שממתינים. נתוני החילופים נבנו באמצעות exchangeLivePlayers האמיתי.",
+      "צילום לפני מרנדר עותק מקור שנשמר לפני העריכה; צילום אחרי מרנדר את RotationPanel ו-TeamScore הנוכחיים. המעטפת היא תצוגת בדיקה ואינה מסך הלייב המלא.",
+      "אין גישה למסד חי, אימות הרשאות שרת, בדיקת אייפון או הפצה."
+    ],
+    "sha256": "3f5319da6c19bf1673e2950537b83bcdb387f3bc6693bc8d2e5b7c1e8343e5de"
+  },
+  {
+    "file": "live-substitutes-after-2026-10-29.png",
+    "source": "artifacts/live-substitutes-2026-10-29/after.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב ההרכבים המקורי בחבילת תצוגה נפרדת, נתוני הדגמה וכיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-29",
+    "notes": [
+      "צילום מקורי ללא שינוי פיקסלים, בחבילה com.studiogameslime.soccerapp.activitypreview.",
+      "אותו תרחיש של שני חילופים זמניים בקבוצה האדומה, מול הירוקים והכחולים שממתינים. נתוני החילופים נבנו באמצעות exchangeLivePlayers האמיתי.",
+      "צילום לפני מרנדר עותק מקור שנשמר לפני העריכה; צילום אחרי מרנדר את RotationPanel ו-TeamScore הנוכחיים. המעטפת היא תצוגת בדיקה ואינה מסך הלייב המלא.",
+      "אין גישה למסד חי, אימות הרשאות שרת, בדיקת אייפון או הפצה."
+    ],
+    "sha256": "9d317d4621763ec891859cae69ac3e76d644089d2a4ee4e9d7407d9a130caae0"
+  },
+  {
+    "file": "short-filler-tag-before-2026-10-29.png",
+    "source": "artifacts/short-filler-tag-2026-10-29/before.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב ההרכבים המקורי בחבילת תצוגה נפרדת, נתוני הדגמה וכיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-29",
+    "notes": [
+      "צילום מקורי ללא שינוי פיקסלים, בחבילה com.studiogameslime.soccerapp.activitypreview.",
+      "אותו תרחיש של שני משלימים מהכחולים ושני מוחלפים באדומים. לפני משתמש בעותק מקור המשמר את התגית הארוכה; אחרי משתמש ברכיב הנוכחי.",
+      "רכיב ההרכבים בלבד, ללא מסד חי, אייפון או הפצה. צילום ההוכחה אינו צילום מסך הלייב המלא."
+    ],
+    "sha256": "24d4b0fce6f27e53e0b56193e902fae99aa102cfab3e86c35f9d89ae0fb26048"
+  },
+  {
+    "file": "short-filler-tag-after-2026-10-29.png",
+    "source": "artifacts/short-filler-tag-2026-10-29/after.png",
+    "platform": "Android API 35 emulator",
+    "environment": "רכיב ההרכבים המקורי בחבילת תצוגה נפרדת, נתוני הדגמה וכיווניות עברית",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a + local changes",
+    "captured": "2026-10-29",
+    "notes": [
+      "צילום מקורי ללא שינוי פיקסלים, בחבילה com.studiogameslime.soccerapp.activitypreview.",
+      "אותו תרחיש של שני משלימים מהכחולים ושני מוחלפים באדומים. לפני משתמש בעותק מקור המשמר את התגית הארוכה; אחרי משתמש ברכיב הנוכחי.",
+      "רכיב ההרכבים בלבד, ללא מסד חי, אייפון או הפצה. צילום ההוכחה אינו צילום מסך הלייב המלא."
+    ],
+    "sha256": "d0f9d0e6df2fcfcb6d3516ddf7229c0e51dee130478f4870fb776964ce2edb3c"
+  },
+  {
+    "file": "pulse-pro-all-2026-10-30.png",
+    "source": "artifacts/pro-planning-2026-10-30/all-features.png",
+    "platform": "Android",
+    "environment": "תצוגה מבודדת של קוד המסך באימולטור, ללא חשבון או מסד",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a",
+    "captured": "2026-10-30",
+    "notes": [
+      "שינויים מקומיים מעל הקומיט; קוד המסך של הפולס עם סביבת הריצה הראשית של המאגר.",
+      "מסך חדש; צולמו ברירת המחדל וסינון לאחר סימון, אין צילום מסך קודם.",
+      "לא נבדקה התקנה חדשה או כניסה מתפריט הפולס המותקן."
+    ],
+    "sha256": "ad7228ba6d4d9b68704a28ce5fe4b514a3d03362af73ac87f764a09a1697e872"
+  },
+  {
+    "file": "pulse-pro-only-2026-10-30.png",
+    "source": "artifacts/pro-planning-2026-10-30/pro-only.png",
+    "platform": "Android",
+    "environment": "תצוגה מבודדת של קוד המסך באימולטור, ללא חשבון או מסד",
+    "sourceCommit": "df785c102746dda923b7bbea7c7c28e9980e3d3a",
+    "captured": "2026-10-30",
+    "notes": [
+      "שינויים מקומיים מעל הקומיט; קוד המסך של הפולס עם סביבת הריצה הראשית של המאגר.",
+      "מסך חדש; צולמו ברירת המחדל וסינון לאחר סימון, אין צילום מסך קודם.",
+      "לא נבדקה התקנה חדשה או כניסה מתפריט הפולס המותקן."
+    ],
+    "sha256": "c7a4f650b0ac254d78239997e99efd70201b8a2c75de740e33c165af9c3b11e6"
   }
 ]

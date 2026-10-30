@@ -33,3 +33,14 @@ test('one failed scheduler region never presents a partial job count as the proj
 test('an explicit scheduler API error remains unavailable even when other regions succeeded',async()=>{
  const f=fixture();f.fetch.mockImplementation(async(url:string)=>response(url.includes('/b/')?{error:{code:403}}:{jobs:[]},!url.includes('/b/')));expect(await f.api.schedulerJobs('token')).toBeNull();
 });
+
+test.each(['java.net.SocketException: Software caused connection abort', 'java.net.SocketException: Connection reset'])('recovers the reported socket failure: %s', async message => {
+ const f=fixture();f.fetch.mockRejectedValueOnce(Error(message)).mockResolvedValue(response({timeSeries:[{points:[{value:{int64Value:'17'}}]}]}));
+ expect(await f.api.metricSum('token','metric',0,1000)).toBe(17);expect(f.fetch).toHaveBeenCalledTimes(2);expect(f.observe).not.toHaveBeenCalled();
+});
+test('a transient HTTP failure retries but an exhausted response stays unavailable', async()=>{
+ const f=fixture();f.fetch.mockResolvedValueOnce({status:503}).mockResolvedValue(response({timeSeries:[]}));
+ expect(await f.api.metricSum('token','metric',0,1000)).toBe(0);expect(f.fetch).toHaveBeenCalledTimes(2);
+ f.fetch.mockClear().mockResolvedValue({status:500});
+ expect(await f.api.metricSum('token','metric',0,1000)).toBeNull();expect(f.fetch).toHaveBeenCalledTimes(3);expect(f.observe).toHaveBeenCalledTimes(1);
+});

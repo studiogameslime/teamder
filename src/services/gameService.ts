@@ -971,7 +971,7 @@ export const gameService = {
       // A just-acknowledged generation must not accept a local older split.
       // Ordinary callers retain getDoc's existing offline/cache behavior.
       const ref = docs.game(gameId);
-      const snap = await (options?.source === 'server' ? getDocFromServer(ref) : getDoc(ref));
+      const snap = await withAuthRaceRetry(() => options?.source === 'server' ? getDocFromServer(ref) : getDoc(ref), { retryTransientReads: true });
       if (!snap.exists()) return null;
       return { ...snap.data(), matches: [] };
     } catch (err) {
@@ -1739,10 +1739,10 @@ export const gameService = {
     }
     const db = getFirebase().db;
     try {
-      const [psSnap, csSnap] = await Promise.all([
+      const [psSnap, csSnap] = await withAuthRaceRetry(() => Promise.all([
         getDocs(query(collection(db, 'communityPlayerStats'), where('groupId', '==', groupId))),
         getDoc(doc(db, 'communityStats', groupId)),
-      ]);
+      ]), { retryTransientReads: true });
       // Community table ranks by cumulative goals (not per-game efficiency).
       // Merge in every club member so the table lists ALL of them, not just
       // those who already have a stat doc — members with no games yet get a

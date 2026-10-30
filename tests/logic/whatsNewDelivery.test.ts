@@ -43,3 +43,12 @@ it('does not fetch again for an already shown release', async () => {
   (storage.getWhatsNewSeenVersion as jest.Mock).mockResolvedValue('1.1.50');
   expect(await resolveWhatsNew()).toBeNull(); expect(getDoc).not.toHaveBeenCalled();
 });
+it('recovers one transient read without consuming eligibility before display', async () => {
+  jest.useFakeTimers();try {
+    config([item('1.1.50')]);
+    (getDoc as jest.Mock).mockRejectedValueOnce(Object.assign(Error('client is offline'),{code:'unavailable'}));
+    const pending=resolveWhatsNew();await jest.advanceTimersByTimeAsync(500);
+    expect((await pending)?.items).toHaveLength(1);expect(getDoc).toHaveBeenCalledTimes(2);
+    expect(storage.setWhatsNewSeenVersion).not.toHaveBeenCalled();
+  }finally{jest.useRealTimers();}
+});

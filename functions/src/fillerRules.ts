@@ -20,6 +20,41 @@ export function occupancyOf(g: {
   return (g.players?.length ?? 0) + (g.guests?.length ?? 0);
 }
 
+/** Integer arithmetic keeps exactly 70% eligible, without rounding down. */
+export function canOfferFiller(g: { players?: string[]; guests?: unknown[]; maxPlayers?: number }): boolean {
+  const capacity = g.maxPlayers ?? 0;
+  const taken = occupancyOf(g);
+  return capacity > 0 && taken < capacity && taken * 10 >= capacity * 7;
+}
+
+/** Same four-hour, inclusive window as gameService.findRegistrationConflict. */
+export const FILLER_REG_CONFLICT_WINDOW_MS = 4 * 60 * 60 * 1000;
+
+export interface FillerRegistration {
+  id: string;
+  status?: string;
+  startsAt?: number;
+  players?: string[];
+}
+
+/** Only confirmed registrations block; pending and waitlisted users remain free. */
+export function hasFillerRegistrationConflict(
+  uid: string,
+  target: { id: string; startsAt?: number },
+  registrations: FillerRegistration[],
+  now: number,
+): boolean {
+  return registrations.some(g => {
+    if (g.id === target.id || !g.players?.includes(uid)) return false;
+    if (!['open', 'locked', 'active'].includes(g.status ?? '')) return false;
+    if (g.status === 'active') {
+      return typeof g.startsAt !== 'number' || now - g.startsAt < 12 * 60 * 60 * 1000;
+    }
+    return typeof target.startsAt === 'number' && typeof g.startsAt === 'number' &&
+      Math.abs(g.startsAt - target.startsAt) <= FILLER_REG_CONFLICT_WINDOW_MS;
+  });
+}
+
 /** Israel-local hour of an instant. The Functions runtime clock is UTC. */
 export function israelHour(epoch: number): number {
   const h = new Intl.DateTimeFormat('en-US', {

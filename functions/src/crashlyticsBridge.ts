@@ -3,6 +3,33 @@ import { getApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { onSchedule } from './observedFunctions';
 import { parseCrashEntry, importCrash, deliverCrashAlerts } from './crashlyticsIngest';
+import { observeCaughtError } from './serverErrorLog';
+
+/** Retry only the Logging read, keeping its exact window and page token. */
+async function readCrashPage(body: string): Promise<{ entries?: Record<string, any>[]; nextPageToken?: string }> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const credential = getApp().options.credential;
+      if (!credential) throw new Error('Missing server credential');
+      const token = await credential.getAccessToken();
+      const response = await fetch('https://logging.googleapis.com/v2/entries:list', {
+        method: 'POST', headers: { Authorization: `Bearer ${token.access_token}`, 'Content-Type': 'application/json' },
+        body, signal: AbortSignal.timeout(30_000),
+      });
+      if (!response.ok) throw Object.assign(new Error(`Crashlytics log read failed: HTTP ${response.status}`), { status: response.status });
+      return await response.json() as { entries?: Record<string, any>[]; nextPageToken?: string };
+    } catch (error) {
+      const value = error as { status?: number; name?: string; message?: string };
+      const transient = [429, 500, 502, 503, 504].includes(value.status ?? 0) ||
+        ['AbortError', 'TimeoutError'].includes(value.name ?? '') || /fetch failed|ECONNRESET|ETIMEDOUT/i.test(value.message ?? '');
+      if (!transient || attempt >= 2) {
+        observeCaughtError(error, { source: 'functions/src/crashlyticsBridge.ts', handler: 'readCrashPage', site: 'crashlyticsBridge:read' });
+        throw error;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+    }
+  }
+}
 
 export async function scanCrashlytics(): Promise<void> {
   const project = process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT;
@@ -23,19 +50,11 @@ export async function scanCrashlytics(): Promise<void> {
     const until = continuing ? Number(previous.scanUntil) : started - 30_000;
     let pageToken: string | undefined = continuing ? previous.scanPageToken : undefined;
     do {
-      const credential = getApp().options.credential;
-      if (!credential) throw new Error('Missing server credential');
-      const token = await credential.getAccessToken();
-      const response = await fetch('https://logging.googleapis.com/v2/entries:list', {
-        method: 'POST', headers: { Authorization: `Bearer ${token.access_token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const result = await readCrashPage(JSON.stringify({
           resourceNames: [`projects/${project}`],
           filter: `logName="projects/${project}/logs/firebasecrashlytics.googleapis.com%2Fevents" AND jsonPayload.bundleOrPackage="com.studiogameslime.soccerapp" AND (jsonPayload.issue.errorType="FATAL" OR jsonPayload.issue.errorType="ANR") AND timestamp>="${new Date(until - 30 * 86400000).toISOString()}" AND receiveTimestamp>="${new Date(from).toISOString()}" AND receiveTimestamp<="${new Date(until).toISOString()}"`,
           orderBy: 'timestamp desc', pageSize: 500, ...(pageToken ? { pageToken } : {}),
-        }), signal: AbortSignal.timeout(30_000),
-      });
-      if (!response.ok) throw new Error(`Crashlytics log read failed: HTTP ${response.status}`);
-      const result = await response.json() as { entries?: Record<string, any>[]; nextPageToken?: string };
+        }));
       for (const entry of result.entries ?? []) {
         const event = parseCrashEntry(entry, project);
         if (event && await importCrash(event, db)) ++imported;

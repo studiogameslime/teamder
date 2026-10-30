@@ -7,7 +7,6 @@ import { TEAMDER_UID } from './teamderChatService';
 import { config } from '../config';
 import type {
   AnalyticsSummary,
-  RatingSummary,
   RevenueSummary,
   Review,
 } from '../types';
@@ -45,7 +44,7 @@ async function safe<T>(label: string, fn: () => Promise<T>): Promise<T | null> {
       fn(),
       new Promise<never>((_, reject) => {
         timer = setTimeout(
-          () => reject(new Error(`${label}: timeout after ${SOURCE_TIMEOUT_MS}ms`)),
+          () => reject(Object.assign(new Error(`${label}: timeout after ${SOURCE_TIMEOUT_MS}ms`), { code: 'poll/source-timeout', source: label })),
           SOURCE_TIMEOUT_MS,
         );
       }),
@@ -200,10 +199,6 @@ export async function runPoll(opts: { silent?: boolean } = {}): Promise<PollResu
   // here. That used to read every user doc on every poll/open — the main
   // Firestore-read drain. The Users screen loads its list on demand, and the
   // Overview reads only cheap count()s. (See fetchUserCounts.)
-  const ratings: RatingSummary[] = [asRating, gpRating].filter(
-    Boolean,
-  ) as RatingSummary[];
-
   // (New-signup pushes are sent server-side by the Teamder Cloud Function
   // `onNewUserJoined`, including the referral/campaign attribution — so Pulse
   // does NOT fire its own local signup notification, to avoid duplicates.)
@@ -211,8 +206,16 @@ export async function runPoll(opts: { silent?: boolean } = {}): Promise<PollResu
   // Preserve previous values for any source that failed this round.
   const prev = await getSnapshot();
   const snapshot: Snapshot = {
-    reviews: reviews.length ? reviews : prev.reviews,
-    ratings: ratings.length ? ratings : prev.ratings,
+    // A failed source is unknown, whereas a successful empty list is known.
+    // Merge per provider so a healthy source cannot erase the failed one.
+    reviews: [
+      ...(asReviews ?? prev.reviews.filter(r => r.source === 'appstore')),
+      ...(gpReviews ?? prev.reviews.filter(r => r.source === 'googleplay')),
+    ].sort((a, b) => a.createdAt < b.createdAt ? 1 : -1),
+    ratings: [
+      ...(asRating ? [asRating] : prev.ratings.filter(r => r.source === 'appstore')),
+      ...(gpRating ? [gpRating] : prev.ratings.filter(r => r.source === 'googleplay')),
+    ],
     revenue: (revenue as RevenueSummary | null) ?? prev.revenue,
     analytics: (analytics as AnalyticsSummary | null) ?? prev.analytics,
     // Users/app-stats are no longer fetched on poll — preserve whatever the

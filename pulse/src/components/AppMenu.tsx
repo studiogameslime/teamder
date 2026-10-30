@@ -32,6 +32,7 @@ interface Item {
 // Grouped destinations — everything the app can reach lives here.
 export const GROUPS: { title: string; items: Item[] }[] = [
   { title: 'תמיכה ועבודה', items: [
+    { route: 'ProPlanning', label: 'תכנון פרו', icon: 'diamond-outline' },
     { route: 'Tasks', label: 'משימות', icon: 'checkbox' },
     { route: 'Users', label: 'אנשים חדשים ומשתמשים', icon: 'people', screen: 'NewPeople' },
     { route: 'Messages', label: 'שיחות תמיכה', icon: 'chatbubble-ellipses' },

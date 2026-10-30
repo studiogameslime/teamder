@@ -31,6 +31,12 @@
         "credentialsSource": "local"
       }
     },
+    "ios-launch-recovery": {
+      "extends": "production",
+      "ios": {
+        "credentialsSource": "remote"
+      }
+    },
     "production-wear": {
       "extends": "production",
       "android": {
@@ -44,6 +50,11 @@
     }
   },
   "submit": {
+    "internal-ios-recovery": {
+      "ios": {
+        "ascAppId": "6775178022"
+      }
+    },
     "internal": {
       "ios": {
         "ascAppId": "6775178022",

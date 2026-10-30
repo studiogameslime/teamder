@@ -68,7 +68,7 @@ function fixture() {
   const fetch = jest.fn(async () => ({ ok: true, json: async () => ({ entries: [entry()] }) }));
   const worker: any = {};
   load('functions/src/crashlyticsBridge.ts', {
-    exports: worker, process: { env: { GCLOUD_PROJECT: project } }, fetch, AbortSignal, console: { info: jest.fn() },
+    exports: worker, process: { env: { GCLOUD_PROJECT: project } }, fetch, AbortSignal, setTimeout: (fn: () => void) => fn(), console: { info: jest.fn() },
     require: (name: string) => {
       if (name === 'node:crypto') return require('node:crypto');
       if (name.endsWith('/firestore')) return firestore;
@@ -155,9 +155,30 @@ test('scheduled handler paginates, imports and delivers through the actual modul
 
 test('failed log read never advances the scan checkpoint and releases the lease', async () => {
   const f = fixture(); f.rows.set('adminConfig/crashlyticsBridge', { lastScanAt: time });
-  f.fetch.mockResolvedValueOnce({ ok: false, status: 503 } as any);
+  f.fetch.mockResolvedValue({ ok: false, status: 503 } as any);
   await expect(f.scanCrashlytics()).rejects.toThrow('HTTP 503');
   expect(f.rows.get('adminConfig/crashlyticsBridge')).toMatchObject({ lastScanAt: time, leaseUntil: 0 });
+  expect(f.fetch).toHaveBeenCalledTimes(3);
+});
+
+test('a temporary Logging 500 retries the same page and imports each event once', async () => {
+  const f = fixture();
+  f.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ entries: [entry()], nextPageToken: 'page-two' }) });
+  f.fetch.mockResolvedValueOnce({ ok: false, status: 500 } as any);
+  await f.scanCrashlytics();
+  expect(f.fetch).toHaveBeenCalledTimes(3);
+  expect(f.fetch.mock.calls[1][1].body).toBe(f.fetch.mock.calls[2][1].body);
+  expect(JSON.parse(f.fetch.mock.calls[2][1].body).pageToken).toBe('page-two');
+  expect(f.rows.get('adminConfig/crashlyticsBridge')).toMatchObject({ pages: 2, imported: 1, leaseUntil: 0, scanPageToken: null });
+});
+
+test('Logging permission failures do not retry or advance a saved continuation', async () => {
+  const f = fixture();
+  f.rows.set('adminConfig/crashlyticsBridge', { lastScanAt: time, scanVersion: 2, scanPageToken: 'saved', scanFrom: time, scanUntil: time + 1000 });
+  f.fetch.mockResolvedValue({ ok: false, status: 403 } as any);
+  await expect(f.scanCrashlytics()).rejects.toThrow('HTTP 403');
+  expect(f.fetch).toHaveBeenCalledTimes(1);
+  expect(f.rows.get('adminConfig/crashlyticsBridge')).toMatchObject({ lastScanAt: time, scanPageToken: 'saved', leaseUntil: 0 });
 });
 
 test('empty partial-search pages resume their exact window in the next invocation', async () => {

@@ -22,6 +22,7 @@ import { AvailabilityScreen } from '../screens/AvailabilityScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { OnboardingActivityScreen } from '../screens/OnboardingActivityScreen';
 import { AppMenu } from '../components/AppMenu';
+import { ProPlanningScreen } from '../screens/ProPlanningScreen';
 
 const Tab = createBottomTabNavigator();
 const Empty = () => null;
@@ -43,6 +44,7 @@ const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 };
 
 const HIDDEN: { name: string; title: string; component: React.ComponentType<any> }[] = [
+  { name: 'ProPlanning', title: 'תכנון פרו', component: ProPlanningScreen },
   { name: 'OnboardingActivity', title: 'מסלול ההצטרפות', component: OnboardingActivityScreen },
   // Off the bar since the tasks screen took over: the raw streams (errors,
   // QA) are still reachable here for digging into a specific report.

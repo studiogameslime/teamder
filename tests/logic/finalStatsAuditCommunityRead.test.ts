@@ -27,7 +27,7 @@ function serviceWorld(options: { fail?: 'totals' | 'rows'; missing?: boolean } =
     collection: (_db: unknown, kind: string) => ({ kind }), where: () => ({}), query: (value: unknown) => value,
     getDoc: async () => { if (options.fail === 'totals') throw error; return { exists: () => !options.missing, data: () => ({ goals: 9, rounds: 4 }) }; },
     getDocs: async () => { if (options.fail === 'rows') throw error; return { docs: options.missing ? [] : [{ data: () => ({ userId: 'a', goals: 9, rounds: 4 }) }] }; },
-    rankChampionshipRows,
+    rankChampionshipRows, withAuthRaceRetry: (read: () => Promise<unknown>) => read(),
   });
   return { service, error };
 }

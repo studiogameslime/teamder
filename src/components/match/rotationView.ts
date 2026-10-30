@@ -69,6 +69,42 @@ export interface RosterMember {
   fromTeam?: number;
 }
 
+export interface OffPitchMember extends RosterMember {
+  /** Only set when the connected exchange has one unambiguous replacement. */
+  replacementName?: string;
+}
+
+/** Home players temporarily exchanged onto a waiting team. They remain part
+ * of their home roster, but must never become scorer choices or swap targets.
+ * A connected swap can contain several exchanges: do not guess its pairs. */
+export function buildOffPitchRoster(
+  teamIdx: number,
+  teams: { index: number; playerIds: string[] }[],
+  rotation: MatchRotation,
+  resolve: (id: string) => PlayerLite,
+  departedIds: ReadonlySet<string> = new Set(),
+): OffPitchMember[] {
+  const homeIds = new Set(teams.find(t => t.index === teamIdx)?.playerIds ?? []);
+  const activeIds = new Set(rotation.playing.flatMap(i => rosterOf(i, teams, rotation.loans)));
+  const incoming = rotation.loans.filter(l => l.filledTeam === teamIdx && !departedIds.has(l.playerId));
+  const outgoing = rotation.loans.filter(l => l.homeTeam === teamIdx && l.filledTeam !== teamIdx && homeIds.has(l.playerId) && !departedIds.has(l.playerId));
+  return outgoing.filter(l => !activeIds.has(l.playerId)).map(loan => {
+    const linkedIncoming = loan.swapId ? incoming.filter(l => l.swapId === loan.swapId) : [];
+    const linkedOutgoing = loan.swapId ? outgoing.filter(l => l.swapId === loan.swapId) : [];
+    const replacement = linkedIncoming.length === 1 && linkedOutgoing.length === 1
+      ? resolve(linkedIncoming[0].playerId).displayName : undefined;
+    const player = resolve(loan.playerId);
+    return {
+      id: loan.playerId,
+      name: player.displayName ?? '…',
+      avatarId: player.avatarId,
+      photoUrl: player.photoUrl,
+      isFiller: false,
+      replacementName: replacement,
+    };
+  });
+}
+
 /** Build a name/avatar resolver from the players map + per-game guests. */
 export function makeResolver(
   playersMap: Record<string, PlayerLite>,

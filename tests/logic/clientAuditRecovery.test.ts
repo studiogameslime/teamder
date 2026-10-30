@@ -1,6 +1,7 @@
 import fs from 'fs';
 import vm from 'vm';
 import ts from 'typescript';
+import { retryRead } from '@/services/readRetry';
 
 // Execute real service modules with isolated I/O. No account, network or production write.
 function load(file: string, deps: Record<string, any> = {}, extra: Record<string, any> = {}) {
@@ -26,6 +27,7 @@ test('profile read failure preserves Firebase account without a cached user', as
   const service = load('src/services/userService.ts', {
     '@/firebase/config': { USE_MOCK_DATA: false, getFirebase: () => ({ auth }) },
     './storage': { storage: { getAuthUserJson: async () => null } },
+    './readRetry': { retryRead },
     '@/firebase/auth': { waitForAuthRestore: async () => auth.currentUser, signInAnonymously: signIn },
     '@/firebase/firestore': { docs: { user: (id: string) => id } },
     'firebase/firestore': { getDoc: async () => { throw Error('offline'); } },

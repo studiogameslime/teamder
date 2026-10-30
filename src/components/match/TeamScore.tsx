@@ -4,7 +4,7 @@
 //     mirrored so avatars sit on the outer edge and ranks toward the divider.
 //   • variant="grid" (winner picker / roster peek) — trophies + streak pill +
 //     a 3-up avatar grid with names.
-// A blue star badge marks a borrowed filler. Shared by both surfaces.
+// Filler tags identify the home team by name and colour.
 
 import { ArrivalMotion } from '@/components/anim/ArrivalMotion';
 import { useArrivalTracker } from '@/hooks/animations/useArrivalTracker';
@@ -13,8 +13,8 @@ import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions } from
 import { Ionicons } from '@expo/vector-icons';
 import { UserAvatar } from '@/components/UserAvatar';
 import { RTL_LABEL_ALIGN } from '@/theme';
-import { he } from '@/i18n/he';
-import { teamName, teamColor, teamTextColor, firstName, type RosterMember } from '@/components/match/rotationView';
+import { he, iso } from '@/i18n/he';
+import { teamName, teamColor, teamOnColor, teamTextColor, firstName, type RosterMember, type OffPitchMember } from '@/components/match/rotationView';
 import { MeasurablePressable, type MenuAnchor } from '@/components/match/PlayerActionMenu';
 import { TeamShirtIllustration } from '@/components/match/TeamShirt';
 
@@ -54,6 +54,8 @@ function Blink({ active, children }: { active: boolean; children: React.ReactNod
 interface Props {
   teamIdx: number;
   roster: RosterMember[];
+  offPitchRoster?: OffPitchMember[];
+  onOffPitchPlayerPress?: (m: OffPitchMember) => void;
   wins: number;
   align: 'right' | 'left';
   avatarSize?: number;
@@ -94,6 +96,8 @@ interface Props {
 export function TeamScore({
   teamIdx,
   roster,
+  offPitchRoster = [],
+  onOffPitchPlayerPress,
   wins,
   align,
   avatarSize,
@@ -113,11 +117,15 @@ export function TeamScore({
   const { arrivals, observe } = useArrivalTracker(`team:${teamIdx}`);
   const rosterKey = JSON.stringify(roster.map(m => m.id));
   useEffect(() => { observe(JSON.parse(rosterKey) as string[]); }, [observe, rosterKey]);
-  const star = (
-    <View style={styles.star}>
-      <Ionicons name="star" size={11} color="#FFFFFF" />
-    </View>
-  );
+  const fillerTag = (m: RosterMember) => {
+    if (!m.isFiller) return null;
+    const source = m.fromTeam;
+    return <View accessible accessibilityLabel={source != null ? `משלים מ${teamName(source, teams)}` : 'משלים'} style={[styles.fillerTag, { backgroundColor: source != null ? teamColor(source, teams) : TEAM_BLUE }]}>
+      <Text numberOfLines={1} style={[styles.fillerText, { color: source != null ? teamOnColor(source, teams) : '#FFFFFF' }]}>
+        משלים
+      </Text>
+    </View>;
+  };
 
   // Disambiguate players who share a first name WITHIN this team (common in
   // pickup groups) by appending a last-name initial — otherwise the live
@@ -165,7 +173,6 @@ export function TeamScore({
                     size={size}
                     ring
                   />
-                  {m.isFiller ? star : null}
                 </View></ArrivalMotion>
               </Blink>
             );
@@ -174,6 +181,7 @@ export function TeamScore({
             // face, and the static row puts the two back together itself.
             const rowRest = (
               <View style={[styles.playerDetails, stackedPlayerDetails && styles.playerDetailsStacked]}>
+                <View style={[styles.playerIdentity, stackedPlayerDetails && styles.playerIdentityStacked]}>
                 <Text
                   style={[styles.playerName, stackedPlayerDetails && styles.playerNameStacked]}
                   numberOfLines={stackedPlayerDetails ? 2 : 1}
@@ -184,6 +192,8 @@ export function TeamScore({
                 >
                   {labelOf(m)}
                 </Text>
+                {fillerTag(m)}
+                </View>
                 {/* Goal count for this round (replaces the old rank number).
                     Uniform, flat stat chip — never a filled/tappable look. */}
                 <View style={[styles.goalBadge, stackedPlayerDetails && styles.goalBadgeStacked]}>
@@ -230,6 +240,21 @@ export function TeamScore({
               ))
             : null}
         </View>
+        {offPitchRoster.length > 0 ? <View style={styles.offPitchSection}>
+          <Text style={styles.offPitchHeading}>מחוץ למגרש</Text>
+          {offPitchRoster.map(m => {
+            const detail = m.replacementName ? `${iso(m.replacementName)} מחליף אותו` : 'ממתין לחזרה להרכב';
+            const content = <>
+              <UserAvatar user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }} size={size} ring />
+              <View style={styles.offPitchIdentity}>
+                <Text style={styles.offPitchName}>{m.name}</Text>
+                <Text style={styles.offPitchDetail}>{detail}</Text>
+              </View>
+            </>;
+            return onOffPitchPlayerPress ? <Pressable key={m.id} style={({pressed}) => [styles.offPitchRow, pressed && styles.playerRowPressed]} accessibilityRole="button" accessibilityLabel={`${m.name}, ${detail}`} onPress={() => onOffPitchPlayerPress(m)}>{content}</Pressable>
+              : <View key={m.id} style={styles.offPitchRow}>{content}</View>;
+          })}
+        </View> : null}
       </View>
     );
   }
@@ -269,11 +294,11 @@ export function TeamScore({
                 size={size}
                 ring
               />
-              {m.isFiller ? star : null}
             </View>
             <Text style={styles.playerNameGrid} numberOfLines={1}>
               {labelOf(m)}
             </Text>
+            {fillerTag(m)}
           </View>
         ))}
       </View>
@@ -350,19 +375,16 @@ const styles = StyleSheet.create({
   // shared
   name: { fontSize: 18, fontWeight: '800', color: TEAM_BLUE, textAlign: RTL_LABEL_ALIGN },
   count: { fontSize: 13, fontWeight: '600', color: '#64748B', textAlign: RTL_LABEL_ALIGN },
-  star: {
-    position: 'absolute',
-    top: -2,
-    left: -2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#1D4ED8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
+  fillerTag: { alignSelf: 'flex-start', maxWidth: '100%', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+  fillerText: { fontSize: 10, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  playerIdentity: { flex: 1, minWidth: 0, gap: 3 },
+  playerIdentityStacked: { flex: 0, alignSelf: 'stretch' },
+  offPitchSection: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E2E8F0', paddingTop: 10, marginTop: 4, gap: 6 },
+  offPitchHeading: { fontSize: 12, fontWeight: '700', color: '#475569', textAlign: RTL_LABEL_ALIGN },
+  offPitchRow: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 7, borderRadius: 16, backgroundColor: '#F1F5F9' },
+  offPitchIdentity: { flex: 1, minWidth: 0, gap: 3 },
+  offPitchName: { fontSize: 13, fontWeight: '700', color: '#334155', textAlign: RTL_LABEL_ALIGN },
+  offPitchDetail: { fontSize: 11, color: '#64748B', textAlign: RTL_LABEL_ALIGN },
 
   // list variant
   listCol: { flex: 1, minWidth: 0, gap: 8 },
@@ -424,10 +446,10 @@ const styles = StyleSheet.create({
   goalBadgeStacked: { alignSelf: 'flex-start', minWidth: 0, height: 18, paddingHorizontal: 0, gap: 3 },
   goalNum: { fontSize: 13, fontWeight: '800', color: '#334155', fontVariant: ['tabular-nums'] },
   goalNumStacked: { fontSize: 11 },
-  // `flex: 1` + `minWidth: 0` makes a long name ellipsize instead of pushing
+  // The flexible identity wrapper + `minWidth: 0` lets a long name ellipsize instead of pushing
   // the goal badge outside the card (the "Eliran Tzabari" overflow bug).
   playerName: {
-    flex: 1,
+    flexShrink: 1,
     minWidth: 0,
     fontSize: 13,
     fontWeight: '700',

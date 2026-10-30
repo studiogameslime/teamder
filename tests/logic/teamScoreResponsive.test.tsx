@@ -16,10 +16,11 @@ jest.mock('@/components/UserAvatar', () => ({ UserAvatar: 'Avatar' }));
 jest.mock('@/components/match/PlayerActionMenu', () => ({ MeasurablePressable: 'MeasuredPressable' }));
 jest.mock('@/components/match/TeamShirt', () => ({ TeamShirtIllustration: 'Shirt' }));
 jest.mock('@/theme', () => ({ RTL_LABEL_ALIGN: 'left' }));
-jest.mock('@/i18n/he', () => ({ he: { rotationWinsLabel: 'ניצחונות', matchPlayersOpenSlot: 'מקום פנוי', rotationStreak: (wins: number) => `${wins} ניצחונות` } }));
+jest.mock('@/i18n/he', () => ({ iso: (name: string) => `\u2068${name}\u2069`, he: { rotationWinsLabel: 'ניצחונות', matchPlayersOpenSlot: 'מקום פנוי', rotationStreak: (wins: number) => `${wins} ניצחונות` } }));
 jest.mock('@/components/match/rotationView', () => ({
   firstName: (name: string) => name.trim().split(/\s+/)[0],
   teamName: () => 'הירוקים', teamColor: () => '#22C55E', teamTextColor: () => '#15803D',
+  teamOnColor: () => '#0F172A',
 }));
 import { TeamScore } from '@/components/match/TeamScore';
 
@@ -135,4 +136,32 @@ test('read-only rows and the grid keep all players without introducing selection
     expect(nodes(tree, 'Avatar')).toHaveLength(7);
     expect(nodes(tree, 'Pressable')).toHaveLength(0);
   }
+});
+
+test('compact filler tag retains source colour and accessible identity without adding goals or swap actions to replaced players', () => {
+  const input = props(5), card = jest.fn();
+  input.roster[3] = { ...input.roster[3], fromTeam: 2 } as typeof input.roster[number];
+  const offPitchRoster = [
+    { id: 'lioz', name: 'ליעוז', isFiller: false, replacementName: 'אלירן' },
+    { id: 'shlomi', name: 'שלומי', isFiller: false },
+  ];
+  const tree = expand(TeamScore({ ...input, offPitchRoster, onOffPitchPlayerPress: card }));
+  const texts = nodes(tree, 'Text');
+  const tag = texts.find(text => text.props.children === 'משלים');
+  expect(tag.props.numberOfLines).toBe(1);
+  expect(texts.some(text => text.props.children === 'משלים מהירוקים')).toBe(false);
+  expect(nodes(tree, 'View').some(view => view.props.accessibilityLabel === 'משלים מהירוקים')).toBe(true);
+  expect(flatten(tag.props.style).color).toBe('#0F172A');
+  expect(nodes(tree, 'View').find(view => flatten(view.props.style).backgroundColor === '#22C55E')).toBeTruthy();
+  expect(nodes(tree, 'Icon').filter(icon => icon.props.name === 'star')).toHaveLength(0);
+  expect(texts.filter(text => text.props.children === 'מחוץ למגרש')).toHaveLength(1);
+  expect(texts.some(text => text.props.children === '\u2068אלירן\u2069 מחליף אותו')).toBe(true);
+  expect(texts.some(text => text.props.children === 'ממתין לחזרה להרכב')).toBe(true);
+  const rows = nodes(tree, 'Pressable');
+  const inactive = rows.slice(5);
+  expect(inactive).toHaveLength(2);
+  expect(inactive.flatMap(row => nodes(row, 'Icon'))).toHaveLength(0);
+  inactive[0].props.onPress();
+  expect(card).toHaveBeenCalledWith(offPitchRoster[0]);
+  expect(input.onPlayerPress).not.toHaveBeenCalled();
 });

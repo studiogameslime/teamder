@@ -48,5 +48,5 @@ test('live/upcoming game queries opt in while season writes retain the default',
     }
     ts.forEachChild(n, walk);
   }
-  walk(source); expect(reads).toBe(8); expect(writes).toBe(1);
+  walk(source); expect(reads).toBe(10); expect(writes).toBe(1);
 });

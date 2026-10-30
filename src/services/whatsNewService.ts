@@ -1,4 +1,5 @@
 import { observeCaughtError } from '../utils/errorObservation';
+import { retryRead } from './readRetry';
 // whatsNewService — decides whether to show the one-time "מה חדש" modal after
 // a version update, and WHICH highlights to show, per user.
 //
@@ -110,7 +111,7 @@ async function fetchWhatsNewDoc(): Promise<WhatsNewDoc | null> {
   if (USE_MOCK_DATA) return mockWhatsNew;
   try {
     const { db } = getFirebase();
-    const snap = await getDoc(doc(db, 'appConfig', 'whatsNew'));
+    const snap = await retryRead(() => getDoc(doc(db, 'appConfig', 'whatsNew')), () => {});
     if (!snap.exists()) return null;
     const d = snap.data() as Record<string, unknown>;
     return {

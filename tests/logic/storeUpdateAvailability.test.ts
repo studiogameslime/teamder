@@ -57,6 +57,13 @@ test('temporary device installation restrictions leave checking retryable withou
 test('config failure leaves verified store update optional', async () => {
   (getDoc as jest.Mock).mockRejectedValue(new Error('offline')); expect((await checkForUpdate())?.kind).toBe('optional');
 });
+test('a temporary policy read failure recovers the verified minimum instead of downgrading a forced update', async()=>{
+  jest.useFakeTimers();try {
+    (getDoc as jest.Mock).mockRejectedValueOnce(Object.assign(Error('temporary'),{code:'unavailable'})).mockResolvedValueOnce({exists:()=>true,data:()=>({minimumSupportedVersion:'1.1.51'})});
+    const pending=checkForUpdate();await jest.advanceTimersByTimeAsync(500);
+    expect((await pending)?.kind).toBe('force');expect(getDoc).toHaveBeenCalledTimes(2);
+  }finally{jest.useRealTimers();}
+});
 test('existing minimum policy can force only a store-confirmed update', async () => {
   (getDoc as jest.Mock).mockResolvedValue({ exists: () => true, data: () => ({ minimumSupportedVersion: '1.1.51' }) });
   expect((await checkForUpdate())?.kind).toBe('force');

@@ -258,6 +258,7 @@ test('cold cached-profile hydration waits for restored Firebase identity before 
   const cached = { id: uid, name: 'שם שמור' }, readCachedAuthUser = jest.fn(async () => cached);
   const getCurrentUser = actualMethod('src/services/userService.ts', 'getCurrentUser', {
     USE_MOCK_DATA: false, waitForAuthRestore: () => restored, docs: { user: (id: string) => id },
+      getFirebase: () => ({ auth }), retryRead, StaleSessionError,
     getDoc: async () => { throw Error('offline profile'); }, readCachedAuthUser,
     setTimeout, clearTimeout, __DEV__: false, console,
   });

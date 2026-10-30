@@ -96,9 +96,13 @@ function nextMonthlyResetMs(ms: number): number {
 async function quotaRead(url: string, token: string): Promise<Response> {
   for (let attempt = 0; ; attempt++) {
     try {
-      return await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+      const response = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+      if ([429, 500, 502, 503, 504].includes(response.status)) {
+        throw Object.assign(new Error(`Quota read failed: HTTP ${response.status}`), { code: `http/${response.status}` });
+      }
+      return response;
     } catch (error) {
-      if (attempt >= 2 || !/UnknownHostException|Network request failed|fetch failed|Failed to fetch|ECONNRESET|ETIMEDOUT/i.test(String(error))) {
+      if (attempt >= 2 || !/UnknownHostException|SocketException|Network request failed|fetch failed|Failed to fetch|ECONNRESET|ETIMEDOUT|HTTP (429|500|502|503|504)/i.test(String(error))) {
         observeCaughtError(error, { source: 'pulse/src/services/quota.ts', handler: 'quotaRead', site: 'quota:read' });
         throw error;
       }

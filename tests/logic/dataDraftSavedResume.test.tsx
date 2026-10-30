@@ -113,6 +113,7 @@ function serviceReadHarness(){
   const snapshot=(value:any,metadata={fromCache:false,hasPendingWrites:false})=>({exists:()=>value!==null,data:()=>value,metadata});
   const listeners:any[]=[],unsubscribe=jest.fn();
   const context:any={module:{exports:{}},USE_MOCK_DATA:false,mockGamesV2:[],docs:{game:(id:string)=>({id})},setTimeout,clearTimeout,
+    withAuthRaceRetry: (read: () => Promise<unknown>) => read(),
     getDoc:jest.fn().mockResolvedValue(snapshot(game(1))),getDocFromServer:jest.fn().mockResolvedValue(snapshot(game(2))),
     onSnapshot:jest.fn((_ref:any,options:any,next:any,error:any)=>{listeners.push({options,next,error});next(snapshot(game(2)));return unsubscribe;})};
   vm.runInNewContext(ts.transpileModule(helper+';module.exports={'+method+'}',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
