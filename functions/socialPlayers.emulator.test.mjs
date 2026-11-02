@@ -78,8 +78,13 @@ test('club invitations are manager-only, consensual and idempotent for open and 
 test('full account required and privacy updates cannot change server counters',async()=>{
   await assert.rejects(call('searchSocialPlayers',{},null));
   await assert.rejects(api.searchSocialPlayers.run({auth:{uid:'viewer',token:{firebase:{sign_in_provider:'anonymous'}}},data:{}}));
+  await user('viewer').update({dmFriendsOnly:false,dmRequestPolicy:'everyone',dmRequestPolicySource:'explicit'});
   await call('setSocialPrivacy',{discoverable:false,statistics:'everyone',stats:{goals:999}});
-  assert.equal((await user('viewer').get()).get('stats'),undefined);assert.equal((await user('viewer').get()).get('dmFriendsOnly'),true);
+  const profile=await user('viewer').get();
+  assert.equal(profile.get('stats'),undefined);
+  assert.equal(profile.get('dmFriendsOnly'),false);
+  assert.equal(profile.get('dmRequestPolicy'),'everyone');
+  assert.equal(profile.get('dmRequestPolicySource'),'explicit');
 });
 
 test('legacy roster identities resolve even without mirrors and expose no private fields',async()=>{

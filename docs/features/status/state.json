@@ -3851,8 +3851,8 @@
         "src/screens/auth/SignInScreen.tsx"
       ],
       "documents": {
-        "shared/diagnostic-journal.md": "8a144cf54f7b0257cb8c5c1759ff49ba3fe510b136b17ab271e7a1ffb37ffc32",
-        "shared/diagnostic-journal.simple.md": "c9acfa6d4db4c741098cb72caceaaa97809b2331f71694ca6fa692382a45560f"
+        "shared/diagnostic-journal.md": "1db5b6f233c0ff9716bc784e29307d2785bb14b77a0b79c3759a02bdd490af3d",
+        "shared/diagnostic-journal.simple.md": "f9ad44f748c0a09e0e3250368ec4f7be3ed3d104d2cc97b1afebd64e9102beb1"
       },
       "sources": {
         "functions/src/clientDiagnostics.ts": "d2bf9486f88f0948a2babc2c73bc276f86bb700bd3842c26a778cd9c4bd34a4b",
@@ -3867,7 +3867,7 @@
         "functions/src/observedFunctions.ts": "a5a6d94956e68fb307537c7a87bcc0e7f96efc85593e96bf2c8f97a39e055e34",
         "functions/src/personalActivity.ts": "bebfdfa30115973936a5cdb257cea4ce9800fbbe4dba0c7c0675ec33bf96ea0c",
         "functions/src/seasonManager.ts": "78f9db88a3312f37d4b145f19222006bad56f2b07da256c569c2344b2515631a",
-        "functions/src/serverErrorLog.ts": "ec9e83bc7fd8b59e9fc75068731ff3e6e7a4eb81313142b03baa4e66236f5125",
+        "functions/src/serverErrorLog.ts": "5bd9c20266dc7857f59b7cf45546e114761322acff6389b3423c7aec3996ba21",
         "functions/src/socialPlayers.ts": "c4e02a689f696aace64cd0f5ed7d7debb2e2d30d6ff7de7e56cdb0356a035b21",
         "modules/watch-bridge/ios/WatchBridgeModule.swift": "a7b8a791f2805d51c94b721769c9bc1fa860c3bf621bc17e145c47ca2ff4104f",
         "plugins/wear-src/watch/WatchBridgeModule.kt": "6bfb691fd405d7217c16862eb9763a7d3d4fc4af5a31b9f983e307474205a899",

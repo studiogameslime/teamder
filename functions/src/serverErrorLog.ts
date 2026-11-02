@@ -74,7 +74,10 @@ async function persistIncident(incident: Incident, count = 1): Promise<void> {
       platform: 'server', appVersion: 'functions', lastSeen: FieldValue.serverTimestamp() };
     await db.runTransaction(async tx => {
       const previous = await tx.get(ref);
-      const sample={...common,id:createHash('sha256').update(`${Date.now()}|${Math.random()}`).digest('hex').slice(0,24),capturedAt:Date.now()};
+      const capturedAt = Date.now();
+      // Firestore transforms cannot appear inside an array. Keep the server
+      // timestamp on the parent and store a concrete time in each occurrence.
+      const sample={...common,lastSeen:capturedAt,id:createHash('sha256').update(`${capturedAt}|${Math.random()}`).digest('hex').slice(0,24),capturedAt};
       tx.set(ref, {...common, occurrences:retainOccurrences(previous.data?.()?.occurrences,[sample]), count: FieldValue.increment(count), ...(!previous.exists ? {status: 'new', firstSeen: FieldValue.serverTimestamp()} : {})}, {merge: true});
     });
   } catch (error) {
