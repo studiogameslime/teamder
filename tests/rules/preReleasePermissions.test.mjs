@@ -71,7 +71,8 @@ test('DM: nonexistent canonical route returns no metadata and an empty messages 
 
 test('DM: exact message/receipt/typing queries work; outsider and parent enumeration remain denied', async () => {
   await seed(async fs => {
-    await setDoc(dm(fs), metadata);
+    await setDoc(dm(fs), { ...metadata, messagingApproved: true });
+    await setDoc(doc(fs,'users',A),{friends:[]});await setDoc(doc(fs,'users',B),{friends:[]});
     await setDoc(msg(fs), message());
     for (const kind of ['reads', 'typing']) await setDoc(doc(fs, 'dmConversations', CONV, kind, A), { at: 1 });
   });
@@ -137,7 +138,10 @@ test('DM: existing history remains readable after friends-only restriction; new 
 });
 
 test('DM: each participant can write their own receipt/typing, never the other participant or sender', async () => {
-  await seed(fs => setDoc(dm(fs), metadata));
+  await seed(async fs => {
+    await setDoc(dm(fs), { ...metadata, messagingApproved: true });
+    await setDoc(doc(fs,'users',A),{friends:[]});await setDoc(doc(fs,'users',B),{friends:[]});
+  });
   for (const kind of ['reads', 'typing']) {
     await assertSucceeds(setDoc(doc(db(A), 'dmConversations', CONV, kind, A), { at: 1 }));
     await assertFails(setDoc(doc(db(A), 'dmConversations', CONV, kind, B), { at: 1 }));

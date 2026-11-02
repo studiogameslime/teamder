@@ -1,0 +1,27 @@
+{
+  "readOnly": true,
+  "sourceService": true,
+  "sourceRestDeserializer": true,
+  "adminSessionTransport": false,
+  "verifiedAt": "2026-11-01T16:40:16.802Z",
+  "rounds": {
+    "withRegistrations": 1,
+    "registered": 1,
+    "at": 1793551216453
+  },
+  "signups": {
+    "count": 2,
+    "at": 1793551216453
+  },
+  "people": {
+    "count": 7,
+    "at": 1793551216453
+  },
+  "clubs": {
+    "total": 1,
+    "pending": 1,
+    "withOrganizer": 1
+  },
+  "failed": [],
+  "errors": []
+}

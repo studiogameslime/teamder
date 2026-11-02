@@ -1,0 +1,26 @@
+{
+  "added": 1,
+  "readBackVerified": true,
+  "proofReadBackVerified": true,
+  "item": {
+    "title": {
+      "stringValue": "נוספו שישה סעיפי טיפול ומעקב לבית הפולס: מועדונים חדשים, מחזורים עם מקומות, בדיקות המשך, בקשות הצטרפות ושיחות תמיכה. כל סעיף כולל פירוט וקישור, ובדיקה חוזרת נשמרת בלי לשנות את הפנייה המקורית או לשלוח הודעה. נבנה 1.0.104/111; המקור והחתימה אומתו, טרם בדיקת התקנה במכשיר."
+    },
+    "kind": {
+      "stringValue": "feature"
+    },
+    "version": {
+      "stringValue": "next"
+    },
+    "area": {
+      "stringValue": "פולס, טיפול ומעקב"
+    },
+    "shotId": {
+      "stringValue": "d5fc97f61e5e44fa99343bb9081ad8dc"
+    }
+  },
+  "built": true,
+  "installed": false,
+  "deployed": false,
+  "inboxStatusUpdated": false
+}

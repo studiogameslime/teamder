@@ -442,6 +442,11 @@ export const useUserStore = create<UserStore>((set, get) => ({
         // Guard against a late snapshot arriving after sign-out / account
         // switch — only apply it while this is still the signed-in user.
         const cur = get().currentUser;
+        // A same-uid anonymous upgrade writes its first profile locally before
+        // the server accepts it. Only refreshFromSession may promote the guest
+        // after that write finishes; otherwise root hydration calls the server
+        // while /users/{uid} is still absent ("Account missing").
+        if (cur?.isGuest === true) return;
         if (cur && cur.id === uid) set({ currentUser: fresh });
       },
       observedListener(err => { if (isActive()) reportError(err); }, {"source":"src/store/userStore.ts","handler":"subscribeCurrentUser","site":"userStore.ts:snapshot:436"}),

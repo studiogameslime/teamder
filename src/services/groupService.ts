@@ -407,7 +407,7 @@ export const groupService = {
      *  undefined. */
     lat?: number;
     lng?: number;
-    /** Total community size cap. */
+    /** Legacy caller field, ignored. Club membership has no cap. */
     maxMembers?: number;
     /** Built-in gallery cover id (random default chosen at creation). */
     coverImageId?: string;
@@ -456,7 +456,6 @@ export const groupService = {
       lat: input.lat,
       lng: input.lng,
       description,
-      maxMembers: input.maxMembers,
       isOpen: input.isOpen,
       internalRating: input.internalRating,
       hideInternalRating: input.internalRating ? input.hideInternalRating : undefined,
@@ -510,6 +509,9 @@ export const groupService = {
       assertCreationOwner(input.creator.id);
       const res = (await fn({
         ...(input.creationAttemptId ? { creationAttemptId: input.creationAttemptId } : {}),
+        // Old prepared attempts keep their request fingerprint. The server
+        // ignores this field for membership and never persists a cap.
+        ...(typeof input.maxMembers === 'number' ? { maxMembers: input.maxMembers } : {}),
         name: baseGroup.name,
         description: baseGroup.description,
         isOpen: baseGroup.isOpen,
@@ -518,7 +520,6 @@ export const groupService = {
         rules: baseGroup.rules,
         contactPhone: baseGroup.contactPhone,
         city: baseGroup.city,
-        maxMembers: baseGroup.maxMembers,
         cardsEnabled: baseGroup.cardsEnabled,
         yellowCardValidityDays: baseGroup.yellowCardValidityDays,
         redCardValidityDays: baseGroup.redCardValidityDays,
@@ -554,7 +555,6 @@ export const groupService = {
           name: baseGroup.name,
           isOpen: baseGroup.isOpen,
           city: baseGroup.city,
-          maxMembers: baseGroup.maxMembers,
           code,
         });
       }
@@ -986,20 +986,6 @@ export const groupService = {
     if (USE_MOCK_DATA) {
       const g = groupsById[groupId];
       if (!g) throw new Error('approveMember: group not found');
-      // Capacity recheck at approve time — even if the request was
-      // created when there was room, an earlier approval today may
-      // have filled the cap. Race-safe in mock mode by virtue of the
-      // single-threaded JS runtime.
-      if (
-        typeof g.maxMembers === 'number' &&
-        g.maxMembers > 0 &&
-        !g.playerIds.includes(userId) &&
-        g.playerIds.length >= g.maxMembers
-      ) {
-        const err = new Error('GROUP_FULL') as Error & { code: 'GROUP_FULL' };
-        err.code = 'GROUP_FULL';
-        throw err;
-      }
       g.pendingPlayerIds = g.pendingPlayerIds.filter((id) => id !== userId);
       if (!g.playerIds.includes(userId)) g.playerIds = [...g.playerIds, userId];
       g.updatedAt = Date.now();
@@ -1013,8 +999,7 @@ export const groupService = {
       });
       return g;
     }
-    // Capacity recheck — race-safe via a transaction so two admins
-    // approving simultaneously can't push the group past maxMembers.
+    // Read and update atomically; repeated approvals must not duplicate pushes.
     const { db, auth } = getFirebase();
     // Whether the user was ALREADY a member before this call (double-tap /
     // redelivery) — used to suppress a duplicate "approved" push below.
@@ -1028,16 +1013,6 @@ export const groupService = {
         const g = gSnap.data();
         const already = (g.playerIds ?? []).includes(userId);
         wasAlreadyMember = already;
-        if (
-          !already &&
-          typeof g.maxMembers === 'number' &&
-          g.maxMembers > 0 &&
-          (g.playerIds?.length ?? 0) >= g.maxMembers
-        ) {
-          const err = new Error('GROUP_FULL') as Error & { code: 'GROUP_FULL' };
-          err.code = 'GROUP_FULL';
-          throw err;
-        }
         tx.update(docs.group(groupId), {
           playerIds: arrayUnion(userId),
           pendingPlayerIds: arrayRemove(userId),
@@ -1297,23 +1272,6 @@ export const groupService = {
       if (!g.adminIds.includes(callerId)) {
         throw new Error('updateGroupMetadata: caller is not a coach');
       }
-      // Refuse to lower maxMembers below the current member count.
-      // We don't auto-kick anyone, and silently accepting would
-      // produce confusing "29/25" displays + a permanently-blocked
-      // join queue. The UI catches this with a toast.
-      if (
-        typeof patch.maxMembers === 'number' &&
-        patch.maxMembers > 0 &&
-        patch.maxMembers < (g.playerIds?.length ?? 0)
-      ) {
-        const err = new Error('GROUP_MAX_BELOW_CURRENT') as Error & {
-          code: 'GROUP_MAX_BELOW_CURRENT';
-          currentCount: number;
-        };
-        err.code = 'GROUP_MAX_BELOW_CURRENT';
-        err.currentCount = g.playerIds?.length ?? 0;
-        throw err;
-      }
     };
     // Whitelist the fields we accept so a bad caller can't smuggle in
     // a `creatorId` override via this surface. The whitelist matches
@@ -1336,7 +1294,6 @@ export const groupService = {
       'rules',
       'contactPhone',
       'city',
-      'maxMembers',
       'coverPhotoUrl',
       'coverImageId',
     ] as const) {
@@ -1378,7 +1335,6 @@ export const groupService = {
         : {}),
       ...(cleaned.city !== undefined ? { city: cleaned.city } : {}),
       ...(cleaned.description !== undefined ? { description: cleaned.description } : {}),
-      ...(cleaned.maxMembers !== undefined ? { maxMembers: cleaned.maxMembers } : {}),
       ...(cleaned.isOpen !== undefined ? { isOpen: cleaned.isOpen } : {}),
       ...(cleaned.contactPhone !== undefined ? { contactPhone: cleaned.contactPhone } : {}),
       ...(cleaned.coverPhotoUrl !== undefined ? { coverPhotoUrl: cleaned.coverPhotoUrl } : {}),
@@ -2139,20 +2095,6 @@ function mockSubmitJoin(
 ): { group: Group; status: 'pending' | 'joined' | 'already_member' } {
   if (g.playerIds.includes(userId) || g.adminIds.includes(userId)) {
     return { group: g, status: 'already_member' };
-  }
-  // Capacity gate: if the community has a maxMembers cap and is at or
-  // above it, refuse the join — both for open groups (would auto-add)
-  // and closed groups (would create a pending request that can never
-  // be approved). The error is propagated as `GROUP_FULL` so the UI
-  // can show a dedicated message.
-  if (
-    typeof g.maxMembers === 'number' &&
-    g.maxMembers > 0 &&
-    g.playerIds.length >= g.maxMembers
-  ) {
-    const err = new Error('GROUP_FULL') as Error & { code: 'GROUP_FULL' };
-    err.code = 'GROUP_FULL';
-    throw err;
   }
   // Match the server's manager-invitation approval in the disconnected demo.
   const managerInvite = notificationsService.__getMockDispatches().some(n =>

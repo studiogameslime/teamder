@@ -5,7 +5,7 @@ import type {RoundDecisionContext} from '@/utils/roundDecision';
 export function shootoutFingerprint(shootout?: LiveMatchState['shootout']): string {
   return JSON.stringify(shootout ? [shootout.firstTeam, shootout.keeperA ?? null, shootout.keeperB ?? null,
     shootout.kicks.map(kick => [kick.id ?? null, kick.team, kick.kickerId ?? null, kick.keeperId ?? null,
-      kick.scored, kick.outcome ?? null, kick.at ?? null])] : null);
+      kick.scored, kick.outcome ?? null, kick.at ?? null]), ...(shootout.nextTeam ? [shootout.nextTeam] : [])] : null);
 }
 
 export interface ShootoutDecisionContext {

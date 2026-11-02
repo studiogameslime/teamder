@@ -660,6 +660,11 @@ export function MatchDetailsScreen() {
   // state updater's side effects are NOT guaranteed to run at the call site
   // (see the audit comment), so the audit reads the COMMITTED state instead.
   const gameRef = useRef<Game | null>(null);
+  const gameDataRevision = useRef(0);
+  const gameLoadRequest = useRef(0);
+  const gameRouteRef = useRef(gameId);
+  gameRouteRef.current = gameId;
+  useEffect(() => () => { gameLoadRequest.current += 1; }, []);
   useEffect(() => {
     gameRef.current = game;
   }, [game]);
@@ -813,6 +818,8 @@ export function MatchDetailsScreen() {
   useGameEvents(gameId, {
     onUpdate: React.useCallback(
       (g: Game) => {
+        if (g.id !== gameRouteRef.current) return;
+        if (gameRef.current?.id === g.id) gameDataRevision.current += 1;
         setGame((prev) => (prev ? g : prev));
         // Cancellations included: someone who dropped out is no longer in
         // `players`, so without this their name never resolves and the
@@ -833,6 +840,7 @@ export function MatchDetailsScreen() {
     // Viewer lost access mid-view (removed from the community) → pivot live to
     // the blocked screen instead of waiting for the next focus-reload.
     onAccessBlocked: React.useCallback(() => {
+      gameDataRevision.current += 1;
       setGame(null);
       setAccessBlocked(true);
       setLoading(false);
@@ -867,6 +875,9 @@ export function MatchDetailsScreen() {
       if (nav.canGoBack()) nav.goBack();
       return;
     }
+    const request = ++gameLoadRequest.current;
+    const revision = gameDataRevision.current;
+    const isCurrent = () => request === gameLoadRequest.current && gameRouteRef.current === gameId;
     if (opts.pullToRefresh) {
       setRefreshing(true);
     } else {
@@ -875,6 +886,9 @@ export function MatchDetailsScreen() {
     try {
       setLoadError(false);
       const g = await gameService.getGameById(gameId);
+      // A focus read can finish after a live roster update or a committed
+      // join/cancel. It must not put the older roster back on the screen.
+      if (!isCurrent() || revision !== gameDataRevision.current) return;
       // null === doc genuinely doesn't exist (deleted / never was).
       // ACCESS_BLOCKED was thrown above and is handled in the catch
       // — it never reaches this branch, so null here is unambiguous.
@@ -903,6 +917,7 @@ export function MatchDetailsScreen() {
       );
       if (uids.length > 0) hydratePlayers(uids);
     } catch (err) {
+      if (!isCurrent() || revision !== gameDataRevision.current) return;
     observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"MatchDetailsScreen","site":"MatchDetailsScreen:12ce809dd6"});
       // Service surfaces a stable code for the rules-denied case; we
       // pivot the whole screen to the blocked-access render so no
@@ -928,8 +943,10 @@ export function MatchDetailsScreen() {
       // pull-to-refresh over an already-loaded game keeps the game visible.
       if (!game) setLoadError(true);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (isCurrent()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [gameId, hydratePlayers, nav]);
 
@@ -1350,12 +1367,13 @@ export function MatchDetailsScreen() {
           joinAudit.current = null;
         }
         await gameService.cancelGameV2(game.id, user.id);
+        if (gameRouteRef.current === game.id) gameDataRevision.current += 1;
         // Splice locally — same race avoidance as the guest-add
         // path: a getDoc round-trip after the transaction commit
         // sometimes returned the pre-commit snapshot, leaving the
         // UI showing stale state.
         setGame((prev) => {
-          if (!prev) return prev;
+          if (!prev || prev.id !== game.id) return prev;
           const wasPlayer = prev.players.includes(user.id);
           const players = prev.players.filter((id) => id !== user.id);
           let waitlist = prev.waitlist.filter((id) => id !== user.id);
@@ -1380,8 +1398,9 @@ export function MatchDetailsScreen() {
         });
       } else {
         const result = await gameService.requestJoinGame(game.id, user.id, 'match_details', game.startsAt);
+        if (gameRouteRef.current === game.id) gameDataRevision.current += 1;
         setGame((prev) => {
-          if (!prev) return prev;
+          if (!prev || prev.id !== game.id) return prev;
           const next = { ...prev };
           if (result.bucket === 'players' && !prev.players.includes(user.id)) {
             next.players = [...prev.players, user.id];

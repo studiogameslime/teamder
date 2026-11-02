@@ -342,7 +342,7 @@ export function DraftSetupScreen() {
         { ...result, teams: result.teams.map(t => ({...t, colorKey: draftColorTeams(game, autoNumTeams)[t.index].colorKey})), published: false },
         {
           generatedAt: Date.now(),
-          algorithm: splitMode === 'random' ? 'random_even_v1' : 'rating_balanced_v2',
+          algorithm: splitMode === 'random' ? 'random_even_v1' : 'rating_priority_v3',
           unratedCount,
           teamRatings: teamAverages,
           gap: Math.round(gap * 1000) / 1000,

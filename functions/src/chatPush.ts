@@ -21,12 +21,13 @@ import { observeCaughtError } from './serverErrorLog';
 //   • Tokens:   /users/{uid}/private/push            { fcmTokens: string[] }
 
 import * as admin from 'firebase-admin';
-import { onDocumentCreated } from './observedFunctions';
+import { onDocumentCreated, onDocumentWritten } from './observedFunctions';
 import { notifySupportReply, updateSupportSummary } from './supportReply';
 
 type ChatScope = 'game' | 'community' | 'dm';
 
 interface ChatMessageData {
+  messageRequest?: boolean;
   supportOrigin?: string;
   messageId?: string;
   text?: string;
@@ -298,15 +299,16 @@ async function handleChatMessage(
           const u = uSnap.data() as
             | { dmFriendsOnly?: boolean; friends?: string[] }
             | undefined;
-          if (
-            u?.dmFriendsOnly === true &&
-            !(u.friends || []).includes(senderId)
-          ) {
-            return; // recipient blocks non-friend DMs
-          }
+          const [sender, conversation, blockA, blockB] = await Promise.all([
+            db.doc(`users/${senderId}`).get(), db.doc(`dmConversations/${parentId}`).get(),
+            db.doc(`users/${other}/blocked/${senderId}`).get(), db.doc(`users/${senderId}/blocked/${other}`).get(),
+          ]);
+          const mutual = (u?.friends ?? []).includes(senderId) && (sender.data()?.friends ?? []).includes(other);
+          if (blockA.exists || blockB.exists || !mutual && conversation.data()?.messagingApproved !== true) return;
         } catch (err) {
     observeCaughtError(err, {"source":"functions/src/chatPush.ts","handler":"handleChatMessage","site":"chatPush:dad05de520"});
           console.warn('[chatPush] dm friends-only check failed', err);
+          return; // Never fan out when the permission check is unknown.
         }
       }
     } else {
@@ -442,6 +444,9 @@ export const onDmChatMessage = onDocumentCreated(
     const snap = event.data;
     if (!snap) return;
     const convId = event.params.convId;
+    // The first message belongs to the private request inbox. Never put its
+    // text in the normal unread index or send a regular chat notification.
+    if (snap.data().messageRequest === true) return;
     const message = await trustedChatMessage(snap);
     await updateSupportSummary(convId, snap.id, message);
     // A reply is an operator alert, not an unread row for a fictional user.
@@ -449,3 +454,24 @@ export const onDmChatMessage = onDocumentCreated(
     await handleChatMessage('dm', convId, message);
   },
 );
+
+export const onDmRequestCreated = onDocumentWritten('dmRequestState/{convId}', async event => {
+  if (!event.data?.after.exists || event.data.before.data()?.messageId === event.data.after.data()?.messageId) return;
+  const db = admin.firestore(), convId = event.params.convId;
+  const claimed = await db.runTransaction(async tx => {
+    const ref = db.doc(`dmRequestState/${convId}`), snap = await tx.get(ref), r = snap.data();
+    if (!r || r.status !== 'pending' || r.pushClaimedAt) return null;
+    const [a, b, sender, conv] = await Promise.all([
+      tx.get(db.doc(`users/${r.from}/blocked/${r.to}`)), tx.get(db.doc(`users/${r.to}/blocked/${r.from}`)),
+      tx.get(db.doc(`users/${r.from}`)), tx.get(db.doc(`dmConversations/${convId}`)),
+    ]);
+    if (a.exists || b.exists || conv.data()?.messagingApproved === true) return null;
+    // At most one attempt per request, including duplicate event delivery.
+    tx.update(ref, { pushClaimedAt: Date.now() });
+    return { to: r.to as string, name: String(sender.data()?.name ?? 'שחקן') };
+  });
+  if (!claimed) return;
+  await sendChatPush(claimed.to, 'בקשת שיחה חדשה', `בקשת שיחה חדשה מאת ⁨${claimed.name}⁩`, {
+    type: 'chat_message', scope: 'dm', parentId: convId, chatKey: `dm__${convId}`,
+  });
+});

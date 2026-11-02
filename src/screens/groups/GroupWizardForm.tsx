@@ -3,13 +3,12 @@ import { useSupportStep } from '@/hooks/useSupportStep';
 // Two-step wizard shared by Create / Edit Community (rolling-ball
 // StepIndicator, mirroring the create-game flow):
 //   • Step 1 "פרטים"  — name, city, contact phone, description, rules.
-//   • Step 2 "מתקדם"  — open/private toggle, max members, internal-rating
+//   • Step 2 "מתקדם"  — open/private toggle, internal-rating
 //                        toggle (+ hide-rating), cards master toggle and
 //                        (when on) the yellow/red validity fields.
 // `revertSignal`/`revertToStep` are functional again: on a server-side
 // rejection the host bumps the signal and the wizard jumps to the named
-// step and re-syncs the listed fields (used for GROUP_MAX_BELOW_CURRENT →
-// step 2, where the maxMembers field lives).
+// step and re-syncs the listed fields (legacy rejection support).
 //
 // Responsibility split:
 //   • Community owns identity + membership behaviour ONLY. It is NOT
@@ -80,7 +79,7 @@ export interface GroupFormValues {
   rules: string;
   contactPhone: string;
   city: string;
-  /** Community-wide member cap. Stored as Group.maxMembers. */
+  /** Legacy draft field, ignored when creating or editing a club. */
   maxMembers: string;
 
   /**
@@ -108,7 +107,7 @@ export const EMPTY_GROUP_FORM_VALUES: GroupFormValues = {
   rules: '',
   contactPhone: '',
   city: '',
-  maxMembers: '40',
+  maxMembers: '',
 };
 
 interface Props {
@@ -119,10 +118,8 @@ interface Props {
   /**
    * Tick counter the parent bumps to force the wizard to revert
    * specific fields back to `initial` after a server-side rejection.
-   * Used by CommunityEditScreen when `GROUP_MAX_BELOW_CURRENT` fires
-   * — the form jumps back to step 2 and re-syncs `maxMembers` so the
-   * user isn't stuck staring at the rejected number. Other fields
-   * the user typed keep their values.
+   * Retained for legacy server rejections. Other fields the user
+   * typed keep their values. There is no editable member cap.
    */
   revertSignal?: number;
   /** Step (1 or 2) to surface when `revertSignal` ticks. */
@@ -383,10 +380,7 @@ export function GroupWizardForm({
                   onValueChange={(v) => setToggle('isOpen', v)}
                 />
 
-                {/* Community-wide member cap field REMOVED (user request) — the
-                    value still flows through `values.maxMembers` (loaded from the
-                    existing community on edit, default on create) so removing the
-                    input doesn't reset an existing cap. */}
+                {/* Club membership has no cap. Legacy draft values are ignored. */}
 
                 <FormSectionHeader title="דירוג שחקנים" />
                 {/* Internal rating — admins set player skill levels themselves

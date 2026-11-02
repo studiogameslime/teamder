@@ -1,0 +1,50 @@
+{
+  "date": "2026-11-01",
+  "clientTypecheck": "passed",
+  "serverTypecheck": "passed",
+  "functionsLocalBuild": "passed",
+  "jest": {
+    "success": true,
+    "suites": 577,
+    "passed": 6478,
+    "failed": 0,
+    "seconds": 249.151,
+    "log": "artifacts/member-cap-jest-final.log"
+  },
+  "rules": {
+    "passed": 354,
+    "failed": 0,
+    "wholeRulesFile": true,
+    "serial": true,
+    "log": "artifacts/member-cap-rules.log"
+  },
+  "invitationsEmulator": {
+    "passed": 10,
+    "failed": 0,
+    "localOnly": true,
+    "log": "artifacts/member-cap-invitations.log"
+  },
+  "documentation": {
+    "refreshedPairs": 32,
+    "taskFeatureFailures": [],
+    "unrelatedStatusFailures": 43,
+    "unrelatedDocumentationFailures": 150
+  },
+  "sourceHashes": {
+    "firestore.rules": "91a85bbe04ea1ee1c0efeb17b26b011d6b8d0f4570e9ac539df534c15551a0ed",
+    "functions/src/index.ts": "f36065bcd32917342c21f9ed1a54c9a5f38d4b05091e05719817de1b24c0fec9",
+    "functions/src/socialPlayers.ts": "92ee55f278eb95f5177fd447dce43c7ae15d6521eb915d8f2c500cab9c07619a",
+    "src/components/CommunityFilterSheet.tsx": "c64ce3f70e6998a48e11e825c825b33274b6190e59a6259ff4f8fa4f2bba7683",
+    "src/screens/communities/CommunityEditScreen.tsx": "a06e0e5efe1a626b1ef83bcd99f1892d33b0665258a4c3d8403fc2aac6059658",
+    "src/screens/groups/GroupWizardForm.tsx": "08894c18f999c4e6c01ced6ec24988a7eea0512b4d96fb2f4b7c5d8c26464b5c",
+    "src/services/clubCreation.ts": "207479636c3c5de569958101f8470a5c3213ed3ae4db5233b1f37f94a63d8745",
+    "src/services/groupService.ts": "03fb4d90d4c4927065a644f2b89428b2f5c5df1807dae25fbdbf40624a2899af",
+    "src/services/nearbyClubsService.ts": "678e6958d7df7b35541b07de8dccecfbd6f5f108eee28ab7ad1dd925a3d41b23"
+  },
+  "visualChange": false,
+  "deviceTested": false,
+  "deployed": false,
+  "builtMobileBinary": false,
+  "productionClubDocumentsWritten": false,
+  "releaseLogUpdatedAndReadBack": true
+}

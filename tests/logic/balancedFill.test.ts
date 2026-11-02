@@ -37,6 +37,17 @@ test('completed-match optimization never worsens worst-plus-mean score',()=>{
   const score=(ts:string[][])=>{const gaps=[...[0,1,2]].flatMap((a)=>[0,1,2].filter(b=>b>a).map(b=>recommendFill([{index:a,playerIds:ts[a]},{index:b,playerIds:ts[b]}],ts.flatMap((ids,i)=>i!==a&&i!==b?ids:[]),5,ratings).gap));return Math.max(...gaps)*4+gaps.reduce((s,g)=>s+g,0)/gaps.length;};
   expect(score(balanceWithFill(teams,5,ratings))).toBeLessThanOrEqual(score(teams)+1e-9);
 });
+
+test('equal completed matchups break ties on variety without changing sizes or balance',()=>{
+  const teams=[['a','b'],['c','d'],['e','f']];
+  const weights={'a|b':1,'c|d':1,'e|f':1};
+  const result=balanceWithFill(teams,3,{},weights);
+  expect(result.map(t=>t.length)).toEqual([2,2,2]);
+  expect(result.flat().slice().sort()).toEqual(teams.flat().slice().sort());
+  const repeat=result.reduce((sum,ids)=>sum+(weights[ids.slice().sort().join('|') as keyof typeof weights]??0),0);
+  expect(repeat).toBe(0);
+  expect(result.map(t=>fillAverage(t,{}))).toEqual([3,3,3]);
+});
 test.each(['win','tie'])('actual borrowed participants get usage before loans return (%s)',outcome=>{
   const teams=[...sides,{index:2,playerIds:['x','y','z','w']}];
   const start=startRotationSkeleton(teams,5,'temporary')!;

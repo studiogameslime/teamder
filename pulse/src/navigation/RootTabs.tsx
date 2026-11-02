@@ -23,18 +23,15 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { OnboardingActivityScreen } from '../screens/OnboardingActivityScreen';
 import { AppMenu } from '../components/AppMenu';
 import { ProPlanningScreen } from '../screens/ProPlanningScreen';
+import { HomeScreen } from '../screens/HomeScreen';
 
 const Tab = createBottomTabNavigator();
 const Empty = () => null;
 
-// Primary destinations: משימות · אנשים · מועדונים · גרסאות · עוד.
-//
-// Tasks sits FIRST because it's the launch screen: the dashboard used to hold
-// that slot and opened on four heavy network calls, so the app started on a
-// spinner. Tasks reads the work streams and paints cached tasks, so it's up
-// immediately — the dashboard is still one tap away when its numbers are
-// actually wanted.
+// Home uses narrow projected queries, independently of the legacy overview.
+// Tasks remains the single unified work inbox. Versions is available in More.
 const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  Home: 'home-outline',
   Tasks: 'list-outline',
   Overview: 'stats-chart',
   Users: 'people',
@@ -44,6 +41,7 @@ const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 };
 
 const HIDDEN: { name: string; title: string; component: React.ComponentType<any> }[] = [
+  { name: 'Versions', title: 'גרסאות', component: VersionsScreen },
   { name: 'ProPlanning', title: 'תכנון פרו', component: ProPlanningScreen },
   { name: 'OnboardingActivity', title: 'מסלול ההצטרפות', component: OnboardingActivityScreen },
   // Off the bar since the tasks screen took over: the raw streams (errors,
@@ -93,6 +91,7 @@ export function RootTabs() {
   return (
     <View style={{ flex: 1 }}>
       <Tab.Navigator
+        initialRouteName="Home"
         screenOptions={({ route }) => ({
           headerShown: false,
           tabBarActiveTintColor: colors.primary,
@@ -104,6 +103,7 @@ export function RootTabs() {
           ),
         })}
       >
+        <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'בית' }} />
         <Tab.Screen
           name="Tasks"
           component={TasksScreen}
@@ -115,7 +115,6 @@ export function RootTabs() {
         />
         <Tab.Screen name="Users" component={UsersStack} options={{ title: 'אנשים' }} />
         <Tab.Screen name="Clubs" component={ClubsStack} options={{ title: 'מועדונים' }} />
-        <Tab.Screen name="Versions" component={VersionsScreen} options={{ title: 'גרסאות' }} />
         <Tab.Screen
           name="Menu"
           component={Empty}

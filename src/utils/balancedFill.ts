@@ -1,4 +1,5 @@
-import { NEUTRAL_RATING, normalizeRating } from './teamBalanceCore';
+import { NEUTRAL_RATING, normalizeRating, spreadOf, extremeSets, stackPenalty,
+  ratingProfilePenalty, repeatPenalty } from './teamBalanceCore';
 
 export type FillUsage = Record<string, { games: number; fills: number; lastRound: number }>;
 export type FillTeam = { index: number; playerIds: string[] };
@@ -59,8 +60,22 @@ export function recommendFill(
 
 /** Minimise the worst completed matchup first, then the mean matchup gap.
  * Size-preserving swaps keep the configured 5/4/4 or 4/4/4 structure. */
-export function balanceWithFill(initial: string[][], capacity: number, ratings: Record<string, number>) {
+export function balanceWithFill(initial: string[][], capacity: number, ratings: Record<string, number>, pairWeights?: Record<string, number>) {
   let teams = initial.map(ids => ids.slice());
+  const rate = (id: string) => fillRating(id, ratings);
+  const extremes = extremeSets(initial.flat().map(id => ({ id, rating: rate(id) })), initial.length);
+  // Completed-match quality remains primary. Only equally good completed
+  // matchups use the new base-gap, skill-profile, then variety priorities.
+  const detail = (candidate: string[][]) => {
+    const built = candidate.map(ids => ({ ids, size: ids.length, total: ids.reduce((sum, id) => sum + rate(id), 0) }));
+    return [spreadOf(built), stackPenalty(built, extremes.top, extremes.bottom), ratingProfilePenalty(built, rate), repeatPenalty(built, pairWeights)];
+  };
+  const betterDetail = (a: number[], b: number[]) => {
+    for (let i = 0; i < a.length; i++) {
+      if (Math.abs(a[i] - b[i]) > 1e-9) return a[i] < b[i];
+    }
+    return false;
+  };
   const score = (candidate: string[][]) => {
     const gaps: number[] = [];
     for (let a = 0; a < candidate.length; a++) for (let b = a + 1; b < candidate.length; b++) {
@@ -71,6 +86,7 @@ export function balanceWithFill(initial: string[][], capacity: number, ratings: 
     return Math.max(...gaps) * 4 + gaps.reduce((s, g) => s + g, 0) / Math.max(1, gaps.length);
   };
   let best = score(teams);
+  let bestDetail = detail(teams);
   // Limit work on large squads. Every accepted swap must improve all-matchup score.
   let evaluations = 0;
   for (let pass = 0; pass < 3; pass++) {
@@ -81,7 +97,9 @@ export function balanceWithFill(initial: string[][], capacity: number, ratings: 
         const next = teams.map(ids => ids.slice());
         [next[a][x], next[b][y]] = [next[b][y], next[a][x]];
         const value = score(next);
-        if (value < best - 1e-9) { teams = next; best = value; improved = true; }
+        if (value < best - 1e-9 || Math.abs(value - best) <= 1e-9 && betterDetail(detail(next), bestDetail)) {
+          teams = next; best = value; bestDetail = detail(next); improved = true;
+        }
       }
     }
     if (!improved) break;

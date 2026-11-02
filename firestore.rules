@@ -450,6 +450,8 @@ service cloud.firestore {
       // them could have written a junk user doc. Closed here rather than
       // relying on the client to keep not doing it.
       allow create: if isFullAccount() && isSelf(uid) &&
+        (!('dmRequestPolicy' in request.resource.data) ||
+          (request.resource.data.dmRequestPolicy == 'everyone' && request.resource.data.dmRequestPolicySource == 'default')) &&
         (!('stats' in request.resource.data) || request.resource.data.stats == null) &&
         request.resource.data.get('friends', []).size() == 0 &&
         // Brand-new doc: no inviter known yet, OR invitedBy is set to
@@ -530,7 +532,7 @@ service cloud.firestore {
         ) &&
         // `stats` is server-derived. A client that sets it would be
         // inflating their public attendance/cancellation %. Block.
-        !affectedKeys().hasAny(['stats', 'friends']);
+        !affectedKeys().hasAny(['stats', 'friends', 'dmRequestPolicy', 'dmRequestPolicySource', 'dmRequestPolicyAt']);
 
       allow delete: if false;
 
@@ -573,7 +575,6 @@ service cloud.firestore {
         //   • creatorId (ownership transfer would let an admin
         //     dispossess the founder)
         //   • adminIds (only the creator may rotate it; see clause)
-        //   • playerIds size growth beyond maxMembers
         // Other fields the admin owns end-to-end.
         isGroupAdmin(gid) &&
         // creatorId is now MANDATORY on every existing group doc.
@@ -627,10 +628,9 @@ service cloud.firestore {
         isOptionalShortString(request.resource.data, 'city', 80) &&
         isOptionalShortString(request.resource.data, 'fieldName', 200) &&
         isOptionalShortString(request.resource.data, 'fieldAddress', 300) &&
-        // Array caps so an admin (or a compromised admin account)
-        // can't blow the doc up to MB-size.
+        // Club membership has no product cap. Keep the list shape and
+        // the separate admin/pending limits; Firestore enforces doc size.
         request.resource.data.playerIds is list &&
-        request.resource.data.playerIds.size() <= 500 &&
         request.resource.data.adminIds is list &&
         request.resource.data.adminIds.size() <= 20 &&
         (
@@ -1725,6 +1725,15 @@ service cloud.firestore {
     // convId = sorted([uidA, uidB]).join('__'); exactly two participants.
     // Access is limited to those two. Starting a NEW conversation is gated by
     // mutual trusted friendship. Existing history stays participant-only.
+    // Request state/operations/quotas are server-only. Never expose a decline
+    // to the sender, even through direct reads or collection queries.
+    match /dmRequestState/{id} { allow read, write: if false; }
+    match /dmOperations/{id} { allow read, write: if false; }
+    match /dmRequestQuotas/{id} { allow read, write: if false; }
+    match /users/{owner}/dmRequests/{id} {
+      allow read: if isSelf(owner) && isFullAccount();
+      allow write: if false;
+    }
     match /dmConversations/{convId} {
       function dmParticipants() {
         return get(/databases/$(database)/documents/dmConversations/$(convId))
@@ -1763,12 +1772,15 @@ service cloud.firestore {
           && (otherUid == 'teamder' || (
             exists(/databases/$(database)/documents/users/$(request.auth.uid))
             && exists(/databases/$(database)/documents/users/$(otherUid))
-            && otherUid in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('friends', [])
-            && request.auth.uid in get(/databases/$(database)/documents/users/$(otherUid)).data.get('friends', [])
+            && ((otherUid in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('friends', [])
+            && request.auth.uid in get(/databases/$(database)/documents/users/$(otherUid)).data.get('friends', []))
+            || (exists(/databases/$(database)/documents/dmConversations/$(convId))
+              && get(/databases/$(database)/documents/dmConversations/$(convId)).data.get('messagingApproved', false) == true))
           ));
       }
       allow read: if isDmParticipant();
       allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['participants', 'createdAt', 'updatedAt'])
         && request.resource.data.participants is list
         && request.resource.data.participants.size() == 2
         && request.resource.data.participants[0] != request.resource.data.participants[1]
@@ -1793,15 +1805,19 @@ service cloud.firestore {
           // direct writes that skip conversation creation or the app UI.
           && otherAllowsMe(dmOther());
         allow update: if false;
-        allow delete: if isSignedIn() && resource.data.senderId == request.auth.uid;
+        // Preserve the first request for reporting until the chat is approved.
+        allow delete: if isSignedIn() && resource.data.senderId == request.auth.uid
+          && (resource.data.get('messageRequest', false) != true
+            || get(/databases/$(database)/documents/dmConversations/$(convId)).data.get('messagingApproved', false) == true);
       }
       match /reads/{uid} {
         allow read: if isDmParticipant();
-        allow write: if isSelf(uid) && isDmParticipant();
+        allow write: if isSelf(uid) && isDmParticipant() && otherAllowsMe(dmOther());
       }
       match /typing/{uid} {
-        allow read: if isDmParticipant();
-        allow write: if isSelf(uid) && isDmParticipant();
+        allow read: if isDmParticipant() && otherAllowsMe(dmOther());
+        allow create, update: if isSelf(uid) && isDmParticipant() && otherAllowsMe(dmOther());
+        allow delete: if isSelf(uid) && isDmParticipant();
       }
     }
 

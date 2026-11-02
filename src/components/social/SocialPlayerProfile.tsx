@@ -98,9 +98,10 @@ export function SocialPlayerProfile({ userId, groupId, preview }: { userId: stri
         <View style={s.row}><Text style={s.body}>{p.city}</Text>{p.city?<Ionicons name="location-outline" size={15} color="#667796"/>:null}</View>
         {p.friend?<View style={[s.row,local.friend]}><Text style={{fontSize:12,fontWeight:'700',color:'#15803D'}}>חברים</Text><Ionicons name="people" size={15} color="#15803D"/></View>:null}
       </ImageBackground>
-      <View style={s.row}><View style={{flex:1}}>{p.friend?<SocialAction title="שלח הודעה" icon="chatbubble-outline" onPress={()=>{if(me&&!preview)goToDirectChat(dmConvId(me.id,userId));}}/>:preview?<SocialAction title="הוסף לחברים" icon="person-add-outline" onPress={()=>{}}/>:me?<FriendActionButton meId={me.id} otherUserId={userId} onChanged={()=>setTick(n=>n+1)}/>:null}</View>
+      <View style={s.row}><View style={{flex:1}}>{me||preview?<SocialAction title="שלח הודעה" icon="chatbubble-outline" onPress={()=>{if(preview){toast.info('תצוגת המחשה בלבד');return;}if(me)goToDirectChat(dmConvId(me.id,userId));}}/>:null}</View>
         {(managers.length>0||games.length>0||preview)?<View style={{flex:1}}><SocialAction title="שלח הזמנה" icon="paper-plane-outline" secondary onPress={()=>void openInvites()}/></View>:null}
       </View>
+      {!p.friend && !preview && me ? <FriendActionButton meId={me.id} otherUserId={userId} onChanged={()=>setTick(n=>n+1)}/> : null}
       {p.friend ? <PairStory name={p.name} summary={profile.pairSummary ?? {sharedRounds:p.sharedRounds,sameTeam:profile.together,against:null,assists:null,lastSharedRoundAt:null}}/> : p.sharedRounds>0||p.commonClubCount>0 ? <View style={s.card}><SocialTitle title="נפגשתם על המגרש" icon="people-outline"/><Text style={s.body}>{p.sharedRounds} מחזורים משותפים · {p.commonClubCount} מועדונים משותפים</Text></View> : null}
       {groupId && profile.canSeeStatistics && profile.clubs.some(c=>c.id===groupId) && groups.some(c=>c.id===groupId&&!!me&&(c.playerIds.includes(me.id)||c.adminIds.includes(me.id))) ? <SocialAction title="להשוואה במועדון" icon="analytics-outline" secondary onPress={()=>nav.navigate('PlayerCompare',{groupId,otherUid:userId,otherName:p.name})}/> : null}
       <PlayerAvailabilitySummary player={p}/>

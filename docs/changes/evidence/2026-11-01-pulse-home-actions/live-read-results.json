@@ -1,0 +1,39 @@
+{
+  "readOnly": true,
+  "sourceService": true,
+  "sourceRestDeserializer": true,
+  "adminSessionTransport": false,
+  "verifiedAt": "2026-11-01T17:26:29.234Z",
+  "rounds": {
+    "withRegistrations": 1,
+    "registered": 1,
+    "at": 1793553988469
+  },
+  "signups": {
+    "count": 2,
+    "at": 1793553988469
+  },
+  "people": {
+    "count": 7,
+    "at": 1793553988469
+  },
+  "clubs": {
+    "total": 1,
+    "pending": 1,
+    "withOrganizer": 1
+  },
+  "actions": {
+    "solo": 1,
+    "soloUnknown": 0,
+    "noFirstRound": 1,
+    "firstRoundUnknown": 0,
+    "shortages": 1,
+    "shortageUnknown": 0,
+    "followUps": 0,
+    "requests": 75,
+    "support": 1,
+    "failed": []
+  },
+  "failed": [],
+  "errors": []
+}

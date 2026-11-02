@@ -1,6 +1,7 @@
 import fs from 'fs';
 import vm from 'vm';
 import ts from 'typescript';
+import { gameRemovalBlocksWrite } from '../../functions/src/gameProcessingGuard';
 
 function fixture(): any {
   const records = new Map<string, any>();
@@ -49,6 +50,7 @@ function fixture(): any {
     'firebase-functions/v2/scheduler': {}, 'firebase-functions/v2/tasks': {},
     './appCheckPolicy': { ENFORCE_APP_CHECK: false }, './expectedCallableError': { ExpectedCallableError: TestError },
     './personalActivityWindows': { personalActivityPlayerIds: (g: any) => g.testPlayers ?? [] },
+    './gameProcessingGuard': { gameRemovalBlocksWrite },
   };
   const exports: Record<string, any> = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('functions/src/personalActivity.ts', 'utf8'), {
@@ -66,6 +68,22 @@ function fixture(): any {
   const request = (data: any) => ({ auth: { uid: 'u', token: { firebase: { sign_in_provider: 'password' } } }, data });
   return { ...exports, records, input, request, hooks, recursiveDelete };
 }
+
+test('personal uploads stop while the still-existing game is reserved for erasure',async()=>{
+  const w=fixture();w.records.set('gameProcessingGuards/g',{data:{state:'removing',active:{},operationId:'op'},version:1});
+  await expect(w.savePersonalActivity(w.request(w.input()))).rejects.toMatchObject({code:'failed-precondition'});
+  expect([...w.records.keys()].some((p:string)=>p.startsWith('personalActivityPrivate/'))).toBe(false);
+});
+test('personal uploads cannot create private data when the game disappears before transaction commit',async()=>{
+  const w=fixture();w.hooks.beforeCommit=()=>w.records.delete('games/g');
+  await expect(w.savePersonalActivity(w.request(w.input()))).rejects.toMatchObject({code:'not-found'});
+  expect([...w.records.keys()].some((p:string)=>p.startsWith('personalActivityPrivate/'))).toBe(false);
+});
+test('a delayed activity journal event cannot recreate entries for a missing game',async()=>{
+  const w=fixture();w.records.delete('games/g');const before=[...w.records.entries()];
+  await w.onGamePersonalActivityChanged({params:{gameId:'g'},data:{before:{data:()=>({status:'active',testPlayers:['u'],liveMatch:{timerRunning:true,timerLastStartedAt:10000}}),updateTime:{toMillis:()=>10000}},after:{data:()=>({status:'finished',testPlayers:['u'],liveMatch:{timerRunning:false}}),updateTime:{toMillis:()=>11000,seconds:11,nanoseconds:0}}}});
+  expect([...w.records.entries()]).toEqual(before);
+});
 
 test('journal segments use prior lineup and a newly recorded timer stop', () => {
   const f = fixture();
@@ -174,6 +192,7 @@ test('get is bound to the caller and cannot read another player by passing a use
 });
 test('trigger baseline and deterministic event records survive duplicate and reverse delivery', async () => {
   const f = fixture();
+  f.records.set('games/new', {data:{status:'finished'},version:3000});
   const stamp = (at: number) => ({ seconds: Math.floor(at / 1000), nanoseconds: (at % 1000) * 1000000, toMillis: () => at });
   const event = (from: number, to: number) => ({ params: { gameId: 'new' }, data: {
     before: { data: () => ({ testPlayers: ['u'], liveMatch: { timerRunning: true, timerLastStartedAt: 1000 } }), updateTime: stamp(from) },

@@ -1,5 +1,6 @@
 import { errorPresentation } from './errorPresentation';
 import { commitFreshSeasonBatch } from './commitFreshSeasonBatch';
+import { withGameProcessingGuard, gameRemovalBlocksWrite } from './gameProcessingGuard';
 import { ExpectedCallableError } from './expectedCallableError';
 import { observeCaughtError, observeSettledErrors, reportServerError } from './serverErrorLog';
 
@@ -148,7 +149,7 @@ import { computeMovement } from './eveningMovement';
 
 // Chat fan-out + "one push per chat until opened" — defined in its own
 // module, re-exported so Cloud Functions discovers the triggers.
-export { onGameChatMessage, onCommunityChatMessage, onDmChatMessage } from './chatPush';
+export { onGameChatMessage, onCommunityChatMessage, onDmChatMessage, onDmRequestCreated } from './chatPush';
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -5588,6 +5589,7 @@ export const onGameRosterChanged = onDocumentWritten(
       return;
     }
 
+    await withGameProcessingGuard(db, event.params.gameId, async () => {
     if (after.groupId && (before?.status !== after.status || (before as Record<string, unknown> | undefined)?.playVerified !== (after as Record<string, unknown>).playVerified)) {
       try { await seasonManager().refresh(after.groupId); }
       catch (err) {
@@ -7188,6 +7190,7 @@ export const onGameRosterChanged = onDocumentWritten(
     console.log(
       `[onGameRosterChanged] dispatched gameFillingUp for ${gameId} (${afterCount}/${max}, ${remaining} left)`
     );
+    });
   }
 );
 
@@ -7393,7 +7396,7 @@ function shuffleInPlace<T>(arr: T[]): void {
 }
 
 /**
- * rating_balanced_v2 — distribute registered players into N teams so the
+ * rating_priority_v3 — distribute registered players into N teams so the
  * AVERAGE rating per team is as close to equal as possible.
  *
  * - Unrated players are scored at the neutral 3.
@@ -7812,7 +7815,7 @@ async function generateForGame(
         autoTeamsGeneratedBy: 'system',
         teamBalanceMeta: {
           generatedAt: Date.now(),
-          algorithm: 'rating_balanced_v2',
+          algorithm: data.autoTeamsMethod === 'random' ? 'random_even_v1' : 'rating_priority_v3',
           unratedCount: result.unratedCount,
           teamRatings: result.teamRatings,
           // Recorded so a split can be explained after the fact and the
@@ -8202,7 +8205,7 @@ async function generateDraftTeamsForGame(
         autoTeamsAt: admin.firestore.FieldValue.delete(),
         teamBalanceMeta: {
           generatedAt: Date.now(),
-          algorithm: 'rating_balanced_v2',
+          algorithm: data.autoTeamsMethod === 'random' ? 'random_even_v1' : 'rating_priority_v3',
           unratedCount: result.unratedCount,
           teamRatings: result.teamRatings,
           // Recorded so a split can be explained after the fact and the
@@ -9890,10 +9893,11 @@ export const createGroupCallable = onCall(
     );
     const rulesText = pickShortString(input.rules, 2000, 'rules', false);
 
-    const maxMembers =
-      typeof input.maxMembers === 'number' && input.maxMembers > 0
-        ? Math.min(input.maxMembers, 1000)
-        : undefined;
+    // Retain the old value only in the request fingerprint so an old
+    // durable creation attempt can still recover its receipt after upgrade.
+    // It is never written to either club document or used as a member cap.
+    const legacyMaxMembers = typeof input.maxMembers === 'number' && input.maxMembers > 0
+      ? Math.min(input.maxMembers, 1000) : undefined;
     const isOpen = input.isOpen === true;
     const internalRating = input.internalRating === true;
     // Only meaningful alongside internalRating — ratings become admin-private.
@@ -9952,7 +9956,6 @@ export const createGroupCallable = onCall(
     if (city !== undefined) groupDoc.city = city;
     if (contactPhone !== undefined) groupDoc.contactPhone = contactPhone;
     if (rulesText !== undefined) groupDoc.rules = rulesText;
-    if (maxMembers !== undefined) groupDoc.maxMembers = maxMembers;
     if (cardsEnabled) groupDoc.cardsEnabled = true;
     if (yellowCardValidityDays !== null) groupDoc.yellowCardValidityDays = yellowCardValidityDays;
     if (redCardValidityDays !== null) groupDoc.redCardValidityDays = redCardValidityDays;
@@ -9974,7 +9977,6 @@ export const createGroupCallable = onCall(
     if (description !== undefined) publicDoc.description = description;
     if (city !== undefined) publicDoc.city = city;
     if (contactPhone !== undefined) publicDoc.contactPhone = contactPhone;
-    if (maxMembers !== undefined) publicDoc.maxMembers = maxMembers;
     if (hasGeo) {
       publicDoc.lat = lat;
       publicDoc.lng = lng;
@@ -9984,7 +9986,7 @@ export const createGroupCallable = onCall(
     // Bind only validated creation content, excluding server-generated identity,
     // clock and invite code. Old clients omit the token and still create normally.
     const fingerprint = fingerprintCreation({
-      name, description, city, contactPhone, rulesText, maxMembers, isOpen,
+      name, description, city, contactPhone, rulesText, maxMembers: legacyMaxMembers, isOpen,
       internalRating, hideInternalRating, cardsEnabled, yellowCardValidityDays,
       redCardValidityDays, lat: hasGeo ? lat : undefined,
       lng: hasGeo ? lng : undefined, coverImageId,
@@ -12893,6 +12895,9 @@ export const acceptFriendRequest = onCall(
   },
 );
 
+export { dmRequestAction, setDmRequestPrivacy } from './dmRequests';
+import { preserveDmOnRemoval } from './dmRequests';
+
 export const removeFriendship = onCall(
   { enforceAppCheck: ENFORCE_APP_CHECK },
   async (request) => {
@@ -12907,7 +12912,8 @@ export const removeFriendship = onCall(
       throw new HttpsError('invalid-argument', 'bad otherUserId');
     }
     const now = Date.now();
-    const batch = db.batch();
+    await db.runTransaction(async batch => {
+    await preserveDmOnRemoval(batch, db.collection('users').doc(uid), db.collection('users').doc(otherUserId));
     batch.set(
       db.collection('users').doc(uid),
       {
@@ -12928,7 +12934,7 @@ export const removeFriendship = onCall(
     // re-friend starts clean. Deleting a missing doc is a no-op.
     batch.delete(db.collection('friendRequests').doc(`${uid}__${otherUserId}`));
     batch.delete(db.collection('friendRequests').doc(`${otherUserId}__${uid}`));
-    await batch.commit();
+    });
     return { ok: true };
   },
 );
@@ -15006,7 +15012,7 @@ export const commitRoundStats = onCall(
     // retry of the same payload overflows identically. MAX_SIDE bounds each
     // current lineup; restored scorers can expand it, so the exact count must
     // remain authoritative rather than silently dropping credited events.
-    if (sb.opCount + (grpSnap ? 1 : 0) + (roundHistoryDoc ? 1 : 0) + (liveGoalIds !== undefined ? 1 : 0) > MAX_ROUND_BATCH_OPS) {
+    if (sb.opCount + (grpSnap ? 1 : 0) + (roundHistoryDoc ? 1 : 0) + 1 > MAX_ROUND_BATCH_OPS) {
       console.error(
         `[commitRoundStats] batch too large: ${sb.opCount} ops ` +
           `(A=${A.length} B=${B.length} goals=${cappedGoals.length} pens=${pens.length})`,
@@ -15057,6 +15063,10 @@ export const commitRoundStats = onCall(
             lastCommittedRoundId: String(roundId),
             updatedAt: now,
           }, { lastUpdateTime: snap.updateTime! });
+        } else {
+          // Legacy clients still need an atomic parent-version guard. Without
+          // it an in-flight request could add statistics after parent erasure.
+          batch.update(snap.ref, { updatedAt: now }, { lastUpdateTime: snap.updateTime! });
         }
         if (grpSnap?.exists) batch.update(grpSnap.ref, { updatedAt: Date.now() }, { lastUpdateTime: grpSnap.updateTime! });
         await batch.commit();
@@ -15068,7 +15078,14 @@ export const commitRoundStats = onCall(
                 // create(), never set() — an existing document is the one the
                 // original commit agreed with, and a later retry could carry a
                 // different (edited) payload.
-                await roundHistoryRef.create(roundHistoryDoc);
+                await db.runTransaction(async tx => {
+                  if (await gameRemovalBlocksWrite(tx, db, gameId)) throw new HttpsError('failed-precondition', 'game removal in progress');
+                  // A delayed legacy repair must not recreate history under a
+                  // parent that an administrator has already erased.
+                  const parent = await tx.get(snap.ref);
+                  if (!parent.exists) throw new HttpsError('not-found', 'game not found');
+                  tx.create(roundHistoryRef, roundHistoryDoc);
+                });
                 console.log(
                   '[commitRoundStats] healed missing roundHistory',
                   gameId,
@@ -15216,6 +15233,10 @@ export const saveGamePhysical = onCall(
     const ref = db.collection('games').doc(gameId).collection('physical').doc(uid);
     // Read/merge/write atomically: two syncs must not lower each other's maxima.
     await db.runTransaction(async (tx) => {
+    // Reading the parent IN this transaction serializes late device syncs
+    // against administrative deletion, including when no physical row existed.
+    if (await gameRemovalBlocksWrite(tx, db, gameId)) throw new HttpsError('failed-precondition', 'game removal in progress');
+    if (!(await tx.get(snap.ref)).exists) throw new HttpsError('not-found', 'game not found');
     const prev = ((await tx.get(ref)).data() ?? {}) as Record<string, unknown>;
     const prevNum = (k: string): number => {
       const n = prev[k];

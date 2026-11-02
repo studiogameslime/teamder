@@ -206,6 +206,8 @@ export const userService = {
         ? cachedName
         : '';
     const fresh: User = {
+      dmRequestPolicy: 'everyone',
+      dmRequestPolicySource: 'default',
       id: fbUser.uid,
       name: seedName || (fbUser.displayName ?? ''),
       email: fbUser.email ?? cached?.email ?? undefined,
@@ -327,6 +329,8 @@ export const userService = {
       return existing;
     }
     const fresh: User = {
+      dmRequestPolicy: 'everyone',
+      dmRequestPolicySource: 'default',
       id: fbUser.uid,
       name: fbUser.displayName ?? '',
       email: fbUser.email ?? undefined,
@@ -380,6 +384,8 @@ export const userService = {
       return existing;
     }
     const fresh: User = {
+      dmRequestPolicy: 'everyone',
+      dmRequestPolicySource: 'default',
       id: fbUser.uid,
       // Apple hands the name back only on the first authorization
       // (via `fullName`); Firebase's displayName is usually empty for
@@ -435,6 +441,8 @@ export const userService = {
       return existing;
     }
     const fresh: User = {
+      dmRequestPolicy: 'everyone',
+      dmRequestPolicySource: 'default',
       id: fbUser.uid,
       name: fbUser.displayName ?? '',
       email: fbUser.email ?? email.trim(),
@@ -482,6 +490,8 @@ export const userService = {
       return existing;
     }
     const fresh: User = {
+      dmRequestPolicy: 'everyone',
+      dmRequestPolicySource: 'default',
       id: fbUser.uid,
       name: '',
       email: fbUser.email ?? email.trim(),

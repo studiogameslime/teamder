@@ -221,6 +221,13 @@ test('wire fingerprints ignore object key order and timer ticks while preserving
  expect(clientFingerprint(g)).toBe(first);const reversed={...g,rotation:Object.fromEntries(Object.entries(g.rotation).reverse())};expect(serverFingerprint(reversed)).toBe(first);
  g.liveMatch.shootout.kicks[0].id='different';expect(serverFingerprint(g)).not.toBe(first);
 });
+
+test.each(['A','B'])('manual next side %s survives the converter and is part of client and server decision identities',side=>{
+ const x=world(false,true),g=x.state();const previous=serverFingerprint(g),local=shootoutFingerprint(g.liveMatch.shootout);
+ g.liveMatch.shootout.nextTeam=side;
+ expect(serverFingerprint(g)).toBe(clientFingerprint(g));expect(serverFingerprint(g)).toBe(clientFingerprint(x.read()));
+ expect(serverFingerprint(g)).not.toBe(previous);expect(shootoutFingerprint(g.liveMatch.shootout)).not.toBe(local);
+});
 test('wire parity includes normalized draft and rotation history without depending on map key order',()=>{
  const x=world();Object.assign(x.state().rotation,{baseTeams:[{index:1,playerIds:['p4','p5']}],fillUsage:{p4:{games:1,fills:0,lastRound:2}},lastRoundWinners:['p4'],lastRoundLosers:['p8'],lastRoundAt:5});
  Object.assign(x.state().draftTeams,{fillMode:'permanent',originalTeams:clone(x.state().draftTeams.teams),leftHome:[{playerId:'p2',homeTeam:0,at:3}]});

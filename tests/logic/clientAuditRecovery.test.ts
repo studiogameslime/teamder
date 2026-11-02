@@ -60,7 +60,7 @@ test('chat read and scroll effects see a new message in a full 100-message slidi
   for (const needle of ['chatService.markChatRead', 'listRef.current?.scrollToEnd']) {
     const effect = find(file, n => ts.isCallExpression(n) && n.expression.getText(file) === 'useEffect' && !!n.arguments[0]?.getText(file).includes(needle)) as ts.CallExpression;
     const deps = (shift: number) => {
-      const context: any = { messages: Array.from({ length: 100 }, (_, i) => ({ id: String(i + shift) })), me: { id: 'a' }, scope: 'community', parentId: 'g', denied: false, reduced: false, focused: true };
+      const context: any = { messages: Array.from({ length: 100 }, (_, i) => ({ id: String(i + shift) })), me: { id: 'a' }, scope: 'community', parentId: 'g', denied: false, reduced: false, focused: true, suppressSignals: false };
       context.latestMessageId = expression(latest.initializer!.getText(file), context);
       return expression(effect.arguments[1].getText(file), context);
     };

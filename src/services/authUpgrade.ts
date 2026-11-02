@@ -186,10 +186,9 @@ async function acquire(method: AuthMethod, email?: string, password?: string): P
     const provider = new OAuthProvider('apple.com');
     return {
       credential: provider.credential({ idToken: identityToken, rawNonce }),
-      mirror: () =>
-        mirrorCredentialToNativeAuth((rn) =>
-          rn.AppleAuthProvider.credential(identityToken, rawNonce),
-        ),
+      // The native timer relay is Android-only. Apple tokens cannot be replayed
+      // into a second Firebase session after the primary sign-in consumes them.
+      mirror: () => {},
       fullName,
     };
   }
@@ -243,11 +242,11 @@ export async function upgradeAnonymous(
       await bindUpgradedIdentity(cred.user.uid, method, true);
       return { status: 'linked', uid: cred.user.uid, isNewAccount: true };
     } catch (err) {
-    observeCaughtError(err, {"source":"src/services/authUpgrade.ts","handler":"upgradeAnonymous","site":"authUpgrade:0207edb007"});
       const code = (err as { code?: string })?.code ?? '';
       if (isCancellation(err)) return { status: 'cancelled' };
 
       if (!isAlreadyInUse(code)) {
+        observeCaughtError(err, {"source":"src/services/authUpgrade.ts","handler":"upgradeAnonymous","site":"authUpgrade:0207edb007"});
         // `account-exists-with-different-credential` lands here on purpose.
         // Retrying the same credential cannot resolve it — the address belongs
         // to a DIFFERENT provider, and the person has to use that provider's
@@ -259,53 +258,21 @@ export async function upgradeAnonymous(
       }
 
       // ── Case B ────────────────────────────────────────────────────────
-      // Prefer the credential Firebase handed back on the error so the person
-      // is not asked to authenticate twice.
-      const recovered = credentialFromError(err) ?? acquired.credential;
+      // Reuse recoverable Google/email credentials; Apple needs a fresh nonce.
       try {
+        // A failed Apple link consumes its nonce too. Acquire once more BEFORE
+        // signing in instead of knowingly replaying the token, reporting that
+        // failure, and only then asking Apple again. Google/email stay reusable.
+        const fallback = method === 'apple' ? await acquire(method) : acquired;
+        const recovered = method === 'apple' ? fallback.credential : credentialFromError(err) ?? acquired.credential;
         const cred = await signInWithCredential(auth, recovered);
-        acquired.mirror();
+        fallback.mirror();
         await bindUpgradedIdentity(cred.user.uid, method, false);
         return { status: 'switched', uid: cred.user.uid, isNewAccount: false };
       } catch (inner) {
-    observeCaughtError(inner, {"source":"src/services/authUpgrade.ts","handler":"upgradeAnonymous","site":"authUpgrade:0b5d72841e"});
         if (isCancellation(inner)) return { status: 'cancelled' };
+        observeCaughtError(inner, {"source":"src/services/authUpgrade.ts","handler":"upgradeAnonymous","site":"authUpgrade:0b5d72841e"});
         const icode = (inner as { code?: string })?.code ?? 'signin-failed';
-
-        // ── An Apple credential is SINGLE-USE ────────────────────────────
-        //
-        // Its nonce is spent by the `linkWithCredential` that just failed, so
-        // replaying the same one here is refused:
-        //
-        //   auth/missing-or-invalid-nonce
-        //   "Duplicate credential received. Please try again with a new
-        //    credential."
-        //
-        // That is not a double tap. It is every iOS person who already has an
-        // Apple account and opens the app on a guest session: the link fails
-        // because the credential is in use, the fallback replays the spent
-        // token, and they cannot sign in at all. Seen twice in production
-        // within twenty minutes, on iOS, on the Apple path.
-        //
-        // Firebase only attaches a fresh credential to the error sometimes;
-        // when it does, `recovered` above is already a new one and this never
-        // runs. When it does not, the only way through is to ask Apple again.
-        // One extra prompt beats a sign-in that cannot complete.
-        if (icode === 'auth/missing-or-invalid-nonce') {
-          try {
-            const again = await acquire(method);
-            const cred = await signInWithCredential(auth, again.credential);
-            again.mirror();
-            await bindUpgradedIdentity(cred.user.uid, method, false);
-            return { status: 'switched', uid: cred.user.uid, isNewAccount: false };
-          } catch (retry) {
-    observeCaughtError(retry, {"source":"src/services/authUpgrade.ts","handler":"upgradeAnonymous","site":"authUpgrade:d197353c74"});
-            if (isCancellation(retry)) return { status: 'cancelled' };
-            const rcode = (retry as { code?: string })?.code ?? 'signin-failed';
-            logError('upgradeNonceRetry', retry, { method, code: rcode });
-            return { status: 'failed', code: rcode, message: (retry as Error)?.message };
-          }
-        }
 
         logError('upgradeFallbackSignIn', inner, { method, code: icode });
         return { status: 'failed', code: icode, message: (inner as Error)?.message };

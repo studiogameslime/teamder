@@ -58,6 +58,44 @@ function untimedFixture(mock:boolean) {
   return x;
 }
 
+test.each([false,true])('switching the next shootout side preserves the series, alternates, retries and restores an undone turn (mock: %s)',async mock=>{
+  const x=serviceFixture(mock), so=x.state.liveMatch.shootout;
+  so.firstTeam='B';
+  const kick=(id:string,team:'A'|'B',count:number)=>({id,team,kickerId:team==='A'?'a':'b',keeperId:team==='A'?'b-keeper':'a-keeper',scored:true,outcome:'goal',expectedRoundId:'round-one',expectedKickCount:count});
+  await x.service.recordShootoutKick('g',kick('one','B',0));
+  await x.service.recordShootoutKick('g',kick('two','A',1));
+  const before=structuredClone(so), fingerprint=shootoutFingerprint(so);
+  await x.service.changeShootoutNextTeam('g','A','round-one',fingerprint);
+  await x.service.changeShootoutNextTeam('g','A','round-one',fingerprint);
+  expect(so).toEqual({...before,nextTeam:'A'});
+  await expect(x.service.recordShootoutKick('g',kick('stale','B',2))).rejects.toThrow('SHOOTOUT_CHANGED');
+  await x.service.recordShootoutKick('g',kick('three','A',2));
+  await x.service.recordShootoutKick('g',kick('three','A',2));
+  expect(so.kicks.map((k:any)=>k.team)).toEqual(['B','A','A']);expect(so.nextTeam).toBe('B');
+  await expect(x.service.changeShootoutNextTeam('g','A','round-one',fingerprint)).rejects.toThrow();
+  await x.service.undoLastShootoutKick('g','three');expect(so.nextTeam).toBe('A');
+  await x.service.recordShootoutKick('g',kick('replacement','A',2));
+  await x.service.recordShootoutKick('g',kick('four','B',3));
+  expect(so.nextTeam).toBe('A');expect(so.firstTeam).toBe('B');
+  expect(x.state.liveMatch.scoreA).toBe(0);expect(x.state.liveMatch.scoreB).toBe(0);
+  expect(so.kicks.slice(0,2)).toEqual(before.kicks);
+});
+
+test.each([false,true])('turn changes reject a closed, stale, committed or empty shootout (mock: %s)',async mock=>{
+  for(const mode of ['empty','round','committed','closed','changed']) {
+    const x=serviceFixture(mock),so=x.state.liveMatch.shootout;
+    if(mode!=='empty')so.kicks=[{id:'one',team:'A',kickerId:'a',keeperId:'b-keeper',scored:true,at:1}];
+    const fingerprint=shootoutFingerprint(so);
+    if(mode==='round')x.state.rotation.roundInstanceId='other';
+    if(mode==='committed')x.state.lastCommittedRoundId='round-one';
+    if(mode==='closed')x.state.status='finished';
+    if(mode==='changed')so.kicks[0].scored=false;
+    const before=structuredClone(so);
+    await expect(x.service.changeShootoutNextTeam('g','B','round-one',fingerprint)).rejects.toThrow();
+    expect(so).toEqual(before);
+  }
+});
+
 test.each([false,true])('discarding shootout kicks validates their snapshot and is retryable without touching goals (mock: %s)',async mock=>{
   const x=serviceFixture(mock);
   x.state.liveMatch.goals=[{id:'goal',team:'A',scorerId:'a'}];x.state.liveMatch.scoreA=1;x.state.liveMatch.scoreB=1;
@@ -265,6 +303,7 @@ test('the wizard waits for acknowledgement and retries exactly the failed outcom
   let reject!: (error: Error) => void;
   const write = jest.fn().mockImplementationOnce(() => new Promise((_resolve, r) => { reject = r; })).mockResolvedValue(undefined);
   const ctx: any = { writing: { current: false }, attempt: { current: null }, attemptPeople: { current: null }, uiEpoch: { current: 1 }, visibleRef: { current: true }, kicker: { id: 'a' }, keeper: { id: 'b' }, kickingTeam: 'A', roundId: 'round-one', kicks: [], signature: '[]', gameId: 'g', gameService: { recordShootoutKick: write }, setBusy: jest.fn(), setReselectAllowed: jest.fn(), setSaveErrorMessage: jest.fn(), logError: jest.fn(), setSaveError: jest.fn(), setShadow: jest.fn(), setKickerId: jest.fn(), setScreen: jest.fn(), setSelectedKeeperId: jest.fn(), setCompleted: jest.fn(), contentScroll: { current: null }, rosterOf: (side: string) => [{ id: side === 'A' ? 'a' : 'b' }], logEvent: jest.fn(), AnalyticsEvent: {} };
+  ctx.shootout = undefined; ctx.shadow = null;
   const record = kickAction(ctx);
   const first = record('save'); await record('goal');
   expect(write).toHaveBeenCalledTimes(1); expect(ctx.setScreen).not.toHaveBeenCalled();

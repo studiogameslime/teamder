@@ -61,7 +61,7 @@ export const socialPlayersService = {
     if(owner !== expectedOwner) throw new StaleSessionError(expectedOwner,owner);
     if (!USE_MOCK_DATA) await call('setSocialPrivacy', privacy, owner);
     if (useUserStore.getState().currentUser?.id !== owner) throw new StaleSessionError(owner, useUserStore.getState().currentUser?.id ?? '');
-    useUserStore.setState(s => ({ currentUser: s.currentUser ? { ...s.currentUser, socialPrivacy: privacy, dmFriendsOnly: true } : null }));
+    useUserStore.setState(s => ({ currentUser: s.currentUser ? { ...s.currentUser, socialPrivacy: privacy } : null }));
   },
   async inviteToClub(groupId: string, userId: string): Promise<{ invited: boolean; reason?: 'already_member'|'pending'|'rejected'|'already_invited' }> {
     if (USE_MOCK_DATA) return { invited: true };

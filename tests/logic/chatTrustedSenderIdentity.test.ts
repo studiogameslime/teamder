@@ -8,7 +8,7 @@ function harness(profile:Record<string,unknown>|undefined={name:'גל Cohen',ava
  const source=fs.readFileSync('functions/src/chatPush.ts','utf8')+'\nexports.__trusted = trustedChatMessage;';
  vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{
   module,exports:module.exports,console,
-  require:(id:string)=>id==='firebase-admin'?{firestore:()=>({collection})}:id==='firebase-functions/v2/firestore'?{onDocumentCreated:(_path:string,callback:any)=>callback}:{}
+  require:(id:string)=>id==='firebase-admin'?{firestore:()=>({collection})}:id==='firebase-functions/v2/firestore'?{onDocumentCreated:(_path:string,callback:any)=>callback,onDocumentWritten:(_path:string,callback:any)=>callback}:{}
  });
  const snapshot=(senderId='sender',senderName?:string)=>({id:'message-id',data:()=>({senderId,senderName,text:'הודעה'}),createTime:{toMillis:()=>1800000000123},ref:{update}});
  return {run:module.exports.__trusted,snapshot,read,update,doc,collection};

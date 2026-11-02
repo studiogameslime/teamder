@@ -22,6 +22,7 @@
 | [pulse/src/screens/FeaturesScreen.tsx](../../../pulse/src/screens/FeaturesScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/GameDetailScreen.tsx](../../../pulse/src/screens/GameDetailScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/GamesScreen.tsx](../../../pulse/src/screens/GamesScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
+| [pulse/src/screens/HomeScreen.tsx](../../../pulse/src/screens/HomeScreen.tsx) | [תיבת משימות ובאגים שלא נפתרו בפולס](shared.md#shared-pulse-work-inbox) · [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/IdeasScreen.tsx](../../../pulse/src/screens/IdeasScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/JoryioJourneyScreen.tsx](../../../pulse/src/screens/JoryioJourneyScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/MapScreen.tsx](../../../pulse/src/screens/MapScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
@@ -59,7 +60,7 @@
 | [src/screens/auth/SignInScreen.tsx](../../../src/screens/auth/SignInScreen.tsx) | [התחברות וחלון הרשמה בהקשר הפעולה](entry.md#entry-authentication) · [מסכי כניסה קודמים וכלי פיתוח מוסתרים](entry.md#entry-legacy-and-hidden) · [רצף פעולות מקומי לשחזור תקלות](shared.md#shared-diagnostic-journal) | מתועד; לא הורץ מחדש |
 | [src/screens/chat/ChatsListScreen.tsx](../../../src/screens/chat/ChatsListScreen.tsx) | [רשימת שיחות ומונים](chat.md#chat-chats-list) | מתועד; לא הורץ מחדש |
 | [src/screens/chat/CommunityChatScreen.tsx](../../../src/screens/chat/CommunityChatScreen.tsx) | [הקשר שיחה, זהות והרשאות](chat.md#chat-conversation-scopes) | מתועד; לא הורץ מחדש |
-| [src/screens/chat/DirectChatScreen.tsx](../../../src/screens/chat/DirectChatScreen.tsx) | [הקשר שיחה, זהות והרשאות](chat.md#chat-conversation-scopes) | מתועד; לא הורץ מחדש |
+| [src/screens/chat/DirectChatScreen.tsx](../../../src/screens/chat/DirectChatScreen.tsx) | [הקשר שיחה, זהות והרשאות](chat.md#chat-conversation-scopes) · [בקשות לשיחה אישית בלי חברות](chat.md#chat-message-requests) | מתועד; לא הורץ מחדש |
 | [src/screens/chat/GameChatScreen.tsx](../../../src/screens/chat/GameChatScreen.tsx) | [הקשר שיחה, זהות והרשאות](chat.md#chat-conversation-scopes) | מתועד; לא הורץ מחדש |
 | [src/screens/communities/CommunityDetailsPublicScreen.tsx](../../../src/screens/communities/CommunityDetailsPublicScreen.tsx) | [תצוגה ציבורית והצטרפות למועדון](clubs.md#clubs-public-preview-and-join) | מתועד; לא הורץ מחדש |
 | [src/screens/communities/CommunityDetailsScreen.tsx](../../../src/screens/communities/CommunityDetailsScreen.tsx) | [פרטי מועדון ולשוניותיו](clubs.md#clubs-details) | מתועד; לא הורץ מחדש |
@@ -106,7 +107,7 @@
 | [src/screens/profile/ReferralsListScreen.tsx](../../../src/screens/profile/ReferralsListScreen.tsx) | [שחקנים שהצטרפו דרכי](profile.md#profile-referrals) | מתועד; לא הורץ מחדש |
 | [src/screens/profile/SeasonSummaryScreen.tsx](../../../src/screens/profile/SeasonSummaryScreen.tsx) | [תארי עונה אישיים](profile.md#profile-season-titles) · [כימיה, שיאים ונתונים מעניינים](statistics.md#statistics-chemistry-and-records) · [טווחי סטטיסטיקה ומקורות הנתונים](statistics.md#statistics-scopes-and-data) · [סיכום עונה ותארים](statistics.md#statistics-season-summary) | מתועד; לא הורץ מחדש |
 | [src/screens/profile/SeasonTitlesScreen.tsx](../../../src/screens/profile/SeasonTitlesScreen.tsx) | [תארי עונה אישיים](profile.md#profile-season-titles) | מתועד; לא הורץ מחדש |
-| [src/screens/profile/SocialPrivacyScreen.tsx](../../../src/screens/profile/SocialPrivacyScreen.tsx) | [חברים, גילוי שחקנים ופרטיות](profile.md#profile-player-discovery) | מתועד; לא הורץ מחדש |
+| [src/screens/profile/SocialPrivacyScreen.tsx](../../../src/screens/profile/SocialPrivacyScreen.tsx) | [חברים, גילוי שחקנים ופרטיות](profile.md#profile-player-discovery) · [בקשות לשיחה אישית בלי חברות](chat.md#chat-message-requests) | מתועד; לא הורץ מחדש |
 | [src/screens/profile/StatisticsScreen.tsx](../../../src/screens/profile/StatisticsScreen.tsx) | [סטטיסטיקה אישית](statistics.md#statistics-personal-statistics) | מתועד; לא הורץ מחדש |
 | [src/screens/tabs/HistoryScreen.tsx](../../../src/screens/tabs/HistoryScreen.tsx) | [היסטוריית המחזורים האישית](profile.md#profile-personal-history) | מתועד; לא הורץ מחדש |
 | [src/screens/tabs/ProfileEditScreen.tsx](../../../src/screens/tabs/ProfileEditScreen.tsx) | [עריכת כרטיס השחקן ותמונת הפרופיל](profile.md#profile-profile-edit) | מתועד; לא הורץ מחדש |

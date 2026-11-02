@@ -47,6 +47,8 @@ test('the real club mapping freezes only creator.id, never the full account prof
   expect(raw).not.toContain('21:37');
   expect(JSON.parse(raw).prepared.creator).toEqual({ id: 'owner' });
   expect(mockCreate.mock.calls[0][0]).toMatchObject({ creator: { id: 'owner' } });
+  expect(mockCreate.mock.calls[0][0]).not.toHaveProperty('maxMembers');
+  expect(JSON.parse(raw).prepared).not.toHaveProperty('maxMembers');
 });
 
 const seasonsForm: GroupFormValues = { name: 'מועדון', description: '', city: '', contactPhone: '', maxMembers: '40',

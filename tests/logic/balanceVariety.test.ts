@@ -27,7 +27,7 @@ const gapOf = (teams: string[][]) => {
   return Math.max(...a) - Math.min(...a);
 };
 
-function split(opts: { history?: PastSplit[]; rng?: () => number } = {}) {
+function split(opts: { history?: PastSplit[]; rng?: () => number; strategy?: 'A' | 'B' } = {}) {
   return balanceCore({
     playerIds: IDS,
     ratings: RATINGS,
@@ -37,6 +37,7 @@ function split(opts: { history?: PastSplit[]; rng?: () => number } = {}) {
       ? buildPairRepeatWeights(opts.history)
       : undefined,
     rng: opts.rng,
+    strategy: opts.strategy,
   });
 }
 
@@ -111,12 +112,12 @@ describe('3 · the same 15 players over several game-nights', () => {
     }
   });
 
-  it('breaks up last week much more often than it repeats it', () => {
+  it('legacy B breaks up last week much more often than it repeats it', () => {
     // 3 teams of 5 = 30 pairs. Repeating the same split would score 30.
     let history: PastSplit[] = [LAST_WEEK];
     const repeats: number[] = [];
     for (let week = 0; week < 6; week++) {
-      const r = split({ history });
+      const r = split({ history, strategy: 'B' });
       repeats.push(repeatedPairs(r.teams, history[0]));
       history = [{ startsAt: 2000 + week, teams: r.teams }, ...history];
     }

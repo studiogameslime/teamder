@@ -22234,5 +22234,380 @@
       "לא נבדקה התקנה חדשה או כניסה מתפריט הפולס המותקן."
     ],
     "sha256": "c7a4f650b0ac254d78239997e99efd70201b8a2c75de740e33c165af9c3b11e6"
+  },
+  {
+    "file": "shootout-turn-before-2026-10-30.png",
+    "source": "artifacts/shootout-turn-2026-10-30/before.png",
+    "platform": "Android emulator API 35",
+    "environment": "רכיב הפנדלים המקורי בחבילת תצוגה נפרדת עם נתוני הדגמה וכיווניות עברית",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d + local changes",
+    "captured": "2026-10-30",
+    "notes": [
+      "צילום מקורי ללא שינוי פיקסלים. לפני משתמש בעותק המקור שקדם לשינוי, עם תור הכחולים אחרי שתי בעיטות.",
+      "אחרי מציג את השדה המפורש של תור האדומים ואת הכפתור החדש. מצב התור מוזן מהדגמה; אין הוכחת לחיצה מוצלחת במכשיר.",
+      "בצילום אחרי הוחלף מארח החלון ונכפתה הפחתת תנועה לצורך צילום יציב. גוף הפנדלים, המגרש ורשימת השחקנים הם הרכיבים המקוריים.",
+      "אין מסד חי, מסך לייב מלא, אייפון או הפצה. הכתיבה והבחירה נבדקו בנפרד בבדיקות קוד."
+    ],
+    "sha256": "5dd75c5492b4a9e5e8705206583d3520930e3a28573fc7489d1a35195df3f18b"
+  },
+  {
+    "file": "shootout-turn-after-2026-10-30.png",
+    "source": "artifacts/shootout-turn-2026-10-30/after.png",
+    "platform": "Android emulator API 35",
+    "environment": "רכיב הפנדלים המקורי בחבילת תצוגה נפרדת עם נתוני הדגמה וכיווניות עברית",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d + local changes",
+    "captured": "2026-10-30",
+    "notes": [
+      "צילום מקורי ללא שינוי פיקסלים. לפני משתמש בעותק המקור שקדם לשינוי, עם תור הכחולים אחרי שתי בעיטות.",
+      "אחרי מציג את השדה המפורש של תור האדומים ואת הכפתור החדש. מצב התור מוזן מהדגמה; אין הוכחת לחיצה מוצלחת במכשיר.",
+      "בצילום אחרי הוחלף מארח החלון ונכפתה הפחתת תנועה לצורך צילום יציב. גוף הפנדלים, המגרש ורשימת השחקנים הם הרכיבים המקוריים.",
+      "אין מסד חי, מסך לייב מלא, אייפון או הפצה. הכתיבה והבחירה נבדקו בנפרד בבדיקות קוד."
+    ],
+    "sha256": "12ba57a18a6378b9a505243f9f6c82f1632b54b7bdb8e4d4c714e747118cb14f"
+  },
+  {
+    "file": "pulse-home-after-2026-11-01.png",
+    "source": "artifacts/pulse-home-sketch-2026-11-01/source-preview.html",
+    "platform": "דפדפן עם מתאמי רכיבי מקור",
+    "environment": "נתוני בדיקה בלבד",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-01",
+    "notes": [
+      "קוד מקומי שאינו כלול בקומיט הבסיס",
+      "רכיבי המסך והשירות האמיתיים עם מתאמי תעבורה ותצוגה",
+      "כיווניות וגלישה נבדקו ברוחבי 320, 390 ו־430",
+      "אין מכשיר מחובר ואין אימות ניווט מקורי או שמירה חיה"
+    ],
+    "sha256": "51c0141418796a46bac0372cabfb7a90f13d54b358e1466e08fd1f0cadb97474"
+  },
+  {
+    "file": "pulse-registration-rounds-before-2026-11-01.jpg",
+    "source": ".codex-remote-attachments/01a195df-c289-7833-b63e-7b0078609ad8/e35b024a-0f30-45fd-b78c-cd9e87eeb8fa/1-1000537376.jpg",
+    "platform": "אנדרואיד, צילום שנמסר בידי הבעלים",
+    "environment": "מכשיר הבעלים",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-01",
+    "notes": [
+      "מספר הבנייה אינו מופיע בצילום",
+      "הצילום נשמר כפי שנמסר ללא שינוי"
+    ],
+    "sha256": "beffb120a755ec6dcaf91a8a55d2318f09b41dab5004bde936225f3c5ff3bdb1"
+  },
+  {
+    "file": "pulse-registration-rounds-after-2026-11-01.png",
+    "source": "artifacts/pulse-registered-rounds-2026-11-01/source-preview.html",
+    "platform": "דפדפן עם מתאמי רכיבי מקור",
+    "environment": "נתוני בדיקה בלבד",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-01",
+    "notes": [
+      "המקור הוא המסך והשירות האמיתיים, עם מתאמי תעבורה ותצוגה",
+      "הנתונים שונים מצילום הבעלים; אין כאן השוואת ספירות של אותו מאגר",
+      "נבדקו כיווניות ורוחבים 320, 390 ו־430",
+      "אין אימות התקנה של הבנייה המתוקנת במכשיר"
+    ],
+    "sha256": "817186628cd007164877b847d4501b80933a16860de77a88e0cb97b248d91853"
+  },
+  {
+    "file": "pulse-home-actions-before-2026-11-01.png",
+    "source": "artifacts/pulse-registered-rounds-2026-11-01/source-preview.html",
+    "platform": "דפדפן עם מתאמי רכיבי מקור",
+    "environment": "נתוני בדיקה בלבד",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-01",
+    "notes": [
+      "צילום רכיבי המקור, לא מכשיר מקורי",
+      "אין נתוני ייצור בתמונה",
+      "המצבים הנפתחים נבדקו ברוחבי 320, 390 ו־430",
+      "בדיקת המשך בוצעה גם בשעון מדומה, ללא כתיבת נתוני ייצור"
+    ],
+    "sha256": "817186628cd007164877b847d4501b80933a16860de77a88e0cb97b248d91853"
+  },
+  {
+    "file": "pulse-home-actions-after-2026-11-01.png",
+    "source": "artifacts/pulse-home-actions-2026-11-01/source-preview.html",
+    "platform": "דפדפן עם מתאמי רכיבי מקור",
+    "environment": "נתוני בדיקה בלבד",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-01",
+    "notes": [
+      "צילום רכיבי המקור, לא מכשיר מקורי",
+      "אין נתוני ייצור בתמונה",
+      "המצבים הנפתחים נבדקו ברוחבי 320, 390 ו־430",
+      "בדיקת המשך בוצעה גם בשעון מדומה, ללא כתיבת נתוני ייצור"
+    ],
+    "sha256": "2bcb94aab88a6a854e41b87bc1444275405e1f2fba23001b3a3d22a3f814cf8e"
+  },
+  {
+    "file": "dm-inbox-before-2026-11-02.png",
+    "source": "artifacts/dm-requests-2026-11-02/inbox-before.png",
+    "platform": "דפדפן מקומי",
+    "environment": "רכיבי מקור עם נתוני בדיקה ומתאמי רכיבים מקוריים",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-02",
+    "notes": [
+      "מקור מקומי עם שינויים שלא נשמרו בקומיט.",
+      "אין אימות מכשיר, אנדרואיד או כיווניות מקורית.",
+      "צילום לפני מבוסס על מקור הקומיט במתאם, ולא על צילום מכשיר שבוצע לפני העריכה."
+    ],
+    "sha256": "4a7c3aa52cd1639d147d526df23449b1291cabb64ed4189b570966b22cb5ba33"
+  },
+  {
+    "file": "dm-inbox-after-2026-11-02.png",
+    "source": "artifacts/dm-requests-2026-11-02/inbox-after.png",
+    "platform": "דפדפן מקומי",
+    "environment": "רכיבי מקור עם נתוני בדיקה ומתאמי רכיבים מקוריים",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-02",
+    "notes": [
+      "מקור מקומי עם שינויים שלא נשמרו בקומיט.",
+      "אין אימות מכשיר, אנדרואיד או כיווניות מקורית.",
+      "הרכיבים מרונדרים מהמקור הנוכחי."
+    ],
+    "sha256": "5effd6d4268d8689c73e7833ce4f452ca6abc6489778c910ce9aaf33bf5daae7"
+  },
+  {
+    "file": "dm-requests-after-2026-11-02.png",
+    "source": "artifacts/dm-requests-2026-11-02/requests-after.png",
+    "platform": "דפדפן מקומי",
+    "environment": "רכיבי מקור עם נתוני בדיקה ומתאמי רכיבים מקוריים",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-02",
+    "notes": [
+      "מקור מקומי עם שינויים שלא נשמרו בקומיט.",
+      "אין אימות מכשיר, אנדרואיד או כיווניות מקורית.",
+      "הרכיבים מרונדרים מהמקור הנוכחי."
+    ],
+    "sha256": "2a9c39cd97e9a1525999fcd7942d012c4023315c26ef218c61d1f81c99758627"
+  },
+  {
+    "file": "dm-privacy-before-2026-11-02.png",
+    "source": "artifacts/dm-requests-2026-11-02/privacy-before.png",
+    "platform": "דפדפן מקומי",
+    "environment": "רכיבי מקור עם נתוני בדיקה ומתאמי רכיבים מקוריים",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-02",
+    "notes": [
+      "מקור מקומי עם שינויים שלא נשמרו בקומיט.",
+      "אין אימות מכשיר, אנדרואיד או כיווניות מקורית.",
+      "צילום לפני מבוסס על מקור הקומיט במתאם, ולא על צילום מכשיר שבוצע לפני העריכה."
+    ],
+    "sha256": "2cbb703d9fb1e375a08aae6279acc676cae3caaca8e142672102a98af65f49ec"
+  },
+  {
+    "file": "dm-privacy-after-2026-11-02.png",
+    "source": "artifacts/dm-requests-2026-11-02/privacy-after.png",
+    "platform": "דפדפן מקומי",
+    "environment": "רכיבי מקור עם נתוני בדיקה ומתאמי רכיבים מקוריים",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-02",
+    "notes": [
+      "מקור מקומי עם שינויים שלא נשמרו בקומיט.",
+      "אין אימות מכשיר, אנדרואיד או כיווניות מקורית.",
+      "הרכיבים מרונדרים מהמקור הנוכחי."
+    ],
+    "sha256": "0ed7e293d00f0538b6eedc2f8aaf146d1d35b93e9eba12a6ecf2a0447fa8f7ec"
+  },
+  {
+    "file": "dm-incoming-banner-after-2026-11-02.png",
+    "source": "artifacts/dm-requests-2026-11-02/incoming-banner-after.png",
+    "platform": "דפדפן מקומי",
+    "environment": "רכיבי מקור עם נתוני בדיקה ומתאמי רכיבים מקוריים",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-02",
+    "notes": [
+      "מקור מקומי עם שינויים שלא נשמרו בקומיט.",
+      "אין אימות מכשיר, אנדרואיד או כיווניות מקורית.",
+      "הרכיבים מרונדרים מהמקור הנוכחי."
+    ],
+    "sha256": "cefb2481655038c8419ea811da3416aab72e181fe879c3d8ff2eeaefb14b5c86"
+  },
+  {
+    "file": "pulse-manager-returned-before-2026-11-02.png",
+    "source": "artifacts/pulse-review-2026-11-02/manager-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמים ונתוני הדגמה",
+    "sourceCommit": "d02947bb",
+    "captured": "2026-11-02",
+    "notes": [
+      "כולל שינויים מקומיים שלא נמסרו למאגר.",
+      "אין אימות יישום מותקן או כיווניות מקורית במכשיר.",
+      "רכיבי תצוגה מקוריים הותאמו לדפדפן. תמונות משתמש הוחלפו בראשי תיבות.",
+      "כרטיסי התוצאות צולמו בחתך הקטע הרלוונטי בלבד."
+    ],
+    "sha256": "5e69b4f31a0dc9856094e89c770a4e339ced3d7c1c3c73bcee38815af95c2de6"
+  },
+  {
+    "file": "pulse-manager-returned-after-2026-11-02.png",
+    "source": "artifacts/pulse-review-2026-11-02/manager-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמים ונתוני הדגמה",
+    "sourceCommit": "d02947bb",
+    "captured": "2026-11-02",
+    "notes": [
+      "כולל שינויים מקומיים שלא נמסרו למאגר.",
+      "אין אימות יישום מותקן או כיווניות מקורית במכשיר.",
+      "רכיבי תצוגה מקוריים הותאמו לדפדפן. תמונות משתמש הוחלפו בראשי תיבות.",
+      "כרטיסי התוצאות צולמו בחתך הקטע הרלוונטי בלבד."
+    ],
+    "sha256": "3c85367e4e37b0a75f75b43fa72a374ea21ac0d0df86a44d8de21d3c3088596f"
+  },
+  {
+    "file": "pulse-team-cards-before-2026-11-02.png",
+    "source": "artifacts/pulse-review-2026-11-02/stats-cards-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמים ונתוני הדגמה",
+    "sourceCommit": "d02947bb",
+    "captured": "2026-11-02",
+    "notes": [
+      "כולל שינויים מקומיים שלא נמסרו למאגר.",
+      "אין אימות יישום מותקן או כיווניות מקורית במכשיר.",
+      "רכיבי תצוגה מקוריים הותאמו לדפדפן. תמונות משתמש הוחלפו בראשי תיבות.",
+      "כרטיסי התוצאות צולמו בחתך הקטע הרלוונטי בלבד."
+    ],
+    "sha256": "13f5eb514646a47011a759efaf60276fe3a56634f55528bbb7c3ff395b01d6c4"
+  },
+  {
+    "file": "pulse-team-cards-after-2026-11-02.png",
+    "source": "artifacts/pulse-review-2026-11-02/stats-cards-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמים ונתוני הדגמה",
+    "sourceCommit": "d02947bb",
+    "captured": "2026-11-02",
+    "notes": [
+      "כולל שינויים מקומיים שלא נמסרו למאגר.",
+      "אין אימות יישום מותקן או כיווניות מקורית במכשיר.",
+      "רכיבי תצוגה מקוריים הותאמו לדפדפן. תמונות משתמש הוחלפו בראשי תיבות.",
+      "כרטיסי התוצאות צולמו בחתך הקטע הרלוונטי בלבד."
+    ],
+    "sha256": "2f014a022f8e76a859f9901eda30dcf8d4d5ee66b4a12da57f98f76ab4c9859e"
+  },
+  {
+    "file": "dm-native-inbox-2026-11-02.png",
+    "source": "artifacts/dm-native-shots-2026-11-02/native-inbox.png",
+    "platform": "Android API 35 emulator",
+    "environment": "אפליקציית פיתוח, נתוני הדגמה בזיכרון בלבד",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-02",
+    "notes": [
+      "צילום אמיתי מתוך אפליקציית האנדרואיד, ללא מתאם דפדפן.",
+      "חבילת תצוגה מקומית com.studiogameslime.soccerapp.activitypreview, עם קוד המקור הנוכחי.",
+      "מצבי בקשות והודעות הוזרקו בזיכרון לצילום בלבד. אין אימות שרת או מסירה אמיתית.",
+      "לא נשלחו הודעות, לא שונתה חברות ולא נשמרה בחירת פרטיות.",
+      "כלי פיתוח ופס נתוני הדגמה נשארו בתמונה."
+    ],
+    "sha256": "0ae36a4c6dd0b96bc6bbd7450cd5dbff10d353040f6ea3d6f53bebc0edcf7507"
+  },
+  {
+    "file": "dm-native-profile-2026-11-02.png",
+    "source": "artifacts/dm-native-shots-2026-11-02/native-profile.png",
+    "platform": "Android API 35 emulator",
+    "environment": "אפליקציית פיתוח, נתוני הדגמה בזיכרון בלבד",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-02",
+    "notes": [
+      "צילום אמיתי מתוך אפליקציית האנדרואיד, ללא מתאם דפדפן.",
+      "חבילת תצוגה מקומית com.studiogameslime.soccerapp.activitypreview, עם קוד המקור הנוכחי.",
+      "מצבי בקשות והודעות הוזרקו בזיכרון לצילום בלבד. אין אימות שרת או מסירה אמיתית.",
+      "לא נשלחו הודעות, לא שונתה חברות ולא נשמרה בחירת פרטיות.",
+      "כלי פיתוח ופס נתוני הדגמה נשארו בתמונה."
+    ],
+    "sha256": "b97df76e1322c70add37d6ac500eddb6775045cdd8923daf9845884b71a59f2d"
+  },
+  {
+    "file": "dm-native-new-chat-2026-11-02.png",
+    "source": "artifacts/dm-native-shots-2026-11-02/native-new-chat.png",
+    "platform": "Android API 35 emulator",
+    "environment": "אפליקציית פיתוח, נתוני הדגמה בזיכרון בלבד",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-02",
+    "notes": [
+      "צילום אמיתי מתוך אפליקציית האנדרואיד, ללא מתאם דפדפן.",
+      "חבילת תצוגה מקומית com.studiogameslime.soccerapp.activitypreview, עם קוד המקור הנוכחי.",
+      "מצבי בקשות והודעות הוזרקו בזיכרון לצילום בלבד. אין אימות שרת או מסירה אמיתית.",
+      "לא נשלחו הודעות, לא שונתה חברות ולא נשמרה בחירת פרטיות.",
+      "כלי פיתוח ופס נתוני הדגמה נשארו בתמונה."
+    ],
+    "sha256": "818dfbfa8b6ff575c7bea3ad48e1093367278bca1bf447ed168efe99d0c6ff44"
+  },
+  {
+    "file": "dm-native-requests-2026-11-02.png",
+    "source": "artifacts/dm-native-shots-2026-11-02/native-requests.png",
+    "platform": "Android API 35 emulator",
+    "environment": "אפליקציית פיתוח, נתוני הדגמה בזיכרון בלבד",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-02",
+    "notes": [
+      "צילום אמיתי מתוך אפליקציית האנדרואיד, ללא מתאם דפדפן.",
+      "חבילת תצוגה מקומית com.studiogameslime.soccerapp.activitypreview, עם קוד המקור הנוכחי.",
+      "מצבי בקשות והודעות הוזרקו בזיכרון לצילום בלבד. אין אימות שרת או מסירה אמיתית.",
+      "לא נשלחו הודעות, לא שונתה חברות ולא נשמרה בחירת פרטיות.",
+      "כלי פיתוח ופס נתוני הדגמה נשארו בתמונה."
+    ],
+    "sha256": "6f1713a9f17b44bf9c5c0795776112969c66e0076bb6b76b0ae270bc1f32ab83"
+  },
+  {
+    "file": "dm-native-incoming-2026-11-02.png",
+    "source": "artifacts/dm-native-shots-2026-11-02/native-incoming.png",
+    "platform": "Android API 35 emulator",
+    "environment": "אפליקציית פיתוח, נתוני הדגמה בזיכרון בלבד",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-02",
+    "notes": [
+      "צילום אמיתי מתוך אפליקציית האנדרואיד, ללא מתאם דפדפן.",
+      "חבילת תצוגה מקומית com.studiogameslime.soccerapp.activitypreview, עם קוד המקור הנוכחי.",
+      "מצבי בקשות והודעות הוזרקו בזיכרון לצילום בלבד. אין אימות שרת או מסירה אמיתית.",
+      "לא נשלחו הודעות, לא שונתה חברות ולא נשמרה בחירת פרטיות.",
+      "כלי פיתוח ופס נתוני הדגמה נשארו בתמונה."
+    ],
+    "sha256": "84543880dbf32fc3bb4d34bb4385678debd85518bfc7b3a9d924268cd19dbbc2"
+  },
+  {
+    "file": "dm-native-waiting-2026-11-02.png",
+    "source": "artifacts/dm-native-shots-2026-11-02/native-waiting.png",
+    "platform": "Android API 35 emulator",
+    "environment": "אפליקציית פיתוח, נתוני הדגמה בזיכרון בלבד",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-02",
+    "notes": [
+      "צילום אמיתי מתוך אפליקציית האנדרואיד, ללא מתאם דפדפן.",
+      "חבילת תצוגה מקומית com.studiogameslime.soccerapp.activitypreview, עם קוד המקור הנוכחי.",
+      "מצבי בקשות והודעות הוזרקו בזיכרון לצילום בלבד. אין אימות שרת או מסירה אמיתית.",
+      "לא נשלחו הודעות, לא שונתה חברות ולא נשמרה בחירת פרטיות.",
+      "כלי פיתוח ופס נתוני הדגמה נשארו בתמונה."
+    ],
+    "sha256": "5030864cec56bb97ddba7d63669f4e2cf483e8faafda2851c70b9c78600f42e7"
+  },
+  {
+    "file": "dm-native-declined-2026-11-02.png",
+    "source": "artifacts/dm-native-shots-2026-11-02/native-declined.png",
+    "platform": "Android API 35 emulator",
+    "environment": "אפליקציית פיתוח, נתוני הדגמה בזיכרון בלבד",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-02",
+    "notes": [
+      "צילום אמיתי מתוך אפליקציית האנדרואיד, ללא מתאם דפדפן.",
+      "חבילת תצוגה מקומית com.studiogameslime.soccerapp.activitypreview, עם קוד המקור הנוכחי.",
+      "מצבי בקשות והודעות הוזרקו בזיכרון לצילום בלבד. אין אימות שרת או מסירה אמיתית.",
+      "לא נשלחו הודעות, לא שונתה חברות ולא נשמרה בחירת פרטיות.",
+      "כלי פיתוח ופס נתוני הדגמה נשארו בתמונה."
+    ],
+    "sha256": "570ab1d4ed9b340c5267509fdf95637d208e2e5b984bb4c35823a18e70d34af6"
+  },
+  {
+    "file": "dm-native-privacy-2026-11-02.png",
+    "source": "artifacts/dm-native-shots-2026-11-02/native-privacy.png",
+    "platform": "Android API 35 emulator",
+    "environment": "אפליקציית פיתוח, נתוני הדגמה בזיכרון בלבד",
+    "sourceCommit": "d02947bb0ec29b5bbba4c9ca2d86bb8dc14fa66d",
+    "captured": "2026-11-02",
+    "notes": [
+      "צילום אמיתי מתוך אפליקציית האנדרואיד, ללא מתאם דפדפן.",
+      "חבילת תצוגה מקומית com.studiogameslime.soccerapp.activitypreview, עם קוד המקור הנוכחי.",
+      "מצבי בקשות והודעות הוזרקו בזיכרון לצילום בלבד. אין אימות שרת או מסירה אמיתית.",
+      "לא נשלחו הודעות, לא שונתה חברות ולא נשמרה בחירת פרטיות.",
+      "כלי פיתוח ופס נתוני הדגמה נשארו בתמונה."
+    ],
+    "sha256": "f524976d60a9deda40101e5657f760d991fb154d406869a76ef287c7269e14b1"
   }
 ]

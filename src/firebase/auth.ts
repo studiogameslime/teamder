@@ -439,9 +439,9 @@ export async function signInWithApple(): Promise<{
 
   try {
     const cred = await signInWithCredential(auth, credential);
-    mirrorToNativeAuth((rn) =>
-      rn.AppleAuthProvider.credential(identityToken, rawNonce),
-    );
+    // Apple credentials are single-use. The native widget/watch relay is
+    // Android-only, so replaying this consumed credential on iOS has no
+    // consumer and always produces a duplicate-credential error.
     return { user: cred.user, fullName: fullName || undefined };
   } catch (err) {
     observeCaughtError(err, {"source":"src/firebase/auth.ts","handler":"signInWithApple","site":"auth:92cbab73b5"});

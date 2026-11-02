@@ -13,6 +13,9 @@ import { SocialAction } from '@/components/social/SocialUI';
 import { toast } from '@/components/Toast';
 import { chatService, chatKeyFor, dmConvId } from '@/services/chatService';
 import { friendsService } from '@/services/friendsService';
+import { dmRequestService, type DmRequestEntry } from '@/services/dmRequestService';
+import { DmRequestsInbox } from './DmRequestsInbox';
+import { DmPlayerSearch } from './DmPlayerSearch';
 import { userService } from '@/services/userService';
 import { groupService } from '@/services/groupService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -30,7 +33,7 @@ import type { ChatScope, Game, User } from '@/types';
 import type { ChatStackParamList } from '@/navigation/ChatStack';
 
 export interface InboxRow { scope: ChatScope; id: string; title: string; preview: string; unread: number; at: number; messageId?: string; image?: ImageSourcePropType; user?: Pick<User,'id'|'name'|'avatarId'|'photoUrl'>; closed?: boolean; subtitle: string }
-export interface InboxPreview { rows: InboxRow[]; preferences: Record<string, ChatPreferences>; friends: User[] }
+export interface InboxPreview { rows: InboxRow[]; preferences: Record<string, ChatPreferences>; friends: User[]; requests?: DmRequestEntry[]; mode?: 'inbox'|'requests' }
 const FILTERS = [['all','הכל'],['unread','לא נקראו'],['dm','אישי'],['community','מועדונים'],['game','מחזורים']] as const;
 type Filter = typeof FILTERS[number][0];
 const blue = '#2563EB', navy = '#0C1744';
@@ -45,7 +48,10 @@ function rowTime(at: number) {
 export function ChatInbox({ preview }: { preview?: InboxPreview }) {
   const nav = useNavigation<NativeStackNavigationProp<ChatStackParamList>>();
   const me = useUserStore(s=>s.currentUser), groups = useGroupStore(s=>s.groups), entries = useChatStore(s=>s.entries);
-  const [mode,setMode] = useState<'inbox'|'archive'|'new'>('inbox');
+  const [mode,setMode] = useState<'inbox'|'archive'|'new'|'requests'>(preview?.mode??'inbox');
+  const [requestRows,setRequestRows]=useState<DmRequestEntry[]>(preview?.requests??[]),[requestsFailed,setRequestsFailed]=useState(false),[requestsLoading,setRequestsLoading]=useState(true),[declinedRequests,setDeclinedRequests]=useState(false);
+  const [requestOwner,setRequestOwner]=useState(me?.id);
+  const visibleRequests=requestOwner===me?.id?requestRows:[];
   const [filter,setFilter] = useState<Filter>('all'), [search,setSearch] = useState('');
   const [games,setGames] = useState<Game[]>([]), [profiles,setProfiles] = useState<Record<string,User>>({});
   const [preferences,setPreferences] = useState<Record<string,ChatPreferences>>(preview?.preferences ?? {});
@@ -55,6 +61,11 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
   const [selected,setSelected] = useState<InboxRow|null>(null), [busy,setBusy] = useState(false);
   const [now,setNow] = useState(Date.now());
   const [senderNames,setSenderNames] = useState<{owner?:string; names:Record<string,string>}>({names:{}});
+  useEffect(()=>{
+    setRequestRows([]);setRequestOwner(me?.id);setRequestsFailed(false);setRequestsLoading(true);
+    if(!me||preview){setRequestRows(preview?.requests??[]);setRequestsLoading(false);return;}
+    return dmRequestService.subscribe(me.id,rows=>{setRequestRows(rows);setRequestsLoading(false);},()=>{setRequestsFailed(true);setRequestsLoading(false);});
+  },[me?.id,preview,retry]);
   const senderIds = useMemo(()=>JSON.stringify([...new Set(Object.values(entries).filter(chatSenderNeedsIdentity).map(e=>e.lastSenderId).filter(id=>id!==me?.id))].sort()),[entries,me?.id]);
   useEffect(()=>{
     let live=true;
@@ -126,8 +137,9 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
       const title=isOfficialSender(id)?'Teamder':p?.name||e.title||'שחקן';
       return {...base('dm',e.parentId,title,'שיחה אישית'),user:{id,name:title,avatarId:p?.avatarId??e.avatarId,photoUrl:p?.photoUrl??e.photoUrl}};
     });
-    return [...clubs,...rounds,...dms];
-  },[groups,games,entries,profiles,senderNames,me?.id,now,preview]);
+    const outgoing=visibleRequests.filter(r=>r.status==='waiting'||r.status==='cancelled').map(r=>({...base('dm',r.convId,r.user.name,'בקשת שיחה'),preview:r.text,at:r.createdAt,user:r.user,subtitle:r.status==='cancelled'?'הבקשה בוטלה':'ממתינים לאישור'}));
+    return [...clubs,...rounds,...dms.filter(d=>!outgoing.some(r=>r.id===d.id)),...outgoing];
+  },[groups,games,entries,profiles,senderNames,me?.id,now,preview,requestRows,requestOwner]);
   const key=(row:InboxRow)=>chatKeyFor(row.scope,row.id);
   const archived=(row:InboxRow)=>chatIsArchived(row.at,preferences[key(row)],row.closed,row.messageId);
   const sorted=[...rows].sort((a,b)=>Number(!!preferences[key(b)]?.pinned)-Number(!!preferences[key(a)]?.pinned)||b.at-a.at||a.title.localeCompare(b.title,'he'));
@@ -165,15 +177,21 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
   </Pressable>;
   const empty=(title:string,body:string)=><View style={s.empty}><View style={s.emptyIcon}><Ionicons name={mode==='archive'?'archive-outline':'chatbubbles-outline'} size={36} color={blue}/></View><Text style={s.emptyTitle}>{title}</Text><Text style={s.emptyBody}>{body}</Text>{mode==='inbox'?<SocialAction title="התחילו שיחה עם חבר" icon="add-outline" onPress={()=>changeMode('new')}/>:null}</View>;
   return <View style={s.root}>
-    {mode!=='inbox'?<View style={s.sectionHeader}><Pressable onPress={()=>changeMode('inbox')} accessibilityLabel="חזרה לשיחות" hitSlop={12}><Ionicons name="chevron-forward" size={25} color={navy}/></Pressable><Text style={s.sectionTitle}>{mode==='archive'?'ארכיון שיחות':'שיחה חדשה'}</Text></View>:null}
-    <View style={s.tools}><View style={s.search}><TextInput value={search} onChangeText={setSearch} style={s.searchInput} placeholder={mode==='new'?'חיפוש חבר לפי שם':'חיפוש שיחה או הודעה אחרונה'} placeholderTextColor="#8A9AB3" accessibilityLabel="חיפוש שיחות"/><Ionicons name="search-outline" size={21} color="#8A9AB3"/></View>{mode==='inbox'?<Pressable onPress={()=>changeMode('new')} style={s.newButton} accessibilityLabel="שיחה חדשה"><Text style={s.newText}>שיחה חדשה</Text><Ionicons name="create-outline" size={18} color="white"/></Pressable>:null}</View>
-    {mode!=='new'?<ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filters} contentContainerStyle={s.filterContent}>{FILTERS.map(([id,title])=><Pressable key={id} onPress={()=>setFilter(id)} accessibilityRole="tab" accessibilityState={{selected:filter===id}} style={[s.chip,filter===id&&s.chipSelected]}><Text style={[s.chipText,filter===id&&{color:'white'}]}>{title}</Text></Pressable>)}</ScrollView>:<Text style={s.hint}>אפשר להתחיל שיחה עם החברים שלכם בלבד</Text>}
+    {mode!=='inbox'?<View style={s.sectionHeader}><Pressable onPress={()=>changeMode('inbox')} accessibilityLabel="חזרה לשיחות" hitSlop={12}><Ionicons name="chevron-forward" size={25} color={navy}/></Pressable><Text style={s.sectionTitle}>{mode==='archive'?'ארכיון שיחות':mode==='requests'?'בקשות לשיחה':'שיחה חדשה'}</Text></View>:null}
+    {!me?.dmRequestPolicy&&mode==='inbox'?<Pressable style={[s.notice,{margin:16}]} onPress={()=>nav.navigate('SocialPrivacy')} accessibilityRole="button"><Text style={s.name}>מי יוכל לשלוח לך בקשות לשיחה?</Text><Text style={s.preview}>בחרו כולם או חברים בלבד. עד הבחירה לא יתקבלו בקשות חדשות. השיחות הקיימות נשמרות.</Text></Pressable>:null}
+    {mode==='inbox'?<Pressable style={[s.card,{marginHorizontal:16,marginTop:12}]} accessibilityRole="button" onPress={()=>changeMode('requests')}><Text style={s.name}>בקשות לשיחה</Text><Text style={s.preview}>{requestsFailed?'לא הצלחנו לטעון בקשות':requestsLoading?'טוען בקשות':`${visibleRequests.filter(r=>r.status==='incoming'&&!r.seenAt).length} חדשות`}</Text><Ionicons name="mail-outline" size={22} color={blue}/></Pressable>:null}
+    {mode==='requests'?<DmRequestsInbox rows={visibleRequests} loading={requestsLoading} failed={requestsFailed} declined={declinedRequests} onToggle={()=>setDeclinedRequests(v=>!v)} onRetry={()=>setRetry(n=>n+1)} onOpen={r=>{if(preview){toast.info('תצוגת המחשה בלבד');return;}if(me){nav.navigate('DirectChat',{convId:r.convId});}}}/>:<>
+    <View style={s.tools}><View style={s.search}><TextInput value={search} onChangeText={setSearch} style={s.searchInput} placeholder={mode==='new'?'חיפוש שחקן לפי שם':'חיפוש שיחה או הודעה אחרונה'} placeholderTextColor="#8A9AB3" accessibilityLabel="חיפוש שיחות"/><Ionicons name="search-outline" size={21} color="#8A9AB3"/></View>{mode==='inbox'?<Pressable onPress={()=>changeMode('new')} style={s.newButton} accessibilityLabel="שיחה חדשה"><Text style={s.newText}>שיחה חדשה</Text><Ionicons name="create-outline" size={18} color="white"/></Pressable>:null}</View>
+    {mode!=='new'?<ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filters} contentContainerStyle={s.filterContent}>{FILTERS.map(([id,title])=><Pressable key={id} onPress={()=>setFilter(id)} accessibilityRole="tab" accessibilityState={{selected:filter===id}} style={[s.chip,filter===id&&s.chipSelected]}><Text style={[s.chipText,filter===id&&{color:'white'}]}>{title}</Text></Pressable>)}</ScrollView>:<Text style={s.hint}>חברים יכולים להתכתב מיד. לשחקנים אחרים אפשר לשלוח בקשה לשיחה.</Text>}
+    {mode==='new'&&search.trim()?<DmPlayerSearch search={search} onOpen={id=>{if(me)nav.navigate('DirectChat',{convId:dmConvId(me.id,id)});}}/>:<>
     {mode==='new'?friendsLoading?<ActivityIndicator style={s.empty} color={blue}/>:friendsFailed?<View style={s.empty}><Text style={s.emptyBody}>לא הצלחנו לטעון את החברים</Text><SocialAction title="נסו שוב" icon="refresh-outline" onPress={()=>setRetry(n=>n+1)}/></View>:<FlatList data={friends.filter(u=>u.name.includes(search.trim())).sort((a,b)=>a.name.localeCompare(b.name,'he'))} keyExtractor={u=>u.id} contentContainerStyle={s.list} keyboardShouldPersistTaps="handled" renderItem={({item:u})=><Pressable style={s.card} onPress={()=>open({scope:'dm',id:dmConvId(me!.id,u.id),title:u.name,subtitle:'שיחה אישית',preview:'',at:0,unread:0,user:u})}><UserAvatar user={u} size={50}/><View style={s.body}><Text style={s.name}>{u.name}</Text><Text style={s.preview}>{'חבר ב־Teamder'}</Text></View><Ionicons name="chatbubble-ellipses-outline" size={23} color={blue}/></Pressable>} ListEmptyComponent={empty(search?'לא נמצאו חברים':'עדיין אין כאן חברים',search?'נסו לחפש שם אחר':'מצאו שחקנים והוסיפו אותם לחברים כדי להתחיל לדבר')}/>
     :<FlatList data={active} keyExtractor={key} contentContainerStyle={s.list} keyboardShouldPersistTaps="handled" renderItem={({item,index})=><>{index===0&&preferences[key(item)]?.pinned?<Text style={s.label}>שיחות נעוצות</Text>:index>0&&preferences[key(active[index-1])]?.pinned&&!preferences[key(item)]?.pinned?<Text style={s.label}>כל השיחות</Text>:null}{renderRow(item)}</>}
       ListHeaderComponent={<>{mode==='inbox'&&me?<Pressable style={[s.card,{marginBottom:10,borderColor:'#BDD4FF'}]} accessibilityRole="button" accessibilityLabel="שיחה עם תמיכת Teamder" onPress={()=>preview?toast.info('תצוגת המחשה בלבד'):useSupportChat.getState().open(me.id)}><View style={[s.avatar,s.fallback]}><Ionicons name="headset-outline" size={25} color={blue}/></View><View style={s.body}><View style={s.line}><Text style={s.name}>⁦Teamder⁩</Text><OfficialBadge size={13}/></View><Text style={s.preview} numberOfLines={1}>{supportEntry?.lastText||'נתקעתם או משהו לא ברור? כתבו לנו'}</Text><Text style={s.kind}>תמיכה ועזרה · תמיד כאן בשבילכם</Text></View><View style={s.trailing}><Ionicons name="pin" size={15} color={blue}/>{(supportEntry?.count??0)>0?<View style={s.badge}><Text style={s.badgeText}>{supportEntry!.count>99?'⁦99+⁩':supportEntry!.count}</Text></View>:null}</View></Pressable>:null}{failed?<Pressable style={s.notice} onPress={()=>setRetry(n=>n+1)}><Text style={s.emptyBody}>חלק מהשיחות לא נטענו. לחצו לניסיון נוסף.</Text></Pressable>:mode==='archive'?<Text style={s.hint}>שיחות שהועברו לארכיון ומחזורים שנסגרו. ההודעות נשמרות.</Text>:null}</>}
       ListEmptyComponent={loading?<ActivityIndicator style={s.empty} color={blue}/>:starters.length?null:empty(mode==='archive'?'הארכיון שלכם ריק':search||filter!=='all'?'לא נמצאו שיחות':'הכדור אצלכם',mode==='archive'?'שיחות מחזורים שנסגרו יישמרו כאן':search||filter!=='all'?'נסו לשנות את החיפוש או את המסנן':'דברו עם החברים ועם השחקנים במועדון')}
       ListFooterComponent={mode==='inbox'?<><Pressable style={s.archiveLink} onPress={()=>changeMode('archive')}><Text style={s.archiveTitle}>ארכיון שיחות{archiveCount?` · ${archiveCount}`:''}</Text><Ionicons name="archive-outline" size={21} color="#667796"/></Pressable>{starters.length?<><Text style={s.label}>מתחילים שיחה</Text><Text style={s.hint}>המועדונים והמחזורים שלכם, גם לפני ההודעה הראשונה</Text>{starters.map(row=><View key={key(row)}>{renderRow(row)}</View>)}</>:null}</>:null}/>}
 
+    </>}
+    </>}
     <Modal visible={!!selected} transparent animationType="none" onRequestClose={()=>{if(!busy)setSelected(null);}}><SpringSheet visible={!!selected} onBackdropPress={()=>{if(!busy)setSelected(null);}} panelStyle={{...overlaySurfaces.sheet,top:'auto'}}><View style={s.sheet}><View style={s.handle}/><Text style={s.sheetTitle}>{selected?.title}</Text>{selected?([
       {title:preferences[key(selected)]?.pinned?'ביטול נעיצה':'נעיצת שיחה',icon:'pin-outline',patch:{pinned:!preferences[key(selected)]?.pinned}},
       {title:preferences[key(selected)]?.muted?'הפעלת התראות':'השתקת שיחה',icon:'notifications-off-outline',patch:{muted:!preferences[key(selected)]?.muted}},

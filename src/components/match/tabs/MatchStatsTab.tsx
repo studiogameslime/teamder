@@ -23,7 +23,8 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { GameChampionship } from '@/components/match/GameChampionship';
 import { TabScroll, TabSectionTitle, TabEmpty } from '@/components/match/tabs/MatchTabShell';
 import { summaryLines } from '@/utils/roundSummaryLines';
-import { teamName } from '@/components/match/rotationView';
+import { teamName, teamColor } from '@/components/match/rotationView';
+import { TeamShirt } from '@/components/match/TeamShirt';
 import type { RoundSummary, Leader } from '@/utils/roundSummary';
 import type { Game } from '@/types';
 import { clubAccent } from '@/theme/clubAccents';
@@ -178,6 +179,7 @@ export function MatchStatsTab({
                 icon="trophy"
                 label={he.gdTeamMostWins}
                 team={teamName(best.colourIndex, game.draftTeams?.teams)}
+                color={teamColor(best.colourIndex, game.draftTeams?.teams)}
                 detail={he.gdTeamWinsUnit(best.wins)}
               />
             ) : null}
@@ -186,6 +188,7 @@ export function MatchStatsTab({
                 icon="trending-down"
                 label={he.gdTeamMostLosses}
                 team={teamName(worst.colourIndex, game.draftTeams?.teams)}
+                color={teamColor(worst.colourIndex, game.draftTeams?.teams)}
                 detail={he.gdTeamLossesUnit(worst.losses)}
               />
             ) : null}
@@ -307,11 +310,13 @@ function TeamCard({
   icon,
   label,
   team,
+  color,
   detail,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   team: string;
+  color: string;
   detail: string;
 }) {
   return (
@@ -320,7 +325,10 @@ function TeamCard({
         <Ionicons name={icon} size={14} color={clubStatsPalette.teal} />
         <Text style={styles.starLabel} numberOfLines={1}>{label}</Text>
       </View>
-      <Text style={styles.teamName} numberOfLines={1}>{team}</Text>
+      <View style={styles.teamIdentity}>
+        <TeamShirt color={color} size={27} outline={false} />
+        <Text style={styles.teamName} numberOfLines={1}>{team}</Text>
+      </View>
       <Text style={styles.teamDetail} numberOfLines={1}>{detail}</Text>
     </View>
   );
@@ -354,7 +362,8 @@ const styles = StyleSheet.create({
   starHead: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   starLabel: { fontSize: 12, color: clubStatsPalette.muted, textAlign: RTL_LABEL_ALIGN },
   teamCard: { borderWidth: 1, borderColor: clubStatsPalette.border, backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, gap: 6 },
-  teamName: { fontSize: 17, fontWeight: '800', color: clubStatsPalette.ink, textAlign: RTL_LABEL_ALIGN },
+  teamIdentity: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  teamName: { flex: 1, fontSize: 17, fontWeight: '800', color: clubStatsPalette.ink, textAlign: RTL_LABEL_ALIGN },
   teamDetail: { fontSize: 12, color: clubStatsPalette.muted, textAlign: RTL_LABEL_ALIGN },
   pairCard: { padding: spacing.md, borderWidth: 1, borderColor: clubStatsPalette.border, borderRadius: 12, backgroundColor: '#FFFFFF' },
   pairRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

@@ -1,0 +1,31 @@
+{
+  "version": "1.0.102",
+  "versionCode": 109,
+  "package": "com.matanlevi.pulse",
+  "apk": "artifacts/Pulse-1.0.102-v109.apk",
+  "bytes": 55697859,
+  "sha256": "0642555b5078db76915067d4db530c016317ac4a1064c6674993b8615f0744af",
+  "bundleSHA256": "c64b349e8b3c337e009718f07838077aaf242a444dcac74d83eca837ea827056",
+  "publicAuthConfigVerified": true,
+  "signingCertificateSHA256": "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c",
+  "bundledSource": {
+    "src/screens/HomeScreen.tsx": {
+      "map": "pulse/android/app/build/generated/sourcemaps/react/release/index.android.bundle.map",
+      "sha256": "85ffab3f213dd1479641b79f2c8f14f7c3a06e8bc2fa1ef54c795bce2464c09b"
+    },
+    "src/services/homeDashboard.ts": {
+      "map": "pulse/android/app/build/generated/sourcemaps/react/release/index.android.bundle.map",
+      "sha256": "7bdc31f6e84fa0a578a7d9dd4d4697dc107b35197c60fd3f7be3cdc3ddcc3e65"
+    },
+    "src/navigation/RootTabs.tsx": {
+      "map": "pulse/android/app/build/generated/sourcemaps/react/release/index.android.bundle.map",
+      "sha256": "4ee7f3316adf2b72e653650e7b4f606e07eb80f7309cfc6250e727890431ea42"
+    },
+    "src/components/AppMenu.tsx": {
+      "map": "pulse/android/app/build/generated/sourcemaps/react/release/index.android.bundle.map",
+      "sha256": "4742784f693fe062b379b14d483447c6494f8e18785681919afedddad5a90572"
+    }
+  },
+  "installed": false,
+  "deviceLoginTested": false
+}

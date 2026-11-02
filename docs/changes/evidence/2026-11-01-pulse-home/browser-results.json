@@ -1,0 +1,23 @@
+{
+  "actualSourceComponents": true,
+  "actualDashboardService": true,
+  "transport": "fixture adapters only",
+  "nativeRuntime": false,
+  "widths": [
+    320,
+    390,
+    430
+  ],
+  "verified": [
+    "counts",
+    "organizer navigation target",
+    "contact readback and reload",
+    "undo",
+    "section failure stays unknown",
+    "contact failure blocks marking",
+    "save failure and refresh recovery",
+    "empty state",
+    "no horizontal overflow"
+  ],
+  "browserErrors": []
+}

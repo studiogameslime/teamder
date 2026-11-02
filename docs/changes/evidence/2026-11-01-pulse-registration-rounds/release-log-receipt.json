@@ -1,0 +1,26 @@
+{
+  "added": 1,
+  "readBackVerified": true,
+  "proofReadBackVerified": true,
+  "item": {
+    "title": {
+      "stringValue": "תוקנה ספירת המחזורים בבית הפולס: נכללים גם מחזורים עתידיים עם שחקן רשום אחד לפחות, ומשמאל נספרות כל ההרשמות בהם. נבנה קובץ התקנה 1.0.103/110; הקוד, הגרסה והחתימה אומתו. נבדק בדפדפן ובקריאה חיה ללא כתיבה, טרם בדיקת התקנה במכשיר."
+    },
+    "kind": {
+      "stringValue": "fix"
+    },
+    "version": {
+      "stringValue": "next"
+    },
+    "area": {
+      "stringValue": "פולס, מדדי הרשמה"
+    },
+    "shotId": {
+      "stringValue": "3b61a9f96e644d608b5de462f944cb53"
+    }
+  },
+  "built": true,
+  "installed": false,
+  "deployed": false,
+  "inboxStatusUpdated": false
+}

@@ -4,6 +4,7 @@ import { onCall, onDocumentUpdated, type CallableRequest } from './observedFunct
 import { ENFORCE_APP_CHECK } from './appCheckPolicy';
 import { ExpectedCallableError as HttpsError } from './expectedCallableError';
 import { personalActivityPlayerIds } from './personalActivityWindows';
+import { gameRemovalBlocksWrite } from './gameProcessingGuard';
 
 type Data = Record<string, any>;
 export interface ActivityRange { from: number; to: number }
@@ -102,6 +103,8 @@ export const onGamePersonalActivityChanged = onDocumentUpdated({ document: 'game
   const id = `${stamp.seconds}_${stamp.nanoseconds}`;
   const db = getFirestore(), root = db.doc(`personalActivityJournal/${event.params.gameId}`);
   await db.runTransaction(async tx => {
+    if (await gameRemovalBlocksWrite(tx, db, event.params.gameId)) return;
+    if (!(await tx.get(db.doc(`games/${event.params.gameId}`))).exists) return;
     const baseline = await tx.get(root);
     // BEFORE is the actual document version that remained unchanged throughout
     // [from,to). This proves its lineup; it is not a final-roster extrapolation.
@@ -268,11 +271,13 @@ export const savePersonalActivity = onCall({ enforceAppCheck: ENFORCE_APP_CHECK 
   }
   const fingerprint = hash(JSON.stringify(input));
   return db.runTransaction(async tx => {
+    if (await gameRemovalBlocksWrite(tx, db, input.gameId)) throw new HttpsError('failed-precondition', 'Game removal in progress');
     const sessionRef = root.collection('sessions').doc(input.sessionId);
     const chunkRef = sessionRef.collection('chunks').doc(String(input.revision));
     const [profile, game, chunk, session, sessions] = await Promise.all([tx.get(db.doc(`users/${uid}`)),
       tx.get(state.game.ref), tx.get(chunkRef), tx.get(sessionRef), tx.get(root.collection('sessions').limit(9))]);
     assertActiveActivityOwner(profile);
+    if (!game.exists) throw new HttpsError('not-found', 'Game unavailable');
     if (game.updateTime?.toMillis() !== state.version) return { status: 'processing', retryable: true };
     if (chunk.exists) {
       if (chunk.data()?.fingerprint !== fingerprint) return fail('Chunk content changed');

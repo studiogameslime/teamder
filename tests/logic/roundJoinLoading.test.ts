@@ -19,6 +19,7 @@ function fixture(redBlocked = false) {
     redBlocked,myCommunities:[],communityEventsService:{hasActiveRedCard},setRedBlocked:jest.fn(),
     gameService:{requestJoinGame},toast:{info:jest.fn(),error:jest.fn(),success:jest.fn()},he:{},
     __DEV__:false,reload:jest.fn(),setGame:jest.fn(),joinAudit:{current:null},
+    gameRouteRef:{current:'round'},gameDataRevision:{current:0},
     setRegAnim:jest.fn(),successHaptic:jest.fn(),setCelebrate:jest.fn(),
     setTimeout:jest.fn(),clearTimeout:jest.fn(),JOIN_AUDIT_DELAY_MS:1000,gameRef:{current:null},logUnexpected:jest.fn()};
   vm.runInNewContext(ts.transpileModule('exports.run='+handler,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,Object.assign(context,{joinDiagnosticId:require('@/utils/joinDiagnosticId').joinDiagnosticId,runDiagnosticOperation:require('@/services/diagnosticJournal').runDiagnosticOperation,diagnosticEntity:require('@/services/diagnosticJournal').diagnosticEntity}));

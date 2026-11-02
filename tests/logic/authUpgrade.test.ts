@@ -293,6 +293,49 @@ describe('when there is no anonymous session to upgrade', () => {
   });
 });
 
+describe('single-use Apple credentials', () => {
+  it('acquires a fresh nonce before the existing-account fallback and never mirrors Apple into native auth', async () => {
+    acquireAppleCredential.mockResolvedValueOnce({identityToken:'spent',rawNonce:'first'})
+      .mockResolvedValueOnce({identityToken:'fresh',rawNonce:'second'});
+    linkWithCredential.mockRejectedValueOnce(err('auth/credential-already-in-use'));
+    signInWithCredential.mockResolvedValueOnce({user:{uid:'existing-apple'}});
+    expect(await upgradeAnonymous('apple')).toMatchObject({status:'switched',uid:'existing-apple'});
+    expect(acquireAppleCredential).toHaveBeenCalledTimes(2);
+    expect(signInWithCredential).toHaveBeenCalledTimes(1);
+    expect(signInWithCredential.mock.calls[0][1]).toMatchObject({idToken:'fresh',rawNonce:'second'});
+    expect(mirrorCredentialToNativeAuth).not.toHaveBeenCalled();
+    expect(require('@/utils/errorObservation').observeCaughtError).not.toHaveBeenCalled();
+    expect(require('@/services/errorLog').logError).not.toHaveBeenCalled();
+  });
+
+  it('links a new Apple account once without replaying its token', async () => {
+    linkWithCredential.mockResolvedValueOnce({user:{uid:'anon1'}});
+    expect(await upgradeAnonymous('apple')).toMatchObject({status:'linked',uid:'anon1'});
+    expect(acquireAppleCredential).toHaveBeenCalledTimes(1);
+    expect(signInWithCredential).not.toHaveBeenCalled();
+    expect(mirrorCredentialToNativeAuth).not.toHaveBeenCalled();
+  });
+
+  it('keeps the guest when the second Apple prompt is cancelled', async () => {
+    acquireAppleCredential.mockResolvedValueOnce({identityToken:'spent',rawNonce:'first'})
+      .mockRejectedValueOnce(err('ERR_REQUEST_CANCELED'));
+    linkWithCredential.mockRejectedValueOnce(err('auth/credential-already-in-use'));
+    expect(await upgradeAnonymous('apple')).toEqual({status:'cancelled'});
+    expect(signInWithCredential).not.toHaveBeenCalled();
+    expect(bindIdentity).not.toHaveBeenCalled();
+    expect(authStub.currentUser?.uid).toBe('anon1');
+    expect(require('@/utils/errorObservation').observeCaughtError).not.toHaveBeenCalled();
+  });
+
+  it('does not turn a failure of the fresh credential into success or a third prompt', async () => {
+    linkWithCredential.mockRejectedValueOnce(err('auth/credential-already-in-use'));
+    signInWithCredential.mockRejectedValueOnce(err('auth/missing-or-invalid-nonce'));
+    expect(await upgradeAnonymous('apple')).toMatchObject({status:'failed',code:'auth/missing-or-invalid-nonce'});
+    expect(acquireAppleCredential).toHaveBeenCalledTimes(2);
+    expect(bindIdentity).not.toHaveBeenCalled();
+  });
+});
+
 // ─── platform ─────────────────────────────────────────────────────────────
 
 describe('platform', () => {

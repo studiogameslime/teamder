@@ -109,10 +109,10 @@ async function main() {
     latchRef:{get:async()=>({exists:false})},
     roundHistoryDoc:{payload:value},
     roundHistoryRef:{create:async(doc)=>{if(history)throw Object.assign(new Error('exists'),{code:6});history=doc.payload}},
-    sb:{build:batch=>batch},inc:()=>{},gameId:'g',roundId:'1',HttpsError:Error,
+    sb:{build:batch=>batch},inc:()=>{},gameId:'g',roundId:'1',HttpsError:Error,gameRemovalBlocksWrite:async()=>false,
     pendingLiveSeasonStamp:undefined,liveGoalIds:[],snap:{ref:'game',updateTime:'v1'},grpSnap:{ref:'group',updateTime:'club-v1'},now:123,
     admin:{firestore:{FieldValue:{delete:()=>({delete:true})}}},
-    db:{batch:()=>{let doc,clear;return {
+    db:{runTransaction:async fn=>fn({get:async ref=>{assert.equal(ref,'game');return {exists:true}},create:(_ref,doc)=>{if(history)throw Object.assign(new Error('exists'),{code:6});history=doc.payload}}),batch:()=>{let doc,clear;return {
       set:(ref,v)=>{doc=v},
       update:(ref,patch,condition)=>{if(ref==='group'){assert.equal(condition.lastUpdateTime,'club-v1');return;}assert.equal(ref,'game');assert.equal(condition.lastUpdateTime,'v1');clear=patch},
       commit:async()=>{
@@ -202,7 +202,7 @@ async function main() {
   const save=deferred();
   const shot=loadString('const '+record+';exports.record=record;',{
     writing:{current:false},attempt:{current:null},attemptPeople:{current:null},visibleRef:{current:true},uiEpoch:{current:0},setBusy:()=>{},setSaveError:()=>{},setReselectAllowed:()=>{},setSaveErrorMessage:()=>{},logError:()=>{},
-    kicker:{id:'p'},keeper:{id:'k'},gameId:'g',roundId:'round-one',signature:'[]',kickingTeam:'A',kicks:[],setShadow:()=>{},Math,
+    kicker:{id:'p'},keeper:{id:'k'},gameId:'g',roundId:'round-one',signature:'[]',kickingTeam:'A',kicks:[],shootout:undefined,shadow:null,setShadow:()=>{},Math,
     gameService:{recordShootoutKick:()=>save.promise},logEvent:()=>{},AnalyticsEvent:{},
     rosterOf:penaltyRosterOf,contentScroll:{current:null},setCompleted:value=>{completedKick=value},setSelectedKeeperId:()=>{},setKickerId:()=>{},setScreen:s=>{screen=s},
   });
@@ -222,7 +222,7 @@ async function main() {
   let retryScreen='result',retryError=false;
   const retry=loadString('const '+record+';exports.record=record;',{
     writing:{current:false},attempt:retryAttempt,attemptPeople:{current:null},visibleRef:{current:true},uiEpoch:{current:0},setBusy:()=>{},setSaveError:v=>{retryError=v},setReselectAllowed:()=>{},setSaveErrorMessage:()=>{},logError:()=>{},
-    kicker:{id:'p'},keeper:{id:'k'},gameId:'g',roundId:'round-one',signature:'[]',kickingTeam:'A',kicks:[],setShadow:()=>{},Math,
+    kicker:{id:'p'},keeper:{id:'k'},gameId:'g',roundId:'round-one',signature:'[]',kickingTeam:'A',kicks:[],shootout:undefined,shadow:null,setShadow:()=>{},Math,
     gameService:{recordShootoutKick:async(_game,kick)=>{retryIds.push(kick.id);if(retryIds.length===1)throw new Error('offline')}},logEvent:()=>{},AnalyticsEvent:{},
     rosterOf:penaltyRosterOf,contentScroll:{current:null},setCompleted:()=>{},setSelectedKeeperId:()=>{},setKickerId:()=>{},setScreen:s=>{retryScreen=s},
   });

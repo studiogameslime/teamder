@@ -93,9 +93,10 @@ export interface User {
    */
   friends?: UserId[];
 
-  /** Legacy preference. New messages always require mutual friendship,
-   * irrespective of this historical value. */
+  /** Legacy preference, never proof of an explicit request-privacy choice. */
   dmFriendsOnly?: boolean;
+  dmRequestPolicy?: 'everyone' | 'friends';
+  dmRequestPolicySource?: 'explicit' | 'default';
   socialPrivacy?: { discoverable: boolean; statistics: 'everyone' | 'friends' | 'onlyMe' };
 
   /** Preferred playing position on the pitch (profile flavour + a setup
@@ -2107,7 +2108,7 @@ export interface Game {
     generatedAt: number;
     /** v1 balanced rating SUMS; v2 balances team AVERAGES + refines by swaps.
      *  Old games keep their v1 tag, so both must stay readable. */
-    algorithm: 'rating_greedy_v1' | 'rating_balanced_v2' | 'random_even_v1';
+    algorithm: 'rating_greedy_v1' | 'rating_balanced_v2' | 'rating_priority_v3' | 'random_even_v1';
     unratedCount: number;
     /** v1: rating sum of the first two teams. v2: average of every team. */
     teamRatings: number[];
@@ -2303,6 +2304,8 @@ export interface LiveMatchState {
    */
   shootout?: {
     firstTeam: 'A' | 'B';
+    /** Explicit next side after a manual turn change. Absent in legacy series. */
+    nextTeam?: 'A' | 'B';
     keeperA?: UserId | null;
     keeperB?: UserId | null;
     kicks: {

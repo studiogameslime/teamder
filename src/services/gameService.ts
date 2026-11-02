@@ -1,6 +1,7 @@
 import { joinDiagnosticId } from '../utils/joinDiagnosticId';
 import { runDiagnosticOperation } from './diagnosticJournal';
 import { observeCaughtError, observedListener, observeSettledErrors } from '../utils/errorObservation';
+import { isTransientReadError } from './readRetry';
 
 
 import { seasonScheduleBoundary } from '@/utils/seasonPolicy';
@@ -4142,7 +4143,39 @@ export const gameService = {
       g?.status === 'finished' ||
       g?.status === 'cancelled' ||
       g?.liveMatch?.startedAt != null;
-    if (!alreadyPlayed) await this.notifyTeamsReady(gameId);
+    if (!alreadyPlayed) {
+      const owner = getFirebase().auth.currentUser?.uid;
+      const requestedAt = serverNow();
+      const publishedRoster = JSON.stringify(g?.draftTeams?.teams.map(team => [team.index, team.playerIds, team.colorKey]));
+      try {
+        await this.notifyTeamsReady(gameId);
+      } catch (error) {
+        // A callable may finish while the phone is backgrounded and lose its
+        // response. Verify the server's existing receipt for THIS split instead
+        // of replaying a notification write or reporting a completed publish as
+        // failed. A denial, missing/old receipt or account switch still fails.
+        if (isTransientReadError(error) && owner && getFirebase().auth.currentUser?.uid === owner &&
+            typeof g?.draftTeams?.createdAt === 'number') {
+          try {
+            // Read the existing server-only receipt without the Game converter,
+            // which intentionally does not expose notification metadata.
+            const receipt = await withAuthRaceRetry(() => getDocFromServer(doc(getFirebase().db, 'games', gameId)), { retryTransientReads: true });
+            const current = receipt.exists() ? receipt.data() : null;
+            if (getFirebase().auth.currentUser?.uid === owner && current?.draftTeams?.published === true &&
+                current.draftTeams.createdAt === g.draftTeams.createdAt &&
+                JSON.stringify(current.draftTeams.teams?.map((team: { index?: unknown; playerIds?: unknown; colorKey?: unknown }) => [team.index, team.playerIds, team.colorKey])) === publishedRoster &&
+                typeof current.teamsNotifiedAt === 'number' && Number.isFinite(current.teamsNotifiedAt) &&
+                current.teamsNotifiedAt >= requestedAt) return;
+          } catch (receiptError) {
+            observeCaughtError(receiptError, { source: 'src/services/gameService.ts', handler: 'publishDraftTeams', site: 'gameService:publishReceipt:read' });
+            // Verification is read-only and inconclusive. Preserve the original
+            // publication failure, which the caller reports and presents.
+          }
+        }
+        observeCaughtError(error, { source: 'src/services/gameService.ts', handler: 'publishDraftTeams', site: 'gameService:publishReceipt:failed' });
+        throw error;
+      }
+    }
   },
 
   /**
@@ -4801,6 +4834,7 @@ export const gameService = {
       const game = mockGamesV2.find(item => item.id === gameId);
       validate(game);
       game!.liveMatch!.shootout!.firstTeam = firstTeam;
+      if (game!.liveMatch!.shootout!.nextTeam) game!.liveMatch!.shootout!.nextTeam = firstTeam;
       game!.updatedAt = Date.now();
       return;
     }
@@ -4808,7 +4842,35 @@ export const gameService = {
       const ref = docs.game(gameId), snapshot = await tx.get(ref);
       const game = snapshot.exists() ? snapshot.data() as Game : undefined;
       validate(game);
-      tx.update(ref, { 'liveMatch.shootout.firstTeam': firstTeam, updatedAt: Date.now() });
+      tx.update(ref, { 'liveMatch.shootout.firstTeam': firstTeam, ...(game!.liveMatch!.shootout!.nextTeam ? {'liveMatch.shootout.nextTeam': firstTeam} : {}), updatedAt: Date.now() });
+    });
+  },
+
+  /** Change only the next kicking side, preserving the recorded series. */
+  async changeShootoutNextTeam(gameId: string, side: 'A' | 'B', expectedRoundId: string, expectedFingerprint: string): Promise<void> {
+    const validate = (game?: Game) => {
+      const so = game?.liveMatch?.shootout;
+      if (!so || !['A', 'B'].includes(side) || ['finished', 'cancelled'].includes(game!.status)) throw new Error('SHOOTOUT_CLOSED');
+      if (!expectedRoundId || !game!.rotation || roundCommitKey(game!.rotation) !== expectedRoundId ||
+        game!.lastCommittedRoundId === expectedRoundId || !so.kicks.length) throw new Error('SHOOTOUT_CHANGED');
+      // A lost acknowledgement is retryable, but a new kick or another turn
+      // choice must never be overwritten by a stale administrator.
+      if (shootoutFingerprint(so) !== expectedFingerprint &&
+        !(so.nextTeam === side && ([undefined, 'A', 'B'] as const).some(nextTeam => shootoutFingerprint({...so, nextTeam}) === expectedFingerprint))) {
+        throw new Error('הפנדלים השתנו. חזרו לבעיטות ובחרו שוב את הקבוצה הבועטת.');
+      }
+    };
+    if (USE_MOCK_DATA) {
+      const game = mockGamesV2.find(item => item.id === gameId) ?? (mockGame.id === gameId ? mockGame : undefined);
+      validate(game);
+      game!.liveMatch!.shootout!.nextTeam = side;
+      game!.updatedAt = Date.now();
+      return;
+    }
+    await runTransaction(getFirebase().db, async tx => {
+      const ref = docs.game(gameId), snapshot = await tx.get(ref);
+      validate(snapshot.exists() ? snapshot.data() as Game : undefined);
+      tx.update(ref, { 'liveMatch.shootout.nextTeam': side, updatedAt: Date.now() });
     });
   },
 
@@ -4864,7 +4926,7 @@ export const gameService = {
       if (!so || g.status === 'finished' || g.status === 'cancelled') throw new Error('SHOOTOUT_CLOSED');
       if (opts.expectedRoundId && (!g.rotation || roundCommitKey(g.rotation) !== opts.expectedRoundId)) throw new Error('SHOOTOUT_CHANGED');
       if (opts.expectedKickCount !== undefined && ((so.kicks ?? []).length !== opts.expectedKickCount ||
-        opts.team !== ((so.kicks ?? []).length % 2 === 0 ? so.firstTeam : so.firstTeam === 'A' ? 'B' : 'A'))) throw Object.assign(new Error('SHOOTOUT_CHANGED'), {code:'LIVE_KICK_CHANGED'});
+        opts.team !== (so.nextTeam ?? ((so.kicks ?? []).length % 2 === 0 ? so.firstTeam : so.firstTeam === 'A' ? 'B' : 'A')))) throw Object.assign(new Error('SHOOTOUT_CHANGED'), {code:'LIVE_KICK_CHANGED'});
       assertLiveRosterMember(g, opts.team, opts.kickerId, !!opts.expectedRoundId);
       assertLiveRosterMember(g, opts.team === 'A' ? 'B' : 'A', opts.keeperId, !!opts.expectedRoundId);
     };
@@ -4876,6 +4938,7 @@ export const gameService = {
         if (!isRetry(m.liveMatch.shootout.kicks ?? [])) {
           validateTurn(m);
           m.liveMatch.shootout.kicks = [...(m.liveMatch.shootout.kicks ?? []), kick];
+          if (m.liveMatch.shootout.nextTeam) m.liveMatch.shootout.nextTeam = opts.team === 'A' ? 'B' : 'A';
           m.liveMatch.shootout[keeperField] = opts.keeperId;
         }
         m.updatedAt = Date.now();
@@ -4891,7 +4954,7 @@ export const gameService = {
       if (isRetry(so?.kicks ?? [])) return;
       validateTurn(cur as Game);
       if (!so || cur?.status === 'finished' || cur?.status === 'cancelled') throw new Error('SHOOTOUT_CLOSED');
-      tx.update(ref, { 'liveMatch.shootout.kicks': [...(so.kicks ?? []), kick], [`liveMatch.shootout.${keeperField}`]: opts.keeperId, updatedAt: Date.now() });
+      tx.update(ref, { 'liveMatch.shootout.kicks': [...(so.kicks ?? []), kick], ...(so.nextTeam ? {'liveMatch.shootout.nextTeam': opts.team === 'A' ? 'B' : 'A'} : {}), [`liveMatch.shootout.${keeperField}`]: opts.keeperId, updatedAt: Date.now() });
     });
   },
 
@@ -4947,7 +5010,10 @@ export const gameService = {
       if (expectedId && !(so?.kicks ?? []).some(kick => kick.id === expectedId)) return;
       if (expectedId && so?.kicks?.at(-1)?.id !== expectedId) throw new Error('SHOOTOUT_CHANGED');
       if (m?.status === 'finished' || m?.status === 'cancelled') throw new Error('SHOOTOUT_CLOSED');
-      if (so?.kicks?.length) so.kicks = so.kicks.slice(0, -1);
+      if (so?.kicks?.length) {
+        if (so.nextTeam) so.nextTeam = so.kicks[so.kicks.length - 1].team;
+        so.kicks = so.kicks.slice(0, -1);
+      }
       // The mock live subscription polls the game's `updatedAt`; without this
       // bump the undo never reaches the screen in demo mode.
       if (m) m.updatedAt = Date.now();
@@ -4963,7 +5029,7 @@ export const gameService = {
       if (expectedId && !kicks.some(kick => kick.id === expectedId)) return;
       if (expectedId && kicks[kicks.length - 1].id !== expectedId) throw new Error('SHOOTOUT_CHANGED');
       if (cur.status === 'finished' || cur.status === 'cancelled') throw new Error('SHOOTOUT_CLOSED');
-      tx.update(ref, { 'liveMatch.shootout.kicks': kicks.slice(0, -1), updatedAt: Date.now() });
+      tx.update(ref, { 'liveMatch.shootout.kicks': kicks.slice(0, -1), ...(cur.liveMatch?.shootout?.nextTeam ? {'liveMatch.shootout.nextTeam': kicks[kicks.length - 1].team} : {}), updatedAt: Date.now() });
     });
   },
 

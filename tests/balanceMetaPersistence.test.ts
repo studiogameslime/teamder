@@ -71,10 +71,10 @@ describe('readDraftTeams — the frozen original split survives', () => {
 });
 
 describe('readTeamBalanceMeta — the calibration fields survive', () => {
-  it('keeps gap, band, repeat, fallback and historyGames', () => {
+  it.each(['rating_balanced_v2', 'rating_priority_v3'])('keeps %s gap, band, repeat, fallback and historyGames', algorithm => {
     const out = readTeamBalanceMeta({
       generatedAt: 5,
-      algorithm: 'rating_balanced_v2',
+      algorithm,
       unratedCount: 1,
       teamRatings: [3.4, 3.4, 3.4],
       gap: 0.043,
@@ -84,6 +84,7 @@ describe('readTeamBalanceMeta — the calibration fields survive', () => {
       historyGames: 6,
     });
     expect(out).toMatchObject({
+      algorithm,
       gap: 0.043,
       band: 'A',
       repeat: 5.2,

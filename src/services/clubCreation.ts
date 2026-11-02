@@ -48,7 +48,6 @@ export async function createClubFromValues(
   }, async () => {
   const cityVal = v.city.trim();
   const phone = v.contactPhone.trim();
-  const parsedMaxMembers = parseInt(v.maxMembers, 10);
 
   let coords: { lat: number; lng: number } | null = null;
   if (cityVal) {
@@ -87,8 +86,6 @@ export async function createClubFromValues(
     city: cityVal || undefined,
     lat: coords?.lat,
     lng: coords?.lng,
-    maxMembers:
-      Number.isFinite(parsedMaxMembers) && parsedMaxMembers > 0 ? parsedMaxMembers : undefined,
     coverImageId: pickRandomCoverId(),
     creator: { id: creator.id },
   };

@@ -186,6 +186,7 @@ export function balanceTeams(input: BalanceTeamsInput): BalanceTeamsOutput {
     Math.ceil(unique.length / Math.max(1, numTeams)),
   );
 
+  const pairWeights = input.history?.length ? buildPairRepeatWeights(input.history) : undefined;
   const core = balanceCore({
     playerIds: unique,
     ratings,
@@ -194,9 +195,7 @@ export function balanceTeams(input: BalanceTeamsInput): BalanceTeamsOutput {
     // `?.length`, not just presence: 'random' mode and a club with no stored
     // splits both pass an empty array, and an empty weight map is NOT the same
     // as no history — it would still switch the search into variety mode.
-    pairWeights: input.history?.length
-      ? buildPairRepeatWeights(input.history)
-      : undefined,
+    pairWeights,
     strategy: input.strategy,
     rng: input.rng,
   });
@@ -207,7 +206,7 @@ export function balanceTeams(input: BalanceTeamsInput): BalanceTeamsOutput {
       : NEUTRAL_RATING;
 
   const withFill = input.completionMode === 'balanced' && numTeams > 2 && unique.length < numTeams * perTeam;
-  const finalTeams = withFill ? balanceWithFill(core.teams, perTeam, ratings) : core.teams;
+  const finalTeams = withFill ? balanceWithFill(core.teams, perTeam, ratings, pairWeights) : core.teams;
   const averages = finalTeams.map(ids => fillAverage(ids, ratings));
   const actualGap = Math.max(...averages) - Math.min(...averages);
   const draftTeams = finalTeams.map((ids, index) => {
@@ -232,7 +231,7 @@ export function balanceTeams(input: BalanceTeamsInput): BalanceTeamsOutput {
       return Math.round(avg * 10) / 10;
     }),
     gap: actualGap,
-    repeat: repeatPenalty(finalTeams.map(ids => ({ids, size: ids.length, total: ids.reduce((s,id)=>s+ratingOf(id),0)})), input.history?.length ? buildPairRepeatWeights(input.history) : undefined),
+    repeat: repeatPenalty(finalTeams.map(ids => ({ids, size: ids.length, total: ids.reduce((s,id)=>s+ratingOf(id),0)})), pairWeights),
     fallback: actualGap > 0.2,
     band: balanceBand(actualGap),
   };

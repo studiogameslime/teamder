@@ -48,5 +48,6 @@ test('live/upcoming game queries opt in while season writes retain the default',
     }
     ts.forEachChild(n, walk);
   }
-  walk(source); expect(reads).toBe(10); expect(writes).toBe(1);
+  // Includes the read-only notification receipt; no notification write is retried.
+  walk(source); expect(reads).toBe(11); expect(writes).toBe(1);
 });

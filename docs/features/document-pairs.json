@@ -514,5 +514,11 @@
     "domain": "profile",
     "simple": "profile/my-activity.simple.md",
     "technical": "profile/my-activity.md"
+  },
+  {
+    "title": "בקשות לשיחה אישית בלי חברות",
+    "domain": "chat",
+    "simple": "chat/message-requests.simple.md",
+    "technical": "chat/message-requests.md"
   }
 ]

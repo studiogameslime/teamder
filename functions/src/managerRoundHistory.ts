@@ -3,6 +3,7 @@ import {getFirestore} from 'firebase-admin/firestore';
 import {onCall, onDocumentWritten, HttpsError} from './observedFunctions';
 import {ENFORCE_APP_CHECK} from './appCheckPolicy';
 import {measureRoundChange, type ManagerRoundMeasure, type MeasuredRound} from './managerRoundMeasurement';
+import {gameRemovalBlocksWrite} from './gameProcessingGuard';
 
 export const onManagerRoundChanged = onDocumentWritten('games/{gameId}', async event => {
   const after = event.data?.after;
@@ -21,6 +22,8 @@ export const onManagerRoundChanged = onDocumentWritten('games/{gameId}', async e
   const db = getFirestore(), ref = db.collection('managerRoundMetrics').doc(after.id);
   const receipt = ref.collection('events').doc(createHash('sha256').update(event.id).digest('hex'));
   await db.runTransaction(async tx => {
+    if (await gameRemovalBlocksWrite(tx, db, event.params.gameId)) return;
+    if (!(await tx.get(db.doc(`games/${event.params.gameId}`))).exists) return;
     const [done, current] = await Promise.all([tx.get(receipt), tx.get(ref)]);
     if (done.exists) return;
     const row = measureRoundChange(current.exists ? current.data() as ManagerRoundMeasure : undefined,

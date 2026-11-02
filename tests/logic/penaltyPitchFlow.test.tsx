@@ -9,6 +9,7 @@ let mockWindow = {height:820,width:390,fontScale:1};
 const mockRecord = jest.fn();
 const mockStart = jest.fn();
 const mockChangeFirst = jest.fn();
+const mockChangeTurn = jest.fn();
 jest.mock('react', () => ({
   ...jest.requireActual('react'),
   useState: (initial: any) => {
@@ -39,7 +40,7 @@ jest.mock('@/components/match/rotationView',()=>({
   teamColor:(index:number)=>['#EF4444','#3B82F6','#22C55E'][index],
   teamTextColor:(index:number)=>['#B91C1C','#1D4ED8','#15803D'][index],
 }));
-jest.mock('@/services/gameService',()=>({gameService:{recordShootoutKick:(...args:any[])=>mockRecord(...args),startShootout:(...args:any[])=>mockStart(...args),changeShootoutFirstTeam:(...args:any[])=>mockChangeFirst(...args),setShootoutKeeper:jest.fn(),undoLastShootoutKick:jest.fn(),updateLastShootoutKick:jest.fn()}}));
+jest.mock('@/services/gameService',()=>({gameService:{recordShootoutKick:(...args:any[])=>mockRecord(...args),startShootout:(...args:any[])=>mockStart(...args),changeShootoutFirstTeam:(...args:any[])=>mockChangeFirst(...args),changeShootoutNextTeam:(...args:any[])=>mockChangeTurn(...args),setShootoutKeeper:jest.fn(),undoLastShootoutKick:jest.fn(),updateLastShootoutKick:jest.fn()}}));
 jest.mock('@/services/rotationEngine',()=>({roundCommitKey:()=> 'round-one'}));
 jest.mock('@/services/analyticsService',()=>({AnalyticsEvent:{},logEvent:jest.fn()}));
 jest.mock('@/theme',()=>({RTL_LABEL_ALIGN:'left'}));
@@ -73,6 +74,32 @@ async function settle(){await new Promise(resolve=>setImmediate(resolve));}
 function choosePeople(input:any){let tree=draw(input);picker(tree).props.onSelect('a0');tree=draw(input);picker(tree).props.onSelect('b0');return draw(input);}
 
 beforeEach(()=>{mockWindow={height:820,width:390,fontScale:1};mockSlots=[];mockCursor=0;mockEffects=[];mockChanged=false;mockRecord.mockReset().mockResolvedValue(undefined);mockStart.mockReset().mockResolvedValue(undefined);});
+
+test('a mid-series turn change clears selected people, bridges the listener and survives reopening',async()=>{
+  const input=properties();input.shootout.firstTeam='B';input.shootout.kicks=[{id:'one',team:'B',kickerId:'b0',keeperId:'a0',scored:true,at:1},{id:'two',team:'A',kickerId:'a0',keeperId:'b0',scored:true,at:2}];
+  const before=JSON.stringify(input.shootout.kicks);
+  let tree=draw(input);picker(tree).props.onSelect('b0');tree=draw(input);
+  action(tree,'החלפת הקבוצה הבועטת').props.onPress();tree=draw(input);
+  expect(content(tree)).toContain('מי בועטים עכשיו?');
+  let acknowledge!:()=>void;mockChangeTurn.mockReset().mockImplementation(()=>new Promise<void>(done=>{acknowledge=done;}));
+  const choose=action(tree,'האדומים בועטים עכשיו');choose.props.onPress();choose.props.onPress();
+  expect(mockChangeTurn).toHaveBeenCalledTimes(1);
+  acknowledge();await settle();tree=draw(input);
+  expect(picker(tree).props.players.map((p:any)=>p.id)).toEqual(['a0','a1']);
+  expect(pitch(tree).props.primary.player).toBeUndefined();expect(pitch(tree).props.secondary.player).toBeUndefined();
+  input.shootout.nextTeam='A';tree=draw(input);
+  expect(picker(tree).props.players.map((p:any)=>p.id)).toEqual(['a0','a1']);
+  input.visible=false;draw(input);input.visible=true;tree=draw(input);
+  expect(picker(tree).props.players.map((p:any)=>p.id)).toEqual(['a0','a1']);
+  expect(JSON.stringify(input.shootout.kicks)).toBe(before);
+});
+
+test('cancelling the team chooser makes no write and keeps the current turn',()=>{
+  const input=properties();input.shootout.kicks=[{id:'one',team:'A',scored:true}];mockChangeTurn.mockReset();
+  let tree=draw(input);action(tree,'החלפת הקבוצה הבועטת').props.onPress();tree=draw(input);
+  action(tree,'חזרה לבעיטות').props.onPress();tree=draw(input);
+  expect(mockChangeTurn).not.toHaveBeenCalled();expect(picker(tree).props.players.map((p:any)=>p.id)).toEqual(['b0','b1']);
+});
 
 test.each(['A','B'])('first-team card %s starts directly once and shows only the matching kicking roster',async side=>{
   const input={...properties(),shootout:undefined};let tree=draw(input);

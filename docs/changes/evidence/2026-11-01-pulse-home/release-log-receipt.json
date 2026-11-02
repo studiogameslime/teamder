@@ -1,0 +1,26 @@
+{
+  "added": 1,
+  "readBackVerified": true,
+  "proofReadBackVerified": true,
+  "item": {
+    "title": {
+      "stringValue": "מסך בית חדש בפולס עם נתוני פעילות ומעקב פנייה למועדונים שנוצרו מ־1.11.2026. סימון פנייה נשמר ומאומת; משימות נשארות בלשונית. נבדק בדפדפן ובקריאות מסד ללא כתיבת סימון חי. מקומי, טרם נבנה או הופץ."
+    },
+    "kind": {
+      "stringValue": "feature"
+    },
+    "version": {
+      "stringValue": "next"
+    },
+    "area": {
+      "stringValue": "פולס, בית ומעקב מועדונים"
+    },
+    "shotId": {
+      "stringValue": "e40717c84741489bbb9db348a12228a8"
+    }
+  },
+  "built": false,
+  "deployed": false,
+  "liveClubContactWritten": false,
+  "inboxStatusUpdated": false
+}

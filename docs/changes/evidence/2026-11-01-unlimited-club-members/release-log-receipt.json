@@ -1,0 +1,25 @@
+{
+  "path": "appConfig/releaseLog",
+  "item": {
+    "title": {
+      "stringValue": "הוסרה מגבלת מספר החברים במועדון, כולל מגבלות ישנות של 40 ותקרת 500. נשמרו אישור מנהל, חסימות ומגבלת המשתתפים במחזור. תיקון מקומי בלקוח, בשרת ובכללים, טרם הופץ או נפרס."
+    },
+    "kind": {
+      "stringValue": "fix"
+    },
+    "version": {
+      "stringValue": "next"
+    },
+    "area": {
+      "stringValue": "מועדונים והצטרפות"
+    }
+  },
+  "added": true,
+  "readBackVerified": true,
+  "existingItemsPreserved": true,
+  "deployed": false,
+  "built": false,
+  "clubDocumentsWritten": false,
+  "inboxStatusUpdated": false,
+  "updateTime": "2026-11-01T12:17:40.418231Z"
+}

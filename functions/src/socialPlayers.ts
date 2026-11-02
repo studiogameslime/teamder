@@ -154,7 +154,8 @@ export const checkSocialMessaging = onCall({enforceAppCheck: ENFORCE_APP_CHECK},
   const targetId=validId(request.data?.userId);
   await assertSocialContact(uid,targetId);
   const target=(await db.doc(`users/${targetId}`).get()).data();
-  if(!target||!strings(user.friends).includes(targetId)||!strings(target.friends).includes(uid))throw new HttpsError('permission-denied','Friends only');
+  const approved=(await db.doc(`dmConversations/${[uid,targetId].sort().join('__')}`).get()).data()?.messagingApproved===true;
+  if(!target||target.isGuest===true||!approved&&(!strings(user.friends).includes(targetId)||!strings(target.friends).includes(uid)))throw new HttpsError('permission-denied','Approved conversation required');
   return {allowed:true};
 });
 
@@ -219,7 +220,7 @@ export const setSocialPrivacy = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, a
   const { uid, db } = await session(request, 'privacy', 20);
   const p = request.data;
   if (typeof p?.discoverable !== 'boolean' || !['everyone', 'friends', 'onlyMe'].includes(p.statistics)) throw new HttpsError('invalid-argument', 'Invalid privacy');
-  await db.doc(`users/${uid}`).update({ socialPrivacy: { discoverable: p.discoverable, statistics: p.statistics }, dmFriendsOnly: true, updatedAt: Date.now() });
+  await db.doc(`users/${uid}`).update({ socialPrivacy: { discoverable: p.discoverable, statistics: p.statistics }, updatedAt: Date.now() });
   return { discoverable: p.discoverable, statistics: p.statistics };
 });
 
@@ -272,16 +273,19 @@ async function readStatistics(uid: string, u: Data, played: FirebaseFirestore.Qu
   const scoreMap = new Map(standings.docs.map(d=>[d.data().gameId,d.data().score]));
   const points = recent.flatMap(d=> { const score=scoreMap.get(d.id); return typeof score==='number' && Number.isFinite(score) && score>=0 && score<=10 ? [{gameId:d.id,at:number(d.data().startsAt),score}] : []; });
   const results = { wins:0,losses:0,ties:0,games:0,rounds:0 };
-  let bestGoals: number|null=null,bestAssists: number|null=null;
+  let bestGoals: number|null=null,bestAssists: number|null=null,recordedRounds=0;
+  const validRecorded = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0;
   for(const d of rows.docs) {
     const r=d.data();if(!playedIds.has(r.gameId))continue;
-    if(typeof r.goals==='number')bestGoals=Math.max(bestGoals??0,number(r.goals));
-    if(typeof r.assists==='number')bestAssists=Math.max(bestAssists??0,number(r.assists));
-    const g=number(r.rounds),w=number(r.wins),l=number(r.losses);if(g<=0||w+l>g)continue;
+    if(validRecorded(r.goals))bestGoals=Math.max(bestGoals??0,r.goals);
+    if(validRecorded(r.assists))bestAssists=Math.max(bestAssists??0,r.assists);
+    if(validRecorded(r.goals)||validRecorded(r.assists))recordedRounds++;
+    const g=r.rounds,w=r.wins===undefined?0:r.wins,l=r.losses===undefined?0:r.losses;
+    if(![g,w,l].every(v=>validRecorded(v)&&Number.isInteger(v))||g<=0||w+l>g)continue;
     results.games+=g;results.wins+=w;results.losses+=l;results.ties+=g-w-l;results.rounds++;
   }
   const goals=number(u.stats?.goals),assists=number(u.stats?.assists);
-  const stats={attendedGames:played.length,totalRegistered:registered,attendanceRate:registered?Math.round(played.length/registered*100):0,goals,assists,goalsPerEvening:played.length?Math.round(goals/played.length*10)/10:0,distinctPlayers:Object.keys(co).length,mostPlayedWith,regularPartnerResults,mostWinsWith:top(maps.wins),biggestVictim:top(maps.victim),nemesis:top(maps.nemesis),mostAssistedTo:top(maps.to),mostAssistedBy:top(maps.from),highlights:{points,recentCount:recent.length,bestGoals,bestAssists,recordedRounds:rows.docs.filter(d=>playedIds.has(d.data().gameId)).length,incomplete:false,results:results.rounds?results:null}};
+  const stats={attendedGames:played.length,totalRegistered:registered,attendanceRate:registered?Math.round(played.length/registered*100):0,goals,assists,goalsPerEvening:played.length?Math.round(goals/played.length*10)/10:0,distinctPlayers:Object.keys(co).length,mostPlayedWith,regularPartnerResults,mostWinsWith:top(maps.wins),biggestVictim:top(maps.victim),nemesis:top(maps.nemesis),mostAssistedTo:top(maps.to),mostAssistedBy:top(maps.from),highlights:{points,recentCount:recent.length,bestGoals,bestAssists,recordedRounds,incomplete:false,results:results.rounds?results:null}};
   const ids=[...new Set([stats.mostPlayedWith,stats.mostWinsWith,stats.biggestVictim,stats.nemesis,stats.mostAssistedTo,stats.mostAssistedBy].flatMap(x=>x?[x.uid]:[]))];
   const people:Record<string,unknown>={};
   if(ids.length)for(const d of await db.getAll(...ids.map(id=>db.doc(`users/${id}`))))if(d.exists){const p=socialIdentity(d.id,d.data()!,{});people[d.id]={id:p.id,name:p.name,...(p.avatarId?{avatarId:p.avatarId}:{}),...(p.photoUrl?{photoUrl:p.photoUrl}:{})};}
@@ -310,7 +314,6 @@ export async function sendClubInvitation(db: ReturnType<typeof getFirestore>, ui
     if([...strings(g.playerIds),...strings(g.adminIds)].includes(targetId))return {invited:false,reason:'already_member'};
     if(strings(g.pendingPlayerIds).includes(targetId))return {invited:false,reason:'pending'};
     if(!rejections.empty)return {invited:false,reason:'rejected'};
-    if(strings(g.playerIds).length>=Math.min(number(g.maxMembers)||500,500))throw new HttpsError('failed-precondition','Club full');
     const prior=g.approvedInvites?.[targetId];
     const alreadyApproved=number(prior?.expiresAt)>Date.now()&&strings(g.adminIds).includes(prior?.inviterId);
     if(Date.now()-number(last.data()?.createdAt)<86400000&&(!manager||alreadyApproved))return {invited:false,reason:'already_invited'};
@@ -323,7 +326,7 @@ export async function sendClubInvitation(db: ReturnType<typeof getFirestore>, ui
   return result;
 }
 
-/** Canonical, capacity-safe join. A manager invitation substitutes approval. */
+/** Canonical, atomic join without a member cap. A manager invitation substitutes approval. */
 export const joinSocialClub = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, async request => {
   const {uid,db}=await session(request,'joinClub',30),groupId=validId(request.data?.groupId);
   const ref=db.collection('groups').doc(groupId);
@@ -333,7 +336,6 @@ export const joinSocialClub = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, asy
     const players=strings(g.playerIds),admins=strings(g.adminIds),pending=strings(g.pendingPlayerIds);
     if([...players,...admins].includes(uid))return {status:'joined'};
     if(requests.docs.some(d=>d.get('status')==='rejected'))throw new HttpsError('failed-precondition','GROUP_JOIN_REJECTED');
-    if(players.length>=Math.min(number(g.maxMembers)||500,500))throw new HttpsError('failed-precondition','GROUP_FULL');
     // Legacy manager invitations are trusted only from canonical, recipient-
     // bound notification documents, while the inviter is still a manager.
     const legacy=notices.docs.map(d=>d.data()).filter(n=>n.type==='groupInvitation'&&n.payload?.groupId===groupId&&admins.includes(n.payload?.inviterId)&&
@@ -373,7 +375,6 @@ export const getReceivedInvitations = onCall({ enforceAppCheck: ENFORCE_APP_CHEC
     else if(strings(club?target.pendingPlayerIds:target.pending).includes(uid))state='pending';
     else if(!club&&(!['open','scheduled'].includes(target.status)||target.liveMatch?.phase==='live'||number(target.startsAt)+3600000<Date.now()))state='unavailable';
     else if(number(p.expiresAt)>0&&number(p.expiresAt)<=Date.now())state='expired';
-    else if(club&&strings(target.playerIds).length>=Math.min(number(target.maxMembers)||500,500))state='full';
     else if(!club&&target.status==='scheduled')state='scheduled';
     return {id:notice.id,data:{...data,invitationStatus:state}};
   }));

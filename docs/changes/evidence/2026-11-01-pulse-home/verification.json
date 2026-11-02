@@ -1,0 +1,44 @@
+{
+  "rootTypecheck": "passed",
+  "pulseTypecheck": "passed",
+  "fullSuite": {
+    "suites": 576,
+    "tests": 6468,
+    "result": "passed",
+    "seconds": 231.427
+  },
+  "focusedSuite": {
+    "suites": 2,
+    "tests": 18,
+    "result": "passed"
+  },
+  "browser": {
+    "actualSourceComponents": true,
+    "actualDashboardService": true,
+    "transport": "fixture adapters only",
+    "nativeRuntime": false,
+    "widths": [
+      320,
+      390,
+      430
+    ],
+    "verified": [
+      "counts",
+      "organizer navigation target",
+      "contact readback and reload",
+      "undo",
+      "section failure stays unknown",
+      "contact failure blocks marking",
+      "save failure and refresh recovery",
+      "empty state",
+      "no horizontal overflow"
+    ],
+    "browserErrors": []
+  },
+  "featureDocumentationFailures": [],
+  "globalDocumentationFailures": 150,
+  "globalStatusFailures": 43,
+  "built": false,
+  "deployed": false,
+  "liveClubContactWritten": false
+}

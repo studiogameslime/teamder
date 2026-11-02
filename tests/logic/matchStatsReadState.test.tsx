@@ -45,7 +45,10 @@ jest.mock('@/components/Card', () => ({ Card: 'Card' }));
 jest.mock('@/components/UserAvatar', () => ({ UserAvatar: 'Avatar' }));
 jest.mock('@/components/match/GameChampionship', () => ({ GameChampionship: 'Championship' }));
 jest.mock('@/components/match/tabs/MatchTabShell', () => ({ TabScroll: 'TabScroll', TabSectionTitle: 'SectionTitle', TabEmpty: 'TabEmpty' }));
-jest.mock('@/components/match/rotationView', () => jest.requireActual('@/utils/teamIdentity'));
+jest.mock('@/components/match/rotationView', () => ({
+  ...jest.requireActual('@/utils/teamIdentity'),
+  teamColor: jest.requireActual('@/components/match/rotationView').teamColor,
+}));
 jest.mock('@/theme', () => ({ colors: { primary: '#2563EB', text: '#12234D', textMuted: '#64748B', surface: '#FFF' }, radius: { lg: 16 }, spacing: { sm: 8, md: 12, lg: 16 }, typography: { bodyBold: {}, caption: {} }, RTL_LABEL_ALIGN: 'left' }));
 
 import { ClubStatsSummary, ClubStatsAwards } from '@/components/community/ClubStatsDashboard';

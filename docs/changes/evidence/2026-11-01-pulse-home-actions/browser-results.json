@@ -1,0 +1,30 @@
+{
+  "actualSourceComponents": true,
+  "actualDashboardService": true,
+  "transport": "fixture adapters only",
+  "nativeRuntime": false,
+  "widths": [
+    320,
+    390,
+    430
+  ],
+  "verified": [
+    "counts",
+    "all six action sections",
+    "solo clubs",
+    "first round existence",
+    "guest-aware capacity",
+    "pending memberships",
+    "exact support destination",
+    "organizer navigation target",
+    "contact readback and reload",
+    "undo",
+    "section failure stays unknown",
+    "contact failure blocks marking",
+    "save failure and refresh recovery",
+    "empty state",
+    "no horizontal overflow in every expanded section",
+    "follow-up write and reload preserves first contact time"
+  ],
+  "browserErrors": []
+}

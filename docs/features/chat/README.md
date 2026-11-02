@@ -4,6 +4,7 @@
 
 | תחום | הסבר פשוט | פירוט מעמיק | מסכים |
 |---|---|---|---|
+| בקשות לשיחה אישית בלי חברות | [קצר ופשוט](message-requests.simple.md) | [מצבים, נתונים ובדיקות](message-requests.md) | מצבים בתוך `ChatsList`, `DirectChat` ופרטיות |
 | רשימת שיחות ומונים | [קצר ופשוט](chats-list.simple.md) | [רשימה](chats-list.md) | `ChatsList` |
 | שיחות מועדון, מחזור ופרטית | [קצר ופשוט](conversation-scopes.simple.md) | [גישה והקשרים](conversation-scopes.md) | `CommunityChat`, `GameChat`, `DirectChat` |
 | כתיבה, הקלדה וקריאה | [קצר ופשוט](message-interface.simple.md) | [ממשק](message-interface.md) | `ChatView` |

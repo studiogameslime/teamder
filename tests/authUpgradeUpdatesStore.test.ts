@@ -23,10 +23,14 @@
 const getCurrentUser = jest.fn();
 const resumePendingAction = jest.fn();
 const logError = jest.fn();
+const authState = { currentUser: { uid: 'guest-1', isAnonymous: false } };
+const profileSnapshots: Array<(snapshot: unknown) => void> = [];
 
 jest.mock('react-native', () => ({ Appearance: {} }), { virtual: true });
-jest.mock('@/firebase/config', () => ({ USE_MOCK_DATA: false }));
-jest.mock('firebase/firestore', () => ({ onSnapshot: () => () => {} }));
+jest.mock('@/firebase/config', () => ({ USE_MOCK_DATA: false, getFirebase: () => ({auth:authState}) }));
+jest.mock('firebase/firestore', () => ({ onSnapshot: (_ref: unknown, next: (snapshot: unknown) => void) => {
+  profileSnapshots.push(next); return () => {};
+} }));
 jest.mock('@/firebase/firestore', () => ({ docs: { user: (id: string) => ({ id }) } }));
 jest.mock('@/services', () => ({
   userService: {
@@ -61,6 +65,8 @@ const FRESH = { id: 'u-new', name: '', onboardingCompleted: false };
 
 beforeEach(() => {
   jest.clearAllMocks();
+  profileSnapshots.length = 0;
+  authState.currentUser.uid = 'guest-1';
   useUserStore.setState({
     hydrated: true,
     onboardingDone: true,
@@ -71,6 +77,22 @@ beforeEach(() => {
 });
 
 describe('refreshing the store from the session', () => {
+  it('holds a same-uid guest until profile creation finishes despite a local profile snapshot', async () => {
+    let finish!: (value: unknown) => void;
+    const full = {...FRESH,id:'guest-1'};
+    getCurrentUser.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    const stop = useUserStore.getState().subscribeCurrentUser('guest-1');
+    const upgrading = useUserStore.getState().refreshFromSession('guest-1');
+    profileSnapshots[0]({exists:()=>true,data:()=>full,metadata:{hasPendingWrites:true}});
+    expect(useUserStore.getState().currentUser).toEqual(GUEST);
+    finish(full); await upgrading;
+    expect(useUserStore.getState().currentUser).toEqual(full);
+    const edited = {...full,name:'שם מעודכן'};
+    profileSnapshots[0]({exists:()=>true,data:()=>edited,metadata:{hasPendingWrites:false}});
+    expect(useUserStore.getState().currentUser).toEqual(edited);
+    stop();
+  });
+
   it('replaces the guest with the account that is now signed in', async () => {
     getCurrentUser.mockResolvedValue(REAL);
     await useUserStore.getState().refreshFromSession();

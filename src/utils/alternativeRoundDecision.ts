@@ -10,7 +10,7 @@ export function alternativeRoundFingerprint(game: Pick<Game,'status'|'rotation'|
     Object.fromEntries(Object.entries(value).filter(([,v])=>v!==undefined).sort(([a],[b])=>a.localeCompare(b)).map(([key,v])=>[key,stable(v)])):value;
   const shootout=live?.shootout;
   const series=JSON.stringify(shootout?[shootout.firstTeam,shootout.keeperA??null,shootout.keeperB??null,
-    (shootout.kicks??[]).map(kick=>[kick.id??null,kick.team,kick.kickerId??null,kick.keeperId??'',!!kick.scored,kick.outcome??null,kick.at??0])]:null);
+    (shootout.kicks??[]).map(kick=>[kick.id??null,kick.team,kick.kickerId??null,kick.keeperId??'',!!kick.scored,kick.outcome??null,kick.at??0]),...(shootout.nextTeam?[shootout.nextTeam]:[])]:null);
   return JSON.stringify(stable([
     game.status==='open'?'active':game.status,
     rot?.roundInstanceId??`${rot?.round??'r'}:${rot?.updatedAt??0}`,

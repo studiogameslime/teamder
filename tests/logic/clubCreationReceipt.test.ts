@@ -92,6 +92,20 @@ test('lost response after commit retries the real callable body: one club, publi
   expect(s.documents.get('users/owner')?.achievements.teamsCreated).toBe(1);
 });
 
+test('legacy creation payload does not persist a cap and retries keep their receipt fingerprint', async () => {
+  const s = setup();
+  const legacy = request({maxMembers: 40});
+  const result = await s.invoke(legacy);
+  expect(await s.invoke(legacy)).toEqual(result);
+  expect(s.documents.get(`groups/${result.groupId}`)).not.toHaveProperty('maxMembers');
+  expect(s.documents.get(`groupsPublic/${result.groupId}`)).not.toHaveProperty('maxMembers');
+  const receipt = [...s.documents.entries()].find(([key])=>key.startsWith('serverCreationAttempts/'))![1];
+  expect(receipt.fingerprint).toBe(fingerprintCreation({
+    name:'מועדון בדיקה', maxMembers:40, isOpen:false, internalRating:false, hideInternalRating:false,
+    cardsEnabled:false, yellowCardValidityDays:null, redCardValidityDays:null,
+  }));
+});
+
 test('simultaneous deliveries converge and recovery works after the daily limit is reached', async () => {
   const s = setup();
   const result = await Promise.all([s.invoke(request()), s.invoke(request())]);

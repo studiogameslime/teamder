@@ -41,13 +41,21 @@ test('expired manager grant requests approval; blocks prevent accepting a live g
   await db.doc('users/other/blocked/manager').set({createdAt:Date.now()});
   await assert.rejects(call('joinSocialClub',{groupId:'club'},'other'));
 });
-test('concurrent invitation acceptance cannot exceed the club cap',async()=>{
+test('concurrent invitation acceptance ignores the legacy club cap without losing members',async()=>{
   await db.doc('groups/club').update({maxMembers:3});
   await call('inviteSocialPlayerToClub',{groupId:'club',userId:'target'});
   await call('inviteSocialPlayerToClub',{groupId:'club',userId:'other'});
   const result=await Promise.allSettled(['target','other'].map(uid=>call('joinSocialClub',{groupId:'club'},uid)));
-  assert.equal(result.filter(r=>r.status==='fulfilled').length,1);
-  assert.equal((await db.doc('groups/club').get()).get('playerIds').length,3);
+  assert.equal(result.filter(r=>r.status==='fulfilled').length,2);
+  assert.deepEqual(new Set((await db.doc('groups/club').get()).get('playerIds')),new Set(['manager','member','target','other']));
+});
+test('clubs beyond 500 members can invite, show available invitations and join',async()=>{
+  const players=Array.from({length:501},(_,i)=>`existing${i}`);
+  await db.doc('groups/club').update({playerIds:players,maxMembers:40});
+  assert.equal((await call('inviteSocialPlayerToClub',{groupId:'club',userId:'target'})).invited,true);
+  assert.equal((await call('getReceivedInvitations',{},'target'))[0].data.invitationStatus,'available');
+  assert.equal((await call('joinSocialClub',{groupId:'club'},'target')).status,'joined');
+  assert.equal((await db.doc('groups/club').get()).get('playerIds').length,502);
 });
 test('member friend invitation never enrolls the recipient or grants manager approval',async()=>{
   assert.equal((await call('inviteFriendsToGroup',{groupId:'club',friendIds:['target']},'member')).invited,1);

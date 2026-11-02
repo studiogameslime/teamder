@@ -103,6 +103,7 @@
 
 | פיצ׳ר | הסבר פשוט | מאחורי הקלעים |
 |---|---|---|
+| בקשות לשיחה אישית בלי חברות | [הסבר פשוט](chat/message-requests.simple.md) | [הסבר מעמיק](chat/message-requests.md) |
 | רשימת שיחות ומונים | [הסבר פשוט](chat/chats-list.simple.md) | [הסבר מעמיק](chat/chats-list.md) |
 | הקשר שיחה, זהות והרשאות | [הסבר פשוט](chat/conversation-scopes.simple.md) | [הסבר מעמיק](chat/conversation-scopes.md) |
 | פעולות הודעה, חסימה ודיווח | [הסבר פשוט](chat/message-actions.simple.md) | [הסבר מעמיק](chat/message-actions.md) |

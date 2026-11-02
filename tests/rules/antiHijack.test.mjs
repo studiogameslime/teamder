@@ -60,6 +60,18 @@ test('#1 LEGIT: a member can remove ONLY themselves from playerIds', async () =>
   );
 });
 
+test('club admins can approve and edit beyond 500 members despite a legacy cap', async () => {
+  const players = [ALICE, ...Array.from({length: 500}, (_, i) => `member${i}`)];
+  await seedOpenGroup(players);
+  await assertSucceeds(updateDoc(doc(db(ALICE), 'groups', G), {
+    playerIds: [...players, BOB], updatedAt: Date.now(),
+  }));
+  await assertSucceeds(updateDoc(doc(db(ALICE), 'groups', G), { name: 'large club' }));
+  await assertFails(updateDoc(doc(db(STRANGER), 'groups', G), {
+    playerIds: [...players, BOB, STRANGER],
+  }));
+});
+
 test('#1 HIJACK denied: remove self + evict victim + inject stranger (net −1)', async () => {
   await seedOpenGroup([ALICE, BOB, CAROL]);
   // BOB drops himself AND CAROL and plants STRANGER → size 3→2.

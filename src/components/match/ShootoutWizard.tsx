@@ -12,13 +12,14 @@ import { TeamShirtIllustration } from './TeamShirt';
 import { buildRoster, makeResolver, teamColor, teamTextColor, teamName, type PlayerLite, type RosterMember } from './rotationView';
 import { gameService } from '@/services/gameService';
 import { roundCommitKey } from '@/services/rotationEngine';
+import { shootoutFingerprint } from '@/utils/shootoutDecision';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
 import { RTL_LABEL_ALIGN } from '@/theme';
 import type { DraftTeamsResult, LiveMatchState, MatchRotation, PenaltyOutcome } from '@/types';
 
 type Kick = NonNullable<LiveMatchState['shootout']>['kicks'][number];
-type Screen = 'first' | 'kicker' | 'keeper' | 'result' | 'log' | 'edit' | 'undo' | 'finish';
+type Screen = 'first' | 'turn' | 'kicker' | 'keeper' | 'result' | 'log' | 'edit' | 'undo' | 'finish';
 type CompletedKick = { id: string; team: 'A' | 'B'; outcome: PenaltyOutcome; kicker: RosterMember; keeper: RosterMember };
 const outcomeText = (kick: Kick) => kick.outcome ? outcomes.find(o => o.key === kick.outcome)!.title : kick.scored ? 'גול' : 'לא הובקע';
 
@@ -66,7 +67,7 @@ export function Shootout({ visible, gameId, shootout, draftTeams, rotation, play
   const [saveError, setSaveError] = useState(false);
   const [reselectAllowed, setReselectAllowed] = useState(false);
   const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null);
-  const [shadow, setShadow] = useState<{ base: string; kicks: Kick[] } | null>(null);
+  const [shadow, setShadow] = useState<{ base: string; kicks: Kick[]; nextTeam?: 'A' | 'B' } | null>(null);
   const [edit, setEdit] = useState<Kick | null>(null);
   const [editRole, setEditRole] = useState<'kicker' | 'keeper' | null>(null);
   const writing = useRef(false);
@@ -80,7 +81,7 @@ export function Shootout({ visible, gameId, shootout, draftTeams, rotation, play
   const setupAttempt = useRef<(() => Promise<void>) | null>(null);
   const resolve = useMemo(() => makeResolver(playersMap, guests), [playersMap, guests]);
   const originalKicks = shootout?.kicks ?? [];
-  const signature = JSON.stringify(originalKicks);
+  const signature = JSON.stringify([originalKicks, shootout?.nextTeam]);
   const kicks = shadow?.base === signature ? shadow.kicks : originalKicks;
   // An acknowledged local choice bridges listener latency, but an actual
   // first-side change from the server wins over that old snapshot. Starting
@@ -88,7 +89,7 @@ export function Shootout({ visible, gameId, shootout, draftTeams, rotation, play
   const firstTeam: 'A' | 'B' = kicks.length ? shootout?.firstTeam ?? chosenFirst
     : firstChoice && firstChoice.base === shootout?.firstTeam ? firstChoice.side
       : shootout?.firstTeam ?? chosenFirst;
-  const kickingTeam: 'A' | 'B' = kicks.length % 2 === 0 ? firstTeam : firstTeam === 'A' ? 'B' : 'A';
+  const kickingTeam: 'A' | 'B' = (!kicks.length && firstChoice ? firstTeam : shadow?.base === signature ? shadow.nextTeam : shootout?.nextTeam) ?? (kicks.length % 2 === 0 ? firstTeam : firstTeam === 'A' ? 'B' : 'A');
   const defendingTeam: 'A' | 'B' = kickingTeam === 'A' ? 'B' : 'A';
   const left = new Set((draftTeams?.leftHome ?? []).map(p => p.playerId));
   const teams = (draftTeams?.teams ?? []).map(t => ({ ...t, playerIds: t.playerIds.filter(id => !left.has(id)) }));
@@ -105,7 +106,7 @@ export function Shootout({ visible, gameId, shootout, draftTeams, rotation, play
   const takenOf = (side: 'A' | 'B') => kicks.filter(k => k.team === side).length;
   const last = kicks[kicks.length - 1];
   const roundId = rotation ? roundCommitKey(rotation) : '';
-  const selectionSeriesKey = JSON.stringify([roundId, firstTeam, kicks.map(kick => [kick.id, kick.team])]);
+  const selectionSeriesKey = JSON.stringify([roundId, firstTeam, kickingTeam, kicks.map(kick => [kick.id, kick.team])]);
   const observedSeries = useRef<string | null>(null);
   useEffect(() => () => { uiEpoch.current += 1; }, []);
   useEffect(() => {setPeekTeam(null);if(decisionContent)setCompleted(null);},[visible,gameId,roundId,!!decisionContent]);
@@ -184,6 +185,18 @@ export function Shootout({ visible, gameId, shootout, draftTeams, rotation, play
     setCompleted(null); setSelectedKeeperId(uid); setScreen('result');
     logEvent(AnalyticsEvent.ShootoutKeeperPicked, { gameId, team: defendingTeam, kickIndex: kicks.length });
   };
+  const changeTurn = (side: 'A' | 'B') => {
+    if (!shootout || !kicks.length || saveError || attempt.current || setupAttempt.current) return;
+    const expected = shootoutFingerprint({...shootout, kicks, ...(shadow?.base === signature && shadow.nextTeam ? {nextTeam: shadow.nextTeam} : {})});
+    const epoch = uiEpoch.current;
+    void saveSetup(async () => {
+      await gameService.changeShootoutNextTeam(gameId, side, roundId, expected);
+      if (visibleRef.current && uiEpoch.current === epoch) {
+        setShadow({base: signature, kicks, nextTeam: side});
+        setKickerId(null); setSelectedKeeperId(null); setCompleted(null); setScreen('kicker');
+      }
+    });
+  };
   const record = async (outcome?: PenaltyOutcome) => {
     if (writing.current || (!attempt.current && (!kicker || !keeper || !outcome))) return;
     const pending = attempt.current ?? { id: `pk_${Date.now()}_${Math.random().toString(36).slice(2)}`, team: kickingTeam, kickerId: kicker!.id, keeperId: keeper!.id, scored: outcome === 'goal', outcome: outcome!, expectedKickCount: kicks.length, expectedRoundId: roundId };
@@ -201,7 +214,7 @@ export function Shootout({ visible, gameId, shootout, draftTeams, rotation, play
           setCompleted({ id: pending.id!, team: pending.team, kicker: savedKicker, keeper: savedKeeper, outcome: pending.outcome });
         }
         const acknowledged = { id: pending.id!, kickerId: pending.kickerId, keeperId: pending.keeperId, team: pending.team, scored: pending.scored, outcome: pending.outcome, at: Date.now() };
-        setShadow({ base: signature, kicks: kicks.some(kick => kick.id === pending.id) ? kicks : [...kicks, acknowledged] });
+        setShadow({ base: signature, kicks: kicks.some(kick => kick.id === pending.id) ? kicks : [...kicks, acknowledged], nextTeam: shootout?.nextTeam || shadow?.nextTeam ? pending.team === 'A' ? 'B' : 'A' : undefined });
         attempt.current = null; attemptPeople.current = null; setKickerId(null); setSelectedKeeperId(null); setScreen('kicker');
       }
       logEvent(AnalyticsEvent.ShootoutKickRecorded, { gameId, team: pending.team, scored: pending.scored, outcome: pending.outcome, kickIndex: pending.expectedKickCount ?? 0 });
@@ -235,12 +248,12 @@ export function Shootout({ visible, gameId, shootout, draftTeams, rotation, play
   });
   const undo = () => { if (!last) return; const epoch = uiEpoch.current; void saveSetup(async () => {
     await gameService.undoLastShootoutKick(gameId, last.id);
-    if (visibleRef.current && uiEpoch.current === epoch) { setShadow({ base: signature, kicks: kicks.slice(0, -1) }); setKickerId(null); setScreen('kicker'); }
+    if (visibleRef.current && uiEpoch.current === epoch) { setShadow({ base: signature, kicks: kicks.slice(0, -1), nextTeam: shootout?.nextTeam || shadow?.nextTeam ? last.team : undefined }); setKickerId(null); setSelectedKeeperId(null); setScreen('kicker'); }
     logEvent(AnalyticsEvent.ShootoutKickUndone, { gameId, kickIndex: kicks.length - 1, team: last.team });
   }); };
   const saveEdit = () => { if (!edit || !edit.outcome) return; const epoch = uiEpoch.current; void saveSetup(async () => {
     await gameService.updateLastShootoutKick(gameId, edit.id, { kickerId: edit.kickerId, keeperId: edit.keeperId, outcome: edit.outcome! }, roundId);
-    if (visibleRef.current && uiEpoch.current === epoch) { setShadow({ base: signature, kicks: kicks.map(k => k.id === edit.id ? { ...edit, scored: edit.outcome === 'goal' } : k) }); setEdit(null); setEditRole(null); setScreen('log'); }
+    if (visibleRef.current && uiEpoch.current === epoch) { setShadow({ base: signature, kicks: kicks.map(k => k.id === edit.id ? { ...edit, scored: edit.outcome === 'goal' } : k), nextTeam: shootout?.nextTeam || shadow?.nextTeam ? kickingTeam : undefined }); setEdit(null); setEditRole(null); setScreen('log'); }
   }); };
   const person = (m: RosterMember | undefined, role: string, side: 'A' | 'B', onChange?: () => void) => <View style={[s.person, screen === 'edit' && layout.editPerson, { borderColor: tint(side) + '60' }]}>{m && <UserAvatar user={m} size={40}/>}<View style={s.flex}><Text style={s.personRole}>{role}</Text><Text style={s.name}>{m?.name ?? 'בחרו שחקן'}</Text><Text style={[s.small, { color: tint(side) }]}>{label(side)}</Text></View>{onChange && <Pressable style={s.linkButton} onPress={onChange} disabled={busy || saveError}><Text style={s.link}>שינוי</Text></Pressable>}</View>;
   const grid = (players: RosterMember[], choose: (id: string) => void) => <View style={s.grid}>{players.map(m => <Pressable key={m.id} style={s.candidate} disabled={busy || saveError} onPress={() => choose(m.id)} accessibilityRole="button" accessibilityLabel={m.name}><UserAvatar user={m} size={42}/><Text style={s.candidateName} numberOfLines={2}>{m.name}</Text></Pressable>)}{players.length === 0 && <Text style={s.error}>אין שחקנים לבחירה בהרכב הזה</Text>}</View>;
@@ -264,9 +277,17 @@ export function Shootout({ visible, gameId, shootout, draftTeams, rotation, play
   return <SafeModal visible={visible} transparent animationType="slide" onRequestClose={decisionContent ? onDecisionClose : close}>{decisionContent ?? <View style={s.backdrop}><Pressable style={StyleSheet.absoluteFill} onPress={close}/><View testID="penalty-dialog" style={[s.sheet, compact && s.compactSheet, { height: sheetHeight, maxHeight: sheetHeight }]}>
     <View style={s.header}>{core && <View style={s.headerShirts}><TeamShirtIllustration color={shirtColor(headerTeam)} width={compact ? 24 : 32}/><TeamShirtIllustration color={shirtColor(headerOther)} width={compact ? 24 : 32}/></View>}<View style={s.flex}><Text maxFontSizeMultiplier={compact ? 1.15 : undefined} style={[s.title, compact && s.compactTitle, core && { color: tint(headerTeam) }]}>{title}</Text>{summary && <Text style={s.headerSubtitle}>{`משחק ${rotation?.round ?? 1}`}</Text>}{core && <Text style={[s.headerSubtitle, compact && s.compactSubtitle]} maxFontSizeMultiplier={compact ? 1.15 : 1.2}>{headerContext}</Text>}</View><Pressable style={s.close} onPress={close} disabled={busy} accessibilityRole="button" accessibilityLabel="חזרה למשחק"><Ionicons name="close" size={24} color="#12234D"/></Pressable></View>
     {screen !== 'first' && screen !== 'undo' && !core && !summary && <View style={s.score}><Text style={s.scoreCaption}>תוצאת הפנדלים</Text><View style={s.scoreRow}>{(['A','B'] as const).map(side => <View key={side} style={s.scoreHalf}><Text style={[s.scoreName, { color: tint(side) }]}>{label(side)}</Text><Text style={s.scoreNumber}>{scoredOf(side)}</Text><Text style={s.small}>{takenOf(side) === 1 ? 'בעיטה אחת' : `${takenOf(side)} בעיטות`}</Text></View>)}</View></View>}
+    {core && kicks.length > 0 && <Pressable style={s.secondary} disabled={busy || saveError || !!completed || !!attempt.current || !!setupAttempt.current} accessibilityRole="button" accessibilityLabel="החלפת הקבוצה הבועטת" onPress={() => changeScreen('turn')}><Text style={s.link}>החלפת הקבוצה הבועטת</Text></Pressable>}
     <ScrollView ref={contentScroll} style={[s.content, layout.content]} contentContainerStyle={[s.contentInner, layout.inner, compact && s.compactContent, !core && !summary && layout.centered]}>
       {summary && draftTeams && rotation ? <ShootoutScorePanel draftTeams={draftTeams} rotation={rotation} kicks={kicks} compact showDots={screen === 'log'} caption={screen === 'finish' && leading ? `${label(leading)} מובילים בפנדלים` : undefined}/> : null}
-      {screen === 'first' ? <View testID="penalty-first-stage" style={layout.firstStage}>
+      {screen === 'turn' ? <View style={layout.firstStage} testID="penalty-turn-stage">
+        <Text style={s.question}>מי בועטים עכשיו?</Text>
+        <Text style={s.small}>בחרו לפי תוצאת ההגרלה שלכם. הבעיטות והתוצאה שכבר נרשמו יישמרו.</Text>
+        <View style={layout.firstTeams}>{(['A','B'] as const).map(side => <Pressable key={side} style={[layout.firstTeam, {borderColor: shirtColor(side), backgroundColor: shirtColor(side)+'0D'}]} disabled={busy || saveError} accessibilityRole="button" accessibilityLabel={`${label(side)} בועטים עכשיו`} accessibilityState={{disabled:busy || saveError,selected:side===kickingTeam}} onPress={() => changeTurn(side)}>
+          <TeamShirtIllustration color={shirtColor(side)} width={44}/><Text style={[layout.firstTeamName,{color:tint(side)}]}>{label(side)}</Text>{side===kickingTeam && <Text style={s.small}>התור הנוכחי</Text>}
+        </Pressable>)}</View>
+        <Pressable style={s.secondary} disabled={busy} onPress={() => changeScreen('kicker')} accessibilityRole="button"><Text style={s.link}>חזרה לבעיטות</Text></Pressable>
+      </View> : screen === 'first' ? <View testID="penalty-first-stage" style={layout.firstStage}>
         <MatchActionPitch mode="penalty" primary={{label:'',color:shirtColor('A')}} secondary={{label:'',color:shirtColor('B')}} teamPreview activeRole={null} status="idle" visible={visible} height={compact ? 100 : Math.min(150, height * 0.20)}/>
         <View style={layout.firstHeading}><Text style={s.question}>מי בועטים ראשונים?</Text><Text style={s.small}>בחרו קבוצה או הגרילו</Text></View>
         <View style={layout.firstTeams}>{(['A','B'] as const).map(side => {

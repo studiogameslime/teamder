@@ -39,6 +39,7 @@ export const GROUPS: { title: string; items: Item[] }[] = [
     { route: 'Chats', label: 'פיקוח על שיחות', icon: 'shield-checkmark' },
   ] },
   { title: 'פעילות ומדדים', items: [
+    { route: 'Home', label: 'תמונת מצב', icon: 'home-outline' },
     { route: 'Clubs', label: 'מועדונים', icon: 'shield', screen: 'ClubsList' },
     { route: 'Overview', label: 'סקירה, מדדים ומפה', icon: 'home' },
     { route: 'Games', label: 'מחזורים', icon: 'football', screen: 'GamesList' },

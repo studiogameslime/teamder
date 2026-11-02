@@ -74,7 +74,7 @@ export function CommunityEditScreen() {
       maxMembers:
         typeof original.maxMembers === 'number'
           ? String(original.maxMembers)
-          : '40',
+          : '',
     };
   }, [original]);
 
@@ -125,10 +125,7 @@ export function CommunityEditScreen() {
         rules: v.rules.trim() || undefined,
         contactPhone: v.contactPhone.trim() || undefined,
         city: v.city.trim() || undefined,
-        // maxMembers is intentionally NOT sent — the field was removed from the
-        // form (report [3EG3]). Re-sending the form default (40) here would trip
-        // GROUP_MAX_BELOW_CURRENT and lock an admin out of editing an uncapped /
-        // over-40 community. Omitting the key preserves the stored cap untouched.
+        // Legacy maxMembers is ignored. Club membership has no cap.
       });
       // The rating switches ride along on the same edit event, but only when
       // they actually moved — otherwise every unrelated save would report the

@@ -27,6 +27,9 @@ import { getFirebase } from '@/firebase/config';
 const OFFSET_STORAGE_KEY = '@teamder/serverClockOffset';
 /** How many probes per sync. We keep the lowest-RTT sample. */
 const PROBE_COUNT = 3;
+// Suspended apps can deliver a response minutes later. Such a midpoint is
+// unbounded clock error, not a useful sample. Keep the previous correction.
+const MAX_PROBE_RTT_MS = 3000;
 /** Re-sync if the cached offset is older than this. Kept tight (2 min) so a
  *  long live match corrects clock drift between devices several times instead
  *  of trusting a single measurement for the whole match. */
@@ -79,13 +82,14 @@ async function probeOnce(): Promise<{ offset: number; rtt: number } | null> {
     // avoids pulling firebase/functions into bundles that never sync.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { httpsCallable } = require('@/services/diagnosticCallable');
-    const fn = httpsCallable(getFirebase().functions, 'getServerTime');
+    const fn = httpsCallable(getFirebase().functions, 'getServerTime', { timeout: 5000 });
     const t0 = Date.now();
     const res = await fn({});
     const t1 = Date.now();
     const serverTime = Number((res?.data as { now?: number } | undefined)?.now);
-    if (!Number.isFinite(serverTime)) return null;
+    if (!Number.isFinite(serverTime) || serverTime <= 0) return null;
     const rtt = t1 - t0;
+    if (rtt < 0 || rtt > MAX_PROBE_RTT_MS) return null;
     // Assume the server stamped at the midpoint of the round-trip, so the
     // server's clock at receipt (t1) was ~serverTime + rtt/2. Offset is
     // that minus our local clock at t1.

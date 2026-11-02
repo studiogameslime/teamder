@@ -1,0 +1,193 @@
+<div id="teamder-rating-sketches" dir="rtl">
+  <div class="td-demo-label">סקיצות · נתונים לדוגמה</div>
+  <div class="viz-carousel viz-dotted-background" aria-label="מסכי דירוג וחלוקת כוחות" data-previous-label="הקודם" data-next-label="הבא">
+    <section data-variant="הגדרות המועדון" aria-label="הגדרות המועדון"><div class="td-stage" data-screen="settings"></div></section>
+    <section data-variant="מעבר ראשון" aria-label="מעבר ראשון לדירוג התקפה והגנה" hidden><div class="td-stage" data-screen="first"></div></section>
+    <section data-variant="דירוג השחקנים" aria-label="רשימת דירוג השחקנים" hidden><div class="td-stage" data-screen="roster"></div></section>
+    <section data-variant="עריכת שחקן" aria-label="עריכת התקפה והגנה" hidden><div class="td-stage" data-screen="edit"></div></section>
+    <section data-variant="דירוג חסר" aria-label="טיפול בדירוג חסר ובאורח" hidden><div class="td-stage" data-screen="missing"></div></section>
+    <section data-variant="חזרה לדירוג כללי" aria-label="השוואה ואישור עדכון דירוגים כלליים" hidden><div class="td-stage" data-screen="general"></div></section>
+    <section data-variant="שחזור דירוגים" aria-label="חזרה לדירוג התקפה והגנה שנשמר בעבר" hidden><div class="td-stage" data-screen="restore"></div></section>
+    <section data-variant="כוחות מאוזנים" aria-label="סיכום חלוקה מאוזנת" hidden><div class="td-stage" data-screen="balanced"></div></section>
+    <section data-variant="חלוקה עם פערים" aria-label="סיכום חלוקה עם פערי התקפה" hidden><div class="td-stage" data-screen="gap"></div></section>
+    <section data-variant="חלוקה שמורה" aria-label="חלוקה שמורה לפי דירוגים שהשתנו" hidden><div class="td-stage" data-screen="saved"></div></section>
+    <section data-variant="חלוקה מתוזמנת" aria-label="שינוי שיטה לפני יצירת חלוקה מתוזמנת" hidden><div class="td-stage" data-screen="scheduled"></div></section>
+    <section data-variant="בחירת משלימים" aria-label="התקפה והגנה בהרכבים אחרי השלמה" hidden><div class="td-stage" data-screen="fill"></div></section>
+  </div>
+</div>
+<style>
+#teamder-rating-sketches{--td-blue:light-dark(#2f63ff,#769bff);--td-onblue:light-dark(#fff,#10204d);--td-ink:light-dark(#162343,#ecf1ff);--td-muted:light-dark(#61708a,#acb9d1);--td-bg:light-dark(#f3f7ff,#121b2c);--td-paper:light-dark(#fff,#1b2840);--td-soft:light-dark(#f0f5ff,#243754);--td-line:light-dark(#e1eafb,#334664);--td-warn:light-dark(#966017,#f6cd82);--td-warnbg:light-dark(#fff6e5,#3b3021);--td-good:light-dark(#167d5b,#7fdbb3);--td-goodbg:light-dark(#eaf8f1,#203d34);--td-dimmer:light-dark(#11203d66,#0009);--td-type:14px;--td-gap:14px;font:400 var(--td-type)/1.5 Arial,sans-serif;color:var(--td-ink);color-scheme:light dark}
+#teamder-rating-sketches *{box-sizing:border-box}
+#teamder-rating-sketches button,#teamder-rating-sketches input{font:inherit}
+#teamder-rating-sketches button{cursor:inherit}
+#teamder-rating-sketches button:focus-visible,#teamder-rating-sketches input:focus-visible{outline:3px solid var(--td-blue);outline-offset:3px}
+#teamder-rating-sketches [hidden]{display:none!important}
+#teamder-rating-sketches .td-demo-label{text-align:center;color:var(--td-muted);padding:8px 0 14px;font-size:12px}
+#teamder-rating-sketches .td-stage{min-height:1120px;padding:20px 10px 22px;display:flex;justify-content:center;align-items:flex-start}
+#teamder-rating-sketches .td-phone{width:390px;max-width:100%;min-height:805px;background:var(--td-bg);border:1px solid var(--td-line);border-radius:30px;overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:0 14px 35px light-dark(#11203d12,#0003);text-align:right}
+#teamder-rating-sketches .td-status{display:flex;align-items:center;justify-content:space-between;padding:12px 22px 7px;background:var(--td-paper);font-size:12px;font-weight:500;direction:ltr}
+#teamder-rating-sketches .td-status span:last-child{display:flex;gap:5px;align-items:center}
+#teamder-rating-sketches .td-header{display:flex;align-items:center;gap:10px;padding:10px 16px 16px;background:var(--td-paper);border-bottom:1px solid var(--td-line)}
+#teamder-rating-sketches .td-header strong{font-size:20px;font-weight:500;display:block}
+#teamder-rating-sketches .td-header small{font-size:12px;color:var(--td-muted)}
+#teamder-rating-sketches .td-back{display:flex;align-items:center;justify-content:center;width:32px;min-height:36px;flex:none}
+#teamder-rating-sketches .td-header .td-iconbox{margin-right:auto}
+#teamder-rating-sketches .td-content{padding:18px 15px;display:flex;flex-direction:column;gap:var(--td-gap);flex:1}
+#teamder-rating-sketches h3,#teamder-rating-sketches h4,#teamder-rating-sketches p{margin:0}
+#teamder-rating-sketches h3{font-size:18px;font-weight:500}
+#teamder-rating-sketches h4{font-size:15px;font-weight:500}
+#teamder-rating-sketches .td-sub{font-size:12px;color:var(--td-muted)}
+#teamder-rating-sketches .td-card{padding:16px;background:var(--td-paper);border:1px solid var(--td-line);border-radius:22px}
+#teamder-rating-sketches .td-stack{display:flex;flex-direction:column;gap:12px}
+#teamder-rating-sketches .td-row{display:flex;align-items:center;gap:10px;min-width:0}
+#teamder-rating-sketches .td-between{justify-content:space-between}
+#teamder-rating-sketches .td-grow{flex:1;min-width:0}
+#teamder-rating-sketches .td-iconbox{display:flex;align-items:center;justify-content:center;background:var(--td-soft);color:var(--td-blue);border-radius:12px;width:36px;height:36px;flex:none}
+#teamder-rating-sketches .td-line{height:1px;background:var(--td-line);margin:2px 0}
+#teamder-rating-sketches .td-option{display:flex;align-items:flex-start;gap:11px;padding:15px;border:1px solid var(--td-line);border-radius:17px;background:var(--td-paper);color:var(--td-ink);text-align:right;width:100%}
+#teamder-rating-sketches .td-option.is-active{border:2px solid var(--td-blue);padding:14px;background:var(--td-soft)}
+#teamder-rating-sketches .td-radio{height:20px;width:20px;border:1.5px solid var(--td-muted);border-radius:50%;flex:none;margin-top:2px}
+#teamder-rating-sketches .is-active .td-radio{border:6px solid var(--td-blue)}
+#teamder-rating-sketches .td-option strong{display:block;font-weight:500;margin-bottom:4px}
+#teamder-rating-sketches .td-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:8px;font-size:11px;background:var(--td-soft);color:var(--td-blue);white-space:nowrap}
+#teamder-rating-sketches .td-pill.old{color:var(--td-muted);background:var(--td-bg)}
+#teamder-rating-sketches .td-pill.warn{color:var(--td-warn);background:var(--td-warnbg)}
+#teamder-rating-sketches .td-note{padding:12px 13px;border-radius:14px;background:var(--td-soft);font-size:12px;color:var(--td-muted)}
+#teamder-rating-sketches .td-note.warn{background:var(--td-warnbg);color:var(--td-warn)}
+#teamder-rating-sketches .td-note.good{background:var(--td-goodbg);color:var(--td-good)}
+#teamder-rating-sketches .td-footer{padding:14px 16px 16px;background:var(--td-paper);border-top:1px solid var(--td-line);display:flex;flex-direction:column;gap:9px}
+#teamder-rating-sketches .td-button{border:0;border-radius:15px;min-height:46px;padding:11px 15px;color:var(--td-onblue);background:var(--td-blue);font-weight:500;display:flex;justify-content:center;align-items:center;gap:8px;text-align:center;width:100%}
+#teamder-rating-sketches .td-button.secondary{background:var(--td-soft);color:var(--td-blue)}
+#teamder-rating-sketches .td-button.quiet{background:transparent;color:var(--td-muted);min-height:38px}
+#teamder-rating-sketches .td-button:disabled{opacity:.4}
+#teamder-rating-sketches .td-nav{background:var(--td-paper);display:flex;justify-content:space-around;padding:12px 8px 15px;border-top:1px solid var(--td-line);color:var(--td-muted)}
+#teamder-rating-sketches .td-nav span{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px}
+#teamder-rating-sketches .td-nav span.active{color:var(--td-blue)}
+#teamder-rating-sketches .td-person{display:flex;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--td-line)}
+#teamder-rating-sketches .td-person:last-child{border:0}
+#teamder-rating-sketches .td-avatar{width:38px;height:38px;border-radius:50%;background:var(--td-soft);color:var(--td-blue);display:flex;align-items:center;justify-content:center;font-weight:500;flex:none}
+#teamder-rating-sketches .td-rating-pair{display:flex;gap:6px;flex:none}
+#teamder-rating-sketches .td-rating-pair span{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:45px;padding:5px 6px;border-radius:10px;background:var(--td-soft)}
+#teamder-rating-sketches .td-rating-pair small{font-size:11px;color:var(--td-muted)}
+#teamder-rating-sketches .td-rating-pair b{font-size:16px;font-weight:500;font-variant-numeric:tabular-nums}
+#teamder-rating-sketches .td-name{font-weight:500;font-size:14px}
+#teamder-rating-sketches .td-label-line{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+#teamder-rating-sketches .td-label-line .td-pill{white-space:normal;max-width:100%}
+#teamder-rating-sketches .td-person-button{border:0;background:transparent;color:var(--td-blue);padding:8px;min-height:36px;display:flex;align-items:center;border-radius:9px}
+#teamder-rating-sketches .td-shade{position:absolute;inset:0;background:var(--td-dimmer);display:flex;align-items:flex-end;z-index:5}
+#teamder-rating-sketches .td-sheet{background:var(--td-paper);border-radius:28px 28px 0 0;padding:13px 20px 20px;width:100%;display:flex;flex-direction:column;gap:16px;box-shadow:0 -8px 32px light-dark(#11203d18,#0005)}
+#teamder-rating-sketches .td-handle{width:36px;height:4px;background:var(--td-line);border-radius:4px;align-self:center;margin-bottom:2px}
+#teamder-rating-sketches .td-sheethead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#teamder-rating-sketches .td-close{background:var(--td-soft);color:var(--td-muted);border:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex:none}
+#teamder-rating-sketches .td-copyline{display:grid;grid-template-columns:1fr 45px 18px 45px 45px;gap:5px;align-items:center;padding:10px 0;border-bottom:1px solid var(--td-line);font-variant-numeric:tabular-nums}
+#teamder-rating-sketches .td-copyline:last-child{border:0}
+#teamder-rating-sketches .td-copyline.header{font-size:11px;color:var(--td-muted);padding:5px 0}
+#teamder-rating-sketches .td-copyline .td-value{background:var(--td-soft);padding:5px;border-radius:8px;text-align:center;font-weight:500}
+#teamder-rating-sketches .td-slider{background:var(--td-bg);padding:16px;border-radius:18px;border:1px solid var(--td-line)}
+#teamder-rating-sketches .td-slider output{font-size:25px;font-weight:500;color:var(--td-blue);font-variant-numeric:tabular-nums}
+#teamder-rating-sketches input[type=range]{width:100%;accent-color:var(--td-blue);margin:15px 0 5px;direction:ltr}
+#teamder-rating-sketches .td-scale{display:flex;justify-content:space-between;direction:ltr;font-size:11px;color:var(--td-muted)}
+#teamder-rating-sketches .td-compare{display:grid;grid-template-columns:22px 1fr 48px 22px 48px;gap:7px;align-items:center;padding:12px 0;border-bottom:1px solid var(--td-line);font-variant-numeric:tabular-nums}
+#teamder-rating-sketches .td-compare.header{font-size:11px;color:var(--td-muted)}
+#teamder-rating-sketches .td-compare input{width:18px;height:18px;accent-color:var(--td-blue);margin:0}
+#teamder-rating-sketches .td-checkall{display:flex;align-items:center;gap:9px;color:var(--td-blue);font-size:13px;min-height:36px}
+#teamder-rating-sketches .td-checkall input{accent-color:var(--td-blue);width:18px;height:18px}
+#teamder-rating-sketches .td-dual-metric{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#teamder-rating-sketches .td-metric{padding:12px;border-radius:15px;background:var(--td-soft);display:flex;flex-direction:column;gap:4px;align-items:center}
+#teamder-rating-sketches .td-metric strong{font-size:23px;font-weight:500;font-variant-numeric:tabular-nums}
+#teamder-rating-sketches .td-metric small{font-size:11px;color:var(--td-muted)}
+#teamder-rating-sketches .td-team{padding:0;overflow:hidden}
+#teamder-rating-sketches .td-teamhead{border:0;background:transparent;color:var(--td-ink);width:100%;text-align:right;padding:13px;display:flex;align-items:center;gap:9px}
+#teamder-rating-sketches .td-shirt{color:light-dark(#e63d4b,#ff8a93);display:flex;align-items:center;justify-content:center;background:light-dark(#fff0f1,#432831);border-radius:12px;height:40px;width:40px;flex:none}
+#teamder-rating-sketches .td-shirt.blue{color:light-dark(#3269ec,#8eafff);background:light-dark(#edf3ff,#263c62)}
+#teamder-rating-sketches .td-shirt.green{color:light-dark(#169666,#7bd8b2);background:light-dark(#eaf9f1,#244438)}
+#teamder-rating-sketches .td-teamstats{font-size:12px;color:var(--td-muted);margin-top:3px;display:flex;gap:12px;flex-wrap:wrap}
+#teamder-rating-sketches .td-teamplayers{padding:0 14px 10px}
+#teamder-rating-sketches .td-teamplayer{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--td-line);font-size:12px}
+#teamder-rating-sketches .td-teamplayer span:last-child{font-variant-numeric:tabular-nums;color:var(--td-muted)}
+#teamder-rating-sketches .td-timeline{display:flex;gap:12px;align-items:flex-start;padding:12px 0}
+#teamder-rating-sketches .td-time{color:var(--td-blue);font-weight:500;min-width:43px;font-variant-numeric:tabular-nums}
+#teamder-rating-sketches .td-timecontent{border-right:2px solid var(--td-line);padding-right:13px;flex:1}
+#teamder-rating-sketches .td-toast{background:var(--td-goodbg);color:var(--td-good);border-radius:14px;padding:12px;text-align:center;font-size:13px}
+#teamder-rating-sketches .td-fill-choice{border:1px solid var(--td-line);background:var(--td-paper);color:var(--td-ink);padding:11px;border-radius:13px;display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:right}
+#teamder-rating-sketches .td-fill-choice.is-picked{border-color:var(--td-blue);background:var(--td-soft)}
+#teamder-rating-sketches .td-fillside{background:var(--td-paper);color:var(--td-ink);border:1px solid var(--td-line);border-radius:16px;padding:12px;text-align:right;flex:1}
+#teamder-rating-sketches .td-fillside.is-active{border:2px solid var(--td-blue);padding:11px;background:var(--td-soft)}
+#teamder-rating-sketches .td-fill-slots{display:flex;gap:8px}
+@media(max-width:400px){#teamder-rating-sketches .td-stage{padding:12px 2px 20px;min-height:1160px}#teamder-rating-sketches .td-content{padding:16px 12px}#teamder-rating-sketches .td-sheet{padding:12px 15px 18px}#teamder-rating-sketches .td-rating-pair{gap:4px}#teamder-rating-sketches .td-rating-pair span{min-width:40px;padding:4px}#teamder-rating-sketches .td-person{gap:7px}#teamder-rating-sketches .td-avatar{width:33px;height:33px}}
+</style>
+<script>
+(function(){
+  const root=document.getElementById('teamder-rating-sketches');
+  const icon=(name)=>`<i data-lucide="${name}" aria-hidden="true"></i>`;
+  const state={selectedName:'אורי לוי',editAttack:4.2,editDefense:3.1,chosen:new Set([0,2]),activeFill:0,fills:[null,null]};
+  const design={type:14,spacing:'רגילה'};
+  const pair=(a,d)=>`<div class="td-rating-pair"><span><small>התקפה</small><b>${a}</b></span><span><small>הגנה</small><b>${d}</b></span></div>`;
+  const badge=(s,kind='')=>`<span class="td-pill ${kind}">${s}</span>`;
+  const note=(s,kind='')=>`<div class="td-note ${kind}">${s}</div>`;
+  const button=(s,action,kind='')=>`<button type="button" class="td-button ${kind} cursor-interaction" data-action="${action}">${s}</button>`;
+  function phone(title,content,footer='',overlay=''){
+    return `<div class="td-phone"><div class="td-status"><span>19:15</span><span>${icon('wifi')}${icon('battery-full')}</span></div><div class="td-header"><span class="td-back">${icon('chevron-right')}</span><div><strong>${title}</strong><small>כדורגל אנשים טובים</small></div><span class="td-iconbox">${icon('shirt')}</span></div><div class="td-content">${content}</div>${footer?`<div class="td-footer">${footer}</div>`:''}<div class="td-nav"><span>${icon('house')}בית</span><span class="active">${icon('shirt')}מועדונים</span><span>${icon('goal')}מחזורים</span><span>${icon('users')}חברים</span></div>${overlay}</div>`;
+  }
+  function option(title,sub,selected,action){return `<button type="button" class="td-option ${selected?'is-active':''} cursor-interaction" data-action="${action}" aria-pressed="${selected}"><span class="td-radio"></span><span><strong>${title}</strong><span class="td-sub">${sub}</span></span></button>`;}
+  function settings(active='dual'){
+    return `<div class="td-row"><span class="td-iconbox">${icon('sliders-horizontal')}</span><div><h3>שיטת הדירוג</h3><p class="td-sub">כך נאזן את הקבוצות במועדון</p></div></div><div class="td-stack">${option('דירוג כללי','ציון אחד שמייצג את הרמה הכוללת של השחקן',active==='general','choose-general')}${option('התקפה והגנה','שני ציונים נפרדים, עם חשיבות שווה בחלוקה',active==='dual','choose-dual')}</div>${note('השיטה חלה על כל המחזורים במועדון. קבוצות שכבר נוצרו לא ישתנו.')}<div class="td-card td-stack"><div class="td-row td-between"><h4>דירוג פנימי</h4>${badge('פעיל')}</div><p class="td-sub">המנהלים מדרגים את שחקני המועדון.</p><div class="td-line"></div><div class="td-row td-between"><h4>הסתרת דירוגים מהשחקנים</h4>${icon('eye-off')}</div><p class="td-sub">הרשאות הצפייה נשארות לפי הגדרות המועדון.</p></div>`;
+  }
+  function sheet(title,content,actions){return `<div class="td-shade"><div class="td-sheet" role="dialog" aria-label="${title}"><div class="td-handle"></div><div class="td-sheethead"><h3>${title}</h3><button class="td-close cursor-interaction" type="button" data-action="close-sheet" aria-label="סגירה">${icon('x')}</button></div>${content}${actions}</div></div>`;}
+  const firstOverlay=()=>sheet('מעבר להתקפה והגנה',`<p>נתחיל מהדירוגים שכבר הזנת. אפשר לדייק כל ציון בהמשך.</p><div><div class="td-copyline header"><span>שחקן</span><span>כללי</span><span></span><span>התקפה</span><span>הגנה</span></div>${[['אורי לוי','4.0'],['ניר כהן','3.5'],['תומר בר','4.2']].map(([n,v])=>`<div class="td-copyline"><span>${n}</span><span class="td-value">${v}</span><span>${icon('chevron-left')}</span><span class="td-value">${v}</span><span class="td-value">${v}</span></div>`).join('')}</div>${note('הציונים יסומנו כמועתקים. הדירוג הכללי יישמר לחזרה עתידית.')}`,button('מעבר לשיטה החדשה','confirm-first')+button('ביטול','close-sheet','quiet'));
+  const people=[['אורי לוי','4.2','3.1',''],['ניר כהן','3.5','3.5','הועתק מהדירוג הכללי'],['תומר בר','4.0','4.5',''],['אסף מזרחי','3.8','4.1','נשמר מהעבר'],['ברק הדר','4.0','חסר',''],['עומר אורח','חסר','חסר','אורח']];
+  function person(p,editable=true){return `<div class="td-person"><div class="td-avatar">${p[0][0]}</div><div class="td-grow"><div class="td-name">${p[0]}</div>${p[3]?`<div class="td-label-line">${badge(p[3],p[3]==='אורח'?'':'old')}</div>`:''}</div>${pair(p[1],p[2])}${editable?`<button type="button" class="td-person-button cursor-interaction" data-action="edit-person" data-person="${p[0]}" data-a="${p[1]}" data-d="${p[2]}" aria-label="עריכת דירוג ${p[0]}">${icon('pencil')}</button>`:''}</div>`;}
+  const roster=()=>`<div class="td-row td-between"><div><h3>דירוגי השחקנים</h3><p class="td-sub">התקפה והגנה · מתוך 5</p></div>${badge('מנהל')}</div><div class="td-card">${people.map(p=>person(p)).join('')}</div>${note('ציון חסר מחושב זמנית כ-3 בחלוקה. הוא לא נשמר כדירוג שהזנת.')}`;
+  function editOverlay(){return sheet(`הדירוג של ${state.selectedName}`,`<p class="td-sub">הציונים משמשים לחלוקת הכוחות במועדון</p><div class="td-slider"><div class="td-row td-between"><div class="td-row">${icon('swords')}<h4>התקפה</h4></div><output data-output="attack">${state.editAttack.toFixed(1)}</output></div><input type="range" min="0" max="5" step="0.1" value="${state.editAttack}" data-slider="attack" aria-label="דירוג התקפה של ${state.selectedName}"><div class="td-scale"><span>ללא דירוג</span><span>5</span></div></div><div class="td-slider"><div class="td-row td-between"><div class="td-row">${icon('shield')}<h4>הגנה</h4></div><output data-output="defense">${state.editDefense.toFixed(1)}</output></div><input type="range" min="0" max="5" step="0.1" value="${state.editDefense}" data-slider="defense" aria-label="דירוג הגנה של ${state.selectedName}"><div class="td-scale"><span>ללא דירוג</span><span>5</span></div></div>${note('דירוג חדש ישמש בחלוקה הבאה. ההרכבים שכבר נוצרו לא ישתנו.')}`,button('שמירת הדירוגים','save-player')+button('ביטול','close-sheet','quiet'));}
+  const comparisons=[{name:'אורי לוי',old:4,a:4.2,d:3.2},{name:'ניר כהן',old:3.5,a:3,d:4},{name:'תומר בר',old:4.2,a:4.8,d:3.8}];
+  function generalContent(){return `<h3>בחזרה לדירוג הכללי</h3><p class="td-sub">הציונים הקודמים יישמרו. אפשר לבחור למי לעדכן לפי ממוצע ההתקפה וההגנה.</p><div class="td-card"><label class="td-checkall"><input type="checkbox" data-select-all ${state.chosen.size===3?'checked':''}>בחירת כולם</label><div class="td-compare header"><span></span><span>שחקן</span><span>קודם</span><span></span><span>מוצע</span></div>${comparisons.map((p,i)=>`<label class="td-compare"><input type="checkbox" data-compare="${i}" ${state.chosen.has(i)?'checked':''} aria-label="עדכון הדירוג הכללי של ${p.name}"><span><span class="td-name">${p.name}</span><br><span class="td-sub">התקפה ${p.a.toFixed(1)} · הגנה ${p.d.toFixed(1)}</span></span><span>${p.old.toFixed(1)}</span><span>${icon('chevron-left')}</span><strong>${((p.a+p.d)/2).toFixed(1)}</strong></label>`).join('')}</div>${note('דירוגי ההתקפה וההגנה יישמרו גם אחרי המעבר.')}`;}
+  const teamNames=['האדומים','הכחולים','הירוקים'];
+  const teams=[[['אורי',5,2],['ניר',2,5],['תומר',4,3],['אסף',3,4],['ברק',4,4]],[['דני',5,3],['רועי',3,5],['גיל',4,2],['אלון',2,4],['שי',4,4]],[['יואב',5,4],['עומר',4,5],['איתי',4,3],['נדב',3,4],['ארז',2,2]]];
+  function metrics(a,d,label='הפער בין הקבוצות'){return `<div class="td-stack"><h4>${label}</h4><div class="td-dual-metric"><div class="td-metric"><strong>${a.toFixed(2)}</strong><small>פער התקפה</small></div><div class="td-metric"><strong>${d.toFixed(2)}</strong><small>פער הגנה</small></div></div></div>`;}
+  function teamCard(t,i,expanded=false){const a=t.reduce((s,p)=>s+p[1],0)/t.length,d=t.reduce((s,p)=>s+p[2],0)/t.length;return `<div class="td-card td-team"><button type="button" class="td-teamhead cursor-interaction" data-action="expand-team" aria-expanded="${expanded}"><span class="td-shirt ${['','blue','green'][i]}">${icon('shirt')}</span><span class="td-grow"><h4>${teamNames[i]}</h4><span class="td-teamstats"><span>התקפה <b>${a.toFixed(1)}</b></span><span>הגנה <b>${d.toFixed(1)}</b></span><span>${t.length} שחקנים</span></span></span>${icon(expanded?'chevron-up':'chevron-down')}</button><div class="td-teamplayers" ${expanded?'':'hidden'}>${t.map(p=>`<div class="td-teamplayer"><span>${p[0]}</span><span>התקפה ${p[1].toFixed(1)} · הגנה ${p[2].toFixed(1)}</span></div>`).join('')}</div></div>`;}
+  function summary(gap=false,missing=false){const used=teams.map(t=>t.map(p=>p.slice()));if(missing){used[0][4][2]=3;used[2][1]=['עומר אורח',3,3];}if(gap)used[0].forEach(p=>p[1]=Math.min(5,p[1]+1));const av=used.map(t=>t.reduce((s,p)=>s+p[1],0)/t.length);const ag=Math.max(...av)-Math.min(...av);const dv=used.map(t=>t.reduce((s,p)=>s+p[2],0)/t.length);const dg=Math.max(...dv)-Math.min(...dv);return `<div class="td-row td-between"><div><h3>הכוחות מוכנים</h3><p class="td-sub">15 שחקנים · 3 קבוצות · 5 על 5</p></div>${badge('התקפה והגנה')}</div>${missing?note('לברק חושבה הגנה 3. לעומר האורח חושבו התקפה 3 והגנה 3. אלה ציונים זמניים בלבד.','warn'):gap?note('נשאר פער בהתקפה. זו החלוקה הקרובה ביותר שנמצאה בדוגמה הזו; אפשר להמשיך או לערוך.','warn'):note('ממוצעי ההתקפה וההגנה שווים בין הקבוצות בדוגמה הזו.','good')}${metrics(ag,dg)}${used.map((t,i)=>teamCard(t,i,i===0)).join('')}`;}
+  const donors=[{name:'יואב',a:5,d:4},{name:'עומר',a:4,d:5},{name:'איתי',a:4,d:3}];
+  const bases=[{a:14,d:14},{a:14,d:14}];
+  function fillContent(){const av=state.fills.map((idx,s)=>{const n=idx===null?4:5;return {a:(bases[s].a+(idx===null?0:donors[idx].a))/n,d:(bases[s].d+(idx===null?0:donors[idx].d))/n};});return `<div><h3>משלימים לפני המשחק</h3><p class="td-sub">בוחרים שחקן אחד לכל צד מהירוקים שממתינים</p></div><div class="td-fill-slots">${[0,1].map(s=>`<button type="button" class="td-fillside ${state.activeFill===s?'is-active':''} cursor-interaction" data-fill-side="${s}" aria-pressed="${state.activeFill===s}"><h4>${teamNames[s]}</h4><p class="td-sub">${state.fills[s]===null?'4 מתוך 5 שחקנים':`5 מתוך 5 · ${donors[state.fills[s]].name}`}</p><div class="td-teamstats"><span>התקפה ${av[s].a.toFixed(1)}</span><span>הגנה ${av[s].d.toFixed(1)}</span></div></button>`).join('')}</div><div class="td-card td-stack"><h4>משלימים מהירוקים</h4>${donors.map((p,i)=>{const side=state.fills.indexOf(i);return `<button type="button" class="td-fill-choice ${side>=0?'is-picked':''} cursor-interaction" data-donor="${i}" ${side>=0&&side!==state.activeFill?'disabled':''}><span><span class="td-name">${p.name}</span><br><span class="td-sub">${side<0?'זמין להשלמה':`נבחר עבור ${teamNames[side]}`}</span></span>${pair(p.a.toFixed(1),p.d.toFixed(1))}</button>`;}).join('')}</div>${metrics(Math.abs(av[0].a-av[1].a),Math.abs(av[0].d-av[1].d),'פערי ההרכבים הנוכחיים')}${note('הממוצעים מתעדכנים לפי השחקנים שנבחרו בפועל. אישור ההרכבים לא מפעיל את השעון.')}`;}
+  function renderScreen(stage,key){
+    if(key==='settings')stage.innerHTML=phone('הגדרות המועדון',settings(),button('שמירת ההגדרות','save-settings'));
+    if(key==='first')stage.innerHTML=phone('הגדרות המועדון',settings('general'),'',firstOverlay());
+    if(key==='roster')stage.innerHTML=phone('ניהול שחקנים',roster(),button('חזרה למועדון','demo-back','secondary'));
+    if(key==='edit')stage.innerHTML=phone('ניהול שחקנים',roster(),'',editOverlay());
+    if(key==='missing')stage.innerHTML=phone('דירוגים להשלמה',`<div><h3>אפשר לחלק גם עכשיו</h3><p class="td-sub">לשני שחקנים חסרים ציונים</p></div><div class="td-card">${person(people[4])}${person(people[5])}</div>${note('בחישוב בלבד: הגנה 3 לברק, והתקפה 3 והגנה 3 לעומר. הציונים החסרים יישארו מסומנים.','warn')}<div class="td-card td-stack"><h4>נתוני החלוקה</h4><div class="td-row td-between"><span>משתתפים</span><strong>15</strong></div><div class="td-row td-between"><span>קבוצות</span><strong>3</strong></div><div class="td-row td-between"><span>שיטת המועדון</span>${badge('התקפה והגנה')}</div></div>`,button('יצירת כוחות','generate-missing')+button('השלמת הדירוגים','edit-missing','secondary'));
+    if(key==='general')stage.innerHTML=phone('שינוי שיטת הדירוג',generalContent(),button(`מעבר ועדכון ${state.chosen.size} שחקנים`,'confirm-general')+button('מעבר בלי לעדכן דירוגים','keep-general','secondary'));
+    if(key==='restore')stage.innerHTML=phone('הגדרות המועדון',settings('general'),'',sheet('הדירוגים הקודמים נשמרו',`<p>נחזיר את ציוני ההתקפה וההגנה האחרונים שהזנת.</p><div class="td-card">${person(['אורי לוי','4.2','3.1','נשמר מהעבר'],false)}${person(['ניר כהן','3.0','4.0','נשמר מהעבר'],false)}</div>${note('גם אם הדירוג הכללי השתנה מאז, הציונים האלה לא יידרסו.')}`,button('מעבר ושחזור הדירוגים','confirm-restore')+button('ביטול','close-sheet','quiet')));
+    if(key==='balanced')stage.innerHTML=phone('סיכום הכוחות',summary(),button('המשך לסיכום המחזור','accept-teams')+button('עריכת ההרכבים','edit-teams','secondary'));
+    if(key==='gap')stage.innerHTML=phone('סיכום הכוחות',summary(true),button('המשך עם החלוקה הזו','accept-gap')+button('עריכת ההרכבים','edit-teams','secondary'));
+    if(key==='saved')stage.innerHTML=phone('הכוחות שנשמרו',`<div><h3>החלוקה נשארת כפי שנוצרה</h3><p class="td-sub">נוצרה ב-22.10 בשעה 19:15</p></div>${note('שיטת המועדון השתנתה מאז להתקפה והגנה. מוצגים כאן הדירוגים הכלליים ששימשו ביצירת החלוקה.','warn')}<div class="td-card td-stack"><div class="td-row td-between"><h4>שיטת החלוקה המקורית</h4>${badge('דירוג כללי','old')}</div><div class="td-line"></div>${teamNames.map((n,i)=>`<div class="td-row td-between"><span>${n}</span><span>ממוצע כללי <strong>${[3.6,3.6,3.6][i].toFixed(1)}</strong></span></div>`).join('')}<div class="td-line"></div><div class="td-row td-between"><span>הפער המקורי</span><strong>0.00</strong></div></div>${note('שינוי שיטה או ציונים אינו מזיז שחקנים בין קבוצות. חלוקה חדשה נוצרת רק לפי בקשת המנהל.')}`,button('יצירת חלוקה מחדש','regenerate')+button('השארת ההרכבים הקיימים','keep-teams','secondary'));
+    if(key==='scheduled')stage.innerHTML=phone('המחזור הבא',`<div><h3>כדורגל בחמישי</h3><p class="td-sub">היום · 20:00 · מגרש השכונה</p></div><div class="td-card"><div class="td-row td-between"><h4>חלוקת כוחות מתוזמנת</h4>${badge('ממתינה')}</div><div class="td-timeline"><span class="td-time">19:00</span><div class="td-timecontent"><h4>סגירת ההרשמה</h4><p class="td-sub">15 שחקנים רשומים</p></div></div><div class="td-timeline"><span class="td-time">19:30</span><div class="td-timecontent"><h4>יצירת הכוחות</h4><p class="td-sub">לפי שיטת המועדון בזמן היצירה</p></div></div><div class="td-timeline"><span class="td-time">20:00</span><div class="td-timecontent"><h4>נפגשים במגרש</h4></div></div></div><div class="td-card td-stack"><p class="td-sub">שיטת המועדון הנוכחית</p><div class="td-row"><span class="td-iconbox">${icon('shield-half')}</span><h3>התקפה והגנה</h3></div><p class="td-sub">הקבוצות עדיין לא נוצרו. שינוי שיטה לפני 19:30 יחול גם על החלוקה הזו.</p></div>`,button('הגדרות שיטת הדירוג','open-settings','secondary'));
+    if(key==='fill'){stage.innerHTML=phone('אישור ההרכבים',fillContent(),`<button type="button" class="td-button cursor-interaction" data-action="confirm-fill" ${state.fills.some(v=>v===null)?'disabled':''}>אישור ההרכבים</button>`);}
+  }
+  function icons(){if(globalThis.lucide)lucide.createIcons({attrs:{width:18,height:18}});}
+  root.querySelectorAll('[data-screen]').forEach(stage=>renderScreen(stage,stage.dataset.screen));icons();
+  function toast(stage,text){let existing=stage.querySelector('.td-toast');if(!existing){existing=document.createElement('div');existing.className='td-toast';existing.setAttribute('role','status');existing.setAttribute('aria-live','polite');stage.querySelector('.td-content').prepend(existing);}existing.textContent=text;}
+  function redraw(key){const stage=root.querySelector(`[data-screen="${key}"]`);renderScreen(stage,key);icons();}
+  root.addEventListener('input',e=>{const s=e.target.dataset.slider;if(!s)return;const v=Number(e.target.value);state[s==='attack'?'editAttack':'editDefense']=v;const out=e.target.closest('.td-slider').querySelector('output');out.textContent=v===0?'חסר':v.toFixed(1);});
+  root.addEventListener('change',e=>{const box=e.target;if(box.hasAttribute('data-select-all'))state.chosen=box.checked?new Set([0,1,2]):new Set();else if(box.hasAttribute('data-compare')){const i=Number(box.dataset.compare);box.checked?state.chosen.add(i):state.chosen.delete(i);}else return;const stage=box.closest('[data-screen]');if(stage.dataset.screen==='general')redraw('general');else{stage.querySelector('.td-content').innerHTML=generalContent();stage.querySelector('.td-footer').innerHTML=button(`מעבר ועדכון ${state.chosen.size} שחקנים`,'confirm-general')+button('מעבר בלי לעדכן דירוגים','keep-general','secondary');icons();}});
+  root.addEventListener('click',e=>{
+    const target=e.target.closest('button');if(!target)return;const stage=target.closest('[data-screen]');if(!stage)return;
+    if(target.hasAttribute('data-fill-side')){state.activeFill=Number(target.dataset.fillSide);redraw('fill');return;}
+    if(target.hasAttribute('data-donor')){const i=Number(target.dataset.donor);state.fills[state.activeFill]=state.fills[state.activeFill]===i?null:i;if(state.fills[0]!==null&&state.fills[1]===null)state.activeFill=1;redraw('fill');return;}
+    const action=target.dataset.action;
+    if(action==='close-sheet'){target.closest('.td-shade').remove();return;}
+    if(action==='expand-team'){const list=target.parentElement.querySelector('.td-teamplayers');const opening=list.hidden;stage.querySelectorAll('.td-teamplayers').forEach(p=>p.hidden=true);stage.querySelectorAll('[data-action="expand-team"]').forEach(b=>b.setAttribute('aria-expanded','false'));list.hidden=!opening;target.setAttribute('aria-expanded',String(opening));return;}
+    if(action==='choose-general'||action==='choose-dual'){const selected=action==='choose-dual'?'dual':'general';stage.querySelectorAll('.td-option').forEach((el,i)=>{const on=i===(selected==='dual'?1:0);el.classList.toggle('is-active',on);el.setAttribute('aria-pressed',String(on));});stage.dataset.pendingMode=selected;return;}
+    if(action==='save-settings'){if(!stage.dataset.pendingMode||stage.dataset.pendingMode==='dual'){toast(stage,'השיטה הפעילה נשארה התקפה והגנה');return;}if(stage.dataset.pendingMode==='general'){stage.querySelector('.td-content').innerHTML=generalContent();stage.querySelector('.td-footer').innerHTML=button('מעבר לדירוג כללי','keep-general');}else{stage.querySelector('.td-phone').insertAdjacentHTML('beforeend',firstOverlay());}icons();return;}
+    if(action==='edit-person'||action==='edit-missing'){state.selectedName=target.dataset.person||'ברק הדר';state.editAttack=Number.parseFloat(target.dataset.a??'4')||0;state.editDefense=Number.parseFloat(target.dataset.d??'0')||0;stage.querySelector('.td-phone').insertAdjacentHTML('beforeend',editOverlay());icons();return;}
+    if(action==='save-player'){stage.querySelector('.td-shade').remove();const p=people.find(p=>p[0]===state.selectedName);if(p){p[1]=state.editAttack===0?'חסר':state.editAttack.toFixed(1);p[2]=state.editDefense===0?'חסר':state.editDefense.toFixed(1);root.querySelectorAll('[data-person]').forEach(b=>{if(b.dataset.person!==p[0])return;b.dataset.a=p[1];b.dataset.d=p[2];b.closest('.td-person').querySelector('.td-rating-pair').outerHTML=pair(p[1],p[2]);});}toast(stage,`נשמרו בדוגמה: התקפה ${state.editAttack===0?'חסרה':state.editAttack.toFixed(1)}, הגנה ${state.editDefense===0?'חסרה':state.editDefense.toFixed(1)}`);return;}
+    if(action==='confirm-first'||action==='confirm-restore'){stage.querySelector('.td-shade').remove();stage.querySelector('.td-content').innerHTML=settings('dual');toast(stage,action==='confirm-first'?'השיטה הוחלפה והציונים סומנו כמועתקים':'שוחזרו ציוני ההתקפה וההגנה מהעבר');icons();return;}
+    if(action==='confirm-general'||action==='keep-general'){const n=action==='confirm-general'?state.chosen.size:0;toast(stage,n?`הדירוג הכללי עודכן ל-${n} שחקנים שנבחרו`:'השיטה הוחלפה. הדירוגים הכלליים הקודמים נשמרו');return;}
+    if(action==='generate-missing'){stage.innerHTML=phone('סיכום הכוחות',summary(false,true),button('המשך לסיכום המחזור','accept-teams'));icons();return;}
+    if(action==='open-settings'){stage.innerHTML=phone('הגדרות המועדון',settings(),button('שמירת ההגדרות','save-settings'));icons();return;}
+    const messages={'accept-teams':'החלוקה אושרה בדוגמה','accept-gap':'החלוקה עם הפערים נשמרה בדוגמה','edit-teams':'ההרכבים נשארו כפי שהם. מכאן נפתחת העריכה הידנית הקיימת.','regenerate':'מכאן נפתחת יצירת חלוקה חדשה לפי התקפה והגנה. ההרכבים טרם הוחלפו.','keep-teams':'ההרכבים הקיימים נשארו כפי שהם','confirm-fill':'ההרכבים אושרו בדוגמה. השעון נשאר עצור.','demo-back':'הדירוגים נשמרים במועדון'};
+    if(messages[action])toast(stage,messages[action]);
+  });
+  function applyDesign(){root.style.setProperty('--td-type',design.type+'px');root.style.setProperty('--td-gap',design.spacing==='מרווחת'?'20px':'14px');}
+  if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:applyDesign});tweak.addSlider(design,'type',{label:'גודל טקסט בסיסי',min:13,max:17,step:1,unit:'px'});tweak.addSelect(design,'spacing',{label:'צפיפות המסכים',options:['רגילה','מרווחת']});}
+})();
+</script>

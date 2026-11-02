@@ -30,13 +30,13 @@ export function alternativeRoundFingerprint(game: Parameters<typeof liveLineupFi
     completionMode?:string;fillMode?:string;published?:boolean;originalTeams?:{index:number;captainId?:string;playerIds?:string[];colorKey?:string}[];
     leftHome?:{playerId:string;homeTeam?:number;at?:number}[]};
   liveMatch?: {inPlayPenalties?: InPlayPenalty[];scoreA?:number;scoreB?:number;goals?: {id?:string;team?:string;scorerId?:string|null;assisterId?:string|null;assistStatus?:string;ownGoal?:boolean;minute?:number}[];
-    shootout?: {firstTeam?:string;keeperA?:string|null;keeperB?:string|null;kicks?:{id?:string;team?:string;kickerId?:string|null;keeperId?:string|null;scored?:boolean;outcome?:string;at?:number}[]}};
+    shootout?: {firstTeam?:string;nextTeam?:string;keeperA?:string|null;keeperB?:string|null;kicks?:{id?:string;team?:string;kickerId?:string|null;keeperId?:string|null;scored?:boolean;outcome?:string;at?:number}[]}};
 }):string {
   const rot=game.rotation,draft=game.draftTeams,live=game.liveMatch,shootout=live?.shootout;
   const stable=(value:unknown):unknown=>Array.isArray(value)?value.map(stable):value&&typeof value==='object'?
     Object.fromEntries(Object.entries(value).filter(([,v])=>v!==undefined).sort(([a],[b])=>a.localeCompare(b)).map(([key,v])=>[key,stable(v)])):value;
   const series=JSON.stringify(shootout?[shootout.firstTeam,shootout.keeperA??null,shootout.keeperB??null,
-    (shootout.kicks??[]).map(kick=>[kick.id??null,kick.team,kick.kickerId??null,kick.keeperId??'',!!kick.scored,kick.outcome??null,kick.at??0])]:null);
+    (shootout.kicks??[]).map(kick=>[kick.id??null,kick.team,kick.kickerId??null,kick.keeperId??'',!!kick.scored,kick.outcome??null,kick.at??0]),...(shootout.nextTeam?[shootout.nextTeam]:[])]:null);
   return JSON.stringify(stable([
     game.status==='open'?'active':game.status,
     rot?.roundInstanceId??`${rot?.round??'r'}:${rot?.updatedAt??0}`,

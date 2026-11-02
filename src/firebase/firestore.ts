@@ -295,6 +295,7 @@ const userConverter: FirestoreDataConverter<User> = {
       // existing docs. (fromFirestore still reads it for backward compat.)
       notificationPrefs: u.notificationPrefs ?? null,
       dmFriendsOnly: u.dmFriendsOnly ?? false,
+      ...(u.dmRequestPolicy ? { dmRequestPolicy: u.dmRequestPolicy, dmRequestPolicySource: u.dmRequestPolicySource ?? 'explicit' } : {}),
       newGameSubscriptions: u.newGameSubscriptions ?? [],
       personalGroupId: u.personalGroupId ?? null,
       jersey: u.jersey ?? null,
@@ -347,6 +348,8 @@ const userConverter: FirestoreDataConverter<User> = {
         ? d.friends.filter((s: unknown): s is string => typeof s === 'string')
         : undefined,
       dmFriendsOnly: d.dmFriendsOnly === true,
+      dmRequestPolicy: d.dmRequestPolicy === 'everyone' || d.dmRequestPolicy === 'friends' ? d.dmRequestPolicy : undefined,
+      dmRequestPolicySource: d.dmRequestPolicySource === 'explicit' || d.dmRequestPolicySource === 'default' ? d.dmRequestPolicySource : undefined,
       socialPrivacy: { discoverable: d.socialPrivacy?.discoverable !== false, statistics: ['everyone', 'onlyMe'].includes(d.socialPrivacy?.statistics) ? d.socialPrivacy.statistics : 'friends' },
       personalGroupId:
         typeof d.personalGroupId === 'string' && d.personalGroupId.length > 0
@@ -954,6 +957,7 @@ export function readLiveMatch(v: unknown): LiveMatchState | undefined {
       if (!firstTeam) return undefined;
       return {
         firstTeam,
+        ...(sh.nextTeam === 'A' || sh.nextTeam === 'B' ? { nextTeam: sh.nextTeam } : {}),
         keeperA:
           typeof sh.keeperA === 'string' ? sh.keeperA : sh.keeperA === null ? null : undefined,
         keeperB:
@@ -1865,7 +1869,7 @@ export function readTeamBalanceMeta(
   // Both algorithm tags must be accepted: games balanced before the v2 switch
   // still carry 'rating_greedy_v1', and an unknown tag here would silently drop
   // the whole meta object on read.
-  if (o.algorithm !== 'rating_greedy_v1' && o.algorithm !== 'rating_balanced_v2' && o.algorithm !== 'random_even_v1')
+  if (o.algorithm !== 'rating_greedy_v1' && o.algorithm !== 'rating_balanced_v2' && o.algorithm !== 'rating_priority_v3' && o.algorithm !== 'random_even_v1')
     return undefined;
   return {
     generatedAt: o.generatedAt,

@@ -60,6 +60,7 @@ import { OfficialBadge } from '@/components/OfficialBadge';
 import { isOfficialSender } from '@/utils/officialAccount';
 import { useUserStore } from '@/store/userStore';
 import { useGameStore } from '@/store/gameStore';
+import { dmOperationId, dmErrorMessage } from '@/services/dmRequestService';
 import type { ChatStackParamList } from '@/navigation/ChatStack';
 import type { ChatMessage, ChatScope } from '@/types';
 
@@ -87,6 +88,9 @@ interface Props {
   statusBanner?: React.ReactNode;
   readOnlyMessage?: string;
   previewMessages?: ChatMessage[];
+  suppressSignals?: boolean;
+  sendOverride?: (text: string, operationId: string) => Promise<void>;
+  disableMessageDeletion?: boolean;
 }
 
 export function ChatView({
@@ -101,6 +105,9 @@ export function ChatView({
   statusBanner,
   readOnlyMessage = 'השיחה סגורה לכתיבה. ההודעות נשמרות לקריאה.',
   previewMessages,
+  suppressSignals = false,
+  sendOverride,
+  disableMessageDeletion = false,
 }: Props) {
   const focused = useIsFocused();
   const reduced = useReducedMotion();
@@ -156,6 +163,7 @@ export function ChatView({
   // ref debounces it. Reset shortly after — NOT tied to the server ack, which
   // never resolves offline (that was the composer-freeze bug we fixed).
   const sendGuardRef = useRef(false);
+  const operationRef = useRef<{ text: string; id: string } | null>(null);
 
   // Fresh chat → reset to the initial loading state (spinner shows once).
   useEffect(() => {
@@ -227,8 +235,9 @@ export function ChatView({
     setBlocksKnown(false);
     setBlocked(new Set());
     const unsubB = chatService.subscribeBlocked(me.id, (ids) => { setBlocked(ids); setBlocksKnown(true); });
-    const unsubR = chatService.subscribeReads(scope, parentId, setReaders);
-    const unsubT = chatService.subscribeTyping(scope, parentId, setTypers);
+    setReaders([]); setTypers([]);
+    const unsubR = suppressSignals ? () => {} : chatService.subscribeReads(scope, parentId, setReaders);
+    const unsubT = suppressSignals ? () => {} : chatService.subscribeTyping(scope, parentId, setTypers);
     // Re-evaluate typing freshness every couple of seconds so a stale
     // flag (someone stopped typing without sending) disappears on its own.
     const tickId = setInterval(() => setTick((t) => t + 1), 2500);
@@ -242,7 +251,7 @@ export function ChatView({
       chatService.setTyping(scope, parentId, { id: me.id, name: me.name }, false).catch((caughtError467a05946c: unknown) => {
     observeCaughtError(caughtError467a05946c, {"source":"src/components/chat/ChatView.tsx","handler":"ChatView","site":"ChatView:467a05946c"});});
     };
-  }, [me?.id, scope, parentId]);
+  }, [me?.id, scope, parentId, suppressSignals]);
 
   // The query keeps a sliding window of 100: count alone stops changing.
   const latestMessageId = messages[messages.length - 1]?.id;
@@ -256,12 +265,12 @@ export function ChatView({
   // unread counter for it — which also re-arms the "one push" for the
   // next message — and stamps my read position so others see I'm caught up.
   useEffect(() => {
-    if (!me || denied || !focused) return;
+    if (!me || denied || !focused || suppressSignals) return;
     chatService.markChatRead(me.id, scope, parentId).catch((caughtError811b82a5c3: unknown) => {
     observeCaughtError(caughtError811b82a5c3, {"source":"src/components/chat/ChatView.tsx","handler":"ChatView","site":"ChatView:811b82a5c3"});});
     chatService.writeReadReceipt(scope, parentId, me).catch((caughtErrorae2c0fbd2a: unknown) => {
     observeCaughtError(caughtErrorae2c0fbd2a, {"source":"src/components/chat/ChatView.tsx","handler":"ChatView","site":"ChatView:ae2c0fbd2a"});});
-  }, [me?.id, scope, parentId, denied, latestMessageId, focused]);
+  }, [me?.id, scope, parentId, denied, latestMessageId, focused, suppressSignals]);
 
   // Mark this chat as the foreground-active one while it's focused, so an
   // incoming push for THIS chat is suppressed (no banner for the conversation
@@ -310,6 +319,21 @@ export function ChatView({
       return;
     }
     sendGuardRef.current = true;
+    if (sendOverride) {
+      if (operationRef.current?.text !== text) operationRef.current = { text, id: dmOperationId() };
+      setSending(true);
+      try {
+        await sendOverride(text, operationRef.current.id);
+        operationRef.current = null;
+        setDraft('');
+        logEvent(AnalyticsEvent.ChatMessageSent, { scope, length: text.length });
+      } catch (error) {
+    observeCaughtError(error, {"source":"src/components/chat/ChatView.tsx","handler":"send","site":"ChatView:ec051a7bc1"});
+        logEvent(AnalyticsEvent.ChatMessageSendFailed, { scope });
+        toast.error(dmErrorMessage(error));
+      } finally { setSending(false); sendGuardRef.current = false; }
+      return;
+    }
     setTimeout(() => {
       sendGuardRef.current = false;
     }, 400);
@@ -345,7 +369,7 @@ export function ChatView({
   const onDraftChange = (text: string) => {
     if (readOnly) return;
     setDraft(text);
-    if (!me) return;
+    if (!me || suppressSignals) return;
     const now = Date.now();
     if (text.trim() && now - lastTypingWriteRef.current > 2500) {
       lastTypingWriteRef.current = now;
@@ -475,8 +499,8 @@ export function ChatView({
       danger?: boolean;
       redCard?: boolean;
       run: () => void;
-    }[] = [{ label: he.chatWhoRead, icon: 'eye-outline', run: () => showReaders(m) }];
-    if (mine || canModerate) {
+    }[] = suppressSignals ? [] : [{ label: he.chatWhoRead, icon: 'eye-outline', run: () => showReaders(m) }];
+    if (!disableMessageDeletion && (mine || canModerate)) {
       // Delete = a referee red card (send-off).
       items.push({ label: he.delete, icon: 'trash-outline', danger: true, redCard: true, run: () => deleteMessage(m) });
     }
@@ -590,7 +614,7 @@ export function ChatView({
             renderItem={({ item }) =>
               item.kind === 'date' ? (
                 <DateDivider label={item.label} />
-              ) : (!blocksKnown && item.message.senderId !== me?.id) || blocked.has(item.message.senderId) ? (
+              ) : scope !== 'dm' && ((!blocksKnown && item.message.senderId !== me?.id) || blocked.has(item.message.senderId)) ? (
                 // Blocked sender: keep a collapsed placeholder in place (instead
                 // of vanishing the message) so replies around it still have
                 // context — no more "ghost" threads.

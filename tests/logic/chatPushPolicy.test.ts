@@ -18,7 +18,7 @@ function harness(initialCount:number, muted=false) {
   const source=fs.readFileSync('functions/src/chatPush.ts','utf8')+'\nexports.__recipient = handleRecipient;';
   vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{
     module,exports:module.exports,console,
-    require:(id:string)=>id==='firebase-admin'?{firestore,messaging:()=>({sendEachForMulticast:send})}:{onDocumentCreated:()=>{}},
+    require:(id:string)=>id==='firebase-admin'?{firestore,messaging:()=>({sendEachForMulticast:send})}:{onDocumentCreated:()=>{},onDocumentWritten:()=>{}},
   });
   const receive=(scope:string,blocked=false)=>module.exports.__recipient('recipient',scope,'chat','כדורגל',{senderId:'sender',senderName:'דניאל',text:'היי',createdAt:1800000000000},blocked);
   return {receive,send,getCount:()=>count};

@@ -1,0 +1,13 @@
+{
+  "readBackVerified": true,
+  "updatedExistingItem": true,
+  "shotId": {
+    "stringValue": "e40717c84741489bbb9db348a12228a8"
+  },
+  "apkVersion": "1.0.102",
+  "versionCode": 109,
+  "apkSHA256": "0642555b5078db76915067d4db530c016317ac4a1064c6674993b8615f0744af",
+  "installed": false,
+  "deployed": false,
+  "inboxStatusUpdated": false
+}

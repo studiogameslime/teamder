@@ -6,13 +6,9 @@
 // cannot drift. Run `node scripts/genTeamBalanceCore.mjs` after every change;
 // `tests/logic/balanceParity.test.ts` fails if the two ever diverge.
 //
-// The model in one sentence: make the teams fair enough on rating, and inside
-// the fair options mix people up as much as possible relative to the last few
-// game-nights.
-//
-// Balance is the CONSTRAINT, variety is the GOAL inside it. Perfect balance is
-// explicitly not the objective — a split that is 0.05 worse on rating but
-// breaks up four pairs that played together last week is the better split.
+// Default model: minimise the average gap first, distribute skill levels next,
+// and use pair history only between equally good splits. Strategy B retains
+// the older experimental variety-first policy for comparison tests.
 
 // ─── Rating ───────────────────────────────────────────────────────────────
 
@@ -75,33 +71,16 @@ const WANDER_STEPS = 10;
 const WANDER_GAP_SLACK = 0.03;
 /** Weight of one stack-penalty point inside the refinement cost. */
 const STACK_WEIGHT = 0.02;
-/** Strategy A: repeat points that equal one unit of cost, as a fraction of the
+/** Legacy comparison policy: repeat points worth one cost unit, as a fraction of the
  *  pair count. 0.2 of 30 pairs = 6 — i.e. one cost unit ≈ six pairs that were
  *  together last week. Absolute on purpose: normalising against the candidate
  *  pool would make the same split score differently from run to run. */
 const REPEAT_SCALE_PER_PAIR = 0.2;
-/** Strategy A: splits within this much of the best cost are treated as equally
- *  good, and one is picked at random. */
+/** Legacy comparison policy's sideways-walk cost budget. */
 const COST_EPSILON = 0.05;
-/**
- * How many DISTINCT near-best splits to keep as finalists, and how much worse
- * than the best a finalist may be.
- *
- * Both halves are needed. Once history guides the search, the objective has an
- * essentially unique optimum and every candidate descends into it: measured on
- * the real roster, 200 presses produced one composition, with 55 of the 105
- * possible pairings never occurring once. "Regenerate" has to be able to answer
- * differently, so the pick is made from a handful of distinct splits — bounded,
- * so second-best never means noticeably worse. 0.25 ≈ one and a half repeated
- * pairs, or a step from an excellent gap to the middle of the good band.
- *
- * 16 is measured, not guessed (scripts/simulateTeamBalance.mjs): at 5 finalists
- * the button returned only 5 distinct splits in 40 presses, at 16 it returns
- * ~16–23, and the quality metrics do not get worse — with the trade bounded,
- * more finalists actually break up recurring cliques slightly better.
- */
+/** Legacy strategy B's bound on distinct finalists. Default A draws only
+ * among splits tied on every priority, so a unique optimum may repeat. */
 const FINALISTS = 16;
-const SELECT_MAX_TRADE = 0.25;
 /**
  * Per-candidate jitter applied to the pair weights DURING the search only —
  * never when scoring the result. Each candidate is nudged to care a little more
@@ -109,6 +88,9 @@ const SELECT_MAX_TRADE = 0.25;
  * different near-optimal splits instead of all funnelling into one.
  */
 const SEARCH_JITTER = 0.35;
+/** Full enumeration is bounded by BOTH roster size and unlabeled partitions. */
+const EXACT_MAX_PLAYERS = 15;
+const EXACT_MAX_PARTITIONS = 150000;
 /** Strategy B: repeat scores are bucketed this coarsely before ranking, so
  *  noise below one weak meeting doesn't decide the split. */
 const REPEAT_BUCKET = 0.5;
@@ -423,6 +405,215 @@ export function stackPenalty(
   return penalty;
 }
 
+/** Pairwise squared differences between corresponding skill ranks. Equal
+ * sizes compare strongest with strongest, second with second, etc. Unequal
+ * sizes interpolate at the same relative ranks, including both endpoints. */
+function sortedProfilePenalty(profiles: number[][]): number {
+  const ranks = Math.max(1, ...profiles.map(p => p.length));
+  let penalty = 0;
+  for (let rank = 0; rank < ranks; rank++) {
+    const q = ranks === 1 ? 0 : rank / (ranks - 1);
+    const values = profiles.map(p => {
+      if (!p.length) return NEUTRAL_RATING;
+      const at = q * (p.length - 1), low = Math.floor(at), high = Math.ceil(at);
+      return p[low] + (p[high] - p[low]) * (at - low);
+    });
+    for (let a = 0; a < values.length; a++) {
+      for (let b = a + 1; b < values.length; b++) penalty += (values[a] - values[b]) ** 2;
+    }
+  }
+  return penalty;
+}
+
+export function ratingProfilePenalty(teams: BuildTeam[], rating: (id: string) => number): number {
+  return sortedProfilePenalty(teams.map(t => t.ids.map(rating).sort((a, b) => b - a)));
+}
+
+type PriorityQuality = [gap: number, stack: number, profile: number, repeat: number];
+
+/** Lower-priority terms can NEVER pay for a worse higher-priority term. */
+function comparePriority(a: PriorityQuality, b: PriorityQuality): number {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] < b[i] - 1e-9) return -1;
+    if (a[i] > b[i] + 1e-9) return 1;
+  }
+  return 0;
+}
+
+function priorityQuality(
+  teams: BuildTeam[], rating: (id: string) => number,
+  top: Record<string, true>, bottom: Record<string, true>,
+  pairWeights?: Record<string, number>,
+): PriorityQuality {
+  return [spreadOf(teams), stackPenalty(teams, top, bottom), ratingProfilePenalty(teams, rating), repeatPenalty(teams, pairWeights)];
+}
+
+/** Match the approved small-roster simulation without unbounded production work. */
+function exactPrioritySplit(
+  scored: ScoredPlayer[], sizes: number[], rating: (id: string) => number,
+  top: Record<string, true>, bottom: Record<string, true>,
+  pairWeights: Record<string, number> | undefined, rng: () => number,
+): BuildTeam[] | undefined {
+  const n = scored.length;
+  if (n > EXACT_MAX_PLAYERS || n === 0 || sizes.some(size => size === 0)) return undefined;
+  const factorial = (v: number) => { let value = 1; for (let i = 2; i <= v; i++) value *= i; return value; };
+  const counts: Record<number, number> = {};
+  let partitions = factorial(n);
+  for (const size of sizes) { partitions /= factorial(size); counts[size] = (counts[size] ?? 0) + 1; }
+  for (const count of Object.values(counts)) partitions /= factorial(count);
+  if (partitions > EXACT_MAX_PARTITIONS + 1e-6) return undefined;
+
+  interface Group { mask: number; first: number; team: BuildTeam; profile: number[]; stack: number; repeat: number }
+  const cache = new Map<number, Group>();
+  const group = (indices: number[]): Group => {
+    const mask = indices.reduce((value, i) => value | (1 << i), 0);
+    const previous = cache.get(mask);
+    if (previous) return previous;
+    const ids = indices.map(i => scored[i].id);
+    const team = { ids, size: ids.length, total: ids.reduce((sum, id) => sum + rating(id), 0) };
+    const result = { mask, first: indices[0], team, profile: ids.map(rating).sort((a, b) => b - a),
+      stack: stackPenalty([team], top, bottom), repeat: repeatPenalty([team], pairWeights) };
+    cache.set(mask, result);
+    return result;
+  };
+  const targets = sizes.slice().sort((a, b) => a - b);
+  const bySize = new Map<number, Group[]>();
+  for (const size of new Set(targets)) {
+    const combinations: Group[] = [], indices: number[] = [];
+    const choose = (start: number) => {
+      if (indices.length === size) { combinations.push(group(indices)); return; }
+      for (let i = start; i <= n - (size - indices.length); i++) {
+        indices.push(i); choose(i + 1); indices.pop();
+      }
+    };
+    choose(0); bySize.set(size, combinations);
+  }
+  // A cheap valid upper bound avoids expensive profile work before the first
+  // excellent partition happens to appear in enumeration order.
+  const initial = greedyBuild(scored, sizes, rng);
+  refineSwaps(initial.teams, rating, spreadOf, rng);
+  let best = priorityQuality(initial.teams, rating, top, bottom, pairWeights);
+  let selected: BuildTeam[] | undefined, ties = 0;
+  const picked: Group[] = [];
+  const uniformRatings = scored.every(p => p.rating === scored[0].rating);
+  const evaluate = () => {
+    let low = Infinity, high = -Infinity, stack = 0, repeat = 0;
+    for (const g of picked) {
+      const average = averageOf(g.team);
+      low = Math.min(low, average); high = Math.max(high, average);
+      stack += g.stack; repeat += g.repeat;
+    }
+    const gap = high - low;
+    if (gap > best[0] + 1e-9) return;
+    if (Math.abs(gap - best[0]) <= 1e-9 && stack > best[1]) return;
+    const profile = uniformRatings ? 0 : sortedProfilePenalty(picked.map(g => g.profile));
+    const quality: PriorityQuality = [gap, stack, profile, repeat];
+    const comparison = comparePriority(quality, best);
+    if (comparison > 0) return;
+    if (comparison < 0) { best = quality; ties = 0; }
+    // One unbiased draw across distinct unlabeled partitions, with no list of
+    // hundreds of thousands of tied splits retained in memory.
+    if (rng() < 1 / ++ties) selected = picked.map(g => g.team);
+  };
+  const visit = (remaining: number, depth: number, previousFirst: number) => {
+    const size = targets[depth];
+    const minimumFirst = depth > 0 && targets[depth - 1] === size ? previousFirst : -1;
+    if (depth === targets.length - 1) {
+      const last = cache.get(remaining)!;
+      if (last.first <= minimumFirst) return;
+      picked.push(last); evaluate(); picked.pop(); return;
+    }
+    const equalRemainder = size === targets[targets.length - 1];
+    const anchor = remaining & -remaining;
+    for (const candidate of bySize.get(size)!) {
+      if (candidate.first <= minimumFirst || (equalRemainder && !(candidate.mask & anchor)) ||
+          (candidate.mask & remaining) !== candidate.mask) continue;
+      picked.push(candidate);
+      visit(remaining ^ candidate.mask, depth + 1, candidate.first);
+      picked.pop();
+    }
+  };
+  visit((1 << n) - 1, 0, -1);
+  return selected;
+}
+
+/** Bounded local descent for larger rosters, with the same lexicographic rule. */
+function refinePrioritySwaps(
+  teams: BuildTeam[], rating: (id: string) => number,
+  top: Record<string, true>, bottom: Record<string, true>,
+  pairWeights: Record<string, number> | undefined, rng: () => number,
+): void {
+  for (let pass = 0; pass < MAX_REFINE_PASSES; pass++) {
+    const current = priorityQuality(teams, rating, top, bottom, pairWeights);
+    let best = current;
+    let moves: { i: number; j: number; a: number; b: number }[] = [];
+    for (let i = 0; i < teams.length; i++) for (let j = i + 1; j < teams.length; j++) {
+      for (let a = 0; a < teams[i].ids.length; a++) for (let b = 0; b < teams[j].ids.length; b++) {
+        applySwap(teams[i], a, teams[j], b, rating);
+        // Most swaps are rejected on the cheap first term, before sorting profiles.
+        if (spreadOf(teams) <= best[0] + 1e-9) {
+          const quality = priorityQuality(teams, rating, top, bottom, pairWeights);
+          const comparison = comparePriority(quality, best);
+          if (comparison < 0) { best = quality; moves = [{ i, j, a, b }]; }
+          else if (comparison === 0 && comparePriority(quality, current) < 0) moves.push({ i, j, a, b });
+        }
+        applySwap(teams[i], a, teams[j], b, rating);
+      }
+    }
+    if (!moves.length) return;
+    const move = moves[Math.floor(rng() * moves.length)];
+    applySwap(teams[move.i], move.a, teams[move.j], move.b, rating);
+  }
+}
+
+function balancePriority(
+  scored: ScoredPlayer[], perTeam: number, numTeams: number,
+  rating: (id: string) => number, top: Record<string, true>, bottom: Record<string, true>,
+  pairWeights: Record<string, number> | undefined, candidates: number, rng: () => number,
+  unratedCount: number,
+): CoreResult {
+  const shuffled = scored.slice();
+  shuffleInPlace(shuffled, rng);
+  shuffled.sort((a, b) => b.rating - a.rating);
+  const placed = shuffled.slice(0, numTeams * perTeam), bench = shuffled.slice(numTeams * perTeam);
+  const sizes = splitSizes(placed.length, numTeams, perTeam, rng);
+  const uniform = !pairWeights && placed.every(p => p.rating === placed[0]?.rating);
+  let teams: BuildTeam[] | undefined;
+  if (uniform) {
+    const draw = placed.slice(); shuffleInPlace(draw, rng);
+    let offset = 0;
+    teams = sizes.map(size => {
+      const members = draw.slice(offset, offset + size); offset += size;
+      return { ids: members.map(p => p.id), size, total: members.reduce((sum, p) => sum + p.rating, 0) };
+    });
+  } else teams = exactPrioritySplit(placed, sizes, rating, top, bottom, pairWeights, rng);
+  if (!teams) {
+    let best: PriorityQuality = [Infinity, Infinity, Infinity, Infinity];
+    let ties = 0;
+    const seen = new Set<string>();
+    for (let k = 0; k < Math.max(1, candidates); k++) {
+      const built = greedyBuild(placed, sizes, rng, pairWeights ? jitterWeights(pairWeights, rng) : undefined);
+      refineSwaps(built.teams, rating, spreadOf, rng);
+      refinePrioritySwaps(built.teams, rating, top, bottom, pairWeights, rng);
+      const key = built.teams.map(t => t.ids.slice().sort().join(',')).sort().join('|');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const quality = priorityQuality(built.teams, rating, top, bottom, pairWeights);
+      const comparison = comparePriority(quality, best);
+      if (comparison > 0) continue;
+      if (comparison < 0) { best = quality; ties = 0; }
+      if (rng() < 1 / ++ties) teams = built.teams;
+    }
+  }
+  const result = teams!;
+  // Color/team-index assignment must not privilege a fixed subset of the roster.
+  shuffleInPlace(result, rng);
+  const gap = spreadOf(result);
+  return { teams: result.map(t => t.ids.slice()), bench: bench.map(p => p.id), gap,
+    repeat: repeatPenalty(result, pairWeights), stack: stackPenalty(result, top, bottom),
+    band: balanceBand(gap), fallback: gap > GAP_MAX + 1e-9, unratedCount };
+}
+
 /**
  * The balance term, in cost units. Continuous and progressively steeper, so
  * there is no cliff at a zone edge: 0.099 and 0.101 cost almost the same, while
@@ -625,9 +816,9 @@ interface Candidate {
 }
 
 /**
- * Build a split. Balance is the constraint (GAP_MAX, or a fallback window when
- * the roster makes it unreachable), pair history is the goal inside it, and a
- * random pick between near-equal options keeps reruns from repeating.
+ * Default A orders average gap, extreme distribution, full skill profile, then
+ * pair history. Small bounded problems are solved exactly; larger ones use
+ * bounded restarts. B retains the historical comparison model below.
  */
 export function balanceCore(input: CoreInput): CoreResult {
   const rng = input.rng ?? Math.random;
@@ -664,6 +855,10 @@ export function balanceCore(input: CoreInput): CoreResult {
   const perTeam = Math.max(1, input.perTeam);
   const count = input.candidates ?? CANDIDATES;
 
+  if (strategy === 'A') {
+    return balancePriority(scored, perTeam, numTeams, ratingOf, top, bottom, pairWeights, count, rng, unratedCount);
+  }
+
   const pool: Candidate[] = [];
   for (let k = 0; k < count; k++) {
     // Each restart searches with slightly different priorities (see
@@ -695,14 +890,8 @@ export function balanceCore(input: CoreInput): CoreResult {
       refineSwaps(
         teams,
         ratingOf,
-        strategy === 'A'
-          ? (t) =>
-              balancePenalty(spreadOf(t)) +
-              scoreRepeats(t) / scale +
-              STACK_WEIGHT * stackPenalty(t, top, bottom)
-          : // B keeps balance as a pure constraint: minimise repeats, and pay a
-            // large fixed price only for crossing the ceiling.
-            (t) =>
+        // B keeps its historical policy for controlled comparisons.
+        (t) =>
               scoreRepeats(t) / scale +
               100 * Math.max(0, spreadOf(t) - GAP_MAX) +
               STACK_WEIGHT * stackPenalty(t, top, bottom),
@@ -735,10 +924,7 @@ export function balanceCore(input: CoreInput): CoreResult {
     unstacked = eligible.filter((c) => c.stack <= minStack + 2);
   }
 
-  const chosen =
-    strategy === 'A'
-      ? pickStrategyA(unstacked, rng)
-      : pickStrategyB(unstacked, rng);
+  const chosen = pickStrategyB(unstacked, rng);
 
   wander(
     chosen.teams,
@@ -763,24 +949,6 @@ export function balanceCore(input: CoreInput): CoreResult {
     fallback,
     unratedCount,
   };
-}
-
-/**
- * Strategy A — one continuous score: a progressive balance penalty plus the
- * repeat weight on an ABSOLUTE scale (one cost unit ≈ six pairs that were
- * together last week). Nothing is normalised against the candidate pool, so a
- * given split always scores the same regardless of what it was generated
- * alongside. Splits within COST_EPSILON of the best are equally good.
- */
-function pickStrategyA(pool: Candidate[], rng: () => number): Candidate {
-  const scale = repeatScale(pool[0].teams);
-  const cost = (c: Candidate) => balancePenalty(c.gap) + c.repeat / scale;
-  const best = Math.min(...pool.map(cost));
-  const finalists = distinct(pool)
-    .filter((c) => cost(c) <= best + SELECT_MAX_TRADE)
-    .sort((a, b) => cost(a) - cost(b))
-    .slice(0, FINALISTS);
-  return finalists[Math.floor(rng() * finalists.length)] ?? pool[0];
 }
 
 /** One entry per distinct composition — 64 copies of the same split are one

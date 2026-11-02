@@ -49,7 +49,7 @@ const RADIUS_MAX = 50;
 export const DEFAULT_NEARBY_RADIUS_KM = 25;
 
 export interface GroupFilters {
-  /** Hide groups that hit their maxMembers cap. */
+  /** Legacy saved filter, ignored because club membership has no cap. */
   hasRoom: boolean;
   /** Show only auto-join (`isOpen === true`) groups. */
   autoJoinOnly: boolean;
@@ -78,7 +78,6 @@ export const EMPTY_GROUP_FILTERS: GroupFilters = {
 
 export function isGroupFiltersEmpty(f: GroupFilters): boolean {
   return (
-    !f.hasRoom &&
     !f.autoJoinOnly &&
     !f.freeOnly &&
     !f.regularGamesOnly &&
@@ -89,7 +88,6 @@ export function isGroupFiltersEmpty(f: GroupFilters): boolean {
 
 export function activeGroupFiltersCount(f: GroupFilters): number {
   let n = 0;
-  if (f.hasRoom) n += 1;
   if (f.autoJoinOnly) n += 1;
   if (f.freeOnly) n += 1;
   if (f.regularGamesOnly) n += 1;
@@ -415,10 +413,6 @@ export function applyGroupFilters(
   ctx: ApplyContext,
 ): GroupPublic[] {
   return groups.filter((g) => {
-    if (f.hasRoom) {
-      const cap = g.maxMembers;
-      if (typeof cap === 'number' && g.memberCount >= cap) return false;
-    }
     if (f.autoJoinOnly && g.isOpen !== true) return false;
     if (f.freeOnly && typeof g.costPerGame === 'number' && g.costPerGame > 0) {
       return false;

@@ -75,9 +75,8 @@ export const nearbyClubsService = {
   /**
    * Clubs near the viewer that they could actually join.
    *
-   * Drops: clubs they're already in or awaiting approval for, their own hidden
-   * personal group, and clubs that are full (a join CTA that can't succeed is
-   * worse than no card).
+   * Drops clubs they're already in or awaiting approval for and their own
+   * hidden personal group. Legacy membership caps do not affect discovery.
    */
   async getNearbyClubs(
     user: User | null,
@@ -107,10 +106,6 @@ export const nearbyClubsService = {
       if (!g?.id) return false;
       if (opts.excludeGroupIds.has(g.id)) return false;
       if (user.personalGroupId && g.id === user.personalGroupId) return false;
-      // Full club → the join CTA would only ever fail.
-      if (typeof g.maxMembers === 'number' && g.memberCount >= g.maxMembers) {
-        return false;
-      }
       // Too small to be a community. Shipped without this and the section
       // recommended one-person clubs under a subtitle promising "קהילות
       // שמשחקות בקביעות" — a claim those rows plainly didn't meet (user
