@@ -1,6 +1,7 @@
+import { ContentReveal } from '@/components/anim/ContentReveal';
 import { observeCaughtError } from '../../utils/errorObservation';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, AccessibilityInfo, Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { FlatList, AccessibilityInfo, Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Svg, { Circle, Defs, Ellipse, Line, Path, RadialGradient, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import { userService } from '@/services';
@@ -8,6 +9,7 @@ import { playerStatsService, type PlayerStatsSummary } from '@/services/playerSt
 import { StatisticsIllustration } from '@/components/stats/StatisticsIllustration';
 import { UserAvatar } from '@/components/UserAvatar';
 import { HomeProfileOverview } from './HomeProfileOverview';
+import { PersonalStatsSkeleton } from '@/components/loading/ScreenSkeletons';
 import { homeStatsSlides, nextPersonalMilestone } from '@/utils/homePersonalStats';
 import { scoreTrend } from '@/utils/personalStatistics';
 import { RTL_LABEL_ALIGN } from '@/theme';
@@ -95,7 +97,7 @@ export function HomePersonalStats({ user, onOpen, onProfile, preview }: { user: 
   useEffect(() => { setIndex(0); list.current?.scrollToOffset({ offset: 0, animated: false }); }, [user.id, preview]);
   const stats = data?.stats;
   const milestone = stats ? nextPersonalMilestone(stats.goals) : null;
-  const cardHeight = Math.max(204, ...(slides.length ? slides : ['overview']).map(slide => cardHeights[layoutKey + slide] ?? 0));
+  const cardHeight = Math.max(!stats && !failed ? 318 : 204, ...(slides.length ? slides : ['overview']).map(slide => cardHeights[layoutKey + slide] ?? 0));
   const renderCard = (slide: string) => {
     const content = <>
         <PitchWatermark />
@@ -105,7 +107,7 @@ export function HomePersonalStats({ user, onOpen, onProfile, preview }: { user: 
           const key = layoutKey + slide;
           setCardHeights(old => old[key] === height ? old : { ...old, [key]: height });
         }}>
-          {!stats ? <View style={s.loading}>{failed ? <Text style={s.subtitle}>לא הצלחנו לטעון את הנתונים שלך</Text> : <ActivityIndicator color="#2467F4" />}</View> : slide === 'overview' ?
+          {!stats ? failed ? <View style={s.loading}><Text style={s.subtitle}>לא הצלחנו לטעון את הנתונים שלך</Text></View> : <PersonalStatsSkeleton /> : slide === 'overview' ?
             <HomeProfileOverview stats={stats} playerId={user.id} onStatistics={onOpen} onProfile={onProfile} />
           : slide === 'scores' ? <><Text style={s.title}>הכושר האחרון שלך</Text><Text style={s.subtitle}>הציונים שלך ב־{stats.highlights!.recentCount} המחזורים האחרונים</Text><MiniScores points={stats.highlights!.points.slice(-5)} /><View style={s.scoreFoot}><Text style={[s.trend, { color: scoreTrend(stats.highlights!.points) === 'up' ? '#139A55' : '#607292' }]}>{stats.highlights!.points.length < 2 ? 'ציון מחזור מתוך 10' : { up: 'במגמת עלייה', down: 'במגמת ירידה', mixed: 'מגמה מעורבת', stable: 'ללא שינוי' }[scoreTrend(stats.highlights!.points)]}</Text><FootballDataIllustration /></View></> : slide === 'partner' ? <><Text style={s.title}>השותף הקבוע שלך</Text><Text style={s.subtitle}>יש אנשים שהכדורגל פשוט מחבר ביניהם</Text><View style={s.partner}><UserAvatar user={data!.partner!} size={64} /><View><Text style={s.title}>{data!.partner!.name}</Text><Text style={s.subtitle}>{stats.mostPlayedWith!.count} מחזורים יחד</Text></View></View>{stats.regularPartnerResults && <PartnerResults results={stats.regularPartnerResults} />}</> : slide === 'milestone' && milestone ? <><Text style={s.title}>היעד הבא שלך קרוב</Text><View style={s.partner}><StatisticsIllustration kind="trophy" size={72} /><View style={{ flex: 1 }}><Text style={s.value}>עוד {milestone.remaining}</Text><Text style={s.subtitle}>שערים עד ל־{milestone.target} שערים</Text></View></View></> : null}
         </View>
@@ -114,7 +116,7 @@ export function HomePersonalStats({ user, onOpen, onProfile, preview }: { user: 
     return slide === 'overview' ? <View style={cardStyle}>{content}</View> :
       <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel="פתיחת הסטטיסטיקה האישית" style={cardStyle}>{content}</Pressable>;
   };
-  return <View style={s.section}>
+  return <ContentReveal ready={!!stats} scopeKey={user.id}><View style={s.section}>
     <View onLayout={e => setWidth(Math.max(100, e.nativeEvent.layout.width))}>
       <FlatList ref={list} horizontal data={slides.length ? slides : ['overview']} keyExtractor={item => item}
         style={{ height: cardHeight }}
@@ -128,7 +130,7 @@ export function HomePersonalStats({ user, onOpen, onProfile, preview }: { user: 
     </View>
     {failed && <Pressable onPress={() => setRetry(n => n + 1)} style={s.retry} accessibilityRole="button"><Text style={s.linkText}>נסה שוב</Text></Pressable>}
     {slides.length > 1 && <View style={s.dots}>{slides.map((item, i) => <Pressable key={item} onPress={() => select(i)} accessibilityRole="button" accessibilityLabel={`הצגת ${['הכדורגל שלי', 'הציונים שלך', 'השותף שלך', 'היעד הבא'][['overview', 'scores', 'partner', 'milestone'].indexOf(item)]}`} accessibilityState={{ selected: i === current }} style={s.dotTarget}><View style={[s.dot, i === current && s.activeDot]} /></Pressable>)}</View>}
-  </View>;
+  </View></ContentReveal>;
 }
 const s = StyleSheet.create({
   partnerResults: { marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#EAF0F9' }, resultRow: { flexDirection: 'row', gap: 8 }, resultCell: { flex: 1, alignItems: 'center', gap: 2 }, resultValue: { fontSize: 22, fontWeight: '800' }, resultCaption: { textAlign: 'center', fontSize: 11, color: '#65799C', marginTop: 8 },

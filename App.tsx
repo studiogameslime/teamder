@@ -1,5 +1,6 @@
 import { observeCaughtError } from './src/utils/errorObservation';
 import { userService } from '@/services/userService';
+import { recordAppVersionPresence } from '@/services/appVersionPresence';
 import { resolveIncomingInvite, startInviteRecovery } from '@/services/incomingInvite';
 import { finishEntryBootstrap } from '@/services/entryBootstrap';
 import 'react-native-gesture-handler';
@@ -711,6 +712,15 @@ export default function App() {
   // another account's update. A new native binary is observed after restart.
   useEffect(() => {
     if (splashDone && userHydrated) void reconcileStoreUpdate(currentUserId ?? null);
+  }, [splashDone, userHydrated, currentUserId]);
+
+  useEffect(() => {
+    if (!splashDone || !userHydrated || !currentUserId) return;
+    if (AppState.currentState === 'active') void recordAppVersionPresence(currentUserId);
+    const subscription = AppState.addEventListener('change', next => {
+      if (next === 'active') void recordAppVersionPresence(currentUserId);
+    });
+    return () => subscription.remove();
   }, [splashDone, userHydrated, currentUserId]);
 
   // Run the version check only after the splash animation has

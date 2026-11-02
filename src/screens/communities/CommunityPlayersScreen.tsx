@@ -1,3 +1,9 @@
+import { ContentReveal } from '@/components/anim/ContentReveal';
+import { useRememberedScroll, useRememberedValue } from '@/hooks/useListMemory';
+import { useListUpdates } from '@/hooks/useListUpdates';
+import { ListUpdateNotice } from '@/components/ListUpdateNotice';
+import { UpdateHighlight } from '@/components/anim/UpdateHighlight';
+import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 import { observeCaughtError, observeSettledErrors } from '../../utils/errorObservation';
 // CommunityPlayersScreen — full member list with per-community stats.
 // Reachable from the redesigned CommunityDetailsScreen via the
@@ -39,13 +45,12 @@ import {
   CARD_RED,
 } from '@/components/community/CardCountBadges';
 import { communityEventsService } from '@/services';
-import type { CardCounts, CardCountsMap } from '@/services/communityEventsService';
+import type { CardCounts } from '@/services/communityEventsService';
 import { formatRating, isRated } from '@/utils/rating';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   RouteProp,
-  useFocusEffect,
   useNavigation,
   useRoute,
 } from '@react-navigation/native';
@@ -54,16 +59,17 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
-import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { PlayersSkeleton, LoadingNotice } from '@/components/loading/ScreenSkeletons';
+import { Button } from '@/components/Button';
+import { useCommunityRoster } from '@/hooks/useCommunityRoster';
 import { toast } from '@/components/Toast';
 import { groupService } from '@/services';
-import { gameService } from '@/services/gameService';
 import { logError } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { useUserStore } from '@/store/userStore';
 import { RTL_LABEL_ALIGN, clubAccent, clubSurface, colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
-import type { Group, User, UserId } from '@/types';
+import type { User, UserId } from '@/types';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 
 type Nav = NativeStackNavigationProp<
@@ -91,6 +97,7 @@ export interface CommunityPlayersScreenProps {
 
 /** Stable empty list — a fresh [] each render would churn FlatList. */
 const EMPTY_ROWS: User[] = [];
+const RosterRowSeparator = () => <View style={{height: spacing.md}} />;
 
 // Replace the list's one native scroll surface; do not nest another scroll view
 // around it. VirtualizedList still owns the cells, windowing and scroll ref.
@@ -110,13 +117,11 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
   // Search and the three filter chips, both from the reference. Pure view
   // state over the roster that is ALREADY loaded — no query, no extra read,
   // and the virtualised list keeps windowing whatever survives the filter.
-  const [query, setQuery] = useState('');
-  const [chip, setChip] = useState<'all' | 'admins' | 'players'>('all');
   const me = useUserStore((s) => s.currentUser);
-  const [group, setGroup] = useState<Group | null>(null);
-  const [members, setMembers] = useState<User[]>([]);
-  const [stats, setStats] = useState<Record<UserId, PlayerStats> | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useRememberedValue(me?.id, `club-players:${groupId}`, 'query', '');
+  const [chip, setChip] = useRememberedValue<'all' | 'admins' | 'players'>(me?.id, `club-players:${groupId}`, 'chip', 'all');
+  const reduced = useReducedMotion();
+  const { group, members, stats, cardCounts, loading, failed: loadFailed, initialLoading, reload, setGroup } = useCommunityRoster(groupId, me);
   // Admin-rating editor target (internalRating communities only).
   const [ratingTarget, setRatingTarget] = useState<User | null>(null);
   const [savingRating, setSavingRating] = useState(false);
@@ -127,55 +132,6 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
   // Equipment (ball / jerseys) sheet target + save-in-flight flag.
   const [equipTarget, setEquipTarget] = useState<User | null>(null);
   const [savingEquip, setSavingEquip] = useState(false);
-  // Per-player ACTIVE yellow/red counts → the roster discipline badges.
-  const [cardCounts, setCardCounts] = useState<CardCountsMap>({});
-
-  const reload = useCallback(async () => {
-    setLoading(true);
-    try {
-      const g = await groupService.get(groupId);
-      setGroup(g);
-      if (!g) {
-        setMembers([]);
-        setStats({});
-        setCardCounts({});
-        return;
-      }
-      const ids = Array.from(new Set([...g.adminIds, ...g.playerIds]));
-      const iAmGroupAdmin = !!me && g.adminIds.includes(me.id);
-      const [users, derived, counts] = await Promise.all([
-        groupService.hydrateUsers(ids),
-        gameService.getCommunityPlayerStats(g.id, ids).catch((caughtErrordaaee67b80: unknown) => { observeCaughtError(caughtErrordaaee67b80, {"source":"src/screens/communities/CommunityPlayersScreen.tsx","handler":"CommunityPlayersScreen","site":"CommunityPlayersScreen:daaee67b80"}); return ({}); }),
-        // Card badges are admin-only and only when the club uses cards.
-        iAmGroupAdmin && g.cardsEnabled
-          ? communityEventsService
-              .getActiveCardCounts(g.id, g.yellowCardValidityDays, g.redCardValidityDays)
-              .catch((caughtErrorcc9ccd361f: unknown) => { observeCaughtError(caughtErrorcc9ccd361f, {"source":"src/screens/communities/CommunityPlayersScreen.tsx","handler":"CommunityPlayersScreen","site":"CommunityPlayersScreen:cc9ccd361f"}); return ({}); })
-          : Promise.resolve({}),
-      ]);
-      setMembers(users);
-      setStats(derived);
-      setCardCounts(counts);
-    } catch (err) {
-    observeCaughtError(err, {"source":"src/screens/communities/CommunityPlayersScreen.tsx","handler":"CommunityPlayersScreen","site":"CommunityPlayersScreen:654e03247e"});
-      logError('communityPlayersLoad', err, {
-        screen: 'CommunityPlayersScreen',
-        groupId,
-      });
-      if (__DEV__) console.warn('[communityPlayers] reload failed', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [groupId, me?.id, me?.isGuest]);
-
-  // Single load path: useFocusEffect fires on the initial focus AND on return,
-  // so it also refreshes the roster badge after a card is revoked from a
-  // player's timeline. (A separate useEffect(reload) would double-load on open.)
-  useFocusEffect(
-    useCallback(() => {
-      reload();
-    }, [reload]),
-  );
 
   // Screen-open analytics — fired once, after the first load resolves so the
   // member count is real. The ref guards the refocus reloads.
@@ -518,6 +474,13 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
     return true;
   });
   const adminCount = ordered.filter((u) => adminSet.has(u.id)).length;
+  const listScope = JSON.stringify(['club-players', me?.id, groupId, query, chip]);
+  const listMemory = useRememberedScroll(me?.id, listScope, !!group && !initialLoading, visible.length);
+  const updates = useListUpdates(listScope, visible, {
+    ready: !!group && !initialLoading, hold: !listMemory.nearStart, key: u => u.id,
+    revision: u => JSON.stringify([u.name, stats?.[u.id]?.gamesPlayed, adminSet.has(u.id), group?.adminRatings?.[u.id], (group?.ballHolderIds ?? []).includes(u.id), (group?.jerseysHolderIds ?? []).includes(u.id), cardCounts[u.id]]),
+  });
+
 
   return (
     // Top only. This screen sits inside the tab navigator, which already
@@ -526,7 +489,7 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
     // that had it before; targeting API 36 made the inset large enough to see.
     // Embedded, the shell above already claimed the top inset — claiming it
     // again pushes the hero down by the status-bar height.
-    <SafeAreaView style={styles.root} edges={embedded ? [] : ['top']}>
+    <ContentReveal ready={!!group && !initialLoading} scopeKey={JSON.stringify([me?.id,groupId])} style={{flex:1}}><SafeAreaView style={styles.root} edges={embedded ? [] : ['top']}>
       {embedded ? null : <ScreenHeader title={he.communityPlayersScreenTitle} />}
       {/* ONE list for all four states.
        *
@@ -547,27 +510,31 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
        *  spreading FlatList contents through ListHeaderComponent + the
        *  renderItem; the visual matches the old ScrollView + map. */}
       <FlatList
+          ref={listMemory.ref} onScroll={listMemory.onScroll} onScrollBeginDrag={listMemory.onScrollBeginDrag} onLayout={listMemory.onLayout} onContentSizeChange={listMemory.onContentSizeChange} scrollEventThrottle={64}
+          maintainVisibleContentPosition={!listMemory.nearStart ? { minIndexForVisible: 0 } : undefined}
           renderScrollComponent={renderRosterScroll}
-          data={group && ordered.length > 0 ? visible : EMPTY_ROWS}
+          data={group && ordered.length > 0 ? updates.items : EMPTY_ROWS}
           keyExtractor={(u) => u.id}
+          ItemSeparatorComponent={RosterRowSeparator}
+          onViewableItemsChanged={listMemory.onViewableItemsChanged}
+          ListHeaderComponentStyle={{marginBottom: spacing.md}}
           contentContainerStyle={[
             styles.content,
+            { paddingBottom: 80 },
             // `center` is flex:1 and only means something in a container that
             // is allowed to grow.
             !(group && ordered.length > 0) && styles.contentFill,
           ]}
           ListEmptyComponent={
-            <View style={styles.center}>
-              {/* `loading`, not `loading && !group`. The club document lands
-                  before its member docs do, and gating the loader on the
-                  document meant the roster announced "אין שחקנים" for the
-                  second it took the people to arrive — a club with 29 members
-                  claiming to be empty. Same ball the numbers tab spins. */}
-              {loading ? (
-                <SoccerBallLoader size={40} />
+            initialLoading ? <PlayersSkeleton /> : <View style={styles.center}>
+              {loadFailed && members.length === 0 ? (
+                <View style={{ gap: spacing.md, alignItems: 'center' }}>
+                  <Text style={styles.empty}>לא ניתן לטעון את השחקנים כרגע.</Text>
+                  <Button title={he.retry} variant="outline" onPress={() => { void reload(); }} />
+                </View>
               ) : (
                 <Text style={styles.empty}>
-                  {!group ? he.communitiesEmpty : he.communityPlayersEmpty}
+                  {!group ? he.communitiesEmpty : members.length > 0 ? 'לא נמצאו שחקנים שמתאימים לחיפוש.' : he.communityPlayersEmpty}
                 </Text>
               )}
             </View>
@@ -577,6 +544,11 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
               {props.header ? (
                 <View style={styles.headerBleed}>{props.header}</View>
               ) : null}
+              {loading && !initialLoading ? <LoadingNotice compact label="מעדכנים את רשימת השחקנים" /> : null}
+              {loadFailed && members.length > 0 ? <View style={{ gap: spacing.sm, paddingVertical: spacing.sm }}>
+                <Text style={styles.empty}>חלק מהנתונים לא נטענו. מוצגים השחקנים והנתונים הזמינים.</Text>
+                <Button title={he.retry} variant="outline" onPress={() => { void reload(); }} />
+              </View> : null}
               {/* Search and filters belong to a roster that HAS people; over
                   an empty list they are three controls that do nothing. */}
               {group && ordered.length > 0 ? (
@@ -629,7 +601,7 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
             if (!group) return null;
             return (
               <View style={i === 0 ? styles.listCard : null}>
-                <PlayerRow
+                <UpdateHighlight at={updates.highlights[u.id]}><PlayerRow
                   user={u}
                   isAdmin={group.adminIds.includes(u.id)}
                   stats={stats?.[u.id]}
@@ -656,13 +628,15 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
                   // ONLY the ⋮ opens the menu — the row body is not tappable and
                   // there's no chevron (user request).
                   onOpenMenu={(e) => openPlayerMenu(u, e)}
-                />
+                /></UpdateHighlight>
               </View>
             );
           }}
           initialNumToRender={20}
           windowSize={10}
         />
+
+      {updates.pending ? <View style={{position:'absolute',bottom:12,alignSelf:'center',maxWidth:'92%',zIndex:5}}><ListUpdateNotice count={updates.pendingCount} noun="שחקנים" onPress={() => { updates.apply(); listMemory.toStart(!reduced); }} /></View> : null}
 
       <AdminRatingSheet
         target={ratingTarget}
@@ -698,7 +672,7 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
         onSave={(flags) => equipTarget && saveEquipment(equipTarget, flags)}
         onClose={() => (savingEquip ? null : setEquipTarget(null))}
       />
-    </SafeAreaView>
+    </SafeAreaView></ContentReveal>
   );
 }
 
@@ -887,7 +861,6 @@ const styles = StyleSheet.create({
   contentFill: { flexGrow: 1 },
   content: {
     padding: spacing.lg,
-    gap: spacing.md,
     paddingBottom: spacing.xl,
   },
   // The shell's hero is full-bleed; this list's content container is not.

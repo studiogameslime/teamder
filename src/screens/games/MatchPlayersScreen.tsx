@@ -1,3 +1,7 @@
+import { useRememberedScroll } from '@/hooks/useListMemory';
+import { useListUpdates } from '@/hooks/useListUpdates';
+import { ListUpdateNotice } from '@/components/ListUpdateNotice';
+import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 import { observeCaughtError } from '../../utils/errorObservation';
 import { upsertSavedGuest } from '@/utils/savedGuest';
 // MatchPlayersScreen — full roster for a single game.
@@ -498,6 +502,12 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
     [game, persistGuests],
   );
 
+  const reduced = useReducedMotion();
+  const listScope = JSON.stringify(['round-players', currentUser?.id, gameId]);
+  const listMemory = useRememberedScroll(currentUser?.id, listScope, !!game && !loading);
+  const updates = useListUpdates(listScope, game?.players ?? [], {ready: !!game && !loading, hold: !listMemory.nearStart, key: id => id});
+  const updatesNotice = updates.pending ? <View style={{position:'absolute',bottom:12,alignSelf:'center',maxWidth:'92%',zIndex:5}}><ListUpdateNotice count={updates.pendingCount} noun="משתתפים" onPress={() => { updates.apply(); listMemory.toStart(!reduced); }} /></View> : null;
+
   // Both early branches keep the header when embedded: the tab bar must stay
   // reachable while the roster loads, or the tab looks like it lost its bar.
   const chrome = (body: React.ReactNode) =>
@@ -533,7 +543,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
     );
   }
 
-  const playerEntries = buildEntries(game.players ?? [], { withBall: true });
+  const playerEntries = buildEntries(updates.items, { withBall: true });
   const waitlistEntries = buildEntries(game.waitlist ?? []);
   const pendingEntries = buildEntries(game.pending ?? []);
   // Only ACTIVE (non-waitlisted) guests count toward the registered roster —
@@ -685,17 +695,18 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
             the live capacity counter reads. */}
         <Section
           title={he.matchPlayersSectionRegistered}
-          count={`${playerEntries.length + guests.length}/${game.maxPlayers}`}
+          count={`${(game.players ?? []).length + guests.length}/${game.maxPlayers}`}
         >
-          {playerEntries.length === 0 && guests.length === 0 ? (
+          {(game.players ?? []).length === 0 && guests.length === 0 ? (
             <Empty />
           ) : (
             <Card style={styles.listCard}>
+              {playerEntries.length === 0 && guests.length === 0 && updates.pending ? <Text style={styles.emptyText}>יש משתתפים חדשים. לחצו על הצג כדי לראות אותם.</Text> : null}
               {playerEntries.map((e, i) => (
                 <PlayerRow
                   key={e.user.id}
                   entry={e}
-                  arrivalAt={arrivals[e.user.id]}
+                  arrivalAt={updates.highlights[e.user.id] ?? arrivals[e.user.id]}
                   showDivider={i > 0}
                   metaLine={
                     e.joinedAt
@@ -1074,7 +1085,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
 
   return embedded ? (
     <>
-      <ScrollView
+      <ScrollView ref={listMemory.ref} onScroll={listMemory.onScroll} onScrollBeginDrag={listMemory.onScrollBeginDrag} onLayout={listMemory.onLayout} onContentSizeChange={listMemory.onContentSizeChange} scrollEventThrottle={64}
         style={styles.flex}
         stickyHeaderIndices={props.header && props.stickyHeader ? [1] : undefined}
         showsVerticalScrollIndicator={false}
@@ -1087,6 +1098,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
         <View
           style={[
             styles.content,
+            { paddingBottom: 80 },
             props.bottomInset
               ? { paddingBottom: props.bottomInset + 16 }
               : null,
@@ -1095,6 +1107,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
           {sections}
         </View>
       </ScrollView>
+      {updatesNotice}
 
       {currentUser ? (
         <GuestModal
@@ -1140,7 +1153,8 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
   ) : (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={he.matchPlayersScreenTitle} />
-      <ScrollView contentContainerStyle={styles.content}>{sections}</ScrollView>
+      <ScrollView ref={listMemory.ref} onScroll={listMemory.onScroll} onScrollBeginDrag={listMemory.onScrollBeginDrag} onLayout={listMemory.onLayout} onContentSizeChange={listMemory.onContentSizeChange} scrollEventThrottle={64} contentContainerStyle={[styles.content, {paddingBottom:80}]}>{sections}</ScrollView>
+      {updatesNotice}
 
       {currentUser ? (
         <GuestModal

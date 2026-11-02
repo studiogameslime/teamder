@@ -1,0 +1,29 @@
+{
+  "releaseLogReadBackVerified": true,
+  "proofReadBackVerified": true,
+  "item": {
+    "id": {
+      "stringValue": "version-adoption-dashboard-2026-11-02"
+    },
+    "title": {
+      "stringValue": "נוספה לבית הפולס תמונת גרסאות עם מספר ואחוז בגרסה האחרונה, גרסאות ישנות, מידע חסר ופירוט משתמשים, כולל מי שנצפה היום בגרסה האחרונה. נוסף דיווח גרסה פרטי בפתיחה ובחזרה לאפליקציה, שאינו תלוי בהתראות. המימוש מקומי וטרם הופץ; האיסוף הישיר יתחיל רק בגרסת טלפון שתכלול אותו, והתצוגה נבדקה בדפדפן ולא במכשיר."
+    },
+    "kind": {
+      "stringValue": "feature"
+    },
+    "version": {
+      "stringValue": "next"
+    },
+    "area": {
+      "stringValue": "פולס, תמונת גרסאות"
+    },
+    "shotId": {
+      "stringValue": "EAGV72f5RTzSXgTeLZOn"
+    }
+  },
+  "version": "next",
+  "built": false,
+  "deployed": false,
+  "inboxStatusUpdated": false,
+  "productionUserDataChanged": false
+}

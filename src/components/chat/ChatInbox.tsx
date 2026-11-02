@@ -1,12 +1,16 @@
+import { ContentReveal } from '@/components/anim/ContentReveal';
+import { useRememberedScroll, useRememberedValue } from '@/hooks/useListMemory';
 import { observeCaughtError } from '../../utils/errorObservation';
 import { overlaySurfaces } from '@/theme/overlays';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ImageSourcePropType } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeModal as Modal } from '@/components/SafeModal';
 import { SpringSheet } from '@/components/anim/SpringSheet';
+import { ConversationListSkeleton } from '@/components/loading/PageSkeletons';
+import { LoadingNotice } from '@/components/loading/ScreenSkeletons';
 import { UserAvatar } from '@/components/UserAvatar';
 import { OfficialBadge } from '@/components/OfficialBadge';
 import { SocialAction } from '@/components/social/SocialUI';
@@ -37,6 +41,7 @@ export interface InboxPreview { rows: InboxRow[]; preferences: Record<string, Ch
 const FILTERS = [['all','הכל'],['unread','לא נקראו'],['dm','אישי'],['community','מועדונים'],['game','מחזורים']] as const;
 type Filter = typeof FILTERS[number][0];
 const blue = '#2563EB', navy = '#0C1744';
+const InboxRowSeparator = () => <View style={{height:9}} />;
 function rowTime(at: number) {
   if (!at) return '';
   const d = new Date(at), now = new Date();
@@ -48,18 +53,27 @@ function rowTime(at: number) {
 export function ChatInbox({ preview }: { preview?: InboxPreview }) {
   const nav = useNavigation<NativeStackNavigationProp<ChatStackParamList>>();
   const me = useUserStore(s=>s.currentUser), groups = useGroupStore(s=>s.groups), entries = useChatStore(s=>s.entries);
-  const [mode,setMode] = useState<'inbox'|'archive'|'new'|'requests'>(preview?.mode??'inbox');
+  const friendsScope = JSON.stringify([me?.id, !!me?.isGuest]);
+  const memoryScope = `chat-inbox:${!!me?.isGuest}:${!!preview}`;
+  const [mode,setMode] = useRememberedValue<'inbox'|'archive'|'new'|'requests'>(me?.id, memoryScope, 'mode', preview?.mode??'inbox');
   const [requestRows,setRequestRows]=useState<DmRequestEntry[]>(preview?.requests??[]),[requestsFailed,setRequestsFailed]=useState(false),[requestsLoading,setRequestsLoading]=useState(true),[declinedRequests,setDeclinedRequests]=useState(false);
   const [requestOwner,setRequestOwner]=useState(me?.id);
   const visibleRequests=requestOwner===me?.id?requestRows:[];
-  const [filter,setFilter] = useState<Filter>('all'), [search,setSearch] = useState('');
+  const [filter,setFilter] = useRememberedValue<Filter>(me?.id, memoryScope, 'filter', 'all');
+  const [search,setSearch] = useRememberedValue(me?.id, memoryScope, 'search', '');
   const [games,setGames] = useState<Game[]>([]), [profiles,setProfiles] = useState<Record<string,User>>({});
   const [preferences,setPreferences] = useState<Record<string,ChatPreferences>>(preview?.preferences ?? {});
   const [friends,setFriends] = useState<User[]>(preview?.friends ?? []);
+  const [friendsDataKey,setFriendsDataKey] = useState<string|null>(preview ? friendsScope : null);
+  const [friendsRequestKey,setFriendsRequestKey] = useState<string|null>(null);
   const [loading,setLoading] = useState(!preview), [friendsLoading,setFriendsLoading] = useState(false);
   const [failed,setFailed] = useState(false), [friendsFailed,setFriendsFailed] = useState(false), [retry,setRetry] = useState(0);
   const [selected,setSelected] = useState<InboxRow|null>(null), [busy,setBusy] = useState(false);
   const [now,setNow] = useState(Date.now());
+  const preferenceWrite = useRef(false);
+  const alive = useRef(false);
+  const currentOwner = useRef(me?.id); currentOwner.current = me?.id;
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const [senderNames,setSenderNames] = useState<{owner?:string; names:Record<string,string>}>({names:{}});
   useEffect(()=>{
     setRequestRows([]);setRequestOwner(me?.id);setRequestsFailed(false);setRequestsLoading(true);
@@ -79,7 +93,7 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
     observeCaughtError(err, {"source":"src/components/chat/ChatInbox.tsx","handler":"ChatInbox","site":"ChatInbox:fef5a09a1f"});if(live)logError('ChatInbox.senderNames',err);});
     return()=>{live=false;};
   },[senderIds,me?.id,preview,retry]);
-  useEffect(()=>{if(preview){setPreferences(preview.preferences);setFriends(preview.friends);setLoading(false);}},[preview]);
+  useEffect(()=>{if(preview){setPreferences(preview.preferences);setFriends(preview.friends);setFriendsDataKey(friendsScope);setLoading(false);}},[preview,friendsScope]);
   const adminIds = groups.filter(g=>me && g.adminIds.includes(me.id)).map(g=>g.id).sort().join('|');
   useEffect(()=>{ const timer=setInterval(()=>setNow(Date.now()),60000); return ()=>clearInterval(timer); },[]);
   useEffect(()=>{
@@ -105,17 +119,19 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
   },[otherIds,me?.id,preview,retry]));
   useEffect(()=>{
     if(mode!=='new'||preview||!me) return;
-    let live=true;setFriendsLoading(true);setFriendsFailed(false);setFriends([]);
-    friendsService.listFriends(me.id).then(rows=>{if(live)setFriends(rows);}).catch((caughtError3dbc2dce7d: unknown) =>{
-      if (!live || useUserStore.getState().currentUser?.id !== me.id) return;
+    let live=true;
+    const active=()=>live&&useUserStore.getState().currentUser?.id===me.id&&!!useUserStore.getState().currentUser?.isGuest===!!me.isGuest;
+    setFriendsRequestKey(friendsScope);setFriendsLoading(true);setFriendsFailed(false);
+    friendsService.listFriends(me.id).then(rows=>{if(active()){setFriends(rows);setFriendsDataKey(friendsScope);}}).catch((caughtError3dbc2dce7d: unknown) =>{
+      if (!active()) return;
       // A deleted profile is unavailable, not an authoritative empty friend list.
       if ((caughtError3dbc2dce7d as {name?: unknown})?.name !== 'FriendOwnerMissingError') {
         observeCaughtError(caughtError3dbc2dce7d, {"source":"src/components/chat/ChatInbox.tsx","handler":"ChatInbox","site":"ChatInbox:3dbc2dce7d"});
       }
       setFriendsFailed(true);
-    }).finally(()=>{if(live)setFriendsLoading(false);});
+    }).finally(()=>{if(active())setFriendsLoading(false);});
     return ()=>{live=false;};
-  },[mode,me?.id,preview,retry]);
+  },[mode,me?.id,me?.isGuest,preview,retry,friendsScope]);
   useFocusEffect(useCallback(()=>{
     const sub=BackHandler.addEventListener('hardwareBackPress',()=>{if(mode==='inbox')return false;setMode('inbox');setSearch('');return true;});
     return ()=>sub.remove();
@@ -158,14 +174,29 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
     else nav.navigate('DirectChat',{convId:r.id});
   };
   const update=async(patch:Partial<ChatPreferences>)=>{
-    if(!selected||!me||busy)return;
-    setBusy(true);
+    if(!selected||!me||busy||preferenceWrite.current)return;
+    const target=selected, ownerId=me.id, targetKey=key(target);
+    const previous=preferences[targetKey] ?? {muted:false,pinned:false,archivedAt:0};
+    preferenceWrite.current=true;setBusy(true);
     try {
-      if(!preview)await chatService.setPreferences(me.id,selected.scope,selected.id,patch);
-      setPreferences(p=>({...p,[key(selected)]:{...(p[key(selected)] ?? {muted:false,pinned:false,archivedAt:0}),...patch}}));
-      setSelected(null);
+      if(!preview)await chatService.setPreferences(ownerId,target.scope,target.id,patch);
+      if(useUserStore.getState().currentUser?.id!==ownerId)return;
+      if(alive.current&&currentOwner.current===ownerId){
+        setPreferences(p=>({...p,[targetKey]:{...(p[targetKey] ?? previous),...patch}}));
+        setSelected(null);
+      }
+      if((patch.archivedAt??0)>0&&!target.closed){
+        const expected={archivedAt:patch.archivedAt!,archivedMessageId:patch.archivedMessageId};
+        toast.action('השיחה הועברה לארכיון',{label:'בטל',ownerId,onPress:async()=>{
+          const result=preview?'restored':await chatService.undoArchive(ownerId,target.scope,target.id,expected,{archivedAt:previous.archivedAt,archivedMessageId:previous.archivedMessageId});
+          if(useUserStore.getState().currentUser?.id!==ownerId)return;
+          if(result==='changed'){toast.info('השיחה השתנתה מאז. לא בוצע ביטול.');return;}
+          if(alive.current&&currentOwner.current===ownerId)setPreferences(p=>({...p,[targetKey]:{...(p[targetKey]??previous),archivedAt:previous.archivedAt,archivedMessageId:previous.archivedMessageId}}));
+          toast.success('השיחה הוחזרה לשיחות');
+        }},6000);
+      }
     }catch (caughtError8c7618929b){
-    observeCaughtError(caughtError8c7618929b, {"source":"src/components/chat/ChatInbox.tsx","handler":"update","site":"ChatInbox:8c7618929b"});toast.error('לא ניתן לשמור כרגע. נסו שוב.');}finally{setBusy(false);}
+    observeCaughtError(caughtError8c7618929b, {"source":"src/components/chat/ChatInbox.tsx","handler":"update","site":"ChatInbox:8c7618929b"});toast.error('לא ניתן לשמור כרגע. נסו שוב.');}finally{preferenceWrite.current=false;if(alive.current)setBusy(false);}
   };
   const changeMode=(next:typeof mode)=>{setMode(next);setSearch('');setFilter('all');};
   const renderRow=(item:InboxRow)=><Pressable accessibilityRole="button" accessibilityLabel={`פתיחת ${item.title}`} onPress={()=>open(item)} onLongPress={()=>setSelected(item)} style={({pressed})=>[s.card,pressed&&{opacity:0.7}]}>
@@ -176,7 +207,11 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
     <Pressable accessibilityRole="button" accessibilityLabel={`אפשרויות לשיחה ${item.title}`} hitSlop={8} onPress={()=>setSelected(item)} style={s.more}><Ionicons name="ellipsis-vertical" size={17} color="#8A9AB3"/></Pressable>
   </Pressable>;
   const empty=(title:string,body:string)=><View style={s.empty}><View style={s.emptyIcon}><Ionicons name={mode==='archive'?'archive-outline':'chatbubbles-outline'} size={36} color={blue}/></View><Text style={s.emptyTitle}>{title}</Text><Text style={s.emptyBody}>{body}</Text>{mode==='inbox'?<SocialAction title="התחילו שיחה עם חבר" icon="add-outline" onPress={()=>changeMode('new')}/>:null}</View>;
-  return <View style={s.root}>
+  const ownsFriends = !!preview || friendsDataKey === friendsScope;
+  const friendsPending = !preview && (friendsRequestKey !== friendsScope || friendsLoading && !ownsFriends);
+  const visibleFriends = ownsFriends ? friends : [];
+  const listMemory = useRememberedScroll(me?.id, JSON.stringify([memoryScope,mode,filter,search]), mode==='new' ? !friendsPending&&ownsFriends : !loading, mode==='new' ? visibleFriends.filter(u=>u.name.includes(search.trim())).length : active.length);
+  return <ContentReveal ready={mode==='new' ? !friendsPending&&ownsFriends : mode==='requests' ? !requestsLoading : !loading} scopeKey={JSON.stringify([me?.id,!!me?.isGuest,mode])} style={{flex:1}}><View style={s.root}>
     {mode!=='inbox'?<View style={s.sectionHeader}><Pressable onPress={()=>changeMode('inbox')} accessibilityLabel="חזרה לשיחות" hitSlop={12}><Ionicons name="chevron-forward" size={25} color={navy}/></Pressable><Text style={s.sectionTitle}>{mode==='archive'?'ארכיון שיחות':mode==='requests'?'בקשות לשיחה':'שיחה חדשה'}</Text></View>:null}
     {!me?.dmRequestPolicy&&mode==='inbox'?<Pressable style={[s.notice,{margin:16}]} onPress={()=>nav.navigate('SocialPrivacy')} accessibilityRole="button"><Text style={s.name}>מי יוכל לשלוח לך בקשות לשיחה?</Text><Text style={s.preview}>בחרו כולם או חברים בלבד. עד הבחירה לא יתקבלו בקשות חדשות. השיחות הקיימות נשמרות.</Text></Pressable>:null}
     {mode==='inbox'?<Pressable style={[s.card,{marginHorizontal:16,marginTop:12}]} accessibilityRole="button" onPress={()=>changeMode('requests')}><Text style={s.name}>בקשות לשיחה</Text><Text style={s.preview}>{requestsFailed?'לא הצלחנו לטעון בקשות':requestsLoading?'טוען בקשות':`${visibleRequests.filter(r=>r.status==='incoming'&&!r.seenAt).length} חדשות`}</Text><Ionicons name="mail-outline" size={22} color={blue}/></Pressable>:null}
@@ -184,10 +219,14 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
     <View style={s.tools}><View style={s.search}><TextInput value={search} onChangeText={setSearch} style={s.searchInput} placeholder={mode==='new'?'חיפוש שחקן לפי שם':'חיפוש שיחה או הודעה אחרונה'} placeholderTextColor="#8A9AB3" accessibilityLabel="חיפוש שיחות"/><Ionicons name="search-outline" size={21} color="#8A9AB3"/></View>{mode==='inbox'?<Pressable onPress={()=>changeMode('new')} style={s.newButton} accessibilityLabel="שיחה חדשה"><Text style={s.newText}>שיחה חדשה</Text><Ionicons name="create-outline" size={18} color="white"/></Pressable>:null}</View>
     {mode!=='new'?<ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filters} contentContainerStyle={s.filterContent}>{FILTERS.map(([id,title])=><Pressable key={id} onPress={()=>setFilter(id)} accessibilityRole="tab" accessibilityState={{selected:filter===id}} style={[s.chip,filter===id&&s.chipSelected]}><Text style={[s.chipText,filter===id&&{color:'white'}]}>{title}</Text></Pressable>)}</ScrollView>:<Text style={s.hint}>חברים יכולים להתכתב מיד. לשחקנים אחרים אפשר לשלוח בקשה לשיחה.</Text>}
     {mode==='new'&&search.trim()?<DmPlayerSearch search={search} onOpen={id=>{if(me)nav.navigate('DirectChat',{convId:dmConvId(me.id,id)});}}/>:<>
-    {mode==='new'?friendsLoading?<ActivityIndicator style={s.empty} color={blue}/>:friendsFailed?<View style={s.empty}><Text style={s.emptyBody}>לא הצלחנו לטעון את החברים</Text><SocialAction title="נסו שוב" icon="refresh-outline" onPress={()=>setRetry(n=>n+1)}/></View>:<FlatList data={friends.filter(u=>u.name.includes(search.trim())).sort((a,b)=>a.name.localeCompare(b.name,'he'))} keyExtractor={u=>u.id} contentContainerStyle={s.list} keyboardShouldPersistTaps="handled" renderItem={({item:u})=><Pressable style={s.card} onPress={()=>open({scope:'dm',id:dmConvId(me!.id,u.id),title:u.name,subtitle:'שיחה אישית',preview:'',at:0,unread:0,user:u})}><UserAvatar user={u} size={50}/><View style={s.body}><Text style={s.name}>{u.name}</Text><Text style={s.preview}>{'חבר ב־Teamder'}</Text></View><Ionicons name="chatbubble-ellipses-outline" size={23} color={blue}/></Pressable>} ListEmptyComponent={empty(search?'לא נמצאו חברים':'עדיין אין כאן חברים',search?'נסו לחפש שם אחר':'מצאו שחקנים והוסיפו אותם לחברים כדי להתחיל לדבר')}/>
-    :<FlatList data={active} keyExtractor={key} contentContainerStyle={s.list} keyboardShouldPersistTaps="handled" renderItem={({item,index})=><>{index===0&&preferences[key(item)]?.pinned?<Text style={s.label}>שיחות נעוצות</Text>:index>0&&preferences[key(active[index-1])]?.pinned&&!preferences[key(item)]?.pinned?<Text style={s.label}>כל השיחות</Text>:null}{renderRow(item)}</>}
+    {mode==='new'?friendsPending?<View style={s.list}><ConversationListSkeleton kind="friends"/></View>:<>
+      {friendsFailed?<View style={s.notice}><Text style={s.emptyBody}>לא הצלחנו לטעון את החברים</Text><SocialAction title="נסו שוב" icon="refresh-outline" onPress={()=>setRetry(n=>n+1)}/></View>:null}
+      {friendsLoading&&ownsFriends?<LoadingNotice compact label="מעדכנים את החברים שלך"/>:null}
+      {ownsFriends?<FlatList ref={listMemory.ref} onScroll={listMemory.onScroll} onScrollBeginDrag={listMemory.onScrollBeginDrag} onLayout={listMemory.onLayout} onContentSizeChange={listMemory.onContentSizeChange} scrollEventThrottle={64} data={visibleFriends.filter(u=>u.name.includes(search.trim())).sort((a,b)=>a.name.localeCompare(b.name,'he'))} keyExtractor={u=>u.id} contentContainerStyle={s.list} ItemSeparatorComponent={InboxRowSeparator} onViewableItemsChanged={listMemory.onViewableItemsChanged} keyboardShouldPersistTaps="handled" renderItem={({item:u})=><Pressable style={s.card} onPress={()=>open({scope:'dm',id:dmConvId(me!.id,u.id),title:u.name,subtitle:'שיחה אישית',preview:'',at:0,unread:0,user:u})}><UserAvatar user={u} size={50}/><View style={s.body}><Text style={s.name}>{u.name}</Text><Text style={s.preview}>{'חבר ב־Teamder'}</Text></View><Ionicons name="chatbubble-ellipses-outline" size={23} color={blue}/></Pressable>} ListEmptyComponent={empty(search?'לא נמצאו חברים':'עדיין אין כאן חברים',search?'נסו לחפש שם אחר':'מצאו שחקנים והוסיפו אותם לחברים כדי להתחיל לדבר')}/>:null}
+    </>
+    :<FlatList ref={listMemory.ref} onScroll={listMemory.onScroll} onScrollBeginDrag={listMemory.onScrollBeginDrag} onLayout={listMemory.onLayout} onContentSizeChange={listMemory.onContentSizeChange} scrollEventThrottle={64} data={active} keyExtractor={key} contentContainerStyle={s.list} ItemSeparatorComponent={InboxRowSeparator} onViewableItemsChanged={listMemory.onViewableItemsChanged} keyboardShouldPersistTaps="handled" ListHeaderComponentStyle={{marginBottom:9}} ListFooterComponentStyle={{marginTop:9}} renderItem={({item,index})=><>{index===0&&preferences[key(item)]?.pinned?<Text style={s.label}>שיחות נעוצות</Text>:index>0&&preferences[key(active[index-1])]?.pinned&&!preferences[key(item)]?.pinned?<Text style={s.label}>כל השיחות</Text>:null}{renderRow(item)}</>}
       ListHeaderComponent={<>{mode==='inbox'&&me?<Pressable style={[s.card,{marginBottom:10,borderColor:'#BDD4FF'}]} accessibilityRole="button" accessibilityLabel="שיחה עם תמיכת Teamder" onPress={()=>preview?toast.info('תצוגת המחשה בלבד'):useSupportChat.getState().open(me.id)}><View style={[s.avatar,s.fallback]}><Ionicons name="headset-outline" size={25} color={blue}/></View><View style={s.body}><View style={s.line}><Text style={s.name}>⁦Teamder⁩</Text><OfficialBadge size={13}/></View><Text style={s.preview} numberOfLines={1}>{supportEntry?.lastText||'נתקעתם או משהו לא ברור? כתבו לנו'}</Text><Text style={s.kind}>תמיכה ועזרה · תמיד כאן בשבילכם</Text></View><View style={s.trailing}><Ionicons name="pin" size={15} color={blue}/>{(supportEntry?.count??0)>0?<View style={s.badge}><Text style={s.badgeText}>{supportEntry!.count>99?'⁦99+⁩':supportEntry!.count}</Text></View>:null}</View></Pressable>:null}{failed?<Pressable style={s.notice} onPress={()=>setRetry(n=>n+1)}><Text style={s.emptyBody}>חלק מהשיחות לא נטענו. לחצו לניסיון נוסף.</Text></Pressable>:mode==='archive'?<Text style={s.hint}>שיחות שהועברו לארכיון ומחזורים שנסגרו. ההודעות נשמרות.</Text>:null}</>}
-      ListEmptyComponent={loading?<ActivityIndicator style={s.empty} color={blue}/>:starters.length?null:empty(mode==='archive'?'הארכיון שלכם ריק':search||filter!=='all'?'לא נמצאו שיחות':'הכדור אצלכם',mode==='archive'?'שיחות מחזורים שנסגרו יישמרו כאן':search||filter!=='all'?'נסו לשנות את החיפוש או את המסנן':'דברו עם החברים ועם השחקנים במועדון')}
+      ListEmptyComponent={loading?<ConversationListSkeleton/>:starters.length?null:empty(mode==='archive'?'הארכיון שלכם ריק':search||filter!=='all'?'לא נמצאו שיחות':'הכדור אצלכם',mode==='archive'?'שיחות מחזורים שנסגרו יישמרו כאן':search||filter!=='all'?'נסו לשנות את החיפוש או את המסנן':'דברו עם החברים ועם השחקנים במועדון')}
       ListFooterComponent={mode==='inbox'?<><Pressable style={s.archiveLink} onPress={()=>changeMode('archive')}><Text style={s.archiveTitle}>ארכיון שיחות{archiveCount?` · ${archiveCount}`:''}</Text><Ionicons name="archive-outline" size={21} color="#667796"/></Pressable>{starters.length?<><Text style={s.label}>מתחילים שיחה</Text><Text style={s.hint}>המועדונים והמחזורים שלכם, גם לפני ההודעה הראשונה</Text>{starters.map(row=><View key={key(row)}>{renderRow(row)}</View>)}</>:null}</>:null}/>}
 
     </>}
@@ -197,9 +236,9 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
       {title:preferences[key(selected)]?.muted?'הפעלת התראות':'השתקת שיחה',icon:'notifications-off-outline',patch:{muted:!preferences[key(selected)]?.muted}},
       ...(!selected.closed?[{title:archived(selected)?'החזרה לשיחות':'העברה לארכיון',icon:'archive-outline',patch:{archivedAt:archived(selected)?0:Math.max(Date.now(),selected.at),archivedMessageId:selected.messageId??'__empty__'}}]:[]),
     ] as {title:string;icon:keyof typeof Ionicons.glyphMap;patch:Partial<ChatPreferences>}[]).map(a=><Pressable key={a.title} disabled={busy} onPress={()=>update(a.patch)} style={s.option}><Text style={s.optionText}>{a.title}</Text><Ionicons name={a.icon} size={23} color={blue}/></Pressable>):null}{selected?.scope==='dm'&&selected.user&&!isOfficialSender(selected.user.id)?<Pressable accessibilityRole="button" disabled={busy} onPress={()=>{const userId=selected.user!.id;setSelected(null);if(!preview)nav.navigate('PlayerCard',{userId});}} style={s.option}><Text style={s.optionText}>כרטיס השחקן</Text><Ionicons name="person-outline" size={23} color={blue}/></Pressable>:null}{busy?<ActivityIndicator color={blue}/>:null}</View></SpringSheet></Modal>
-  </View>;
+  </View></ContentReveal>;
 }
 
 const s=StyleSheet.create({
-  root:{flex:1,backgroundColor:'#F4F7FB'},tools:{flexDirection:'row',gap:8,paddingHorizontal:16,paddingTop:16,paddingBottom:12},search:{flex:1,flexDirection:'row',alignItems:'center',gap:7,backgroundColor:'white',borderRadius:13,borderWidth:1,borderColor:'#E5EDF7',paddingHorizontal:12,minHeight:44},searchInput:{flex:1,color:navy,textAlign:'right',fontSize:13,paddingVertical:10},newButton:{backgroundColor:blue,borderRadius:12,paddingHorizontal:11,flexDirection:'row',alignItems:'center',gap:6},newText:{fontSize:12,fontWeight:'700',color:'white'},filters:{flexGrow:0,flexShrink:0,maxHeight:44,marginBottom:4},filterContent:{paddingHorizontal:16,gap:7,paddingBottom:8},chip:{paddingHorizontal:13,paddingVertical:8,borderRadius:10,backgroundColor:'#EAF0FA'},chipSelected:{backgroundColor:blue},chipText:{fontSize:12,fontWeight:'600',color:'#627393'},list:{paddingHorizontal:16,paddingTop:8,paddingBottom:24,gap:9},card:{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12,paddingVertical:15,backgroundColor:'white',borderRadius:16,borderWidth:1,borderColor:'#E8EEF7'},avatar:{width:50,height:50,borderRadius:15},fallback:{backgroundColor:'#EAF2FF',alignItems:'center',justifyContent:'center'},body:{flex:1,gap:4},line:{flexDirection:'row',alignItems:'center',gap:4},name:{fontSize:15,fontWeight:'700',color:navy,textAlign:RTL_LABEL_ALIGN,flexShrink:1},preview:{fontSize:12,color:'#677797',textAlign:RTL_LABEL_ALIGN},kind:{fontSize:10,color:'#8A9AB3',textAlign:RTL_LABEL_ALIGN},trailing:{alignItems:'center',gap:7},time:{fontSize:10,color:'#8A9AB3'},badge:{backgroundColor:blue,borderRadius:10,minWidth:20,height:20,paddingHorizontal:5,alignItems:'center',justifyContent:'center'},badgeText:{fontSize:11,color:'white',fontWeight:'700'},more:{alignSelf:'center',paddingVertical:7},label:{fontSize:13,fontWeight:'700',color:'#667796',textAlign:RTL_LABEL_ALIGN,paddingTop:12,paddingBottom:4},hint:{fontSize:12,color:'#8A9AB3',lineHeight:19,textAlign:RTL_LABEL_ALIGN,marginHorizontal:16,marginBottom:8},archiveLink:{flexDirection:'row',justifyContent:'center',alignItems:'center',gap:8,paddingVertical:18},archiveTitle:{fontSize:13,color:'#667796',fontWeight:'600'},sectionHeader:{flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:18,paddingTop:18},sectionTitle:{fontSize:22,fontWeight:'800',color:navy},empty:{paddingHorizontal:20,paddingVertical:38,alignItems:'center',gap:14},emptyIcon:{width:76,height:76,borderRadius:26,backgroundColor:'#E7F0FF',alignItems:'center',justifyContent:'center'},emptyTitle:{fontSize:20,fontWeight:'800',color:navy,textAlign:'center'},emptyBody:{fontSize:13,color:'#667796',lineHeight:21,textAlign:'center'},notice:{padding:12,borderRadius:12,backgroundColor:'#FFF6DF'},sheet:{padding:22,paddingBottom:34,gap:6},handle:{width:40,height:4,borderRadius:2,backgroundColor:'#D5DEEB',alignSelf:'center',marginBottom:18},sheetTitle:{fontSize:18,fontWeight:'800',color:navy,textAlign:RTL_LABEL_ALIGN,paddingBottom:14},option:{flexDirection:'row',gap:12,alignItems:'center',paddingVertical:16,borderTopWidth:1,borderColor:'#EDF2F8'},optionText:{fontSize:15,fontWeight:'600',color:navy,flex:1,textAlign:RTL_LABEL_ALIGN},
+  root:{flex:1,backgroundColor:'#F4F7FB'},tools:{flexDirection:'row',gap:8,paddingHorizontal:16,paddingTop:16,paddingBottom:12},search:{flex:1,flexDirection:'row',alignItems:'center',gap:7,backgroundColor:'white',borderRadius:13,borderWidth:1,borderColor:'#E5EDF7',paddingHorizontal:12,minHeight:44},searchInput:{flex:1,color:navy,textAlign:'right',fontSize:13,paddingVertical:10},newButton:{backgroundColor:blue,borderRadius:12,paddingHorizontal:11,flexDirection:'row',alignItems:'center',gap:6},newText:{fontSize:12,fontWeight:'700',color:'white'},filters:{flexGrow:0,flexShrink:0,maxHeight:44,marginBottom:4},filterContent:{paddingHorizontal:16,gap:7,paddingBottom:8},chip:{paddingHorizontal:13,paddingVertical:8,borderRadius:10,backgroundColor:'#EAF0FA'},chipSelected:{backgroundColor:blue},chipText:{fontSize:12,fontWeight:'600',color:'#627393'},list:{paddingHorizontal:16,paddingTop:8,paddingBottom:24},card:{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12,paddingVertical:15,backgroundColor:'white',borderRadius:16,borderWidth:1,borderColor:'#E8EEF7'},avatar:{width:50,height:50,borderRadius:15},fallback:{backgroundColor:'#EAF2FF',alignItems:'center',justifyContent:'center'},body:{flex:1,gap:4},line:{flexDirection:'row',alignItems:'center',gap:4},name:{fontSize:15,fontWeight:'700',color:navy,textAlign:RTL_LABEL_ALIGN,flexShrink:1},preview:{fontSize:12,color:'#677797',textAlign:RTL_LABEL_ALIGN},kind:{fontSize:10,color:'#8A9AB3',textAlign:RTL_LABEL_ALIGN},trailing:{alignItems:'center',gap:7},time:{fontSize:10,color:'#8A9AB3'},badge:{backgroundColor:blue,borderRadius:10,minWidth:20,height:20,paddingHorizontal:5,alignItems:'center',justifyContent:'center'},badgeText:{fontSize:11,color:'white',fontWeight:'700'},more:{alignSelf:'center',paddingVertical:7},label:{fontSize:13,fontWeight:'700',color:'#667796',textAlign:RTL_LABEL_ALIGN,paddingTop:12,paddingBottom:4},hint:{fontSize:12,color:'#8A9AB3',lineHeight:19,textAlign:RTL_LABEL_ALIGN,marginHorizontal:16,marginBottom:8},archiveLink:{flexDirection:'row',justifyContent:'center',alignItems:'center',gap:8,paddingVertical:18},archiveTitle:{fontSize:13,color:'#667796',fontWeight:'600'},sectionHeader:{flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:18,paddingTop:18},sectionTitle:{fontSize:22,fontWeight:'800',color:navy},empty:{paddingHorizontal:20,paddingVertical:38,alignItems:'center',gap:14},emptyIcon:{width:76,height:76,borderRadius:26,backgroundColor:'#E7F0FF',alignItems:'center',justifyContent:'center'},emptyTitle:{fontSize:20,fontWeight:'800',color:navy,textAlign:'center'},emptyBody:{fontSize:13,color:'#667796',lineHeight:21,textAlign:'center'},notice:{padding:12,borderRadius:12,backgroundColor:'#FFF6DF'},sheet:{padding:22,paddingBottom:34,gap:6},handle:{width:40,height:4,borderRadius:2,backgroundColor:'#D5DEEB',alignSelf:'center',marginBottom:18},sheetTitle:{fontSize:18,fontWeight:'800',color:navy,textAlign:RTL_LABEL_ALIGN,paddingBottom:14},option:{flexDirection:'row',gap:12,alignItems:'center',paddingVertical:16,borderTopWidth:1,borderColor:'#EDF2F8'},optionText:{fontSize:15,fontWeight:'600',color:navy,flex:1,textAlign:RTL_LABEL_ALIGN},
 });

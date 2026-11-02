@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RTL_LABEL_ALIGN } from '@/theme';
 
@@ -8,6 +8,7 @@ type Props = {
   type: 'success' | 'error' | 'info';
   icon?: keyof typeof Ionicons.glyphMap;
   onClose: () => void;
+  action?: { label: string; onPress: () => void; busy?: boolean };
 };
 
 const palettes = {
@@ -17,24 +18,36 @@ const palettes = {
 } as const;
 
 /** Shared visual language for transient in-app feedback. First child is on the right under forceRTL. */
-export function NoticeCard({ message, type, icon, onClose }: Props) {
+export function NoticeCard({ message, type, icon, onClose, action }: Props) {
   const palette = palettes[type];
   // A caller can explicitly separate a heading and detail with a newline.
   // Single-line messages remain intact; never guess a title from punctuation.
   const [heading, ...details] = message.split('\n');
-  return <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={`${message}. סגור הודעה`} style={[s.card, { backgroundColor: palette.tint }]}>
+  const Container = action ? View : Pressable;
+  return <Container {...(!action ? { onPress: onClose, accessibilityRole: 'button' as const, accessibilityLabel: `${message}. סגור הודעה` } : {})} style={[s.card, { backgroundColor: palette.tint }]}>
     <View style={s.icon}>
       <Ionicons name={icon ?? palette.icon} size={28} color={palette.accent} accessible={false} />
     </View>
-    <Text accessibilityRole="alert" accessibilityLiveRegion={type === 'error' ? 'assertive' : 'polite'} style={[s.text, { color: palette.accent }]}>
+    <View style={s.content}><Text accessibilityRole="alert" accessibilityLiveRegion={type === 'error' ? 'assertive' : 'polite'} style={[s.text, { color: palette.accent }]}>
       {heading}{details.length ? <Text style={s.detail}>{'\n'}{details.join('\n')}</Text> : null}
     </Text>
-  </Pressable>;
+    {action ? <Pressable onPress={action.onPress} disabled={action.busy} accessibilityRole="button" accessibilityLabel={action.label}
+      accessibilityState={{ disabled: !!action.busy, busy: !!action.busy }} style={s.action}>
+      {action.busy ? <ActivityIndicator size="small" color={palette.accent} /> : null}
+      <Text style={[s.actionText, { color: palette.accent }]}>{action.busy ? 'מבטלים...' : action.label}</Text>
+    </Pressable> : null}</View>
+    {action ? <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="סגור הודעה" style={s.close}>
+      <Ionicons name="close" size={19} color={palette.accent} accessible={false} />
+    </Pressable> : null}
+  </Container>;
 }
 
 const s = StyleSheet.create({
   card: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, minHeight: 64, paddingVertical: 14, paddingHorizontal: 16, shadowColor: '#14213D', shadowOpacity: 0.07, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   icon: { width: 30, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  text: { flex: 1, fontSize: 15, lineHeight: 23, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  content: { flex: 1, minWidth: 0 },
+  text: { fontSize: 15, lineHeight: 23, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  action: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start', paddingHorizontal: 8, marginTop: 2 },
+  actionText: { fontSize: 14, fontWeight: '800' }, close: { minWidth: 36, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   detail: { fontSize: 13, lineHeight: 22, fontWeight: '400', color: '#56616E' },
 });

@@ -30,6 +30,7 @@ interface Props {
   iconLeft?: keyof typeof Ionicons.glyphMap;
   iconRight?: keyof typeof Ionicons.glyphMap;
   loading?: boolean;
+  confirmation?: string;
   disabled?: boolean;
   style?: ViewStyle;
   fullWidth?: boolean;
@@ -47,6 +48,7 @@ export function Button({
   iconLeft,
   iconRight,
   loading,
+  confirmation,
   disabled,
   style,
   fullWidth,
@@ -82,14 +84,16 @@ export function Button({
     <PressableScale
       diagnosticName={diagnosticName??({'שמור':'save','שמירה':'save','ביטול':'cancel','הצטרף למחזור':'join_round','נסה שוב':'retry','שלח':'submit','שליחה':'submit','המשך':'continue','סגור':'close'} as Record<string,string>)[title]??'button'}
       onPress={onPress}
-      disabled={disabled || loading}
+      disabled={disabled || loading || !!confirmation}
       // Default a11y label to the visible title — fixes FV-06 where the
       // game-edit save button had no spoken label when reached via
       // screen reader (the title is rendered inside <Text> nested under
       // PressableScale, but the wrapping Pressable's role+label takes
       // precedence). Callers can override for iconic buttons.
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityLabel={confirmation ?? accessibilityLabel ?? title}
+      accessibilityState={{ disabled: !!disabled || !!loading || !!confirmation, busy: !!loading }}
+      accessibilityLiveRegion={confirmation ? 'polite' : 'none'}
       // PressableScale provides scale-on-press; we still pin the
       // disabled-opacity here so the visual contrast is consistent.
       style={[
@@ -105,17 +109,13 @@ export function Button({
         style,
       ]}
     >
-      {loading ? (
-        <ActivityIndicator color={palette.text} />
-      ) : (
         <View style={styles.content}>
-          {first && <Ionicons name={first} size={18} color={palette.text} />}
+          {confirmation ? <Ionicons name="checkmark-circle" size={18} color={palette.text} /> : loading ? <ActivityIndicator color={palette.text} /> : first ? <Ionicons name={first} size={18} color={palette.text} /> : null}
           <Text style={[typography.button, { color: palette.text }]} numberOfLines={1}>
-            {title}
+            {confirmation ?? title}
           </Text>
-          {second && <Ionicons name={second} size={18} color={palette.text} />}
+          {!confirmation && !loading && second && <Ionicons name={second} size={18} color={palette.text} />}
         </View>
-      )}
     </PressableScale>
   );
 }

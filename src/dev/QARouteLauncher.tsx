@@ -66,6 +66,7 @@ import { deriveRoundState } from '@/utils/homeRoundState';
 import { GuestModal } from '@/components/GuestModal';
 import { AdminRatingSheet } from '@/components/AdminRatingSheet';
 import { MotionPreview } from './MotionPreview';
+import { ExperienceAuditPreview } from './ExperienceAuditPreview';
 import { OverlayAuditPreview } from './OverlayAuditPreview';
 import { CommunityStatsWelcome } from '@/components/community/CommunityStatsWelcome';
 import { appAlert } from '@/components/AppDialog';
@@ -328,6 +329,7 @@ const ALERTS: Record<string, () => void> = {
 export function QARouteLauncher(): React.ReactElement | null {
   const [open, setOpen] = useState(false);
   const [motionPreview, setMotionPreview] = useState(false);
+  const [experienceAudit, setExperienceAudit] = useState<string | null>(null);
   const [entryPreview, setEntryPreview] = useState(false);
   const [profileSetupPreview, setProfileSetupPreview] = useState(false);
   const [seasonsPreview, setSeasonsPreview] = useState(false);
@@ -354,6 +356,13 @@ export function QARouteLauncher(): React.ReactElement | null {
       const target = routeFromUrl(url);
       if (!target) return;
       setOpen(false);
+      if (target.startsWith('_experience_review_') && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        // The isolated host uses the existing canned identity, never an auth API.
+        const { useUserStore } = require('@/store/userStore') as typeof import('@/store/userStore');
+        const { mockCurrentUser } = require('@/data/mockUsers') as typeof import('@/data/mockUsers');
+        if (!useUserStore.getState().currentUser) useUserStore.setState({ currentUser: { ...mockCurrentUser } });
+        setExperienceAudit(target.slice('_experience_review_'.length)); return;
+      }
       if (target === '_live_mode_no_teams' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
         const {mockGamesV2}=require('@/data/mockData') as typeof import('@/data/mockData');
         const source=mockGamesV2.find(g=>g.id==='gv2-live');
@@ -710,6 +719,7 @@ export function QARouteLauncher(): React.ReactElement | null {
       {profileSetupPreview && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1' ? <Modal visible onRequestClose={() => setProfileSetupPreview(false)}><ProfileSetupScreen onClose={() => setProfileSetupPreview(false)} /></Modal> : null}
       {entryPreview ? <Modal visible onRequestClose={() => setEntryPreview(false)}><EntryInvitePreview /></Modal> : null}
       {motionPreview ? <MotionPreview onClose={() => setMotionPreview(false)} /> : null}
+      {experienceAudit && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1' ? <ExperienceAuditPreview key={experienceAudit} kind={experienceAudit} onClose={() => setExperienceAudit(null)} /> : null}
       {/* Keep the statistics proof unobstructed; deep links remain available. */}
       {here !== 'Statistics' && here !== 'LiveMatch' && process.env.EXPO_PUBLIC_SCREENSHOT_MODE !== '1' ? <Pressable style={s.fab} onPress={() => setOpen(true)} testID="qa-fab">
         <Text style={s.fabTxt}>QA</Text>

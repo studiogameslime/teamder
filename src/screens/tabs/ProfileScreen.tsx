@@ -1,3 +1,5 @@
+import { useConfirmedFeedback } from '@/hooks/useConfirmedFeedback';
+import { registrationFeedback } from '@/utils/registrationFeedback';
 import { SPORTS_ACTIVITY_ENABLED } from '@/config/sportsActivity';
 import { observeCaughtError } from '../../utils/errorObservation';
 // ProfileScreen — redesigned player card.
@@ -55,6 +57,7 @@ import { HomeActionTiles } from '@/components/home/HomeDashboardParts';
 import { HomeAvailabilityPanel } from '@/components/home/HomeAvailabilityPanel';
 import { buildAvailabilityView } from '@/utils/homeAvailabilityView';
 import { HomeHero } from '@/components/home/HomeHero';
+import { HomeRoundSkeleton } from '@/components/loading/ScreenSkeletons';
 import {
   UpcomingRoundCard,
   CompletedRoundCard,
@@ -140,6 +143,7 @@ export function ProfileScreen() {
   useRemoteConfig(); // re-render when feature flags / config activate
   const nav = useNavigation<any>(); // eslint-disable-line @typescript-eslint/no-explicit-any
   const localUser = useUserStore((s) => s.currentUser);
+  const confirmedFeedback = useConfirmedFeedback(`home:${localUser?.id}`, localUser?.id);
   const homeRoute = useRoute();
   const qaStatsMode = __DEV__ && process.env.EXPO_PUBLIC_QA_ROUTES === '1' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1'
     ? (homeRoute.params as { qaHomeStats?: 'full' | 'empty' } | undefined)?.qaHomeStats : undefined;
@@ -253,8 +257,11 @@ export function ProfileScreen() {
   // and counters, not this one — and without it the round area renders "no
   // upcoming round" for the half second before the query returns one.
   const [gamesLoaded, setGamesLoaded] = useState(false);
+  const [gamesLoadFailed, setGamesLoadFailed] = useState(false);
+  const [gamesRetry, setGamesRetry] = useState(0);
   // The game whose join is in flight, so the button cannot double-fire.
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const joiningRef = useRef(false);
   /** The coach line, held for the visit. See where it is filled, far below. */
   const coachLatchRef = useRef<AssistantMessage | null>(null);
   /** Pending re-read after a join, so the reconciler has time to seat us. */
@@ -425,6 +432,7 @@ export function ProfileScreen() {
         .getMyLiveOrUpcomingGames(uid)
         .then((mine) => {
           if (!alive) return;
+          setGamesLoadFailed(false);
           // Sorted by startsAt ascending — a live game (past startsAt) sorts
           // first, otherwise the soonest upcoming. The first IS the game to show.
           setNextGame(mine[0] ?? null);
@@ -438,6 +446,7 @@ export function ProfileScreen() {
     observeCaughtError(caughtError87a3d02c52, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"ProfileScreen","site":"ProfileScreen:87a3d02c52"});
           // Leave the previous value — a transient fetch error
           // shouldn't blank an already-shown game.
+          if (alive) setGamesLoadFailed(true);
         });
       // Reads the SAME cached 48h window the call above just warmed, so this
       // costs no extra query — see getMyRecentGamesRaw.
@@ -453,7 +462,7 @@ export function ProfileScreen() {
       return () => {
         alive = false;
       };
-    }, [localUser?.id]),
+    }, [localUser?.id, localUser?.isGuest, gamesRetry]),
   );
 
   // Games I could join right now, across my communities. getCommunityGames
@@ -952,17 +961,13 @@ export function ProfileScreen() {
         void authAction.request(guestJoinGameRequest(game.id));
         return;
       }
-      if (joiningId) return;
+      if (joiningId || joiningRef.current) return;
+      joiningRef.current = true;
       setJoiningId(game.id);
       try {
         const { bucket } = await gameService.requestJoinGame(game.id, user.id, 'home', game.startsAt);
-        toast.success(
-          bucket === 'waitlist'
-            ? he.toastGameJoinedWaitlist
-            : bucket === 'pending'
-              ? he.toastGameJoinedPending
-              : he.toastGameJoined,
-        );
+        const feedback = registrationFeedback(bucket);
+        if (feedback) confirmedFeedback.confirm(game.id, feedback.label, feedback.tone);
         // Show it IMMEDIATELY, then reconcile.
         //
         // The fair-queue reconciler seats the player server-side a second or
@@ -1040,6 +1045,7 @@ export function ProfileScreen() {
           toast.error(he.summaryShareFailed);
         }
       } finally {
+        joiningRef.current = false;
         setJoiningId(null);
       }
     },
@@ -1561,6 +1567,13 @@ export function ProfileScreen() {
               state inside the upcoming card; both are pure and tested. The
               upcoming round always leads: a finished evening never outranks
               one the player can still act on. */}
+          {!gamesLoaded && !roundLayout.upcoming && !roundLayout.completed ? (
+            gamesLoadFailed ? <View style={{ gap: spacing.sm, alignItems: 'center' }}>
+              <Text style={{ color: colors.textMuted }}>לא ניתן לטעון את המחזורים כרגע.</Text>
+              <Button title={he.retry} variant="outline" onPress={() => { setGamesLoadFailed(false); setGamesRetry(n => n + 1); }} />
+            </View> : <HomeRoundSkeleton />
+          ) : null}
+
           {roundLayout.upcoming && roundState ? (
             <NextGameCardEntrance triggerKey={roundLayout.upcoming.id}>
               <UpcomingRoundCard
@@ -1573,6 +1586,7 @@ export function ProfileScreen() {
                 }
                 actions={roundActions}
                 busy={joiningId === roundLayout.upcoming.id}
+                confirmation={confirmedFeedback.labelFor(roundLayout.upcoming.id)}
                 now={nowMs}
               />
             </NextGameCardEntrance>

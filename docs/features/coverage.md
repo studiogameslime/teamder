@@ -1,5 +1,15 @@
 # כיסוי מסכי המקור
 
+2.11.2026: `src/dev/ExperienceAuditPreview.tsx` נוסף כמארח בדיקה מוגבל לפיתוח, מסלולי בדיקה ונתוני הדגמה יחד. אין מסך או מסלול מוצר חדש. [בדיקה ומגבלות](../changes/2026-11-02-experience-review.md).
+
+2.11.2026: נוספו רכיבי המשכיות ומשוב במסכים קיימים בלבד. אין מסך או נתיב חדש. [היקף וראיות](../changes/2026-11-02-experience-polish.md).
+
+2.11.2026: `pulse/src/components/VersionAdoptionPanel.tsx` נוסף בתוך `pulse/src/screens/HomeScreen.tsx`, עם שני כרטיסי גרסאות, פירוט וסינון מקומיים וקישור קיים אל `Users/UserDetail`. אין מסך או נתיב חדש. הסברי המקור בכרטיסי `DeviceVersions` ו-`VersionInventory` עודכנו לדיווח הישיר. [מכנים, מקורות ובדיקות](shared/pulse-management.md#תמונת-גרסאות-בבית-2112026).
+
+2.11.2026: `src/components/loading/PageSkeletons.tsx` מוסיף מציגי טעינה בתוך מסכי פרטים, סטטיסטיקה ורשימות קיימים. אין מסך או נתיב חדש. [היקף וראיות](../changes/2026-11-02-loading-skeletons-expanded.md).
+
+2.11.2026: `src/components/loading/ScreenSkeletons.tsx` משמש בתוך מסכי הבית, הסגל ונתוני המועדון הקיימים. אין מסך או נתיב חדש. [מצבים, צילומים ומגבלות](../changes/2026-11-02-loading-skeletons.md).
+
 2.11.2026: נוספו מצבי בקשות פעילות, בקשות שנדחו וחיפוש שחקנים בתוך `ChatInbox`, ומצבי בקשה בתוך `src/screens/chat/DirectChatScreen.tsx`. בחירת קבלת בקשות נוספה בתוך `src/screens/profile/SocialPrivacyScreen.tsx`. לא נוסף מסך מחסנית. [התנהגות והוכחות בדפדפן בלבד](chat/message-requests.md).
 
 

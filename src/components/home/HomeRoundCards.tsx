@@ -166,6 +166,7 @@ export function UpcomingRoundCard({
   coverLoading = false,
   actions,
   busy,
+  confirmation,
   now,
 }: {
   game: Game;
@@ -176,6 +177,7 @@ export function UpcomingRoundCard({
   actions: RoundActions;
   /** A join is in flight — the primary action locks so it cannot double-fire. */
   busy?: boolean;
+  confirmation?: string;
   now: number;
 }) {
   const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
@@ -271,7 +273,7 @@ export function UpcomingRoundCard({
 
       <PinnedNote game={game} />
 
-      <PrimaryCta game={game} state={state} actions={actions} busy={busy} />
+      <PrimaryCta game={game} state={state} actions={actions} busy={busy} confirmation={confirmation} />
 
       <SecondaryCta game={game} state={state} actions={actions} />
     </View>
@@ -458,11 +460,13 @@ function PrimaryCta({
   state,
   actions,
   busy,
+  confirmation,
 }: {
   game: Game;
   state: UpcomingRoundState;
   actions: RoundActions;
   busy?: boolean;
+  confirmation?: string;
 }) {
   // One primary per state, and the action it names is the one it performs.
   const { label, icon, onPress } = ((): {
@@ -494,20 +498,21 @@ function PrimaryCta({
   return (
     <PressableScale
       onPress={onPress}
-      disabled={busy}
+      disabled={busy || !!confirmation}
       pressedScale={motion.press.controlScale}
       haptic={false}
       style={[styles.cta, { backgroundColor: tone.ink }, busy && { opacity: 0.6 }]}
       accessibilityRole="button"
-      accessibilityLabel={busy ? 'שומרים את ההרשמה' : label}
-      accessibilityState={{ disabled: !!busy, busy: !!busy }}
+      accessibilityLabel={confirmation ?? (busy ? 'שומרים את ההרשמה' : label)}
+      accessibilityLiveRegion={confirmation ? 'polite' : 'none'}
+      accessibilityState={{ disabled: !!busy || !!confirmation, busy: !!busy }}
     >
       {/* The row lives on this inner View, not on PressableScale: a style
           given to it reaches the Pressable, whose only child is its transform
           wrapper, so the row would never touch these two. */}
       <View style={styles.ctaRow}>
-        <Text style={styles.ctaText}>{busy ? 'שומרים את ההרשמה…' : label}</Text>
-        {busy ? <ActivityIndicator size="small" color="#FFFFFF"/> : <Ionicons name={icon} size={17} color="#FFFFFF" />}
+        <Text style={styles.ctaText}>{confirmation ?? (busy ? 'שומרים את ההרשמה…' : label)}</Text>
+        {busy ? <ActivityIndicator size="small" color="#FFFFFF"/> : <Ionicons name={confirmation ? 'checkmark-circle' : icon} size={17} color="#FFFFFF" />}
       </View>
     </PressableScale>
   );

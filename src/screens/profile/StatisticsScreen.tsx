@@ -1,3 +1,4 @@
+import { ContentReveal } from '@/components/anim/ContentReveal';
 import { observeCaughtError } from '../../utils/errorObservation';
 import { socialPlayersService } from '@/services/socialPlayersService';
 // StatisticsScreen — a dedicated page that gathers the player's numbers and
@@ -17,7 +18,7 @@ import { toast } from '@/components/Toast';
 import { PersonalStatisticsCard, PersonalStatisticsWelcome, StatisticsAction, StatisticsBrand } from '@/components/stats/PersonalStatisticsCard';
 import { Button } from '@/components/Button';
 import { logError } from '@/services/errorLog';
-import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { PersonalStatisticsSkeleton } from '@/components/loading/PageSkeletons';
 import { userService } from '@/services';
 import {
   playerStatsService,
@@ -201,7 +202,7 @@ export function StatisticsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+    <ContentReveal ready={ownsStats && !!viewStats} scopeKey={ownerKey} style={{flex:1}}><SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <Pressable accessibilityRole="button" accessibilityLabel="חזרה" onPress={() => nav.goBack()} hitSlop={10} style={styles.back}>
           <Ionicons name="chevron-forward" size={25} color="#111B40" />
@@ -210,7 +211,7 @@ export function StatisticsScreen() {
         <StatisticsBrand />
       </View>
       {(!ownsStats || loading && !stats) && !qaPreview ? (
-        <View style={styles.center}><SoccerBallLoader size={40} /></View>
+        <ScrollSurface contentContainerStyle={styles.content}><PersonalStatisticsSkeleton /></ScrollSurface>
       ) : restricted ? <View style={styles.center}><Ionicons name="shield-checkmark-outline" size={40} color="#2563EB"/><Text style={{color:colors.textMuted,textAlign:'center'}}>הסטטיסטיקה אינה זמינה לך לפי הגדרות הפרטיות של השחקן.</Text></View> : failed && !hasData && !qaPreview ? (
         <View style={styles.center}>
           <Text style={{ color: colors.textMuted }}>לא ניתן לטעון את הסטטיסטיקה כרגע.</Text>
@@ -228,7 +229,7 @@ export function StatisticsScreen() {
           </> : otherPlayer ? <View style={styles.center}><Ionicons name="stats-chart-outline" size={36} color="#2563EB"/><Text style={{color:colors.textMuted}}>עדיין אין לשחקן נתונים מתועדים.</Text></View> : <PersonalStatisticsWelcome onFind={() => nav.getParent()?.navigate('GameTab', { screen: 'GamesList' })} />}
         </ScrollSurface>
       )}
-    </SafeAreaView>
+    </SafeAreaView></ContentReveal>
   );
 }
 

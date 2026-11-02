@@ -24,8 +24,13 @@ import { NoticeCard } from './NoticeCard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
 import { spacing } from '@/theme';
+import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
+import { useUserStore } from '@/store/userStore';
+import { observeCaughtError } from '@/utils/errorObservation';
+import { isStaleSession } from '@/services/staleSession';
 
 type ToastType = 'success' | 'error' | 'info';
+type ToastAction = { label: string; onPress: () => void | Promise<void>; ownerId?: string };
 
 interface ToastState {
   /** Bumped on each show() so the host's effect re-runs and re-animates. */
@@ -35,8 +40,11 @@ interface ToastState {
   type: ToastType;
   /** Auto-dismiss timeout in ms. Default 3000. */
   duration: number;
-  show: (input: { message: string; type?: ToastType; duration?: number }) => void;
+  action?: ToastAction;
+  busy: boolean;
+  show: (input: { message: string; type?: ToastType; duration?: number; action?: ToastAction }) => void;
   hide: () => void;
+  act: () => Promise<void>;
 }
 
 const useToastStore = create<ToastState>((set, get) => ({
@@ -45,15 +53,33 @@ const useToastStore = create<ToastState>((set, get) => ({
   message: '',
   type: 'info',
   duration: 3000,
-  show: ({ message, type = 'info', duration = 3000 }) =>
+  busy: false,
+  show: ({ message, type = 'info', duration = 3000, action }) =>
     set({
       seq: get().seq + 1,
       visible: true,
       message,
       type,
       duration,
+      action,
+      busy: false,
     }),
-  hide: () => set({ visible: false }),
+  hide: () => set({ visible: false, action: undefined, busy: false }),
+  act: async () => {
+    const current = get();
+    if (!current.visible || current.busy || !current.action) return;
+    if (current.action.ownerId && current.action.ownerId !== useUserStore.getState().currentUser?.id) { current.hide(); return; }
+    set({ busy: true });
+    try {
+      await current.action.onPress();
+      if (get().seq === current.seq) get().hide();
+    } catch (error) {
+      if (isStaleSession(error)) { if (get().seq === current.seq) get().hide(); return; }
+      if (get().seq !== current.seq || current.action.ownerId && current.action.ownerId !== useUserStore.getState().currentUser?.id) return;
+      observeCaughtError(error, { source: 'src/components/Toast.tsx', handler: 'act', site: 'Toast:action' });
+      set({ busy: false, seq: current.seq + 1, type: 'error', message: 'לא ניתן להשלים כרגע. נסו שוב.' });
+    }
+  },
 }));
 
 /**
@@ -69,12 +95,17 @@ export const toast = {
   info: (message: string, duration?: number) =>
     useToastStore.getState().show({ message, type: 'info', duration }),
   hide: () => useToastStore.getState().hide(),
+  action: (message: string, action: ToastAction, duration = 6000) =>
+    useToastStore.getState().show({ message, type: 'success', action, duration }),
 };
 
 const TOAST_OFFSCREEN_Y = -60;
 
 export function ToastHost() {
-  const { seq, visible, message, type, duration, hide } = useToastStore();
+  const { seq, visible, message, type, duration, hide, action, busy, act } = useToastStore();
+  const ownerId = useUserStore(s => s.currentUser?.id);
+  const reduced = useReducedMotion();
+  const shown = visible && (!action?.ownerId || action.ownerId === ownerId);
   // Reanimated shared values — animation runs on the UI thread so a
   // busy JS thread (heavy nav transitions, list renders) can't stutter
   // the toast.
@@ -84,7 +115,8 @@ export function ToastHost() {
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    if (!visible) {
+    if (reduced) { opacity.value = shown ? 1 : 0; translateY.value = 0; scale.value = 1; return; }
+    if (!shown) {
       // Snap back up + fade out — slightly faster than entry so a
       // queued back-to-back toast appears responsive.
       opacity.value = withTiming(0, { duration: 160 });
@@ -109,11 +141,14 @@ export function ToastHost() {
       stiffness: 260,
       mass: 0.6,
     });
-    const timer = setTimeout(hide, duration);
-    return () => clearTimeout(timer);
     // `seq` is included so a back-to-back show() restarts the timer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, seq, duration]);
+  }, [shown, seq, reduced]);
+  useEffect(() => {
+    if (!shown || busy) return;
+    const timer = setTimeout(() => { if (useToastStore.getState().seq === seq) hide(); }, duration); return () => clearTimeout(timer);
+  }, [shown, seq, duration, busy, hide]);
+  useEffect(() => { if (visible && !shown) hide(); }, [visible, shown, hide]);
 
   const animStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -122,10 +157,12 @@ export function ToastHost() {
 
   return (
     <Animated.View
-      pointerEvents={visible ? 'box-none' : 'none'}
+      pointerEvents={shown ? 'box-none' : 'none'}
+      accessibilityElementsHidden={!shown}
+      importantForAccessibility={shown ? 'auto' : 'no-hide-descendants'}
       style={[styles.host, { top: insets.top + 8 }, animStyle]}
     >
-      <NoticeCard message={message} type={type} onClose={hide} />
+      <NoticeCard message={message} type={type} onClose={hide} action={action ? { label: action.label, busy, onPress: () => { void act(); } } : undefined} />
     </Animated.View>
   );
 }

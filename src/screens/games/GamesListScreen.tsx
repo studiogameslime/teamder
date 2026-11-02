@@ -1,3 +1,7 @@
+import { ContentReveal } from '@/components/anim/ContentReveal';
+import { useRememberedScroll, useRememberedValue } from '@/hooks/useListMemory';
+import { useConfirmedFeedback } from '@/hooks/useConfirmedFeedback';
+import { registrationFeedback } from '@/utils/registrationFeedback';
 import { observeCaughtError, observeSettledErrors } from '../../utils/errorObservation';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // Sectioned rounds feed: my rounds first, upcoming registration, then discovery.
@@ -96,6 +100,7 @@ export function GamesListScreen() {
   const nav = useNavigation<Nav>();
   const route = useRoute<RouteProp<GameStackParamList, 'GamesList'>>();
   const user = useUserStore((s) => s.currentUser);
+  const confirmedFeedback = useConfirmedFeedback(`games-list:${user?.id}`, user?.id);
   const myCommunities = useGroupStore((s) => s.groups);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
 
@@ -127,13 +132,6 @@ export function GamesListScreen() {
     },
     [],
   );
-
-  const scrollRef = useRef<ScrollView>(null);
-  // React 19's useRef returns RefObject<T|null>; useScrollToTop's older
-  // type signature expects non-null. Safe to cast — the hook itself
-  // null-checks before calling .scrollTo(). Drops when React Navigation
-  // updates its types for React 19.
-  useScrollToTop(scrollRef as React.RefObject<ScrollView>);
 
   const isGuest = useIsGuest();
   const authAction = useAuthenticatedAction();
@@ -179,10 +177,13 @@ export function GamesListScreen() {
   } | null>(null);
   const [cancelOtherBusy, setCancelOtherBusy] = useState(false);
 
-  const [clubsOnly, setClubsOnly] = useState(false);
+  const [clubsOnly, setClubsOnly] = useRememberedValue(user?.id, 'games-list', 'clubsOnly', false);
   const [publicCovers, setPublicCovers] = useState<RoundCoverCache>({ ownerId: null, covers: {} });
-  const [filters, setFilters] = useState<GameFilters>(EMPTY_GAME_FILTERS);
+  const [filters, setFilters] = useRememberedValue<GameFilters>(user?.id, 'games-list', 'filters', EMPTY_GAME_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
+  const listMemory = useRememberedScroll(user?.id, JSON.stringify(['games-list', clubsOnly, filters]), !loading || myGames.length + communityGames.length + openGames.length > 0);
+  const scrollRef = listMemory.ref;
+  useScrollToTop(scrollRef as React.RefObject<ScrollView>);
 
   // "Near me" location — resolved (GPS, with city fallback) only while the
   // filter is on. Held null when off so re-toggling re-prompts.
@@ -406,13 +407,8 @@ export function GamesListScreen() {
         // user who landed on the WAITLIST (e.g. a full game holding a spot for
         // a pending promotion) had no idea they weren't actually in the roster.
         const { bucket } = await gameService.requestJoinGame(game.id, user.id, 'games_list');
-        toast.success(
-          bucket === 'waitlist'
-            ? he.toastGameJoinedWaitlist
-            : bucket === 'pending'
-              ? he.toastGameJoinedPending
-              : he.toastGameJoined,
-        );
+        const feedback = registrationFeedback(bucket);
+        if (feedback) confirmedFeedback.confirm(game.id, feedback.label, feedback.tone);
         // The fair-queue reconciler seats the user ASYNC (a Cloud Function,
         // ~1-2s). A single immediate reload races it, reads the pre-seating
         // snapshot, and the card looks unchanged / the count doesn't move
@@ -689,7 +685,7 @@ export function GamesListScreen() {
   ) : null;
 
   return (
-    <View style={styles.root}>
+    <ContentReveal ready={!loading || myGames.length + communityGames.length + openGames.length > 0} scopeKey={JSON.stringify([user?.id])} style={{flex:1}}><View style={styles.root}>
       {/* The contextual auth sheet, for a guest who tapped Join on a card.
           Rendered here so it opens OVER the feed — the person never leaves
           the list they were reading. */}
@@ -758,6 +754,11 @@ export function GamesListScreen() {
       </View>
       <ScrollSurface
         ref={scrollRef}
+        onScroll={listMemory.onScroll}
+        onScrollBeginDrag={listMemory.onScrollBeginDrag}
+        onLayout={listMemory.onLayout}
+        onContentSizeChange={listMemory.onContentSizeChange}
+        scrollEventThrottle={64}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
         refreshControl={
@@ -824,6 +825,7 @@ export function GamesListScreen() {
                           coverLoading={!!g.groupId && !g.isOrphanContext && coverForGame(g) === undefined}
                           userId={user?.id ?? ''}
                           busy={busyGameId === g.id}
+                          confirmation={confirmedFeedback.labelFor(g.id)}
                           onPrimary={(cta) => handleCardPrimary(g, cta)}
                         />
                       </AppearItem>
@@ -850,6 +852,7 @@ export function GamesListScreen() {
                           coverLoading={!!g.groupId && !g.isOrphanContext && coverForGame(g) === undefined}
                           userId={user?.id ?? ''}
                           busy={busyGameId === g.id}
+                          confirmation={confirmedFeedback.labelFor(g.id)}
                           onPrimary={(cta) => handleCardPrimary(g, cta)}
                         />
                       </AppearItem>
@@ -1110,7 +1113,7 @@ export function GamesListScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-    </View>
+    </View></ContentReveal>
   );
 }
 

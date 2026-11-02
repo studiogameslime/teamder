@@ -4,6 +4,8 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../components/ui';
 import { HomeActionPanel } from '../components/HomeActionPanel';
+import { VersionAdoptionPanel } from '../components/VersionAdoptionPanel';
+import { fetchVersionAdoption, type VersionAdoption } from '../services/versionAdoption';
 import { colors, font, isolateText, radius, RTL_LABEL_ALIGN } from '../theme';
 import { fetchHomeDashboard, homeDayStart, setClubContact, setClubFollowUp, type HomeClub, type HomeDashboard } from '../services/homeDashboard';
 import { fetchHomeActions, type HomeActions } from '../services/homeActions';
@@ -26,6 +28,10 @@ export function HomeScreen() {
   const nav = useNavigation<any>();
   const [data, setData] = useState<HomeDashboard | null>(null);
   const [actions, setActions] = useState<HomeActions | null>(null);
+  const [versions, setVersions] = useState<VersionAdoption | null>(null);
+  const [versionsLoading, setVersionsLoading] = useState(false);
+  const [versionsFailed, setVersionsFailed] = useState(false);
+  const versionGeneration = useRef(0);
   const [actionPeople, setActionPeople] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -39,7 +45,20 @@ export function HomeScreen() {
   const savingRef = useRef(false);
   const mounted = useRef(true);
 
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; generation.current++; }; }, []);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; generation.current++; versionGeneration.current++; }; }, []);
+  const loadVersions = useCallback(async (force = false) => {
+    const request = ++versionGeneration.current;
+    setVersionsLoading(true); setVersionsFailed(false);
+    try {
+      const result = await fetchVersionAdoption(force);
+      if (mounted.current && request === versionGeneration.current) setVersions(result);
+    } catch (error) {
+      observeCaughtError(error, { source: 'pulse/src/screens/HomeScreen.tsx', handler: 'loadVersions', site: 'HomeScreen:versions' });
+      if (mounted.current && request === versionGeneration.current) setVersionsFailed(true);
+    } finally {
+      if (mounted.current && request === versionGeneration.current) setVersionsLoading(false);
+    }
+  }, []);
   const load = useCallback(async (force = false) => {
     if (savingRef.current) return;
     const request = ++generation.current;
@@ -63,9 +82,10 @@ export function HomeScreen() {
   }, []);
   useFocusEffect(useCallback(() => {
     void load();
-    const timer = setInterval(() => void load(true), 60_000);
+    void loadVersions();
+    const timer = setInterval(() => { void load(true); void loadVersions(); }, 60_000);
     return () => { clearInterval(timer); generation.current++; };
-  }, [load]));
+  }, [load, loadVersions]));
 
   const clubs = data?.clubs?.rows ?? [];
   const pending = clubs.filter(c => !c.contactedAt).length;
@@ -113,7 +133,7 @@ export function HomeScreen() {
   const changeFilter = (contacted: boolean) => { setShowContacted(contacted); setLimit(20); };
   const hasError = failed || !!data?.failed.length || !!actions?.failed.length;
   return <Screen title="תמונת מצב" subtitle="הפעילות עכשיו והאנשים שכדאי ללוות" right={loading ? <ActivityIndicator color={colors.primary}/> : undefined}
-    refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load(true)} tintColor={colors.primary}/>}>
+    refreshControl={<RefreshControl refreshing={loading || versionsLoading} onRefresh={() => { void load(true); void loadVersions(true); }} tintColor={colors.primary}/>}>
     <Text style={s.hint}>{new Date().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem', weekday: 'long', day: 'numeric', month: 'long' })}{data ? ` · נבדק ב־${clock(data.at)}` : ''}</Text>
     {hasError ? <View style={s.errorBox}><Text style={s.error}>חלק מהנתונים לא נטענו. נתון חסר אינו אפס.</Text><Pressable accessibilityRole="button" onPress={() => void load(true)} style={s.linkButton}><Text style={s.link}>ניסיון נוסף</Text></Pressable></View> : null}
     <View style={s.grid}>
@@ -122,6 +142,7 @@ export function HomeScreen() {
       <Metric label="נרשמו היום" value={dailyValue(data?.signups ?? null)} detail="אנשים חדשים מאז חצות בישראל" icon="person-add-outline" onPress={() => nav.navigate('Users', { screen: 'NewPeople' })}/>
       <Metric label="התחברו היום" value={dailyValue(data?.people ?? null)} detail="אנשים עם פעילות מתועדת היום" icon="log-in-outline" onPress={() => nav.navigate('Users', { screen: 'UsersList' })}/>
     </View>
+    <VersionAdoptionPanel data={versions} loading={versionsLoading} failed={versionsFailed} refresh={() => void loadVersions(true)} onUser={userId => nav.navigate('Users', { screen: 'UserDetail', params: { userId } })}/>
     {saveError ? <Text accessibilityRole="alert" style={s.error}>{saveError}</Text> : null}
     {notice ? <Text accessibilityLiveRegion="polite" style={s.link}>{notice}</Text> : null}
     <HomeActionPanel actions={actions} clubs={data?.clubs?.rows ?? null} names={names} onPeopleChange={setActionPeople} onFollowUp={club => void save(club, true)} saving={saving} blocked={loading || !!saveError}/>

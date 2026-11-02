@@ -31,8 +31,8 @@ test.each(['VALIDATION_ERROR','permission-denied'])('club creation %s preserves 
 });
 const friends=expression('src/components/chat/ChatInbox.tsx',(n,s)=>ts.isArrowFunction(n)&&n.getText(s).includes('friendsService.listFriends(me.id)'));
 test.each(['FriendOwnerMissingError','Error','stale'])('friend-list failure %s never becomes a successful empty answer',async name=>{
- const owner={id:'me'},failure=Object.assign(Error('missing'),{name});const c:any={mode:'new',preview:undefined,me:{id:'me'},useUserStore:{getState:()=>({currentUser:owner})},friendsService:{listFriends:jest.fn(async()=>{if(name==='stale')owner.id='other';throw failure;})},setFriends:jest.fn(),setFriendsLoading:jest.fn(),setFriendsFailed:jest.fn(),observeCaughtError:jest.fn()};
- evaluate(friends,c)();await flush();expect(c.setFriends).toHaveBeenCalledTimes(1);expect(c.setFriendsFailed).toHaveBeenCalledWith(false);
+ const owner={id:'me'},failure=Object.assign(Error('missing'),{name});const c:any={mode:'new',preview:undefined,me:{id:'me'},friendsScope:JSON.stringify(['me',false]),useUserStore:{getState:()=>({currentUser:owner})},friendsService:{listFriends:jest.fn(async()=>{if(name==='stale')owner.id='other';throw failure;})},setFriends:jest.fn(),setFriendsRequestKey:jest.fn(),setFriendsDataKey:jest.fn(),setFriendsLoading:jest.fn(),setFriendsFailed:jest.fn(),observeCaughtError:jest.fn()};
+ evaluate(friends,c)();await flush();expect(c.setFriends).not.toHaveBeenCalled();expect(c.setFriendsDataKey).not.toHaveBeenCalled();expect(c.setFriendsFailed).toHaveBeenCalledWith(false);
  if(name==='stale'){expect(c.setFriendsFailed).not.toHaveBeenCalledWith(true);expect(c.observeCaughtError).not.toHaveBeenCalled();}
  else{expect(c.setFriendsFailed).toHaveBeenCalledWith(true);expect(c.observeCaughtError).toHaveBeenCalledTimes(name==='Error'?1:0);}
 });

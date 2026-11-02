@@ -37,7 +37,7 @@ export function VersionInventory({rows,busy,failed,loadedAt,load,targets,compact
    </>}
    <Pressable accessibilityRole="button" disabled={busy} onPress={load} style={{padding:rows?4:12,borderRadius:10,backgroundColor:rows?'transparent':colors.primarySoft,alignSelf:rows?'flex-start':'stretch',flexDirection:'row',direction:'rtl',gap:6,alignItems:'center'}}><Ionicons name="refresh-outline" size={16} color={colors.primary}/><Text style={{...text,color:colors.primary}}>{busy?'טוען רישומי מכשירים…':rows?'רענון נתוני הגרסאות':'טעינת נתוני הגרסאות'}</Text></Pressable>
    <Text style={font.small}>עודכן {timeAgo(loadedAt)} · ללא חשבונות בדיקה ומחוקים. הספירה מתייחסת לחשבונות שנבדקו.</Text>
-   <Disclosure title="מקור הנתונים ומשמעות הספירה"><Text style={font.small}>המידע נשמר ברישום להתראות ועשוי להיות ישן. ללא דיווח במערכת זו אינו בהכרח משתמש במערכת הזו. קריאות שנכשלו אינן נספרות כחסרות. {targets[platform]?`גרסת החנות: ⁦${targets[platform]}⁩`:'גרסת החנות לא ידועה'}</Text></Disclosure>
+   <Disclosure title="מקור הנתונים ומשמעות הספירה"><Text style={font.small}>המידע נשמר בדיווח פעילות מהאפליקציה או ברישום להתראות, ועשוי להיות ישן. דיווח הפעילות הישיר זמין רק בגרסאות שמכילות אותו. ללא דיווח במערכת זו אינו בהכרח משתמש במערכת הזו. קריאות שנכשלו אינן נספרות כחסרות. {targets[platform]?`גרסת החנות: ⁦${targets[platform]}⁩`:'גרסת החנות לא ידועה'}</Text></Disclosure>
   </>:null}
  </View>;
 }

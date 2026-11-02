@@ -1,0 +1,40 @@
+{
+  "suitesPassed": 590,
+  "testsPassed": 6568,
+  "rootTypecheckClean": true,
+  "pulseTypecheckClean": true,
+  "browserWidths": [
+    320,
+    390,
+    430
+  ],
+  "productionReadOnlyVerified": true,
+  "nativeVerified": false,
+  "built": false,
+  "deployed": false,
+  "committed": false,
+  "permissionsChanged": false,
+  "productionUserDataChanged": false,
+  "newDocumentationFailures": [],
+  "newStatusFailures": [],
+  "inheritedDocumentationFailures": 127,
+  "inheritedStatusFailures": 20,
+  "fullTestFirstRun": "שבע בדיקות מעטפת האייפון נכשלו בארגז החול עם קוד תהליך 3221225794; תשע בדיקות המגן וכל ההרצה המלאה עברו מחוץ לארגז החול ללא שינוי בקוד המגן.",
+  "sources": {
+    "baseCommit": "28a21d267db9df45416a0661a52377d2884963a9",
+    "workingTree": true,
+    "sha256": {
+      "App.tsx": "cbab7bbf7a574e029a4d1699cb63ad760448fdaef48e4544eb55882803d1a934",
+      "src/services/appVersionPresence.ts": "799c49c3693ee1afbd10d357bd29ae4a0c9c9448d97aec74e027476ef5dee415",
+      "pulse/src/services/versionAdoption.ts": "fd94d2f03e213762b47b772ed25290be30b33e3441425719ba7a158259bceb75",
+      "pulse/src/services/deviceVersions.ts": "3639ecb3cf351e5087e3575f5743bf4ce1232706a12ebd22fd852d7b809df60c",
+      "pulse/src/screens/HomeScreen.tsx": "ff305f418592ef4d186c9d1ba0ba8e8755102bfa4208fa4ddeb67b342233efc2",
+      "pulse/src/components/VersionAdoptionPanel.tsx": "62d003475ac270bd3ab1adb7ff6cdc753db1614ac175897938594766494abc88",
+      "pulse/src/components/VersionInventory.tsx": "64349e4bcb60b8b7c72ecfdb15f72685ff025706d6265c385cc4cd8dcf13c298",
+      "pulse/src/components/DeviceVersions.tsx": "13a9704b7a40965373a41fa0848da7352e5f545cf11c32183679fc3b3833beb8",
+      "tests/logic/appVersionPresence.test.ts": "d2e75b129a84b6c1b581f4a045328587cb0ca9b5af2d46e020e8969766f3de61",
+      "tests/logic/pulseVersionAdoption.test.ts": "08e86bc6ca5f8c8c4ae802f3f06f871ff3ccc3b399c048ec72a91ed589d14aef",
+      "tests/logic/pulseVersionPresenceReader.test.ts": "3285a5622e3787098e06618b0841aa89ff539102a7e7923af8c40bc47229025d"
+    }
+  }
+}

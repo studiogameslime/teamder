@@ -1,3 +1,6 @@
+import { useListUpdates } from '@/hooks/useListUpdates';
+import { ListUpdateNotice } from '@/components/ListUpdateNotice';
+import { UpdateHighlight } from '@/components/anim/UpdateHighlight';
 import { observeCaughtError } from '../../utils/errorObservation';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // ChatView — the shared chat surface for BOTH scopes (game + community).
@@ -66,6 +69,7 @@ import type { ChatMessage, ChatScope } from '@/types';
 
 
 const MENU_W = 200;
+const ChatRowSeparator = () => <View style={{height: spacing.sm}} />;
 
 interface Props {
   scope: ChatScope;
@@ -93,7 +97,13 @@ interface Props {
   disableMessageDeletion?: boolean;
 }
 
-export function ChatView({
+/** A conversation/account change gets fresh listeners, draft, update baseline and scroll state. */
+export function ChatView(props: Props) {
+  const owner = useUserStore(s => s.currentUser?.id);
+  return <ChatViewBody key={JSON.stringify([owner, props.scope, props.parentId])} {...props} />;
+}
+
+function ChatViewBody({
   scope,
   parentId,
   title,
@@ -158,6 +168,9 @@ export function ChatView({
   // True while the user is scrolled to (near) the bottom — gates auto-scroll so
   // a new message doesn't yank them away while they read older messages.
   const nearBottomRef = useRef(true);
+  const [nearLatest, setNearLatest] = useState(true);
+  const [composerHeight, setComposerHeight] = useState(64);
+  const messageUpdates = useListUpdates(JSON.stringify([scope,parentId,me?.id]), messages.filter(m => m.senderId!==me?.id && (scope==='dm'||blocksKnown&&!blocked.has(m.senderId))), {ready: !loading&&!denied&&(scope==='dm'||blocksKnown), hold: !nearLatest, key: m=>m.id});
   // Synchronous double-send guard. `sending` state can't block a same-frame
   // double-tap (both onPress closures read the same pre-clear `draft`), so a
   // ref debounces it. Reset shortly after — NOT tied to the server ack, which
@@ -172,6 +185,7 @@ export function ChatView({
     setLoadFailed(false);
     setMessages([]);
     setRetryTick(0);
+    nearBottomRef.current=true;setNearLatest(true);
   }, [scope, parentId, me?.id]);
 
   useEffect(() => {
@@ -343,7 +357,7 @@ export function ChatView({
     // scrolled up to read history. Without this, the auto-scroll (gated on
     // nearBottomRef) skips your just-sent message and it lands off-screen,
     // looking like the send failed.
-    nearBottomRef.current = true;
+    nearBottomRef.current = true;setNearLatest(true);
     listRef.current?.scrollToEnd({ animated: !reduced });
     lastTypingWriteRef.current = 0;
     chatService.setTyping(scope, parentId, { id: me.id, name: me.name }, false).catch((caughtError6eb2af8309: unknown) => {
@@ -609,6 +623,8 @@ export function ChatView({
           <FlatList
             ref={listRef}
             data={chatRows}
+            ItemSeparatorComponent={ChatRowSeparator}
+            maintainVisibleContentPosition={{minIndexForVisible:0}}
             keyExtractor={(row) => row.key}
             contentContainerStyle={styles.listContent}
             renderItem={({ item }) =>
@@ -621,12 +637,12 @@ export function ChatView({
                 <BlockedRow name={item.message.senderName} />
               ) : (
                 <ArrivalMotion at={nearBottomRef.current ? arrivals[item.message.id] : undefined}>
-                <MessageRow
+                <UpdateHighlight at={messageUpdates.highlights[item.message.id]}><MessageRow
                   message={item.message}
                   mine={item.message.senderId === me?.id}
                   onOpenMenu={(e) => openMenu(item.message, e)}
                   onOpenProfile={() => openProfile(item.message.senderId)}
-                />
+                /></UpdateHighlight>
                 </ArrivalMotion>
               )
             }
@@ -638,6 +654,7 @@ export function ChatView({
                 contentSize.height -
                 (contentOffset.y + layoutMeasurement.height);
               nearBottomRef.current = fromBottom < 80;
+              setNearLatest(previous => previous===(fromBottom<80) ? previous : fromBottom<80);
             }}
             scrollEventThrottle={64}
             onContentSizeChange={() => {
@@ -651,6 +668,8 @@ export function ChatView({
           />
         )}
 
+        {!denied && messageUpdates.pending && !nearLatest ? <View style={{position:'absolute',bottom:composerHeight+12,alignSelf:'center',maxWidth:'92%',zIndex:5}}><ListUpdateNotice direction="down" count={messageUpdates.pendingCount} noun="הודעות" onPress={() => { messageUpdates.apply(); nearBottomRef.current=true;setNearLatest(true);listRef.current?.scrollToEnd({animated:!reduced}); }} /></View> : null}
+
         {!denied && !readOnly && typingLabel ? (
           <View style={styles.typingWrap}>
             <Text style={styles.typingText}>{typingLabel}</Text>
@@ -659,7 +678,7 @@ export function ChatView({
 
         {!denied && readOnly ? <View style={{padding:20,backgroundColor:'#EFF3F9',flexDirection:'row',alignItems:'center',gap:10}}><Text style={{flex:1,fontSize:13,color:'#667796',textAlign:RTL_LABEL_ALIGN}}>{readOnlyMessage}</Text><Ionicons name='lock-closed-outline' size={19} color='#667796'/></View> : null}
         {!denied && !readOnly ? (
-          <View style={styles.inputBar}>
+          <View style={styles.inputBar} onLayout={e=>setComposerHeight(e.nativeEvent.layout.height)}>
             <TextInput
               style={styles.input}
               value={draft}
@@ -1046,7 +1065,6 @@ const styles = StyleSheet.create({
   // (just above the input), WhatsApp-style, instead of floating at the top.
   listContent: {
     padding: spacing.md,
-    gap: spacing.sm,
     flexGrow: 1,
     justifyContent: 'flex-end',
   },

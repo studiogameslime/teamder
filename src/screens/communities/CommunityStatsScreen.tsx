@@ -1,3 +1,4 @@
+import { ContentReveal } from '@/components/anim/ContentReveal';
 import { observeCaughtError } from '../../utils/errorObservation';
 import { readLeaderHistory } from '@/services/leaderHistoryService';
 import { earliestCountLeaders, earliestWinRateLeaders, randomLeader, type LeaderHistoryRow, type LeaderMetric } from '@/utils/leaderChronology';
@@ -31,7 +32,7 @@ import { useUserStore } from '@/store/userStore';
 import { Button } from '@/components/Button';
 import { SeasonSummaryButton } from '@/components/summary/SeasonSummaryButton';
 import { Card } from '@/components/Card';
-import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { ClubStatsSkeleton, LoadingNotice } from '@/components/loading/ScreenSkeletons';
 import { CommunityChampionship } from '@/components/community/CommunityChampionship';
 import { gameService } from '@/services/gameService';
 import { logError } from '@/services/errorLog';
@@ -1066,7 +1067,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
 
   return (
     // Embedded, the shell above already claimed the top inset.
-    <SafeAreaView style={styles.root} edges={embedded ? [] : ['top']}>
+    <ContentReveal ready={!bootLoading && !blockingFailure} scopeKey={JSON.stringify([viewerId,groupId,scope])} style={{flex:1}}><SafeAreaView style={styles.root} edges={embedded ? [] : ['top']}>
 
 
       {/* ONE container for all three states.
@@ -1097,6 +1098,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
         {embedded && props.header ? (
           <View style={styles.headerBleed}>{props.header}</View>
         ) : null}
+        {ownsClubData && loading && !bootLoading ? <LoadingNotice compact label="מעדכנים את נתוני המועדון" /> : null}
         {ownsClubData && (loadFailed || archiveFailed) && !blockingFailure ? <View style={styles.center}>
           <Text style={styles.loadingText}>לא ניתן לרענן את כל הנתונים כרגע. הנתונים הקודמים מוצגים.</Text>
           <Button title={he.retry} variant="outline" onPress={() => setReloadTick((n) => n + 1)} />
@@ -1108,10 +1110,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
             {scope.k !== 'current' && seasons?.enabled ? <Button title="לעונה הנוכחית" variant="outline" onPress={() => setScope({ k: 'current' })} /> : null}
           </View>
         ) : bootLoading ? (
-          <View style={styles.center}>
-            <SoccerBallLoader />
-            <Text style={styles.loadingText}>{he.communityStatsLoading}</Text>
-          </View>
+          <ClubStatsSkeleton />
         ) : isEmpty ? (
           <CommunityStatsWelcome
             onCreate={viewerId && adminIds.includes(viewerId)
@@ -1465,7 +1464,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
           </ChangeMotion>
         )}
       </ScrollSurface>
-    </SafeAreaView>
+    </SafeAreaView></ContentReveal>
   );
 }
 

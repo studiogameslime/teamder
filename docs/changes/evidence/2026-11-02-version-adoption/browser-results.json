@@ -1,0 +1,32 @@
+{
+  "actualSourceComponents": true,
+  "actualAdoptionService": true,
+  "actualPrivateVersionReader": true,
+  "actualCache": true,
+  "transport": "fixtures only",
+  "nativeRuntime": false,
+  "widths": [
+    320,
+    390,
+    430
+  ],
+  "verified": [
+    "latest store target per platform",
+    "unique user counts",
+    "daily evidence",
+    "version drilldown",
+    "missing data filter",
+    "exact user navigation",
+    "no scan on details",
+    "manual refresh",
+    "failure preserves previous measurement",
+    "store unavailable never zero",
+    "partial rollout label",
+    "failed device reads separate",
+    "initial failure",
+    "no horizontal overflow",
+    "RTL count order",
+    "previous-day measurement not today zero"
+  ],
+  "browserErrors": []
+}

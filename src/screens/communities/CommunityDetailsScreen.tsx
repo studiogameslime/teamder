@@ -1,3 +1,4 @@
+import { ContentReveal } from '@/components/anim/ContentReveal';
 import { observeCaughtError } from '../../utils/errorObservation';
 
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
@@ -43,6 +44,7 @@ import { goToCommunityChat, goToDirectChat } from '@/navigation/navigationRef';
 import { dmConvId } from '@/services/chatService';
 import { ensureNotGuest } from '@/utils/guestGate';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { ClubDetailsSkeleton } from '@/components/loading/PageSkeletons';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { CollapsibleContent } from '@/components/CollapsibleContent';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
@@ -739,12 +741,10 @@ export function CommunityDetailsScreen() {
 
   if (loading && !group) {
     return (
-      <View style={styles.root}>
-        <ScreenHeader title={he.loading} />
-        <View style={styles.center}>
-          <SoccerBallLoader size={40} />
-        </View>
-      </View>
+      <ContentReveal ready={!!group} scopeKey={JSON.stringify([me?.id,groupId])} style={{flex:1}}><View style={styles.root}>
+        <ScreenHeader title="פרטי המועדון" />
+        <ScrollSurface contentContainerStyle={{ padding: spacing.lg }}><ClubDetailsSkeleton /></ScrollSurface>
+      </View></ContentReveal>
     );
   }
 
@@ -754,7 +754,7 @@ export function CommunityDetailsScreen() {
     // to the main communities feed — a deep-link entry has no
     // back-stack, so silent goBack would leave the user stranded.
     return (
-      <View style={styles.root}>
+      <ContentReveal ready={!!group} scopeKey={JSON.stringify([me?.id,groupId])} style={{flex:1}}><View style={styles.root}>
         <ScreenHeader title={he.loading} />
         <View style={styles.center}>
           <Ionicons
@@ -781,7 +781,7 @@ export function CommunityDetailsScreen() {
             }}
           />
         </View>
-      </View>
+      </View></ContentReveal>
     );
   }
 
@@ -1013,7 +1013,7 @@ export function CommunityDetailsScreen() {
   );
 
   return (
-    <View style={styles.root}>
+    <ContentReveal ready={!!group} scopeKey={JSON.stringify([me?.id,groupId])} style={{flex:1}}><View style={styles.root}>
       {/* Keep the decorative host stable and outside touch handling. This
           avoids a potential source of overlay interception, but is not proof
           of the cause of the reported dead taps. `pointerEvents="none"`
@@ -1533,7 +1533,7 @@ export function CommunityDetailsScreen() {
         }}
         onDismiss={() => setInvitePrompt(false)}
       />
-    </View>
+    </View></ContentReveal>
   );
 }
 

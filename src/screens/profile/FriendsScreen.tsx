@@ -1,3 +1,4 @@
+import { ContentReveal } from '@/components/anim/ContentReveal';
 import { observeCaughtError } from '../../utils/errorObservation';
 // FriendsScreen — manage mutual friendships.
 //
@@ -28,7 +29,8 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { FriendsListSkeleton } from '@/components/loading/PageSkeletons';
+import { LoadingNotice } from '@/components/loading/ScreenSkeletons';
 import { Avatar } from '@/components/Avatar';
 import { toast } from '@/components/Toast';
 import { successHaptic } from '@/utils/haptics';
@@ -47,6 +49,7 @@ export function FriendsScreen() {
   const me = useUserStore((s) => s.currentUser);
   const ownerId = me?.id;
   const isGuest = me?.isGuest;
+  const displayScope = JSON.stringify([ownerId, !!isGuest]);
   const epoch = useRef(0);
   const displayedOwner = useRef<string | undefined>(undefined);
   const isCurrentUser = useCallback(() => useUserStore.getState().currentUser?.id === ownerId, [ownerId]);
@@ -54,6 +57,7 @@ export function FriendsScreen() {
   const [incoming, setIncoming] = useState<FriendRequestWithUser[]>([]);
   const [outgoing, setOutgoing] = useState<FriendRequestWithUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadedScope, setLoadedScope] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -64,7 +68,7 @@ export function FriendsScreen() {
       const request = ++epoch.current;
       if (!isCurrentUser()) return;
       setLoadFailed(false);
-      if (!ownerId || isGuest) {setFriends([]);setIncoming([]);setOutgoing([]);setLoading(false);setRefreshing(false);return;}
+      if (!ownerId || isGuest) {setFriends([]);setIncoming([]);setOutgoing([]);setLoadedScope(displayScope);setLoading(false);setRefreshing(false);return;}
       const active = () => epoch.current === request && isCurrentUser();
       if (opts.pull) {setRefreshing(true);setInviteRefresh(n=>n+1);}
       else setLoading(true);
@@ -78,6 +82,7 @@ export function FriendsScreen() {
         setFriends(f);
         setIncoming(inc);
         setOutgoing(out);
+        setLoadedScope(displayScope);
       } catch (err) {
     observeCaughtError(err, {"source":"src/screens/profile/FriendsScreen.tsx","handler":"FriendsScreen","site":"FriendsScreen:c2eccf8e73"});
         if (!active()) return;
@@ -92,20 +97,20 @@ export function FriendsScreen() {
         if (active()) { setLoading(false); setRefreshing(false); }
       }
     },
-    [ownerId, isGuest, isCurrentUser],
+    [ownerId, isGuest, isCurrentUser, displayScope],
   );
 
   useFocusEffect(
     useCallback(() => {
       logEvent(AnalyticsEvent.FriendsScreenOpened);
-      if (displayedOwner.current !== ownerId) {
-        displayedOwner.current = ownerId;
+      if (displayedOwner.current !== displayScope) {
+        displayedOwner.current = displayScope;
         setFriends([]); setIncoming([]); setOutgoing([]);
       }
       setBusyId(null);
       void load();
       return () => { epoch.current++; };
-    }, [load]),
+    }, [load, displayScope]),
   );
 
   const handleAccept = async (fromUserId: string) => {
@@ -214,14 +219,13 @@ export function FriendsScreen() {
   };
 
   const openCard = (userId: string) => nav.navigate('PlayerCard', { userId });
+  const initialLoading = displayedOwner.current !== displayScope || loading && loadedScope !== displayScope;
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+    <ContentReveal ready={!initialLoading} scopeKey={displayScope} style={{flex:1}}><SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title="חברים והזמנות" />
-      {loading ? (
-        <View style={styles.center}>
-          <SoccerBallLoader size={40} />
-        </View>
+      {initialLoading ? (
+        <ScrollView contentContainerStyle={styles.scroll}><FriendsListSkeleton /></ScrollView>
       ) : (
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -235,6 +239,7 @@ export function FriendsScreen() {
             />
           }
         >
+          {loading ? <LoadingNotice compact label="מעדכנים את החברים וההזמנות" /> : null}
           {loadFailed ? <View style={styles.emptyCard}>
             <Text style={styles.emptyCardTitle}>לא ניתן לטעון את החברים כרגע</Text>
             <Text style={styles.emptyCardBody}>זו תקלה בטעינה, ולא בהכרח רשימה ריקה. נסה שוב.</Text>
@@ -428,7 +433,7 @@ export function FriendsScreen() {
           </View>
         </ScrollView>
       )}
-    </SafeAreaView>
+    </SafeAreaView></ContentReveal>
   );
 }
 

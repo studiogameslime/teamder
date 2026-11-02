@@ -27,11 +27,11 @@ export function UserDevicesCard({ userId, flat=false }: { userId: string; flat?:
     {devices !== null ? <Pressable accessibilityRole="button" onPress={()=>setRetry(n=>n+1)} style={{paddingVertical:12}}><Text style={[textStyle,{color:colors.primary}]}>רענון מכשירים</Text></Pressable> : null}
     {failed ? <Pressable onPress={() => setRetry(n => n + 1)}><Text style={textStyle}>לא ניתן לטעון מכשירים. לחצו לניסיון חוזר.</Text></Pressable>
       : devices === null ? <ActivityIndicator color={colors.primary} />
-      : devices.length === 0 ? <Text style={textStyle}>אין גרסה מתועדת ברישום המכשירים.</Text>
+      : devices.length === 0 ? <Text style={textStyle}>אין דיווח גרסה מתועד.</Text>
       : devices.map((device, index) => <View key={index} style={{paddingVertical:12,borderBottomWidth:1,borderBottomColor:colors.border,gap:5}}>
         <View style={{flexDirection:'row',direction:'rtl',alignItems:'center',gap:10}}><Ionicons name="phone-portrait-outline" size={22} color={colors.textSoft}/><Text selectable style={[textStyle,{flex:1}]}>{device.device || 'מכשיר'} · {platformName(device.platform)}</Text><Text style={{color:colors.primary,borderColor:colors.primary,borderWidth:1,borderRadius:7,paddingHorizontal:8,paddingVertical:4}}>⁦{device.version}⁩</Text></View>
         <Text style={[textStyle, { color: colors.textMuted,fontSize:12 }]}>נצפתה {timeAgo(device.observedAt)}</Text>
       </View>)}
-    <Text style={[textStyle, { color: colors.textMuted }]}>המידע נשמר בעת רישום להתראות. הוא עשוי להיות ישן ואינו מכסה מכשירים שלא נרשמו.</Text>
+    <Text style={[textStyle, { color: colors.textMuted }]}>המידע נשמר בדיווח פעילות מהאפליקציה או ברישום להתראות ועשוי להיות ישן. דיווח פעילות ישיר זמין רק בגרסאות שמכילות אותו.</Text>
   </Card>;
 }

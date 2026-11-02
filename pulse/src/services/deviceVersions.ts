@@ -16,11 +16,20 @@ export interface UserVersions {
   failed: boolean;
 }
 
-/** Only current token entries; never return tokens to a view or a report. */
+/** Private session observations plus current token entries; tokens never leave this reader. */
 export function readDeviceVersions(doc: Record<string, unknown> | null): DeviceVersion[] {
-  if (!doc || !Array.isArray(doc.fcmTokens) || !doc.devices || typeof doc.devices !== 'object') return [];
-  const metadata = doc.devices as Record<string, unknown>;
-  return [...new Set(doc.fcmTokens.filter((token): token is string => typeof token === 'string'))].flatMap(token => {
+  if (!doc) return [];
+  const sessions = doc.appSessions && typeof doc.appSessions === 'object' ? doc.appSessions as Record<string, unknown> : {};
+  const observed = (['android', 'ios'] as const).flatMap(platform => {
+    const value = sessions[platform];
+    if (!value || typeof value !== 'object') return [];
+    const row = value as Record<string, unknown>;
+    if (row.platform !== platform || typeof row.appVersion !== 'string' || !row.appVersion.trim() || row.appVersion === 'unknown' || typeof row.observedAt !== 'number' || !Number.isFinite(row.observedAt) || row.observedAt <= 0) return [];
+    return [{ version: row.appVersion.trim(), observedAt: row.observedAt, platform, device: 'פעילות באפליקציה' }];
+  });
+  const metadata = doc.devices && typeof doc.devices === 'object' ? doc.devices as Record<string, unknown> : {};
+  const tokens = Array.isArray(doc.fcmTokens) ? doc.fcmTokens : [];
+  const registered = [...new Set(tokens.filter((token): token is string => typeof token === 'string'))].flatMap(token => {
     const value = metadata[token];
     if (!value || typeof value !== 'object') return [];
     const row = value as Record<string, unknown>;
@@ -28,7 +37,8 @@ export function readDeviceVersions(doc: Record<string, unknown> | null): DeviceV
     const observedAt = typeof row.registeredAt === 'number' && Number.isFinite(row.registeredAt) && row.registeredAt > 0 ? row.registeredAt : 0;
     if (!version || version === 'unknown' || !observedAt) return [];
     return [{ version, observedAt, platform: row.platform === 'ios' || row.platform === 'android' ? row.platform : 'unknown', device: typeof row.device === 'string' ? row.device : '' }];
-  }).sort((a, b) => b.observedAt - a.observedAt);
+  });
+  return [...observed, ...registered].sort((a, b) => b.observedAt - a.observedAt);
 }
 
 export function fetchUserPushRecord(userId: string, force = false) {

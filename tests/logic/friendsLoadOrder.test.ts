@@ -12,9 +12,9 @@ function fixture() {
   const read = () => new Promise<any[]>((resolve, reject) => { pending.push(resolve); failures.push(reject); });
   const state: Record<string, any> = {};
   let currentId = 'owner';
-  const context: any = { me: { id: 'owner', isGuest: false }, ownerId: 'owner', isGuest: false, epoch: { current: 0 }, isCurrentUser: () => currentId === 'owner',
+  const context: any = { me: { id: 'owner', isGuest: false }, ownerId: 'owner', isGuest: false, displayScope: JSON.stringify(['owner',false]), epoch: { current: 0 }, isCurrentUser: () => currentId === 'owner',
     useCallback: (fn: any) => fn, friendsService: { listFriends: read, listIncomingRequests: read, listOutgoingRequests: read }, logError: jest.fn(), __DEV__: false };
-  for (const name of ['Friends', 'Incoming', 'Outgoing', 'Loading', 'Refreshing', 'LoadFailed', 'InviteRefresh', 'BusyId']) context['set' + name] = (value: any) => { state[name] = value; };
+  for (const name of ['Friends', 'Incoming', 'Outgoing', 'Loading', 'LoadedScope', 'Refreshing', 'LoadFailed', 'InviteRefresh', 'BusyId']) context['set' + name] = (value: any) => { state[name] = value; };
   const code = ts.transpileModule('(' + initializer + ')', { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const load = vm.runInNewContext(code, context);
   return { load, pending, failures, state, switchOwner: () => { currentId = 'other'; }, epoch: context.epoch };

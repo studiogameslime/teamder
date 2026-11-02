@@ -10,17 +10,17 @@
       "simple": "entry/authentication.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "בכניסה לחשבון קיים עם אפל מבקשים אישור חדש לאחר שנמצא חשבון קיים. האישור שכבר נוצל אינו נשלח שוב לכניסה או למודול נוסף. מעבר מאורח לחשבון ממתין להשלמת שמירת הפרופיל. התיקון מקומי; כניסה חיה באייפון טרם נבדקה בסבב זה.",
+      "summary": "נבדקה השפעת שיפורי המשוב וההמשכיות במקור משותף. אין שינוי בפעולות העצמאיות של הפיצר הזה. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "טיפול בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "שלדי טעינה בשלושה אזורים, 2.11.2026",
+        "טיפול בפולס, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "דוח הטיפול, הבדיקות והמגבלות.",
-        "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
-        "מקורות משותפים שנבדקו בהיקף השינוי הזה: src/firebase/firestore.ts, src/services/userService.ts, src/types/index.ts, tests/logic/clientAuditRecovery.test.ts. אין בסעיף זה טענה להרצת כל המסלולים ההיסטוריים של הפיצר. מסירת המימוש."
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: אישור אחרי הרשמה, מעבר אטימות, זיכרון תצוגה, הודעת עדכונים או ביטול ארכוב מותנה. אין שינוי מכוון בתנאי הרשאה, כתיבות, חישובים ומכנים של הפיצר העצמאי. בדיקת רישום ההרשמה הותאמה למתאם המשוב החדש, תוך שימור בדיקות המתנה…",
+        "נבדק ההפרש התחום במקורות המשותפים של הפיצר. השינוי מוסיף שלדים בזמן שאין תוכן מוכן וחיווי רענון כשיש תוכן, וכן ניסיון חוזר לטעינת מחזורי הבית. נשמרו בחירת העונה, מכנים, פעולות, ניווט וחישובי הפיצר העצמאי. אין מכך בדיקת מכשיר חדשה שלו. השינוי מקומי וטרם הופץ.…",
+        "דוח הטיפול, הבדיקות והמגבלות."
       ],
       "screens": [
         "src/screens/auth/EmailAuthScreen.tsx",
@@ -28,8 +28,8 @@
         "src/screens/tabs/ProfileScreen.tsx"
       ],
       "documents": {
-        "entry/authentication.md": "b6dfc087aced1b9521fad9b366f09bf68fa9c0742033e0ca638cdcc8a32d4720",
-        "entry/authentication.simple.md": "cff3a5e34ca0d050e87f181783eb4ec03911b53f3b187eed8a6aad53b52a3b15"
+        "entry/authentication.md": "70c3daf3893dfbdbbdd36bfb72163e80859176285d79abbda89d9611db8b9bb2",
+        "entry/authentication.simple.md": "e779f0703ebbda573f2005fd5404d9173868ad0c324e4a26ddccfae5c5f412e5"
       },
       "sources": {
         "src/components/auth/ContextualAuthSheet.tsx": "2f0ae020d5e011f72026cc02e6898eec4ec81ea267e87db3de897030050e582f",
@@ -40,7 +40,7 @@
         "src/i18n/he.ts": "879553b561caa3b877de144084d07ce384ed3678f8d9df90968e60eb8f5c0d02",
         "src/screens/auth/EmailAuthScreen.tsx": "ad0c44f112893f5a17e63caa40a3eee2be4ecb7e9384e98a5f6d66941cdbb6c6",
         "src/screens/auth/SignInScreen.tsx": "b53c8df1bb4f1b314f8d3307b617ca884b96049703101cde9be5ff18b61dc9d5",
-        "src/screens/tabs/ProfileScreen.tsx": "bab99a593bcc5c562da7d60c380cb832a44d559def7904285dc490801f6ec71e",
+        "src/screens/tabs/ProfileScreen.tsx": "49ed9cfe2b97265136b23a99d9b1d508a15b00368caae5d13474f4a43f1898de",
         "src/services/authUpgrade.ts": "46653f980110faf3c01bac50a629f6ff233037a950119dceef1e24d40255671e",
         "src/services/gameService.ts": "d719dbddac7ca809457da1b1e4d4606287836fa00dd3a1ce4609e0536cf6155b",
         "src/services/userService.ts": "b2be368f0ddd1b5baa2aef109d6a48b1eb739babcbcf1870b3c91ae3df8c853c",
@@ -224,26 +224,27 @@
       "simple": "entry/personal-invite.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
+      "summary": "כרטיסי ההמתנה משתמשים כעת בפעימה אחידה שמכבדת צמצום תנועה, עם הודעת טעינה אחת. יתר התהליך נשמר. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
+        "הרחבת שלדי הטעינה, 2.11.2026",
         "אימות פרסום קבוצות בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בקשות לשיחה אישית, 2.11.2026"
       ],
       "evidenceExcerpts": [
+        "הרכיב המשותף src/components/anim/MatchCardSkeleton.tsx עבר לפעימה אחת בכל אזור, עם אותן מידות וכמות הכרטיסים שהצרכן ביקש. קריאות הנתונים, ההזמנה, התפקידים ויעדי הניווט של הפיצר לא שונו. אין אימות מכשיר חדש. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים…",
         "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
-        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…",
-        "דוח הטיפול, הבדיקות והמגבלות."
+        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…"
       ],
       "screens": [
         "src/screens/invite/PersonalInviteScreen.tsx"
       ],
       "documents": {
-        "entry/personal-invite.md": "23dd30a0df518c97a865302c7bba383b2ed80d554fce833db4db4ab27dca2a86",
-        "entry/personal-invite.simple.md": "b4820efb305fdd4866b53198775452022bb67a53a53a7a7b19e2e790f3546d08"
+        "entry/personal-invite.md": "3b03286dbd7f059cf4c5c672433adc6d62e42eb2b114a91700eea13b53ab97f8",
+        "entry/personal-invite.simple.md": "90fe8bef7d28ab489ae802481ed58a0e5f521ddf19c21cfa148afaa587c5575e"
       },
       "sources": {
+        "src/components/anim/MatchCardSkeleton.tsx": "858cadcdf279c0f5d261cd1d830b810e8b2fa23eea5a676b1d3440465caf21f2",
         "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
         "src/navigation/ProfileStack.tsx": "ff89d811e4e9f233b398695fbc83497fff7099cb9ce03c2b441e6c0fe52b59c4",
         "src/screens/invite/PersonalInviteScreen.tsx": "29d76cb7eea02897533423d3621597839ccaf40707998ddd23b4aba9341f3c8f",
@@ -324,39 +325,39 @@
       "domain": "home",
       "technical": "home/availability-preview.md",
       "simple": "home/availability-preview.simple.md",
-      "capturedOn": "2026-10-27",
+      "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "הדיווחים יוכלו לכלול מה ניסו לבצע, מה היה מצב האפליקציה ומה החזיר השרת. פרטים חסרים מוצגים כלא ידועים, ומספר מוגבל של מופעים נשמר בלי למחוק את המופע הראשון. השינוי מקומי וטרם הופץ, ואינו משלים פרטים לדיווחים ישנים. היקף, ראיות ומגבלות.",
-      "latestDatedSection": "2026-10-27",
+      "summary": "נבדקה השפעת שיפורי המשוב וההמשכיות במקור משותף. אין שינוי בפעולות העצמאיות של הפיצר הזה. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
+      "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "הרחבת אבחון דיווחים, 27.10.2026",
-        "השבתת פעילות אישית לקראת הגרסה הבאה, 27.10.2026"
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "שלדי טעינה בשלושה אזורים, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "נוספה מעטפת אבחון מקומית עם מצב בזמן הכשל, שלבים בעלי מזהה ותזמון, מצב רשת ובנייה ומופעים נפרדים לשגיאה. נקודת הכניסה לתעבורת השרת עוברת כעת דרך העטיפה המשותפת; תשובות, חריגות, אפשרויות קריאה ומדיניות הפיצר נשמרות. אין כאן שינוי בהרשאות או בחישובי המוצר.…",
-        "באימות הסופי עברו כל 6,231 הבדיקות ב-555 חבילות, ובדיקות הטיפוסים של הלקוח, השרת והפולס נקיות. צילום הדפדפן והידור מקורות האנדרואיד הם בדיקות מקומיות; אין הוכחת מכשיר, הידור אייפון או מסירה חיה של הבנייה החדשה. רישום יומן השחרור נחשב מאומת רק לפי קבלת הקריאה…",
-        "נבדק השינוי הממוקד במקורות המשותפים: הכניסה לפעילות האישית וכרטיסי הפעילות מוסתרים לקראת הגרסה הבאה. מדידה, הרשאות ספורט וסנכרון הושבתו בשירותים, ללא שינוי בתוצאות הכדורגל או בפעולות הפיצר הזה. שינוי מקומי שטרם הופץ, ללא בדיקת מכשיר חדשה. היקף וראיות."
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: אישור אחרי הרשמה, מעבר אטימות, זיכרון תצוגה, הודעת עדכונים או ביטול ארכוב מותנה. אין שינוי מכוון בתנאי הרשאה, כתיבות, חישובים ומכנים של הפיצר העצמאי. בדיקת רישום ההרשמה הותאמה למתאם המשוב החדש, תוך שימור בדיקות המתנה…",
+        "נבדק ההפרש התחום במקורות המשותפים של הפיצר. השינוי מוסיף שלדים בזמן שאין תוכן מוכן וחיווי רענון כשיש תוכן, וכן ניסיון חוזר לטעינת מחזורי הבית. נשמרו בחירת העונה, מכנים, פעולות, ניווט וחישובי הפיצר העצמאי. אין מכך בדיקת מכשיר חדשה שלו. השינוי מקומי וטרם הופץ.…",
+        "נוספה מעטפת אבחון מקומית עם מצב בזמן הכשל, שלבים בעלי מזהה ותזמון, מצב רשת ובנייה ומופעים נפרדים לשגיאה. נקודת הכניסה לתעבורת השרת עוברת כעת דרך העטיפה המשותפת; תשובות, חריגות, אפשרויות קריאה ומדיניות הפיצר נשמרות. אין כאן שינוי בהרשאות או בחישובי המוצר.…"
       ],
       "screens": [
         "src/screens/tabs/ProfileScreen.tsx"
       ],
       "documents": {
-        "home/availability-preview.md": "3c2048b062a6f8f3a84015291c807cb711d58b4b803f266972ffc4efa4622cb9",
-        "home/availability-preview.simple.md": "3770c71557efa7f4c87ff19699140950641f06f6b53748d73de1508710b1b50a"
+        "home/availability-preview.md": "12298c427366d066afd6533cf1294c6aa88bffeea668d7a34971112c350e5e95",
+        "home/availability-preview.simple.md": "fad6d6ce3b74c8a3fdd818b5de16df76610a59e1ba490c8dc140199d2c5f812c"
       },
       "sources": {
         "src/components/home/AvailabilityCalendarCard.tsx": "7b47814b030041df11833c7ebebf272371502229ec518fe12d27e665596eb01d",
         "src/components/home/AvailabilityPromptCard.tsx": "1f0cb3e34046068a2d39d462e65e3a2b3deb23981d8db7f27e7e5e51cb9e6be5",
         "src/components/home/HomeAvailabilityPanel.tsx": "eb7b9811157844598a3ae45dcd8021ce96bed4ebc4c7ef0840988cdf350058f0",
         "src/components/home/OnboardingChecklist.tsx": "e7e1ca4d3a14888a58f3c6bd770e78bb4b8b04f2703b6512b7c803c329724459",
-        "src/firebase/firestore.ts": "f27ee78b297cb27a98f2aafbae5df15a3372bfdda6dbce88f9de6bae5d18587d",
-        "src/screens/tabs/ProfileScreen.tsx": "304f53bb0ae95124001d088926d42d07e4d5139ccec9762b9bc46cf9f5e18b29",
+        "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
+        "src/screens/tabs/ProfileScreen.tsx": "49ed9cfe2b97265136b23a99d9b1d508a15b00368caae5d13474f4a43f1898de",
         "src/services/availabilityFeedService.ts": "9fb5b71f1a07f1804be693007b56b4511956df63fd7446ffa4bf5a98406e6808",
         "src/services/clubAdminRatings.ts": "442c08a60d53a5c745aeefba84559fdf41c97636cfe58a06af98b7b293278661",
         "src/services/clubFriendsService.ts": "5974d24e9fb3b9b9a5aeed61e82b2760a3d295fe0594a7493e02e8a1b20c75b1",
         "src/services/publicPlayerService.ts": "7be4a1b8da2a0365a0f2acce5c686d68b9daa984c313fc3630ac0404d6fe6cb3",
         "src/services/readRetry.ts": "b10cd4c90fe6ba7f40ccdb0e050609ba77ad7891836c8fd28e9c4511c8f3afd0",
-        "src/types/index.ts": "04aa7a3a4e055954121ddb2dad0c7ccd4176020be3667f75638ac88f4df07129",
+        "src/types/index.ts": "503a6a4039500a421a91a5d200edf5734211bfceaed7de25d2da65bf22725603",
         "src/utils/homeAvailabilityView.ts": "5f11193c3fa40e857cf6f0c05148704226cc0cc53710e67bead40064a5c7c353",
         "tests/logic/homeAvailabilityView.test.ts": "915f23815210ea5175f1a7f419591dc759b18ebe75fb02178510e2ef4e132b6f",
         "tests/logic/publicPlayerRead.test.ts": "e2e8a4fb24e8f6f97aad0fa2d15589ad28daa412a4035dae757b6898bb027bfa"
@@ -371,37 +372,38 @@
       "simple": "home/dashboard.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "מעבר מאורח לחשבון ממתין כעת להשלמת שמירת הפרופיל לפני טעינת הנתונים שמחייבים חשבון מלא. לא השתנו מדדי הבית או העיצוב. התיקון מקומי וטרם הופץ.",
+      "summary": "נבדקה השפעת תיקוני ההמשכיות במקור המשותף ובבדיקות. ההתנהגות העצמאית והחישובים של הפיצר נשמרו. מקומי וטרם הופץ. שחזור, תיקונים, בדיקות ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "טיפול בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בדיקת קצה ואימות מקורי, 2.11.2026",
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "הרחבת שלדי הטעינה, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "השינוי המשותף ב-src/store/userStore.ts מונע החלפת אורח מתוך צילום הפרופיל הראשון לפני סיום refreshFromSession. נבדק מסלול ההשפעה על טעינת המשתמש והפעלת קריאות שמות בשורש; אין שינוי במכנים, בסדר כרטיסי הבית או בנתוניהם. בדיקת המנוי…",
-        "דוח הטיפול, הבדיקות והמגבלות.",
-        "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות."
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: תיקוני מדידת גלילה, שימור נתוני סגל בכשל נלווה, הפרדת מצב שיחות וכיוון קיצור ההודעות. כלי הבדיקה החדש מוגבל לשלושת שערי ההדגמה ואינו משנה נתיב מוצר. אין שינוי מכוון בתנאי הרשאות, בחישובים, במכנים או בכתיבות העסקיות…",
+        "בדיקות התנהגות חדשות: tests/logic/experiencePolish.test.ts. האימות החזותי כולל אזורי מקור עם נתוני הדגמה ומתאמי דפדפן בלבד, ללא אימות מכשיר או מסד. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים. השינוי מוסיף מציגי טעינה או חושף לשימוש חוזר את בסיס השלדים; בדיקות החברים כוללות כעת סמן תשובה מוכן, ובכשל בודקות שרשימה קיימת אינה נדרסת ואין סימון של תשובה ריקה מוצלחת. תנאי הרשאות, כתיבות, חישובים, מכנים, פעולות…"
       ],
       "screens": [
         "src/screens/tabs/ProfileScreen.tsx"
       ],
       "documents": {
-        "home/dashboard.md": "04ce9065af8d913e76d433dcf87ba45204513289de57ba0791ceeb1cc47fdcd3",
-        "home/dashboard.simple.md": "421660af69b071a402946254af690b44d29bcf3d74e142fff3c386daf981068d"
+        "home/dashboard.md": "ef277c903e4ab2cf8678b9163b068039830e31e96285d035ab2e99d1e47212a4",
+        "home/dashboard.simple.md": "1596b6bbbd30569edff9c24d54c0734964f3958bd71e026c1d483b0b5765d75c"
       },
       "sources": {
         "src/components/home/DidYouKnowCard.tsx": "230620965eb356519d66a9efbce78fcc4724b0f929e9f8f1c13a6b492712adfe",
         "src/components/home/HomeAvailabilityPanel.tsx": "eb7b9811157844598a3ae45dcd8021ce96bed4ebc4c7ef0840988cdf350058f0",
         "src/components/home/HomeDashboardParts.tsx": "9aff6509ab4622b70b199d5012021ec033d1cfa08991bd32f7bb2dde4d5fabef",
         "src/components/home/HomeHero.tsx": "82a0803e79bc513b6b1b115bf54552477c4d56809d4dd42141ff4ddee6b7de31",
-        "src/components/home/HomePersonalStats.tsx": "9a99f038e61575eb33a2df18af70ab922661f130dcbc5c72094e53cd59c8dd37",
+        "src/components/home/HomePersonalStats.tsx": "97c686c92d82b904727d05b7227cff59c1faab13a12f67f7524a2a9c955da639",
         "src/components/home/HomeProfileOverview.tsx": "034f36e61dbf11330a078f1696898cdfa055d257a81845201c846a4ffd4c01e6",
-        "src/components/home/HomeRoundCards.tsx": "43cee45c2e6772512f06457b3ff7c3263b85a2b2770992049f675f7cfaa359b1",
+        "src/components/home/HomeRoundCards.tsx": "11154048614604f378ecd38f03b318a3aba20a7535dfe47752eb758e38b93210",
         "src/components/home/OnboardingChecklist.tsx": "e7e1ca4d3a14888a58f3c6bd770e78bb4b8b04f2703b6512b7c803c329724459",
+        "src/components/loading/ScreenSkeletons.tsx": "cb480f4a1a245ae6c17d642a647b6fd9ab84e5e88b8f298a1504c31c59dbda9b",
         "src/dev/OverlayAuditPreview.tsx": "56416f5e2b6b90ea819498536f5fb9f06aadd4cceb3b68c47d5ac7eb0a558d32",
         "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
-        "src/screens/tabs/ProfileScreen.tsx": "bab99a593bcc5c562da7d60c380cb832a44d559def7904285dc490801f6ec71e",
+        "src/screens/tabs/ProfileScreen.tsx": "49ed9cfe2b97265136b23a99d9b1d508a15b00368caae5d13474f4a43f1898de",
         "src/services/achievementsService.ts": "8ce6f1dc8ed0be66081128b736aa5e858b0dd4db9111f3b0638548e164e35c5a",
         "src/services/gameService.ts": "d719dbddac7ca809457da1b1e4d4606287836fa00dd3a1ce4609e0536cf6155b",
         "src/services/homeConfigService.ts": "7a5e1467cd19c2c1356f3fec30e3e4c2d81c9ea7211c51b9dc88896e4e04035a",
@@ -412,6 +414,8 @@
         "src/utils/homePersonalStats.ts": "68ebfcbd9d6b62dee3dc25f2152f1145e7814b5c24de7f85860f4433b3d6bfe1",
         "tests/authUpgradeUpdatesStore.test.ts": "3b3f2dbe28c7339c1bebaf85b11ae461d0c7801445598361a0221fdd79611843",
         "tests/logic/authTransientReads.test.ts": "2a6424e2acbde15b1a30a6921da666983fa3dfc06f8ea8f9b414d1af36a8a42b",
+        "tests/logic/communityRosterLoading.test.ts": "0f183d289df0d4388694651d5d51922ad09f1a224c1f566b07095316a9c53eb1",
+        "tests/logic/experiencePolish.test.ts": "1f0c864f110889d0bdc7cb07a8481a4f21d8532b66034863f1d91926cbe6f2cd",
         "tests/logic/homeAvailabilityView.test.ts": "915f23815210ea5175f1a7f419591dc759b18ebe75fb02178510e2ef4e132b6f",
         "tests/logic/homeHero.test.ts": "7cc08f174f3ebaa8cf8d75b2e23468a3adf768e188df6aa6f253a02d622f1432",
         "tests/logic/homePersonalStats.test.ts": "796506f743ec797bd0e69794a59b8eab757f0242de59ec8acf3d65eecf34fcb2",
@@ -432,26 +436,27 @@
       "simple": "home/guest-home.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
+      "summary": "כרטיסי ההמתנה משתמשים כעת בפעימה אחידה שמכבדת צמצום תנועה, עם הודעת טעינה אחת. יתר התהליך נשמר. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
+        "הרחבת שלדי הטעינה, 2.11.2026",
         "אימות פרסום קבוצות בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בקשות לשיחה אישית, 2.11.2026"
       ],
       "evidenceExcerpts": [
+        "הרכיב המשותף src/components/anim/MatchCardSkeleton.tsx עבר לפעימה אחת בכל אזור, עם אותן מידות וכמות הכרטיסים שהצרכן ביקש. קריאות הנתונים, ההזמנה, התפקידים ויעדי הניווט של הפיצר לא שונו. אין אימות מכשיר חדש. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים…",
         "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
-        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…",
-        "דוח הטיפול, הבדיקות והמגבלות."
+        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…"
       ],
       "screens": [
         "src/screens/home/GuestHomeScreen.tsx"
       ],
       "documents": {
-        "home/guest-home.md": "11087cd42ba1beb883a40494a2f81574ad68b2f424f1c8f58ce1f066b6747296",
-        "home/guest-home.simple.md": "c95d6bd84a7dc1a7a9a39b88c24f48e69f5daa545dc61455055cff106b15a019"
+        "home/guest-home.md": "5f54fc6b228d324714a91959cea73e53b07dc2de0240bf19746405cba1bd5966",
+        "home/guest-home.simple.md": "9e59def80ead0ea6c403433b07c795b09abe71a589783f1930e6ee8efdf15be9"
       },
       "sources": {
+        "src/components/anim/MatchCardSkeleton.tsx": "858cadcdf279c0f5d261cd1d830b810e8b2fa23eea5a676b1d3440465caf21f2",
         "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
         "src/hooks/useAuthenticatedAction.tsx": "d77fc98c67da1f2e1479ca1f39f2452ca3ebbce8639fd73d2657203403412e7c",
         "src/screens/home/GuestHomeScreen.tsx": "1eb31e4061d685006e352a544ed51cdcf5a1f1e576240c9e14ee318d07ffdb58",
@@ -474,38 +479,37 @@
       "domain": "home",
       "technical": "home/home-menu.md",
       "simple": "home/home-menu.simple.md",
-      "capturedOn": "2026-10-27",
+      "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "הדיווחים יוכלו לכלול מה ניסו לבצע, מה היה מצב האפליקציה ומה החזיר השרת. פרטים חסרים מוצגים כלא ידועים, ומספר מוגבל של מופעים נשמר בלי למחוק את המופע הראשון. השינוי מקומי וטרם הופץ, ואינו משלים פרטים לדיווחים ישנים. היקף, ראיות ומגבלות.",
-      "latestDatedSection": "2026-10-27",
+      "summary": "נבדקה השפעת שיפורי המשוב וההמשכיות במקור משותף. אין שינוי בפעולות העצמאיות של הפיצר הזה. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
+      "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "הרחבת אבחון דיווחים, 27.10.2026",
-        "השבתת פעילות אישית לקראת הגרסה הבאה, 27.10.2026",
-        "השפעת תיקוני השיחה והחזרה, 27.10.2026"
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "שלדי טעינה בשלושה אזורים, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "נוספה מעטפת אבחון מקומית עם מצב בזמן הכשל, שלבים בעלי מזהה ותזמון, מצב רשת ובנייה ומופעים נפרדים לשגיאה. נקודת הכניסה לתעבורת השרת עוברת כעת דרך העטיפה המשותפת; תשובות, חריגות, אפשרויות קריאה ומדיניות הפיצר נשמרות. אין כאן שינוי בהרשאות או בחישובי המוצר.…",
-        "באימות הסופי עברו כל 6,231 הבדיקות ב-555 חבילות, ובדיקות הטיפוסים של הלקוח, השרת והפולס נקיות. צילום הדפדפן והידור מקורות האנדרואיד הם בדיקות מקומיות; אין הוכחת מכשיר, הידור אייפון או מסירה חיה של הבנייה החדשה. רישום יומן השחרור נחשב מאומת רק לפי קבלת הקריאה…",
-        "נבדק השינוי הממוקד במקורות המשותפים: הכניסה לפעילות האישית וכרטיסי הפעילות מוסתרים לקראת הגרסה הבאה. מדידה, הרשאות ספורט וסנכרון הושבתו בשירותים, ללא שינוי בתוצאות הכדורגל או בפעולות הפיצר הזה. שינוי מקומי שטרם הופץ, ללא בדיקת מכשיר חדשה. היקף וראיות."
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: אישור אחרי הרשמה, מעבר אטימות, זיכרון תצוגה, הודעת עדכונים או ביטול ארכוב מותנה. אין שינוי מכוון בתנאי הרשאה, כתיבות, חישובים ומכנים של הפיצר העצמאי. בדיקת רישום ההרשמה הותאמה למתאם המשוב החדש, תוך שימור בדיקות המתנה…",
+        "נבדק ההפרש התחום במקורות המשותפים של הפיצר. השינוי מוסיף שלדים בזמן שאין תוכן מוכן וחיווי רענון כשיש תוכן, וכן ניסיון חוזר לטעינת מחזורי הבית. נשמרו בחירת העונה, מכנים, פעולות, ניווט וחישובי הפיצר העצמאי. אין מכך בדיקת מכשיר חדשה שלו. השינוי מקומי וטרם הופץ.…",
+        "נוספה מעטפת אבחון מקומית עם מצב בזמן הכשל, שלבים בעלי מזהה ותזמון, מצב רשת ובנייה ומופעים נפרדים לשגיאה. נקודת הכניסה לתעבורת השרת עוברת כעת דרך העטיפה המשותפת; תשובות, חריגות, אפשרויות קריאה ומדיניות הפיצר נשמרות. אין כאן שינוי בהרשאות או בחישובי המוצר.…"
       ],
       "screens": [
         "src/screens/players/PlayerCardScreen.tsx",
         "src/screens/tabs/ProfileScreen.tsx"
       ],
       "documents": {
-        "home/home-menu.md": "84b0cb45d0843344254927eed8811cd78c90020e01503a2088f3c1889ff75c0f",
-        "home/home-menu.simple.md": "23d09929b1c66c42b6f6b0bd43616220d34e59d3b05eb1fc67051f344c748a94"
+        "home/home-menu.md": "eecf9346d1b750b55b96a9ee0a49ce9912778281e842c26c6340eda72776e431",
+        "home/home-menu.simple.md": "bf1216df498982063f1c4196909017fb977927bffbf80b93fee0e5bc3687567e"
       },
       "sources": {
         "src/components/DraggableMenuSheet.tsx": "4724d96b666b198bf2dbab63d68570336fbdba2dec05dbb6338233721ca5378b",
         "src/components/MenuIcon.tsx": "4d6697da8ec16ff3961afc2355c681c9a9ab4591e4217b995a6b8782d8f220e9",
         "src/components/profile/DeleteAccountSheet.tsx": "a955dd78fb58e905ba1bdb3f6e27c7d3eea573c4f864f13c00a488a997e4eecf",
-        "src/firebase/firestore.ts": "f27ee78b297cb27a98f2aafbae5df15a3372bfdda6dbce88f9de6bae5d18587d",
+        "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
         "src/i18n/he.ts": "879553b561caa3b877de144084d07ce384ed3678f8d9df90968e60eb8f5c0d02",
-        "src/navigation/ProfileStack.tsx": "cc04df56af744b4dccfd4be17e857d4cad84578cd15ad98d0fda9d7e591c42f6",
+        "src/navigation/ProfileStack.tsx": "ff89d811e4e9f233b398695fbc83497fff7099cb9ce03c2b441e6c0fe52b59c4",
         "src/screens/players/PlayerCardScreen.tsx": "b2b604e9d10ed7108970ed5e042cdfc2da3d60a123e268a366f58af1bd044dab",
-        "src/screens/tabs/ProfileScreen.tsx": "304f53bb0ae95124001d088926d42d07e4d5139ccec9762b9bc46cf9f5e18b29",
-        "src/types/index.ts": "04aa7a3a4e055954121ddb2dad0c7ccd4176020be3667f75638ac88f4df07129",
+        "src/screens/tabs/ProfileScreen.tsx": "49ed9cfe2b97265136b23a99d9b1d508a15b00368caae5d13474f4a43f1898de",
+        "src/types/index.ts": "503a6a4039500a421a91a5d200edf5734211bfceaed7de25d2da65bf22725603",
         "tests/guestAuthEntryPoints.test.ts": "1c6a0f0bb9eee935ece64985218e129c459c45ffad9501ba98fbcaa2961f7aae",
         "tests/signOutRestoresGuest.test.ts": "085ff6403a96112523f52d7ae264bdb0c9a7f245046f1a05e7b983a376485312"
       },
@@ -519,38 +523,39 @@
       "simple": "home/round-cards.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
+      "summary": "נבדקה השפעת תיקוני ההמשכיות במקור המשותף ובבדיקות. ההתנהגות העצמאית והחישובים של הפיצר נשמרו. מקומי וטרם הופץ. שחזור, תיקונים, בדיקות ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "אימות פרסום קבוצות בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בדיקת קצה ואימות מקורי, 2.11.2026",
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "שלדי טעינה בשלושה אזורים, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
-        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…",
-        "דוח הטיפול, הבדיקות והמגבלות."
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: תיקוני מדידת גלילה, שימור נתוני סגל בכשל נלווה, הפרדת מצב שיחות וכיוון קיצור ההודעות. כלי הבדיקה החדש מוגבל לשלושת שערי ההדגמה ואינו משנה נתיב מוצר. אין שינוי מכוון בתנאי הרשאות, בחישובים, במכנים או בכתיבות העסקיות…",
+        "בדיקות התנהגות חדשות: tests/logic/experiencePolish.test.ts. האימות החזותי כולל אזורי מקור עם נתוני הדגמה ומתאמי דפדפן בלבד, ללא אימות מכשיר או מסד. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
+        "נבדק ההפרש התחום במקורות המשותפים של הפיצר. השינוי מוסיף שלדים בזמן שאין תוכן מוכן וחיווי רענון כשיש תוכן, וכן ניסיון חוזר לטעינת מחזורי הבית. נשמרו בחירת העונה, מכנים, פעולות, ניווט וחישובי הפיצר העצמאי. אין מכך בדיקת מכשיר חדשה שלו. השינוי מקומי וטרם הופץ.…"
       ],
       "screens": [
         "src/screens/tabs/ProfileScreen.tsx"
       ],
       "documents": {
-        "home/round-cards.md": "ee07e4b689dd4e050478a15e81b5b8d8093e410a4a5be3008028fa739a1222a7",
-        "home/round-cards.simple.md": "e51df694a8f35a0d3a8fea33973548b393415253d0a52c8e36b5ab8d929b638d"
+        "home/round-cards.md": "cc3d98151b746f3c22524a8eeea6b54954c86e1febf5be9c2cb4a3874f87024b",
+        "home/round-cards.simple.md": "a36750d14970e814e50df71bfb7de85759a18f945df54966879a80154b3b186f"
       },
       "sources": {
         "src/assets/images/roundCovers/manifest.json": "af14a4a15851e4b4a78dc9e9e2dd1ccd0c486cd461360d9fcb3930c414dda6a0",
-        "src/components/home/HomeRoundCards.tsx": "43cee45c2e6772512f06457b3ff7c3263b85a2b2770992049f675f7cfaa359b1",
+        "src/components/home/HomeRoundCards.tsx": "11154048614604f378ecd38f03b318a3aba20a7535dfe47752eb758e38b93210",
         "src/data/roundSurfaceCovers.ts": "2e7ebc6512d508bec73c182a10d1f3486070eb592c9e26c2427f7da53b4e0d6c",
         "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
         "src/i18n/he.ts": "879553b561caa3b877de144084d07ce384ed3678f8d9df90968e60eb8f5c0d02",
-        "src/screens/tabs/ProfileScreen.tsx": "bab99a593bcc5c562da7d60c380cb832a44d559def7904285dc490801f6ec71e",
+        "src/screens/tabs/ProfileScreen.tsx": "49ed9cfe2b97265136b23a99d9b1d508a15b00368caae5d13474f4a43f1898de",
         "src/services/gameLifecycle.ts": "640b9e60010a9ae1215695cada37313eea79219a60b9fa7800e1b235704d950e",
         "src/services/gameService.ts": "d719dbddac7ca809457da1b1e4d4606287836fa00dd3a1ce4609e0536cf6155b",
         "src/types/index.ts": "503a6a4039500a421a91a5d200edf5734211bfceaed7de25d2da65bf22725603",
         "src/utils/eveningPlayed.ts": "d68d2824cf46b3f8ab5c714e1734392f89868d4feba880b5d321addda102117b",
         "src/utils/homeRoundState.ts": "86b10a3d7158d844e2d9f79c87e947fbb1ce8646c690ab77c9b1be02b9130748",
         "tests/logic/authTransientReads.test.ts": "2a6424e2acbde15b1a30a6921da666983fa3dfc06f8ea8f9b414d1af36a8a42b",
+        "tests/logic/experiencePolish.test.ts": "1f0c864f110889d0bdc7cb07a8481a4f21d8532b66034863f1d91926cbe6f2cd",
         "tests/logic/homeRoundState.test.ts": "7004199045cb20a3c505e5a269a8c8387bbbb2749c363d41907ee92e7c1e55b3",
         "tests/logic/homeRouting.test.ts": "b91bc0ee748bb11c9eb5686b933b7a47d43fccc447a2927dafbc5fe14a6ee075",
         "tests/logic/joinCtaCapacity.test.ts": "596db26c7838673258bbf42c262cfd2de830fb58e28662b9ff5521e637bd9c9c",
@@ -565,30 +570,30 @@
       "domain": "home",
       "technical": "home/tips-carousel.md",
       "simple": "home/tips-carousel.simple.md",
-      "capturedOn": "2026-10-27",
+      "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "הפעילות האישית וחיבור נתוני הספורט מוסתרים זמנית לקראת הגרסה הבאה. האפליקציה לא תבקש הרשאות מדידה ולא תתחיל סנכרון פעילות בגרסה הזאת. הנתונים שכבר נשמרו נשארים, והטיימר ונתוני הכדורגל הרגילים ממשיכים לפעול. השינוי מקומי וטרם הופץ; פרטים ומגבלות.",
-      "latestDatedSection": "2026-10-27",
+      "summary": "נבדקה השפעת שיפורי המשוב וההמשכיות במקור משותף. אין שינוי בפעולות העצמאיות של הפיצר הזה. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
+      "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "השבתת פעילות אישית לקראת הגרסה הבאה, 27.10.2026",
-        "השפעת תיקוני השיחה והחזרה, 27.10.2026"
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "שלדי טעינה בשלושה אזורים, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "נבדק השינוי הממוקד במקורות המשותפים: הכניסה לפעילות האישית וכרטיסי הפעילות מוסתרים לקראת הגרסה הבאה. מדידה, הרשאות ספורט וסנכרון הושבתו בשירותים, ללא שינוי בתוצאות הכדורגל או בפעולות הפיצר הזה. שינוי מקומי שטרם הופץ, ללא בדיקת מכשיר חדשה. היקף וראיות.",
-        "נבדקה השפעת השינוי הממוקד בקבצים המשותפים: מסך הבית מחבר כפתור לכרטיס השחקן העצמי ומדגים את העמוד הראשון בקרוסלת הסטטיסטיקה; כלי בדיקת רכיבי הבית הותאם לכפתור הנוסף. אין שינוי מכוון בחוזה העצמאי של הפיצר המתואר כאן. אין להסיק מכך שכל מצבי הפיצר הורצו מחדש. כל…",
-        "בקובץ הבית המשותף נוספה רק הכניסה ״כרטיס השחקן שלי״ לפני ארון התארים בתפריט. אין שינוי מכוון בהתנהגות העצמאית המתוארת כאן, ואין לראות בבדיקת התפריט אימות חדש של המסך או התהליך הזה. התוספת מקומית ואינה נכללת בבינארי הפנימי שכבר נבנה. מקור, בדיקות ומגבלות."
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: אישור אחרי הרשמה, מעבר אטימות, זיכרון תצוגה, הודעת עדכונים או ביטול ארכוב מותנה. אין שינוי מכוון בתנאי הרשאה, כתיבות, חישובים ומכנים של הפיצר העצמאי. בדיקת רישום ההרשמה הותאמה למתאם המשוב החדש, תוך שימור בדיקות המתנה…",
+        "נבדק ההפרש התחום במקורות המשותפים של הפיצר. השינוי מוסיף שלדים בזמן שאין תוכן מוכן וחיווי רענון כשיש תוכן, וכן ניסיון חוזר לטעינת מחזורי הבית. נשמרו בחירת העונה, מכנים, פעולות, ניווט וחישובי הפיצר העצמאי. אין מכך בדיקת מכשיר חדשה שלו. השינוי מקומי וטרם הופץ.…",
+        "נבדק השינוי הממוקד במקורות המשותפים: הכניסה לפעילות האישית וכרטיסי הפעילות מוסתרים לקראת הגרסה הבאה. מדידה, הרשאות ספורט וסנכרון הושבתו בשירותים, ללא שינוי בתוצאות הכדורגל או בפעולות הפיצר הזה. שינוי מקומי שטרם הופץ, ללא בדיקת מכשיר חדשה. היקף וראיות."
       ],
       "screens": [
         "src/screens/tabs/ProfileScreen.tsx"
       ],
       "documents": {
-        "home/tips-carousel.md": "5b6d59374caaec860ae2d1ad53314e257ba8ab74549e7cd14a7a5817f297d9bf",
-        "home/tips-carousel.simple.md": "decfc989ba3617b0931a5b594ec8d62abf1841c9ba6f9901f8a0a3cf8a79dc15"
+        "home/tips-carousel.md": "d9f5ffb4de5fd46a9420de9f03d356ee9b0295a72df6fbd9db5fb2c6e9c78c4f",
+        "home/tips-carousel.simple.md": "416bd40d33ec642fd15fdd1e8f9c16526777f79c02da029ffa9a6704601922fb"
       },
       "sources": {
         "src/components/home/DidYouKnowCard.tsx": "230620965eb356519d66a9efbce78fcc4724b0f929e9f8f1c13a6b492712adfe",
         "src/i18n/he.ts": "879553b561caa3b877de144084d07ce384ed3678f8d9df90968e60eb8f5c0d02",
-        "src/screens/tabs/ProfileScreen.tsx": "304f53bb0ae95124001d088926d42d07e4d5139ccec9762b9bc46cf9f5e18b29"
+        "src/screens/tabs/ProfileScreen.tsx": "49ed9cfe2b97265136b23a99d9b1d508a15b00368caae5d13474f4a43f1898de"
       },
       "missingDocumentedPaths": []
     },
@@ -799,29 +804,29 @@
       "simple": "profile/blocked-users.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
+      "summary": "נבדקה השפעת שיפורי המשוב וההמשכיות במקור משותף. אין שינוי בפעולות העצמאיות של הפיצר הזה. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
+        "המשכיות ומשוב בשימוש, 2.11.2026",
         "אימות פרסום קבוצות בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בקשות לשיחה אישית, 2.11.2026"
       ],
       "evidenceExcerpts": [
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: אישור אחרי הרשמה, מעבר אטימות, זיכרון תצוגה, הודעת עדכונים או ביטול ארכוב מותנה. אין שינוי מכוון בתנאי הרשאה, כתיבות, חישובים ומכנים של הפיצר העצמאי. בדיקת רישום ההרשמה הותאמה למתאם המשוב החדש, תוך שימור בדיקות המתנה…",
         "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
-        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…",
-        "דוח הטיפול, הבדיקות והמגבלות."
+        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…"
       ],
       "screens": [
         "src/screens/profile/BlockedUsersScreen.tsx"
       ],
       "documents": {
-        "profile/blocked-users.md": "4ff03f30c9cc7637b36aafc5218b6c79f218d6b2407060c9f50f710e5f0f96b4",
-        "profile/blocked-users.simple.md": "225c7fb4fa03185d8610240bd7ce5696ded9fcb842b2104751ae169c10b1e88c"
+        "profile/blocked-users.md": "e328c3cbbedd855992cd1850f9941a967dab05b689d5feb79ee0ebe7907cc275",
+        "profile/blocked-users.simple.md": "e0fab7232ba41ad0fd49efb280bc595535d21526e1894798a6837f72b795b0fa"
       },
       "sources": {
         "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
         "src/screens/profile/BlockedUsersScreen.tsx": "9f24ecd4b975a43f9a241e849c9604449e5a8abedbeea4c789f1fb8f2d0e40fc",
-        "src/services/chatService.ts": "475d0a28c7f1b7e32275fa5773b06b8cc7d1d8b8fafc7549f40f31d59957c371",
+        "src/services/chatService.ts": "7455cb46b01947c852b992d173b537053404e04781629010a47f0f4b5d89db8c",
         "src/services/gameService.ts": "d719dbddac7ca809457da1b1e4d4606287836fa00dd3a1ce4609e0536cf6155b",
         "src/types/index.ts": "503a6a4039500a421a91a5d200edf5734211bfceaed7de25d2da65bf22725603",
         "tests/logic/authTransientReads.test.ts": "2a6424e2acbde15b1a30a6921da666983fa3dfc06f8ea8f9b414d1af36a8a42b",
@@ -887,31 +892,33 @@
       "simple": "profile/friends.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
+      "summary": "נבדקה השפעת תיקוני ההמשכיות במקור המשותף ובבדיקות. ההתנהגות העצמאית והחישובים של הפיצר נשמרו. מקומי וטרם הופץ. שחזור, תיקונים, בדיקות ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "אימות פרסום קבוצות בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בדיקת קצה ואימות מקורי, 2.11.2026",
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "הרחבת שלדי הטעינה, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
-        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…",
-        "דוח הטיפול, הבדיקות והמגבלות."
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: תיקוני מדידת גלילה, שימור נתוני סגל בכשל נלווה, הפרדת מצב שיחות וכיוון קיצור ההודעות. כלי הבדיקה החדש מוגבל לשלושת שערי ההדגמה ואינו משנה נתיב מוצר. אין שינוי מכוון בתנאי הרשאות, בחישובים, במכנים או בכתיבות העסקיות…",
+        "בדיקות התנהגות חדשות: tests/logic/experiencePolish.test.ts. האימות החזותי כולל אזורי מקור עם נתוני הדגמה ומתאמי דפדפן בלבד, ללא אימות מכשיר או מסד. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
+        "src/screens/profile/FriendsScreen.tsx מוסיף loadedScope לפי מזהה חשבון ומצב אורח. סמן התשובה נכתב אחרי שלוש קריאות החברים והבקשות, ונבדק יחד עם displayedOwner ב-initialLoading. כך גם רשימה ריקה שכבר אושרה נשארת ברענון. הקשר אחר מציג שלד לפני אפקט המיקוד.…"
       ],
       "screens": [
         "src/screens/profile/FriendsScreen.tsx"
       ],
       "documents": {
-        "profile/friends.md": "75a3bea449b7a0710f8dc4043c4be5621e1ef871321b58091d7222b23ed17dc3",
-        "profile/friends.simple.md": "736e0f771eb4b88b9a057605cc5225e636382ccdde51b1e8c301089506a4669f"
+        "profile/friends.md": "970c59826004acf6d1d4ce25d554ff14fc2e24444d8fd39f3d5ed70534766eee",
+        "profile/friends.simple.md": "e3c22c361f0759519f7823ec194202f864efc1c9edf5b04787f5ef35f587af02"
       },
       "sources": {
         "src/components/games/FriendsInvitePicker.tsx": "1eb3b0203740f9108e827ab5e0d461466f10932f44260ede7db8c964ecb707e6",
+        "src/components/loading/PageSkeletons.tsx": "261224d0a239fcc9d5bf0a50861c4f3dc024d5995f1aaa3b677c35faa3cb8002",
+        "src/components/loading/ScreenSkeletons.tsx": "cb480f4a1a245ae6c17d642a647b6fd9ab84e5e88b8f298a1504c31c59dbda9b",
         "src/components/profile/FriendActionButton.tsx": "750d813eb0412123c6f550338dd3ed8d2c11acc83d24087521ef68d0ed401f5b",
         "src/components/social/InvitationCard.tsx": "4630a9450e4252361f67128362bbfa961222348e090026332544cca2bb81bdee",
         "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
-        "src/screens/profile/FriendsScreen.tsx": "0298decd2974c8942e8cbf03fc12d8ec77e34184081d9c1bca7fbb8b948f4f0e",
+        "src/screens/profile/FriendsScreen.tsx": "034b7530e8f5117622bdc52dacf1cd26a4e64e5a823ffea0d5d1e76705201e56",
         "src/services/availabilityFeedService.ts": "9fb5b71f1a07f1804be693007b56b4511956df63fd7446ffa4bf5a98406e6808",
         "src/services/clubAdminRatings.ts": "442c08a60d53a5c745aeefba84559fdf41c97636cfe58a06af98b7b293278661",
         "src/services/clubFriendsService.ts": "5974d24e9fb3b9b9a5aeed61e82b2760a3d295fe0594a7493e02e8a1b20c75b1",
@@ -921,9 +928,11 @@
         "src/services/readRetry.ts": "b10cd4c90fe6ba7f40ccdb0e050609ba77ad7891836c8fd28e9c4511c8f3afd0",
         "src/types/index.ts": "503a6a4039500a421a91a5d200edf5734211bfceaed7de25d2da65bf22725603",
         "tests/logic/authTransientReads.test.ts": "2a6424e2acbde15b1a30a6921da666983fa3dfc06f8ea8f9b414d1af36a8a42b",
+        "tests/logic/experiencePolish.test.ts": "1f0c864f110889d0bdc7cb07a8481a4f21d8532b66034863f1d91926cbe6f2cd",
         "tests/logic/friendPickerGuest.test.ts": "f702678186336a0cc2f15124b57a57b27f894519f380e1940ed85e5f05e75e85",
-        "tests/logic/friendsLoadOrder.test.ts": "4431e16aab7a80d340aa7134f0242f0afb3c00148c3bb051cef4b27e349a8d8f",
+        "tests/logic/friendsLoadOrder.test.ts": "cd6422e214ddf4220dd838b9f755cf13aca39d8bd5f2a14981dcca5c3a1c0c39",
         "tests/logic/friendsOwnerIsolation.test.ts": "4e112dd725cfe9c599483f97b3535401239c77447bfe0a023852bad03b80a37f",
+        "tests/logic/pageSkeletonLoading.test.ts": "a2ffa685029dff6fd8d3696a67d77d7d66db2858f5041912455dab8838ea0e55",
         "tests/logic/playerDiscoveryPagination.test.ts": "d96f0aa27b0d81cd0af1e0fdde8289c2fadbb585d66fb37f9e11882d94a4f44e",
         "tests/logic/publicPlayerRead.test.ts": "e2e8a4fb24e8f6f97aad0fa2d15589ad28daa412a4035dae757b6898bb027bfa",
         "tests/logic/publishTeamsReceipt.test.ts": "3d35a7f7c2318805504915bdd64494f6cba031df1413095b55e863baaab836f8",
@@ -994,26 +1003,28 @@
       "simple": "profile/personal-history.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
+      "summary": "ארבעת כרטיסי ההמתנה בהיסטוריה משתמשים בפעימה אחידה שמכבדת צמצום תנועה. הודעת טעינה מופיעה מתחתיהם. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
+        "הרחבת שלדי הטעינה, 2.11.2026",
         "אימות פרסום קבוצות בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בקשות לשיחה אישית, 2.11.2026"
       ],
       "evidenceExcerpts": [
+        "בסיס השלדים הוא src/components/loading/ScreenSkeletons.tsx: פעימה שמכבדת צמצום תנועה, הודעה אחרי ארבע שניות, ניקוי בעזיבה וצורות שאינן מקבלות מיקוד. אין בכך אימות מכשיר, תנועה אמיתית או חיבור למסד. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
         "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
-        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…",
-        "דוח הטיפול, הבדיקות והמגבלות."
+        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…"
       ],
       "screens": [
         "src/screens/tabs/HistoryScreen.tsx"
       ],
       "documents": {
-        "profile/personal-history.md": "cc3ae61431da67632393fa6e0264c48e29df9fd3e2b5f7ff600ac74a8b4b6e39",
-        "profile/personal-history.simple.md": "5dd3b36c4d6a3221bef11e24f2824aa3b15677ddfcc37428e09e53a3d82aab64"
+        "profile/personal-history.md": "993d54b2ed7b6c57740d94fd110f9c2faf2f1fed114070bafa3bc92e91ffbd7b",
+        "profile/personal-history.simple.md": "d526c79be55751860f73f9bde95f468d2c2e3738e31ab9e565abc8d894605fa9"
       },
       "sources": {
+        "src/components/anim/MatchCardSkeleton.tsx": "858cadcdf279c0f5d261cd1d830b810e8b2fa23eea5a676b1d3440465caf21f2",
+        "src/components/loading/ScreenSkeletons.tsx": "cb480f4a1a245ae6c17d642a647b6fd9ab84e5e88b8f298a1504c31c59dbda9b",
         "src/components/match/CommunityHistoryRow.tsx": "69e06c0af914d2782b92bee17262f0fe43b84c7b15a11a159434ba4f6a01303b",
         "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
         "src/screens/tabs/HistoryScreen.tsx": "0df5df1d2cb252e6c0fc193b4c2ca150d51bfc4c09ec9a7213899da8a1bdd7a7",
@@ -1036,24 +1047,24 @@
       "simple": "profile/player-card.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
+      "summary": "נבדקה השפעת שיפורי המשוב וההמשכיות במקור משותף. אין שינוי בפעולות העצמאיות של הפיצר הזה. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
+        "המשכיות ומשוב בשימוש, 2.11.2026",
         "אימות פרסום קבוצות בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בקשות לשיחה אישית, 2.11.2026"
       ],
       "evidenceExcerpts": [
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: אישור אחרי הרשמה, מעבר אטימות, זיכרון תצוגה, הודעת עדכונים או ביטול ארכוב מותנה. אין שינוי מכוון בתנאי הרשאה, כתיבות, חישובים ומכנים של הפיצר העצמאי. בדיקת רישום ההרשמה הותאמה למתאם המשוב החדש, תוך שימור בדיקות המתנה…",
         "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
-        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…",
-        "דוח הטיפול, הבדיקות והמגבלות."
+        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…"
       ],
       "screens": [
         "src/screens/players/PlayerCardScreen.tsx"
       ],
       "documents": {
-        "profile/player-card.md": "92ac6212f1316eac76f9c582627c925116cd495da238944de411695eb5fc90e0",
-        "profile/player-card.simple.md": "2c42888252d38a5318839f05ead6e110cc8fc468d7728c8ef0ed03e8200b03f4"
+        "profile/player-card.md": "b282ae26ffbb4d34bee061c2150415a95c6273c1a44fc12c9b836daf07d679f7",
+        "profile/player-card.simple.md": "fae38a5f08370a0759963a95d4e084a25ebc680b133bd46632efe423af9ba37f"
       },
       "sources": {
         "functions/src/clubDeletion.ts": "9b87f76c8343e551f6b114f90b66667cb1f87eed020b8aa6e357a43f685c0b62",
@@ -1074,7 +1085,7 @@
         "src/screens/players/PlayerCardScreen.tsx": "b2b604e9d10ed7108970ed5e042cdfc2da3d60a123e268a366f58af1bd044dab",
         "src/services/achievementsService.ts": "8ce6f1dc8ed0be66081128b736aa5e858b0dd4db9111f3b0638548e164e35c5a",
         "src/services/availabilityFeedService.ts": "9fb5b71f1a07f1804be693007b56b4511956df63fd7446ffa4bf5a98406e6808",
-        "src/services/chatService.ts": "475d0a28c7f1b7e32275fa5773b06b8cc7d1d8b8fafc7549f40f31d59957c371",
+        "src/services/chatService.ts": "7455cb46b01947c852b992d173b537053404e04781629010a47f0f4b5d89db8c",
         "src/services/clubAdminRatings.ts": "442c08a60d53a5c745aeefba84559fdf41c97636cfe58a06af98b7b293278661",
         "src/services/clubFriendsService.ts": "5974d24e9fb3b9b9a5aeed61e82b2760a3d295fe0594a7493e02e8a1b20c75b1",
         "src/services/comparisonActivityService.ts": "bc088bbb04f5684e428e265e5f328f6b32ba1cbed20ab07cf56478e983eb9670",
@@ -1432,24 +1443,24 @@
       "simple": "clubs/details.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
+      "summary": "נבדקה השפעת תיקוני ההמשכיות במקור המשותף ובבדיקות. ההתנהגות העצמאית והחישובים של הפיצר נשמרו. מקומי וטרם הופץ. שחזור, תיקונים, בדיקות ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "אימות פרסום קבוצות בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בדיקת קצה ואימות מקורי, 2.11.2026",
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "הרחבת שלדי הטעינה, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
-        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…",
-        "דוח הטיפול, הבדיקות והמגבלות."
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: תיקוני מדידת גלילה, שימור נתוני סגל בכשל נלווה, הפרדת מצב שיחות וכיוון קיצור ההודעות. כלי הבדיקה החדש מוגבל לשלושת שערי ההדגמה ואינו משנה נתיב מוצר. אין שינוי מכוון בתנאי הרשאות, בחישובים, במכנים או בכתיבות העסקיות…",
+        "בדיקות התנהגות חדשות: tests/logic/experiencePolish.test.ts. האימות החזותי כולל אזורי מקור עם נתוני הדגמה ומתאמי דפדפן בלבד, ללא אימות מכשיר או מסד. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
+        "מציגי הטעינה החדשים נמצאים ב-src/components/loading/PageSkeletons.tsx; תרחישי המתנה ובעלות נבדקים ב-tests/logic/pageSkeletonLoading.test.ts."
       ],
       "screens": [
         "src/screens/communities/CommunityDetailsScreen.tsx"
       ],
       "documents": {
-        "clubs/details.md": "d930d9e5d0b39d306117dcd40a792398838f7252efa64a19eabfc3e225e800c3",
-        "clubs/details.simple.md": "a8c241a603c41fe4d928bf6b0e4f86443376d6c10405af4bba6419d3dde31b73"
+        "clubs/details.md": "018d74976a1ecd0a9bfeb4c67abbc78bc317f2979046fce3a0e958a48281b344",
+        "clubs/details.simple.md": "cb6e84546378f178262e7bd983d4e5ba2427d9d553431c6488771d288720f4bf"
       },
       "sources": {
         "functions/src/clubDeletion.ts": "9b87f76c8343e551f6b114f90b66667cb1f87eed020b8aa6e357a43f685c0b62",
@@ -1467,9 +1478,11 @@
         "src/components/community/RichRulesText.tsx": "7b874071edf7555d53b1e3806cc4b971b0260aefb919d9b7eda7b165a6d20650",
         "src/components/community/SeasonsCard.tsx": "bb39c2fe1e462f1025d1df98e592ffdbfaeb75a4ad609dd66e969307efefff55",
         "src/components/community/UnverifiedEveningsCard.tsx": "0ac59547c021215ad851028ce272a66e0a4165d2f08246071cf35bb4330c4fff",
+        "src/components/loading/PageSkeletons.tsx": "261224d0a239fcc9d5bf0a50861c4f3dc024d5995f1aaa3b677c35faa3cb8002",
+        "src/components/loading/ScreenSkeletons.tsx": "cb480f4a1a245ae6c17d642a647b6fd9ab84e5e88b8f298a1504c31c59dbda9b",
         "src/data/clubAchievements.ts": "bb6e7fc876aac5f42dcb8be7874de15d43aa6312001baffe6734a173941dcc51",
         "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
-        "src/screens/communities/CommunityDetailsScreen.tsx": "71417109ad1c28d412da6022236ad710e69e526ee134f231fd338b7583237aac",
+        "src/screens/communities/CommunityDetailsScreen.tsx": "869ad09f14a5c9d319a79bd1bcc04179c6fb649bc8fd3239693adf62d4adeb06",
         "src/services/gameService.ts": "d719dbddac7ca809457da1b1e4d4606287836fa00dd3a1ce4609e0536cf6155b",
         "src/services/groupService.ts": "03fb4d90d4c4927065a644f2b89428b2f5c5df1807dae25fbdbf40624a2899af",
         "src/services/seasonSummaryService.ts": "18773b6a23d256ead37ccd0796df4759d53c66ca7d30d298109ec55ffcd843fa",
@@ -1483,8 +1496,10 @@
         "tests/logic/clubDeletionClient.test.ts": "e92d8a7c3c9f0004bc37850198969d19dec0021471be71e8ab3152c0878ca0c1",
         "tests/logic/clubNextGameCard.test.tsx": "db736a581161618261c5accfe4f91e8f4dfa4b3b07807a62044ab32e5ff0f311",
         "tests/logic/communitySeasonRefresh.test.ts": "d27761ea129c5576ac2d6d2b00e062fe36b0cae812bc4feab5763cfa74a80087",
+        "tests/logic/experiencePolish.test.ts": "1f0c864f110889d0bdc7cb07a8481a4f21d8532b66034863f1d91926cbe6f2cd",
         "tests/logic/finalCommunityTotalsLabel.test.ts": "fd7cd431c91eb8b01f0fd352a47dc369a4a558dd84abcd7ca629af59ad70f9ae",
         "tests/logic/finalStatsAuditCommunityRead.test.ts": "afaa9c4d226641712ef5f66d7b1ced862f37ca04b0155239ff299c93ff19424a",
+        "tests/logic/pageSkeletonLoading.test.ts": "a2ffa685029dff6fd8d3696a67d77d7d66db2858f5041912455dab8838ea0e55",
         "tests/logic/publishTeamsReceipt.test.ts": "3d35a7f7c2318805504915bdd64494f6cba031df1413095b55e863baaab836f8",
         "tests/logic/seasonReadConsistency.test.ts": "319cd683a2ea9d8841ee20b0b4dc17f8de7dadc5c256935152ffc39ab9143e92",
         "tests/scrollStaleMomentum.test.ts": "1cef72b4fbe2dd3f78479d2da0c55e0f520a9dec52f6ea61f1844b893c074e01"
@@ -1610,24 +1625,24 @@
       "simple": "clubs/members-and-administration.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
+      "summary": "כשל זמני בנתוני הפעילות או בכרטיסים אינו מוחק נתונים שכבר הגיעו. מוצגת הודעה שחלק מהנתונים חסרים ואפשר לנסות שוב. גם שחזור מקום בסגל הוקשח. מקומי וטרם הופץ. שחזור, תיקונים, בדיקות ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "אימות פרסום קבוצות בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בדיקת קצה ואימות מקורי, 2.11.2026",
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "שלדי טעינה בשלושה אזורים, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
-        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…",
-        "דוח הטיפול, הבדיקות והמגבלות."
+        "src/hooks/useCommunityRoster.ts מסמן כשל בפרטים נלווים בנפרד מהצלחת קריאת החברים. סטטיסטיקה וכרטיסים שאושרו קודם נשמרים באותו הקשר כשקריאת ההמשך נכשלת. בקריאה ראשונה נתון פעילות לא ידוע נשאר null, ולא מוחלף במפה ריקה כאילו התקבלה תשובה. מצב failed מאפשר…",
+        "הבדיקות ב-tests/logic/experiencePolish.test.ts וב-tests/logic/communityRosterLoading.test.ts כוללות תזמון מדידות, תוצאות קצרות וריקות, ביטול שחזור בגרירה, שימור נתון מאושר בכשל והפרדת הקשרים. צילום מקורי אינו אימות שרת או גרסת חנות. מקומי וטרם הופץ. שחזור,…",
+        "בדיקות התנהגות חדשות: tests/logic/experiencePolish.test.ts. האימות החזותי כולל אזורי מקור עם נתוני הדגמה ומתאמי דפדפן בלבד, ללא אימות מכשיר או מסד. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות."
       ],
       "screens": [
         "src/screens/communities/CommunityPlayersScreen.tsx"
       ],
       "documents": {
-        "clubs/members-and-administration.md": "0bbe17709c4da758a3ccc09fb9ae66b9934d65b90cf7ba987326f5897f057867",
-        "clubs/members-and-administration.simple.md": "d333c0cd71d178d1a0a1258fdfd6ec65918f7d27ead53007a4880fd76b897ca3"
+        "clubs/members-and-administration.md": "8042a15682b4f9047d5942dc142cb2a482e45f506ba30fd3e285593142564937",
+        "clubs/members-and-administration.simple.md": "a39cdc9f0ed6b94178574a952f8cc118c38dc35e2a365480878dc7b96d910618"
       },
       "sources": {
         "functions/src/clubDeletion.ts": "9b87f76c8343e551f6b114f90b66667cb1f87eed020b8aa6e357a43f685c0b62",
@@ -1638,7 +1653,8 @@
         "src/components/AdminRatingSheet.tsx": "5b154efb54ffbc71beeea74303edea06195ec0fe2b0a4996fb3ce2e55dd75643",
         "src/components/UserAvatar.tsx": "7000dd63ff44cfb7be171a4a4d2eb88831fd048b946c737c549a34c041bfb8c0",
         "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
-        "src/screens/communities/CommunityPlayersScreen.tsx": "1becd05d83431bced0d92b2206290ca881fecda4f311a97d8bce66a36a3349d7",
+        "src/hooks/useCommunityRoster.ts": "2c7be628d91f39fab70fcdfbb74170649a1e3c0875d9be061f160f936d9e63b2",
+        "src/screens/communities/CommunityPlayersScreen.tsx": "c5f48563587bcab65c40f8d3c5643c3052bc6b3d6dd1e530633cd8613dd13b92",
         "src/services/communityEventsService.ts": "14900639d7100b45f3f37efe183c59d9d09e1d7bbb0f238ef0924daa345b7a55",
         "src/services/gameService.ts": "d719dbddac7ca809457da1b1e4d4606287836fa00dd3a1ce4609e0536cf6155b",
         "src/services/groupService.ts": "03fb4d90d4c4927065a644f2b89428b2f5c5df1807dae25fbdbf40624a2899af",
@@ -1647,7 +1663,9 @@
         "tests/logic/authTransientReads.test.ts": "2a6424e2acbde15b1a30a6921da666983fa3dfc06f8ea8f9b414d1af36a8a42b",
         "tests/logic/clubDeletion.test.ts": "ee99b364dfe21e919ca5edca06c19ce9727a080586f97cfcb47a40cdd74cd269",
         "tests/logic/clubDeletionClient.test.ts": "e92d8a7c3c9f0004bc37850198969d19dec0021471be71e8ab3152c0878ca0c1",
-        "tests/logic/profileIdentityLoading.test.ts": "3905af020e7f30c9ef99ff74aec20e045233bfaea28600eaecd57e11ed21ee2d",
+        "tests/logic/communityRosterLoading.test.ts": "0f183d289df0d4388694651d5d51922ad09f1a224c1f566b07095316a9c53eb1",
+        "tests/logic/experiencePolish.test.ts": "1f0c864f110889d0bdc7cb07a8481a4f21d8532b66034863f1d91926cbe6f2cd",
+        "tests/logic/profileIdentityLoading.test.ts": "5a265438ab62624e8c9baac7e51ca3219f0135a457f1afa182eff4ca1f416833",
         "tests/logic/publishTeamsReceipt.test.ts": "3d35a7f7c2318805504915bdd64494f6cba031df1413095b55e863baaab836f8",
         "tests/scrollStaleMomentum.test.ts": "1cef72b4fbe2dd3f78479d2da0c55e0f520a9dec52f6ea61f1844b893c074e01"
       },
@@ -1896,31 +1914,31 @@
       "domain": "rounds",
       "technical": "rounds/add-members.md",
       "simple": "rounds/add-members.simple.md",
-      "capturedOn": "2026-10-27",
+      "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "הדיווחים יוכלו לכלול מה ניסו לבצע, מה היה מצב האפליקציה ומה החזיר השרת. פרטים חסרים מוצגים כלא ידועים, ומספר מוגבל של מופעים נשמר בלי למחוק את המופע הראשון. השינוי מקומי וטרם הופץ, ואינו משלים פרטים לדיווחים ישנים. היקף, ראיות ומגבלות.",
-      "latestDatedSection": "2026-10-27",
+      "summary": "עודכנה בדיקת רקע משותפת לטעינת נתונים. אין שינוי בפעולות או בתצוגה העצמאית של הפיצר הזה. השינוי מקומי וטרם הופץ. מימוש, בדיקות, צילומים ומגבלות.",
+      "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "הרחבת אבחון דיווחים, 27.10.2026"
+        "שלדי טעינה בשלושה אזורים, 2.11.2026"
       ],
       "evidenceExcerpts": [
+        "עודכנה נקודת הכניסה של תרחיש הסגל ב-tests/logic/profileIdentityLoading.test.ts, לאחר שמסלול הטעינה הועבר לרכיב משותף. תרחיש הסגל מפעיל כעת גם את בדיקת המיקוד והבעלות בתחילת טעינה. תרחישי המשחקים וההוספה נשארו פעילים באותה בדיקה: שינוי שם, תמונה או נתון…",
         "נוספה מעטפת אבחון מקומית עם מצב בזמן הכשל, שלבים בעלי מזהה ותזמון, מצב רשת ובנייה ומופעים נפרדים לשגיאה. נקודת הכניסה לתעבורת השרת עוברת כעת דרך העטיפה המשותפת; תשובות, חריגות, אפשרויות קריאה ומדיניות הפיצר נשמרות. אין כאן שינוי בהרשאות או בחישובי המוצר.…",
-        "באימות הסופי עברו כל 6,231 הבדיקות ב-555 חבילות, ובדיקות הטיפוסים של הלקוח, השרת והפולס נקיות. צילום הדפדפן והידור מקורות האנדרואיד הם בדיקות מקומיות; אין הוכחת מכשיר, הידור אייפון או מסירה חיה של הבנייה החדשה. רישום יומן השחרור נחשב מאומת רק לפי קבלת הקריאה…",
-        "במקורות המשותפים נוסף שימור השעון המדויק של פנדל במהלך משחק, וכיתוב ההבקעה ביומן קוצר. אין שינוי במונים או בתהליך העצמאי המתואר כאן; לא נערכה לו בדיקת ממשק חדשה במסגרת העדכון. השינוי מקומי וטרם הופץ. פרטים וראיות."
+        "באימות הסופי עברו כל 6,231 הבדיקות ב-555 חבילות, ובדיקות הטיפוסים של הלקוח, השרת והפולס נקיות. צילום הדפדפן והידור מקורות האנדרואיד הם בדיקות מקומיות; אין הוכחת מכשיר, הידור אייפון או מסירה חיה של הבנייה החדשה. רישום יומן השחרור נחשב מאומת רק לפי קבלת הקריאה…"
       ],
       "screens": [
         "src/screens/games/AddMembersScreen.tsx"
       ],
       "documents": {
-        "rounds/add-members.md": "bd5c5f2cd201dfc1050a221c5869d96d98cef7267e328f3a264c85bb8484639a",
-        "rounds/add-members.simple.md": "53712554e04b69cbf544b70c1a947ade6732a5242441014688071394878153c4"
+        "rounds/add-members.md": "dc09973b549e4fa1a52a2a44e015f131d1b120f1a2dce1e7967c8a93e02abc26",
+        "rounds/add-members.simple.md": "a15e984edcb2da8ce11ca218a6dec3c4d7f3ba205284751dfd4274d1c2032560"
       },
       "sources": {
-        "src/firebase/firestore.ts": "f27ee78b297cb27a98f2aafbae5df15a3372bfdda6dbce88f9de6bae5d18587d",
-        "src/navigation/GameStack.tsx": "709f45ce866b0e742129a9858629cf206d70ae88778b968abf75d911bbc2621e",
+        "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
+        "src/navigation/GameStack.tsx": "a33f33df3685892060762712a08331042d66a2b891c9af7a23d328e4df504283",
         "src/screens/games/AddMembersScreen.tsx": "4ca54a7de3fc1a7d15a6b293f3926b4b43e02726bffd985e9535ae9e7aa3b243",
-        "src/types/index.ts": "04aa7a3a4e055954121ddb2dad0c7ccd4176020be3667f75638ac88f4df07129",
-        "tests/logic/profileIdentityLoading.test.ts": "3905af020e7f30c9ef99ff74aec20e045233bfaea28600eaecd57e11ed21ee2d"
+        "src/types/index.ts": "503a6a4039500a421a91a5d200edf5734211bfceaed7de25d2da65bf22725603",
+        "tests/logic/profileIdentityLoading.test.ts": "5a265438ab62624e8c9baac7e51ca3219f0135a457f1afa182eff4ca1f416833"
       },
       "missingDocumentedPaths": []
     },
@@ -2117,24 +2135,24 @@
       "simple": "rounds/fillers.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
+      "summary": "עודכנה בדיקת רקע משותפת לטעינת נתונים. אין שינוי בפעולות או בתצוגה העצמאית של הפיצר הזה. השינוי מקומי וטרם הופץ. מימוש, בדיקות, צילומים ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
+        "שלדי טעינה בשלושה אזורים, 2.11.2026",
         "אימות פרסום קבוצות בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בקשות לשיחה אישית, 2.11.2026"
       ],
       "evidenceExcerpts": [
+        "עודכנה נקודת הכניסה של תרחיש הסגל ב-tests/logic/profileIdentityLoading.test.ts, לאחר שמסלול הטעינה הועבר לרכיב משותף. תרחיש הסגל מפעיל כעת גם את בדיקת המיקוד והבעלות בתחילת טעינה. תרחישי המשחקים וההוספה נשארו פעילים באותה בדיקה: שינוי שם, תמונה או נתון…",
         "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
-        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…",
-        "דוח הטיפול, הבדיקות והמגבלות."
+        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…"
       ],
       "screens": [
         "src/screens/AdvancedLiveMatchScreen.tsx"
       ],
       "documents": {
-        "rounds/fillers.md": "291905ecd3beeb82e91b925dbfba478d70aa769f9c571610e3c0e1289e2a1593",
-        "rounds/fillers.simple.md": "1d8caae0ab0a5a4ff0e942d164f79adb711acced0ded20cec37709163bcae805"
+        "rounds/fillers.md": "90d9258afdf1f9b2a919f79e2d39d5c5f0cf4a67c6ba52ddfc5fada714d1fbf3",
+        "rounds/fillers.simple.md": "ac3eb9b2ae57249ac943bf26c079f29a99d9da5f844974106e980efdfde982ef"
       },
       "sources": {
         "functions/src/fillerRules.ts": "295fbefe91190caaef3698e854225de98787020dd32d84fc96c6b58b4eabfb22",
@@ -2161,7 +2179,7 @@
         "tests/logic/finalGoalAuditLegacyRestore.test.ts": "86d17cd5170a911064ef549b1fb4536284d57c36a82fd39013c236c51736a5a0",
         "tests/logic/finalGoalAuditRefill.test.ts": "0b7f07957e0a66c2918fe731951d489682332323c0973f5cff6b947aa1c07ea0",
         "tests/logic/finalRosterAudit.test.ts": "ca79b83fe6b16d68a1ac9d20634f4800d619acf94f67bb41ba2e4be4eb0d436f",
-        "tests/logic/profileIdentityLoading.test.ts": "3905af020e7f30c9ef99ff74aec20e045233bfaea28600eaecd57e11ed21ee2d",
+        "tests/logic/profileIdentityLoading.test.ts": "5a265438ab62624e8c9baac7e51ca3219f0135a457f1afa182eff4ca1f416833",
         "tests/logic/publishTeamsReceipt.test.ts": "3d35a7f7c2318805504915bdd64494f6cba031df1413095b55e863baaab836f8",
         "tests/logic/sequentialFillDesign.test.ts": "4e20bb20d1f2141a08cd552e9f481eb749f430f0cc1fada88a6ff97bfcb9e3fd"
       },
@@ -2292,24 +2310,24 @@
       "simple": "rounds/games-list.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
+      "summary": "מקום הגלילה אינו מוחלף בגובה שלד הטעינה. המסננים והכרטיסים ממשיכים במסלוליהם הקיימים. מקומי וטרם הופץ. שחזור, תיקונים, בדיקות ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "אימות פרסום קבוצות בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בדיקת קצה ואימות מקורי, 2.11.2026",
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "הרחבת שלדי הטעינה, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
-        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…",
-        "דוח הטיפול, הבדיקות והמגבלות."
+        "useRememberedScroll מבחין בין גאומטריית השלד לתוכן המוכן. מעבר או הקשר חדש ממתינים לשני פריימים כדי לא להחליף מיקום במדידה קודמת, בלי לעכב את הצגת התוכן. ברשימה וירטואלית מועבר גם מספר הפריטים, ומצביע onViewableItemsChanged מאשר שהפריט האחרון באמת נראה לפני…",
+        "הבדיקות ב-tests/logic/experiencePolish.test.ts וב-tests/logic/communityRosterLoading.test.ts כוללות תזמון מדידות, תוצאות קצרות וריקות, ביטול שחזור בגרירה, שימור נתון מאושר בכשל והפרדת הקשרים. צילום מקורי אינו אימות שרת או גרסת חנות. מקומי וטרם הופץ. שחזור,…",
+        "בדיקות התנהגות חדשות: tests/logic/experiencePolish.test.ts. האימות החזותי כולל אזורי מקור עם נתוני הדגמה ומתאמי דפדפן בלבד, ללא אימות מכשיר או מסד. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות."
       ],
       "screens": [
         "src/screens/games/GamesListScreen.tsx"
       ],
       "documents": {
-        "rounds/games-list.md": "7d085e7a1f9d8634be650685a0553930497c8440874318fad63775b7ac7e0ea9",
-        "rounds/games-list.simple.md": "8d64bdf8bee0a1aa6aca2f4c47d630e54a3a053100f645db6ba283662759233c"
+        "rounds/games-list.md": "e075a53ac92923b9f5713ba561a2f977b6a505839ab3c787667676ffc491fadf",
+        "rounds/games-list.simple.md": "608712cc6de36e5994f15a2f60cc8383a9170b04bc512d1dc3679ecb02424aed"
       },
       "sources": {
         "functions/src/clubDeletion.ts": "9b87f76c8343e551f6b114f90b66667cb1f87eed020b8aa6e357a43f685c0b62",
@@ -2318,11 +2336,14 @@
         "functions/src/personalActivity.ts": "bebfdfa30115973936a5cdb257cea4ce9800fbbe4dba0c7c0675ec33bf96ea0c",
         "functions/src/socialPlayers.ts": "c4e02a689f696aace64cd0f5ed7d7debb2e2d30d6ff7de7e56cdb0356a035b21",
         "src/assets/images/roundCovers/manifest.json": "af14a4a15851e4b4a78dc9e9e2dd1ccd0c486cd461360d9fcb3930c414dda6a0",
+        "src/components/anim/MatchCardSkeleton.tsx": "858cadcdf279c0f5d261cd1d830b810e8b2fa23eea5a676b1d3440465caf21f2",
+        "src/components/loading/ScreenSkeletons.tsx": "cb480f4a1a245ae6c17d642a647b6fd9ab84e5e88b8f298a1504c31c59dbda9b",
+        "src/components/match/MatchListCard.tsx": "b08f7f1205bad3db7989ab44321b2b8567a6e214db983cf81b60666d74d5648c",
         "src/data/roundCover.ts": "85532d2f9f72e06b18965c04738096cea8eee85a63624372d4cc25b23c11e46d",
         "src/data/roundSurfaceCovers.ts": "2e7ebc6512d508bec73c182a10d1f3486070eb592c9e26c2427f7da53b4e0d6c",
         "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
         "src/navigation/GameStack.tsx": "a33f33df3685892060762712a08331042d66a2b891c9af7a23d328e4df504283",
-        "src/screens/games/GamesListScreen.tsx": "31a6a704195d5a3401451cdd77f38142b1f90680c049bee5e72b4acc84483b6f",
+        "src/screens/games/GamesListScreen.tsx": "6fdc071a86edfe6eea220a667a8593b46d927fdcc282310df45fec1e02cdeb4c",
         "src/services/gameService.ts": "d719dbddac7ca809457da1b1e4d4606287836fa00dd3a1ce4609e0536cf6155b",
         "src/services/groupService.ts": "03fb4d90d4c4927065a644f2b89428b2f5c5df1807dae25fbdbf40624a2899af",
         "src/services/seriesService.ts": "eb24dac61bcfdea1d02868b3476cbcae132ba0af95014d84a6f01266dc9f5568",
@@ -2331,6 +2352,8 @@
         "tests/logic/authTransientReads.test.ts": "2a6424e2acbde15b1a30a6921da666983fa3dfc06f8ea8f9b414d1af36a8a42b",
         "tests/logic/clubDeletion.test.ts": "ee99b364dfe21e919ca5edca06c19ce9727a080586f97cfcb47a40cdd74cd269",
         "tests/logic/clubDeletionClient.test.ts": "e92d8a7c3c9f0004bc37850198969d19dec0021471be71e8ab3152c0878ca0c1",
+        "tests/logic/communityRosterLoading.test.ts": "0f183d289df0d4388694651d5d51922ad09f1a224c1f566b07095316a9c53eb1",
+        "tests/logic/experiencePolish.test.ts": "1f0c864f110889d0bdc7cb07a8481a4f21d8532b66034863f1d91926cbe6f2cd",
         "tests/logic/myGamesReadCoalescing.test.ts": "396eb8ea4e1e8a0891389ed1a6b35a1cc93060a1bc3509d67b350ceb6ec3a443",
         "tests/logic/publishTeamsReceipt.test.ts": "3d35a7f7c2318805504915bdd64494f6cba031df1413095b55e863baaab836f8",
         "tests/logic/pulse23ExpectedConditions.test.ts": "8bd0fb2d7774d48e56854d9c7ba5b49477c34ce4434b5cc5398845cb8cca9cff",
@@ -2381,17 +2404,17 @@
       "simple": "rounds/live-advanced.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "הדיווח הפתוח על שחקן שנעלם בחילוף נבדק מול התיקון הקיים: שחקן שהוחלף זמנית מוצג מחוץ למגרש, עם שם המחליף כשאפשר לזהותו. הוא אינו נמחק מהמחזור ואינו נספר בהרכב הפעיל. לא נוסף בסבב זה תיקון חדש למנגנון החילוף.",
+      "summary": "עודכנה בדיקת רקע משותפת לטעינת נתונים. אין שינוי בפעולות או בתצוגה העצמאית של הפיצר הזה. השינוי מקומי וטרם הופץ. מימוש, בדיקות, צילומים ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
+        "שלדי טעינה בשלושה אזורים, 2.11.2026",
         "טיפול בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בקשות לשיחה אישית, 2.11.2026"
       ],
       "evidenceExcerpts": [
+        "עודכנה נקודת הכניסה של תרחיש הסגל ב-tests/logic/profileIdentityLoading.test.ts, לאחר שמסלול הטעינה הועבר לרכיב משותף. תרחיש הסגל מפעיל כעת גם את בדיקת המיקוד והבעלות בתחילת טעינה. תרחישי המשחקים וההוספה נשארו פעילים באותה בדיקה: שינוי שם, תמונה או נתון…",
         "דוח הטיפול, הבדיקות והמגבלות.",
-        "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
-        "מקורות משותפים שנבדקו בהיקף השינוי הזה: functions/src/index.ts, src/firebase/firestore.ts, src/types/index.ts. אין בסעיף זה טענה להרצת כל המסלולים ההיסטוריים של הפיצר. מסירת המימוש."
+        "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות."
       ],
       "screens": [
         "src/screens/AdvancedLiveMatchScreen.tsx",
@@ -2399,8 +2422,8 @@
         "src/screens/games/MatchRoundsScreen.tsx"
       ],
       "documents": {
-        "rounds/live-advanced.md": "e39e082053921b628610d37ce5de57245fba79430fa87ec72295bbed4eb029e7",
-        "rounds/live-advanced.simple.md": "8728e1888db83cc74cdff89bb400a7c75d879c74d8463d79986bd631c3787bd6"
+        "rounds/live-advanced.md": "2e8b25be336dd5c1c9a6d9b0ab11aaf7c14de29d2a120fb1332215c899a38964",
+        "rounds/live-advanced.simple.md": "41a587e324de50d1a58158c024e9a7643550ca627405caa5b5ca560975c8eda5"
       },
       "sources": {
         "functions/src/commitProtocol.ts": "11fe0579865074729a244e3d34956388cf69f4ea0b27db61d67c193c9964aa99",
@@ -2468,7 +2491,7 @@
         "tests/logic/personalActivityWindows.test.ts": "76b552300cc22eac45b040d33882cba084f617e9050d5d8a6c38a0331a614e88",
         "tests/logic/personalActivityWindowsMirror.test.ts": "94fd908d7e388dfca2471010abec34548922d5999729cd6b087eb790d2234aa8",
         "tests/logic/preReleaseRoundIntegrity.test.ts": "2c559b87a89886a5d395d054ef17c3eef74a688848d9a92e045da42a97557fac",
-        "tests/logic/profileIdentityLoading.test.ts": "3905af020e7f30c9ef99ff74aec20e045233bfaea28600eaecd57e11ed21ee2d",
+        "tests/logic/profileIdentityLoading.test.ts": "5a265438ab62624e8c9baac7e51ca3219f0135a457f1afa182eff4ca1f416833",
         "tests/logic/rotationWinnerSide.test.ts": "fb17d0ce387372de0ea86336fbfa0dcfefae3b8a1524242e79e00fdc1c9bcb01",
         "tests/logic/savedRoundStoppages.test.ts": "9a62ae7df0f0a73652bd6191444374408a596622695102a7141cf2f8080ac944",
         "tests/logic/savedRoundTransition.test.ts": "bbc306ec23dfaae3e1818f87a4ed0cbb1bacf81b7f99c49fbda352bca1320ef6",
@@ -2486,25 +2509,25 @@
       "simple": "rounds/live-timer.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "סנכרון הזמן מתעלם כעת מתשובות שהתעכבו זמן רב, למשל בזמן שהיישום שהה ברקע. במצב כזה נשמר תיקון השעון הקודם במקום להחליפו בדגימה לא אמינה. התיקון מקומי, ללא שינוי בתוצאה או בהפעלת הטיימר.",
+      "summary": "עודכנה בדיקת רקע משותפת לטעינת נתונים. אין שינוי בפעולות או בתצוגה העצמאית של הפיצר הזה. השינוי מקומי וטרם הופץ. מימוש, בדיקות, צילומים ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
+        "שלדי טעינה בשלושה אזורים, 2.11.2026",
         "טיפול בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בקשות לשיחה אישית, 2.11.2026"
       ],
       "evidenceExcerpts": [
+        "עודכנה נקודת הכניסה של תרחיש הסגל ב-tests/logic/profileIdentityLoading.test.ts, לאחר שמסלול הטעינה הועבר לרכיב משותף. תרחיש הסגל מפעיל כעת גם את בדיקת המיקוד והבעלות בתחילת טעינה. תרחישי המשחקים וההוספה נשארו פעילים באותה בדיקה: שינוי שם, תמונה או נתון…",
         "דוח הטיפול, הבדיקות והמגבלות.",
-        "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
-        "מקורות משותפים שנבדקו בהיקף השינוי הזה: src/firebase/firestore.ts, src/types/index.ts. אין בסעיף זה טענה להרצת כל המסלולים ההיסטוריים של הפיצר. מסירת המימוש."
+        "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות."
       ],
       "screens": [
         "src/screens/AdvancedLiveMatchScreen.tsx",
         "src/screens/LiveMatchScreen.tsx"
       ],
       "documents": {
-        "rounds/live-timer.md": "a77cea4b4bd1d426617649346a23866af2b7fd648ae0ae534b1ca410c723f0e6",
-        "rounds/live-timer.simple.md": "e1b03491ce56367b2b830f09d6998c4285c59551b1758b9a927a66cb19f8f5b1"
+        "rounds/live-timer.md": "8246acee9523e3c18ac14d2feb57d768054d8acd228aba43f0cf885280c4e9f1",
+        "rounds/live-timer.simple.md": "0c9db4ed2319079b78bf065385d0c8a6328d37b332b8cb55138f6a42dc52cca9"
       },
       "sources": {
         "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
@@ -2521,7 +2544,7 @@
         "tests/logic/dataLiveTimerTransactions.test.ts": "8a82ea978087570d5edd84339f796d29096fb45e36d65394418fd456d8d5ee58",
         "tests/logic/draftNavigation.test.ts": "d1c4aa150460704eae743e77f3afd2e738aa84624ec07be76ad02a0c81800302",
         "tests/logic/inPlayPenaltyModal.test.tsx": "9b04e434f1177662dbd7416e93560ceb0ee9801cad0f1307d5d6170bfe0d3275",
-        "tests/logic/profileIdentityLoading.test.ts": "3905af020e7f30c9ef99ff74aec20e045233bfaea28600eaecd57e11ed21ee2d",
+        "tests/logic/profileIdentityLoading.test.ts": "5a265438ab62624e8c9baac7e51ca3219f0135a457f1afa182eff4ca1f416833",
         "tests/logic/pulseCurrentDialogs.test.tsx": "fb8ef8ec296a220eaf12c534be05bf7b267c9bb11f2f0955875ba080a78dca4b",
         "tests/logic/savedRoundStoppages.test.ts": "9a62ae7df0f0a73652bd6191444374408a596622695102a7141cf2f8080ac944",
         "tests/logic/serverClockSampling.test.ts": "b6edc04d04dc6c173250fe1af4135e217df5d5dbc4b6046b16ad7dbb1c09081d"
@@ -2536,24 +2559,24 @@
       "simple": "rounds/match-details.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "קריאת מסך ישנה אינה יכולה עוד להחזיר רשימת שחקנים מלפני הרשמה, ביטול או עדכון חי שכבר התקבל. גם תשובה ממחזור קודם אינה מוחלת לאחר מעבר למחזור אחר. התיקון מקומי, ללא שינוי עיצוב או הרשמה בייצור.",
+      "summary": "נבדקה השפעת תיקוני ההמשכיות במקור המשותף ובבדיקות. ההתנהגות העצמאית והחישובים של הפיצר נשמרו. מקומי וטרם הופץ. שחזור, תיקונים, בדיקות ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "טיפול בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בדיקת קצה ואימות מקורי, 2.11.2026",
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "הרחבת שלדי הטעינה, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "דוח הטיפול, הבדיקות והמגבלות.",
-        "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
-        "מקורות משותפים שנבדקו בהיקף השינוי הזה: functions/src/index.ts, functions/src/socialPlayers.ts, src/firebase/firestore.ts, src/types/index.ts. אין בסעיף זה טענה להרצת כל המסלולים ההיסטוריים של הפיצר. מסירת המימוש."
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: תיקוני מדידת גלילה, שימור נתוני סגל בכשל נלווה, הפרדת מצב שיחות וכיוון קיצור ההודעות. כלי הבדיקה החדש מוגבל לשלושת שערי ההדגמה ואינו משנה נתיב מוצר. אין שינוי מכוון בתנאי הרשאות, בחישובים, במכנים או בכתיבות העסקיות…",
+        "בדיקות התנהגות חדשות: tests/logic/experiencePolish.test.ts. האימות החזותי כולל אזורי מקור עם נתוני הדגמה ומתאמי דפדפן בלבד, ללא אימות מכשיר או מסד. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
+        "מציגי הטעינה החדשים נמצאים ב-src/components/loading/PageSkeletons.tsx; תרחישי המתנה ובעלות נבדקים ב-tests/logic/pageSkeletonLoading.test.ts."
       ],
       "screens": [
         "src/screens/games/MatchDetailsScreen.tsx"
       ],
       "documents": {
-        "rounds/match-details.md": "bee6821434ebbabec0f4b3251e3ee91be6a316aba30e7f62a3e02a6043b3323e",
-        "rounds/match-details.simple.md": "200bee9c5ddd9e1fa86f4ed9dfd9eca8728aed8f0ec090367cd2670c0770e988"
+        "rounds/match-details.md": "80fd917a9d3d055ed236edf9aedfafa723448607eb81d74fdcada300a345956e",
+        "rounds/match-details.simple.md": "5f9d4425b9ba6ddf7d33daa6a38b0d1d132492684b8bbd83424851b3aee8ad3f"
       },
       "sources": {
         "functions/src/clubDeletion.ts": "9b87f76c8343e551f6b114f90b66667cb1f87eed020b8aa6e357a43f685c0b62",
@@ -2566,13 +2589,15 @@
         "functions/src/socialPlayers.ts": "c4e02a689f696aace64cd0f5ed7d7debb2e2d30d6ff7de7e56cdb0356a035b21",
         "src/assets/images/roundCovers/manifest.json": "af14a4a15851e4b4a78dc9e9e2dd1ccd0c486cd461360d9fcb3930c414dda6a0",
         "src/components/community/RichRulesText.tsx": "7b874071edf7555d53b1e3806cc4b971b0260aefb919d9b7eda7b165a6d20650",
+        "src/components/loading/PageSkeletons.tsx": "261224d0a239fcc9d5bf0a50861c4f3dc024d5995f1aaa3b677c35faa3cb8002",
+        "src/components/loading/ScreenSkeletons.tsx": "cb480f4a1a245ae6c17d642a647b6fd9ab84e5e88b8f298a1504c31c59dbda9b",
         "src/components/profile/OwnPlayerCard.tsx": "cba576842b2258d4c6a97e1481b4b5027b422f70c1bccdbda68aa303db5c36a2",
         "src/components/social/InvitationCard.tsx": "4630a9450e4252361f67128362bbfa961222348e090026332544cca2bb81bdee",
         "src/data/roundCover.ts": "85532d2f9f72e06b18965c04738096cea8eee85a63624372d4cc25b23c11e46d",
         "src/data/roundSurfaceCovers.ts": "2e7ebc6512d508bec73c182a10d1f3486070eb592c9e26c2427f7da53b4e0d6c",
         "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
         "src/navigation/GameStack.tsx": "a33f33df3685892060762712a08331042d66a2b891c9af7a23d328e4df504283",
-        "src/screens/games/MatchDetailsScreen.tsx": "cad5a1f76df34accf34a6c127488dc38fafa28bd890eac9f2503f223411379d6",
+        "src/screens/games/MatchDetailsScreen.tsx": "a68f35c89987a0f272dd7f8623d5b73230c3bae1e3783266cf68589d1eeef95d",
         "src/services/deepLinkService.ts": "bead415eb27ee49b7a5e331ead4421c61d61dfff36dd762fb2e76c9cf2eb887a",
         "src/services/gameService.ts": "d719dbddac7ca809457da1b1e4d4606287836fa00dd3a1ce4609e0536cf6155b",
         "src/services/geocodeService.ts": "8ee79f38fd04f9530eca45252e989d1f28315d082adb7c96abbdc91d1ee3d273",
@@ -2588,11 +2613,13 @@
         "tests/logic/clubDeletion.test.ts": "ee99b364dfe21e919ca5edca06c19ce9727a080586f97cfcb47a40cdd74cd269",
         "tests/logic/clubDeletionClient.test.ts": "e92d8a7c3c9f0004bc37850198969d19dec0021471be71e8ab3152c0878ca0c1",
         "tests/logic/clubTabsTouchDiagnostics.test.tsx": "3e9cba5cba8435d021b8b7fa395ac0556af166fe307bb6d9ca0527bee07da658",
+        "tests/logic/experiencePolish.test.ts": "1f0c864f110889d0bdc7cb07a8481a4f21d8532b66034863f1d91926cbe6f2cd",
         "tests/logic/finalForcesCurrentDisplay.test.ts": "055ca29462da9858e9b02b2cc9a249d6b2edfb0dfe00e9d8754c90cb7191ce1e",
         "tests/logic/iosPulseRecovery.test.ts": "5883ba5a9977e979dc4a454df99744cd259ce907e1fff027269cc98ee1e21c3d",
         "tests/logic/manualDraftReplacement.test.ts": "0f914d4ac2c473542853c27d444a98370e44196c6eea784216bc8e90475ea675",
         "tests/logic/manualDraftResume.test.ts": "04840fac4182ce40b62f9da54c6ddc0a633a6074a95b7c7a85df04a4284ea04f",
         "tests/logic/matchDetailsReadOrdering.test.ts": "fc959d611d3df6806bde327b644f692dc9d81c501c503afd118daea27a5603fc",
+        "tests/logic/pageSkeletonLoading.test.ts": "a2ffa685029dff6fd8d3696a67d77d7d66db2858f5041912455dab8838ea0e55",
         "tests/logic/retroScoreCorrection.test.ts": "da36531c2d787cb8ded96cb270db3694e7b1bd5d03207c598ca6de1150a36d3a",
         "tests/logic/savedGuest.test.ts": "ed0545d1b0b0320d6da5e89d5b2d1225e33db863438cb62691b1cf8f427690a4",
         "tests/roundCoverRendering.test.ts": "acbaf0c83f8b014efa68205a5dba45189d6269840d420cdebf37eec3a250f580",
@@ -2606,32 +2633,35 @@
       "domain": "rounds",
       "technical": "rounds/match-players.md",
       "simple": "rounds/match-players.simple.md",
-      "capturedOn": "2026-10-27",
+      "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "הדיווחים יוכלו לכלול מה ניסו לבצע, מה היה מצב האפליקציה ומה החזיר השרת. פרטים חסרים מוצגים כלא ידועים, ומספר מוגבל של מופעים נשמר בלי למחוק את המופע הראשון. השינוי מקומי וטרם הופץ, ואינו משלים פרטים לדיווחים ישנים. היקף, ראיות ומגבלות.",
-      "latestDatedSection": "2026-10-27",
+      "summary": "מקום הקריאה בסגל המחזור נשמר אחרי ההמתנה, ותוצאות קצרות אינן משתמשות במדידת שלד ישנה. מקומי וטרם הופץ. שחזור, תיקונים, בדיקות ומגבלות.",
+      "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "הרחבת אבחון דיווחים, 27.10.2026"
+        "בדיקת קצה ואימות מקורי, 2.11.2026",
+        "המשכיות ומשוב בשימוש, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "נוספה מעטפת אבחון מקומית עם מצב בזמן הכשל, שלבים בעלי מזהה ותזמון, מצב רשת ובנייה ומופעים נפרדים לשגיאה. נקודת הכניסה לתעבורת השרת עוברת כעת דרך העטיפה המשותפת; תשובות, חריגות, אפשרויות קריאה ומדיניות הפיצר נשמרות. אין כאן שינוי בהרשאות או בחישובי המוצר.…",
-        "באימות הסופי עברו כל 6,231 הבדיקות ב-555 חבילות, ובדיקות הטיפוסים של הלקוח, השרת והפולס נקיות. צילום הדפדפן והידור מקורות האנדרואיד הם בדיקות מקומיות; אין הוכחת מכשיר, הידור אייפון או מסירה חיה של הבנייה החדשה. רישום יומן השחרור נחשב מאומת רק לפי קבלת הקריאה…",
-        "במקורות המשותפים נוסף שימור השעון המדויק של פנדל במהלך משחק, וכיתוב ההבקעה ביומן קוצר. אין שינוי במונים או בתהליך העצמאי המתואר כאן; לא נערכה לו בדיקת ממשק חדשה במסגרת העדכון. השינוי מקומי וטרם הופץ. פרטים וראיות."
+        "useRememberedScroll מבחין בין גאומטריית השלד לתוכן המוכן. מעבר או הקשר חדש ממתינים לשני פריימים כדי לא להחליף מיקום במדידה קודמת, בלי לעכב את הצגת התוכן. ברשימה וירטואלית מועבר גם מספר הפריטים, ומצביע onViewableItemsChanged מאשר שהפריט האחרון באמת נראה לפני…",
+        "הבדיקות ב-tests/logic/experiencePolish.test.ts וב-tests/logic/communityRosterLoading.test.ts כוללות תזמון מדידות, תוצאות קצרות וריקות, ביטול שחזור בגרירה, שימור נתון מאושר בכשל והפרדת הקשרים. צילום מקורי אינו אימות שרת או גרסת חנות. מקומי וטרם הופץ. שחזור,…",
+        "נבדקו ממוקד המקורות שסומנו ישנים לפני המשימה: gameDocConverter ממשיך לקרוא רשומים, המתנה ובקשות עם שדות תאימות, joinedAt ואורחים; הטיפוס Game מפריד בין רשומים לממתינים, והמסך עדיין רשום ב-GameStack. רענון הכרטיס קולט מקורות נוכחיים ואינו מוכיח הרצת ממיר מול…"
       ],
       "screens": [
         "src/screens/games/MatchPlayersScreen.tsx"
       ],
       "documents": {
-        "rounds/match-players.md": "ccbf68099f78ddc4de0e391c582ddb5214ec6f154f47e03feba95a102a435686",
-        "rounds/match-players.simple.md": "572a3cd0ab49cd47d2ff7492914ea27ddf90cf9e62056a3688c56b3b0070d993"
+        "rounds/match-players.md": "c281a54ca83077a60041e9be74c4af24b9ff34d2110d79f5f0de55114e72becb",
+        "rounds/match-players.simple.md": "399b017f0d1a563106d8317c94902014fa54cdfcfc664b3e7c4850d3137e5537"
       },
       "sources": {
         "src/components/GuestModal.tsx": "8ea0e692dba44af56a32ff3cdcc1141e07f42dc774f63792e6580e14af9f76fe",
         "src/components/match/tabs/MatchPlayersTab.tsx": "26d1885dbc29937111bc52353c65c6d10b2e5df8de81cddee388c2cfe786b142",
-        "src/firebase/firestore.ts": "f27ee78b297cb27a98f2aafbae5df15a3372bfdda6dbce88f9de6bae5d18587d",
-        "src/navigation/GameStack.tsx": "709f45ce866b0e742129a9858629cf206d70ae88778b968abf75d911bbc2621e",
-        "src/screens/games/MatchPlayersScreen.tsx": "1cb6590ee1a34741350305f52cd1a3e3cdecba2c3b6631691db4ec52268bddf2",
-        "src/types/index.ts": "04aa7a3a4e055954121ddb2dad0c7ccd4176020be3667f75638ac88f4df07129",
+        "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
+        "src/navigation/GameStack.tsx": "a33f33df3685892060762712a08331042d66a2b891c9af7a23d328e4df504283",
+        "src/screens/games/MatchPlayersScreen.tsx": "710f2b6db30e805c9394ee58ad067696fff17777e4fe71f2bc3304f95b347faa",
+        "src/types/index.ts": "503a6a4039500a421a91a5d200edf5734211bfceaed7de25d2da65bf22725603",
+        "tests/logic/communityRosterLoading.test.ts": "0f183d289df0d4388694651d5d51922ad09f1a224c1f566b07095316a9c53eb1",
+        "tests/logic/experiencePolish.test.ts": "1f0c864f110889d0bdc7cb07a8481a4f21d8532b66034863f1d91926cbe6f2cd",
         "tests/logic/finalForcesGuestAudit.test.ts": "6b3bc17fb1c4ed91ea224566cc759eb77f15c164ec16ffb73ce4365762f8f669",
         "tests/logic/finalForcesGuestServerAudit.test.ts": "f5918e97d0497ab47687da11895d08427265a0a548b60d9aa9712ea7a2215b39",
         "tests/logic/matchRosterLoading.test.ts": "e484e4769ba024eddeed37cd8f6d5b41f2864f7c909acf9cb0b3ab12e9205e94",
@@ -2843,17 +2873,17 @@
       "simple": "rounds/registration.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "לאחר הרשמה או ביטול, תשובת טעינה שהתחילה קודם אינה מחזירה את הסגל הישן למסך. גם עדכון חי חדש מוגן מדריסה על ידי קריאה קודמת. התיקון מקומי וטרם הופץ; לא בוצעה הרשמה בחשבון אמיתי.",
+      "summary": "נבדקה השפעת תיקוני ההמשכיות במקור המשותף ובבדיקות. ההתנהגות העצמאית והחישובים של הפיצר נשמרו. מקומי וטרם הופץ. שחזור, תיקונים, בדיקות ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "טיפול בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בדיקת קצה ואימות מקורי, 2.11.2026",
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "הרחבת שלדי הטעינה, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "דוח הטיפול, הבדיקות והמגבלות.",
-        "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
-        "מקורות משותפים שנבדקו בהיקף השינוי הזה: src/firebase/firestore.ts, src/types/index.ts. אין בסעיף זה טענה להרצת כל המסלולים ההיסטוריים של הפיצר. מסירת המימוש."
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: תיקוני מדידת גלילה, שימור נתוני סגל בכשל נלווה, הפרדת מצב שיחות וכיוון קיצור ההודעות. כלי הבדיקה החדש מוגבל לשלושת שערי ההדגמה ואינו משנה נתיב מוצר. אין שינוי מכוון בתנאי הרשאות, בחישובים, במכנים או בכתיבות העסקיות…",
+        "בדיקות התנהגות חדשות: tests/logic/experiencePolish.test.ts. האימות החזותי כולל אזורי מקור עם נתוני הדגמה ומתאמי דפדפן בלבד, ללא אימות מכשיר או מסד. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים. השינוי מוסיף מציגי טעינה או חושף לשימוש חוזר את בסיס השלדים; בדיקות החברים כוללות כעת סמן תשובה מוכן, ובכשל בודקות שרשימה קיימת אינה נדרסת ואין סימון של תשובה ריקה מוצלחת. תנאי הרשאות, כתיבות, חישובים, מכנים, פעולות…"
       ],
       "screens": [
         "src/screens/games/GamesListScreen.tsx",
@@ -2861,23 +2891,25 @@
         "src/screens/games/MatchPlayersScreen.tsx"
       ],
       "documents": {
-        "rounds/registration.md": "4de0fbc1cdd3d233444df52007966531ac2eda46f8755bb942084b872d79ec51",
-        "rounds/registration.simple.md": "0098e2fa72a8b08ba59a0a3d0fbce4c76b33f3aa3f497571e9e83d3dd4fb3071"
+        "rounds/registration.md": "bd7d58fb380c495cbbc0676d10a0bad69571cc62e22d514c008f0f0d734780bd",
+        "rounds/registration.simple.md": "06608340568bc21e4dc55c34bc9f9e83f1f6eca7245d11202c0989b059f79e18"
       },
       "sources": {
         "functions/src/joinReconcileDispatch.ts": "bbe1b4d9da4fa0d9c0d20e378c1c4e33f40c43964f91ae4d164cf2ac0c8d9ee6",
         "functions/src/spotOfferDecision.ts": "1d061874ec08671854e30327773c2e3a43257ee1bb5ad5bee5c382064317f760",
         "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
         "src/navigation/GameStack.tsx": "a33f33df3685892060762712a08331042d66a2b891c9af7a23d328e4df504283",
-        "src/screens/games/GamesListScreen.tsx": "31a6a704195d5a3401451cdd77f38142b1f90680c049bee5e72b4acc84483b6f",
-        "src/screens/games/MatchDetailsScreen.tsx": "cad5a1f76df34accf34a6c127488dc38fafa28bd890eac9f2503f223411379d6",
-        "src/screens/games/MatchPlayersScreen.tsx": "1cb6590ee1a34741350305f52cd1a3e3cdecba2c3b6631691db4ec52268bddf2",
+        "src/screens/games/GamesListScreen.tsx": "6fdc071a86edfe6eea220a667a8593b46d927fdcc282310df45fec1e02cdeb4c",
+        "src/screens/games/MatchDetailsScreen.tsx": "a68f35c89987a0f272dd7f8623d5b73230c3bae1e3783266cf68589d1eeef95d",
+        "src/screens/games/MatchPlayersScreen.tsx": "710f2b6db30e805c9394ee58ad067696fff17777e4fe71f2bc3304f95b347faa",
         "src/services/gameService.ts": "d719dbddac7ca809457da1b1e4d4606287836fa00dd3a1ce4609e0536cf6155b",
         "src/types/index.ts": "503a6a4039500a421a91a5d200edf5734211bfceaed7de25d2da65bf22725603",
         "tests/logic/authTransientReads.test.ts": "2a6424e2acbde15b1a30a6921da666983fa3dfc06f8ea8f9b414d1af36a8a42b",
+        "tests/logic/experiencePolish.test.ts": "1f0c864f110889d0bdc7cb07a8481a4f21d8532b66034863f1d91926cbe6f2cd",
         "tests/logic/iosPulseRecovery.test.ts": "5883ba5a9977e979dc4a454df99744cd259ce907e1fff027269cc98ee1e21c3d",
         "tests/logic/matchDetailsReadOrdering.test.ts": "fc959d611d3df6806bde327b644f692dc9d81c501c503afd118daea27a5603fc",
         "tests/logic/pulseCurrentJoinDispatch.test.ts": "d406d2cc416b4c518f6f12046be943a83b69f636a02c49b7377f0c5f93a9a36d",
+        "tests/logic/roundJoinLoading.test.ts": "8a033081f53beb31cc75ab5463bb3e324aa18eae3700d7856fb2a8559903567e",
         "tests/rules/scheduled-withdrawal.test.mjs": "0a4ee3f38a90ec70a3ffc8a9e4c5616d20f5fdd275699f1833d419a217b8b1cf"
       },
       "missingDocumentedPaths": []
@@ -2888,26 +2920,26 @@
       "domain": "statistics",
       "technical": "statistics/chemistry-and-records.md",
       "simple": "statistics/chemistry-and-records.simple.md",
-      "capturedOn": "2026-10-25",
+      "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "במקורות המשותפים נוסף שימור השעון המדויק של פנדל במהלך משחק, וכיתוב ההבקעה ביומן קוצר. אין שינוי במונים או בתהליך העצמאי המתואר כאן; לא נערכה לו בדיקת ממשק חדשה במסגרת העדכון. השינוי מקומי וטרם הופץ. פרטים וראיות.",
-      "latestDatedSection": "2026-10-25",
+      "summary": "נוסף מעבר עדין מההמתנה הראשונה לתוכן במסך הנתונים המשותף. החישובים והנתונים של הפיצר נשמרו. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
+      "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "שעון מדויק וכיתוב פנדל - 25.10.2026",
-        "פנדל במהלך משחק חי - 25.10.2026"
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "שלדי טעינה בשלושה אזורים, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "במקורות המשותפים נוסף שימור השעון המדויק של פנדל במהלך משחק, וכיתוב ההבקעה ביומן קוצר. אין שינוי במונים או בתהליך העצמאי המתואר כאן; לא נערכה לו בדיקת ממשק חדשה במסגרת העדכון. השינוי מקומי וטרם הופץ. פרטים וראיות.",
-        "השינוי מקומי. נדרשת פריסת שרת לפני הפצת לקוח שמשתמש באפשרות; לא בוצעו פריסה או שינוי הרשאות. חוזה הנתונים, התהליך, הבדיקות ומגבלות ההפצה.",
-        "נוספו תצפיות דיווח בנקודות הכשל של המקורות המשויכים לפיצ׳ר, במסגרת הרחבה רוחבית. נשמרו ערכי החזרה, הזריקות ותנאי הפעולה הקיימים; נוסף מקור קוד והקשר לדיווח. כיסוי תחבירי אינו הוכחת הרצה של כל מצב. השינוי מקומי וטרם הופץ; בדיקות המסירה, מגבלות מניעת הכפילויות…"
+        "ContentReveal מציג תוכן זמין מיד, ומבצע מעבר אטימות מ-0.78 ל-1 במשך 180 אלפיות שנייה רק אחרי ההמתנה הראשונה באותו הקשר. צמצום תנועה מכבה את המעבר. אין השהיה, חסימת מגע או הזזה, ורענון עם תוכן קיים אינו מפעיל אותו מחדש. נבדק ההפרש התחום ב-CommunityStatsScreen…",
+        "נבדק ההפרש התחום במקורות המשותפים של הפיצר. השינוי מוסיף שלדים בזמן שאין תוכן מוכן וחיווי רענון כשיש תוכן, וכן ניסיון חוזר לטעינת מחזורי הבית. נשמרו בחירת העונה, מכנים, פעולות, ניווט וחישובי הפיצר העצמאי. אין מכך בדיקת מכשיר חדשה שלו. השינוי מקומי וטרם הופץ.…",
+        "במקורות המשותפים נוסף שימור השעון המדויק של פנדל במהלך משחק, וכיתוב ההבקעה ביומן קוצר. אין שינוי במונים או בתהליך העצמאי המתואר כאן; לא נערכה לו בדיקת ממשק חדשה במסגרת העדכון. השינוי מקומי וטרם הופץ. פרטים וראיות."
       ],
       "screens": [
         "src/screens/communities/CommunityStatsScreen.tsx",
         "src/screens/profile/SeasonSummaryScreen.tsx"
       ],
       "documents": {
-        "statistics/chemistry-and-records.md": "3c70320ac5983aecefb3230eaa3f1096f219fcfa24e4102b9d9ffea14954abd6",
-        "statistics/chemistry-and-records.simple.md": "18bbd90ea804063d3747404fd4fa44673ca9c765138ed8c0491553a3609e2c15"
+        "statistics/chemistry-and-records.md": "bdf42de5282b71f9f24a76b48cea4ea81c6dd921a4685525e6daf8a4835334bc",
+        "statistics/chemistry-and-records.simple.md": "67cee302d723e4361fb5d7d9a8678590cbcc30cd63c7bb0a74f67038634f5a8f"
       },
       "sources": {
         "functions/src/seasonLock.ts": "cadd550db990d2eabf487f551099dd932935b73ca7a50a13a2f99e3efce807c1",
@@ -2916,7 +2948,7 @@
         "src/components/chemistry/PairChemistryIcon.tsx": "9a2f6c203e5c0e5bbda2114daec669890ae8f8852f339bb04f22e4230bd59fdc",
         "src/components/club/ClubRecords.tsx": "90f6559439ce8ffe4e3643b0c3be96d40e69b55683b491731e2575043359a604",
         "src/components/summary/SeasonClubSummary.tsx": "0b7e371728d919407272e8342175268ee76da8629dced626cefad7b18d88bb15",
-        "src/screens/communities/CommunityStatsScreen.tsx": "cb5787a810e18d27c69ac76c080a534d954d435b5034942026f2f02de89479b4",
+        "src/screens/communities/CommunityStatsScreen.tsx": "c8bafdda0d81b1eb8fbf867015d7b5181fe5b586a1a68c04afc338cb5fd1a991",
         "src/screens/profile/SeasonSummaryScreen.tsx": "a783a17f3f863d509a462cd74b8a3eacd2195dc0f4ef73ebe6c947b851bba39f",
         "src/services/clubChemistryService.ts": "698eb6434b7c2709f670d2899ec5191f6bde4a5fca954245507b48c5063ac87f",
         "src/services/roundSummaryService.ts": "76a5a300a4f292dc74ade49b0a9a64de63dc0aeedaa7497ff107b57670769435",
@@ -2943,24 +2975,24 @@
       "simple": "statistics/club-leaders-and-table.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
+      "summary": "נבדקה השפעת תיקוני ההמשכיות במקור המשותף ובבדיקות. ההתנהגות העצמאית והחישובים של הפיצר נשמרו. מקומי וטרם הופץ. שחזור, תיקונים, בדיקות ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "אימות פרסום קבוצות בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בדיקת קצה ואימות מקורי, 2.11.2026",
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "הרחבת שלדי הטעינה, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
-        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…",
-        "דוח הטיפול, הבדיקות והמגבלות."
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: תיקוני מדידת גלילה, שימור נתוני סגל בכשל נלווה, הפרדת מצב שיחות וכיוון קיצור ההודעות. כלי הבדיקה החדש מוגבל לשלושת שערי ההדגמה ואינו משנה נתיב מוצר. אין שינוי מכוון בתנאי הרשאות, בחישובים, במכנים או בכתיבות העסקיות…",
+        "ContentReveal מציג תוכן זמין מיד, ומבצע מעבר אטימות מ-0.78 ל-1 במשך 180 אלפיות שנייה רק אחרי ההמתנה הראשונה באותו הקשר. צמצום תנועה מכבה את המעבר. אין השהיה, חסימת מגע או הזזה, ורענון עם תוכן קיים אינו מפעיל אותו מחדש. נבדק ההפרש התחום ב-CommunityStatsScreen…",
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים. השינוי מוסיף מציגי טעינה או חושף לשימוש חוזר את בסיס השלדים; בדיקות החברים כוללות כעת סמן תשובה מוכן, ובכשל בודקות שרשימה קיימת אינה נדרסת ואין סימון של תשובה ריקה מוצלחת. תנאי הרשאות, כתיבות, חישובים, מכנים, פעולות…"
       ],
       "screens": [
         "src/screens/communities/CommunityStatsScreen.tsx"
       ],
       "documents": {
-        "statistics/club-leaders-and-table.md": "7791a1619c0e5a2b8aeb6693871969d60c3644dbf727839d7236101fa123ab65",
-        "statistics/club-leaders-and-table.simple.md": "3140bb24b24e69e78bbdde2a22b121ce6bfc6afde474bd01277518f49426a860"
+        "statistics/club-leaders-and-table.md": "9856cd3b84c46c3af1b642e45fec486b8924c04a025e37594fc18a682ac842df",
+        "statistics/club-leaders-and-table.simple.md": "740016f1f6228eda5cf7da355e51a5dffb19fd46db433ddea10dd14b6084723c"
       },
       "sources": {
         "functions/src/seasonLock.ts": "cadd550db990d2eabf487f551099dd932935b73ca7a50a13a2f99e3efce807c1",
@@ -2971,9 +3003,10 @@
         "src/components/community/CommunityChampionship.tsx": "ea10273c3bd6a65d281df82ab84df7b8c3571846a3d4f039c7689bb894ea1fe6",
         "src/components/community/CommunityStatsGrid.tsx": "1a47c913cf4dd99c5115c6f39c8e51a1634070fd73b8f0c57f8c99a7c9a0da05",
         "src/components/community/CommunityStatsTable.tsx": "45d0fb7c328be8c945a44bf684b4d09bf7322c0c46fd37c68e6a53b32f9080fe",
+        "src/components/loading/ScreenSkeletons.tsx": "cb480f4a1a245ae6c17d642a647b6fd9ab84e5e88b8f298a1504c31c59dbda9b",
         "src/data/clubAchievements.ts": "bb6e7fc876aac5f42dcb8be7874de15d43aa6312001baffe6734a173941dcc51",
         "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
-        "src/screens/communities/CommunityStatsScreen.tsx": "cb5787a810e18d27c69ac76c080a534d954d435b5034942026f2f02de89479b4",
+        "src/screens/communities/CommunityStatsScreen.tsx": "c8bafdda0d81b1eb8fbf867015d7b5181fe5b586a1a68c04afc338cb5fd1a991",
         "src/services/gameService.ts": "d719dbddac7ca809457da1b1e4d4606287836fa00dd3a1ce4609e0536cf6155b",
         "src/services/seasonSummaryService.ts": "18773b6a23d256ead37ccd0796df4759d53c66ca7d30d298109ec55ffcd843fa",
         "src/types/index.ts": "503a6a4039500a421a91a5d200edf5734211bfceaed7de25d2da65bf22725603",
@@ -2985,6 +3018,7 @@
         "tests/logic/championshipPenalty.test.ts": "6bd8fc776cf88cd31ceaeedca74757093efb3c8e7051efc8e04d607646d5e3fd",
         "tests/logic/clubChemistryStrict.test.ts": "4c0b028dfb2ed46a213226da73445dc03a9c0603c4ff22586d099ae9efa0c195",
         "tests/logic/clubStatusShare.test.ts": "67ca57305fed7de06910d56376647fcd0f0aca3de915128730b3d121de039eef",
+        "tests/logic/communityRosterLoading.test.ts": "0f183d289df0d4388694651d5d51922ad09f1a224c1f566b07095316a9c53eb1",
         "tests/logic/communitySeasonRefresh.test.ts": "d27761ea129c5576ac2d6d2b00e062fe36b0cae812bc4feab5763cfa74a80087",
         "tests/logic/communityStatsRankResponsive.test.tsx": "7a4e59debcc4dbd8f8bd9f2f59b79165f2371153f12cb17833bd07d55dc7e17d",
         "tests/logic/completeSeasonHistory.test.ts": "8ad771b375f7f191ca1134f6023175e3a7162361d8a41fd677c15347f483a3e0",
@@ -3011,24 +3045,24 @@
       "simple": "statistics/personal-statistics.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
+      "summary": "נבדקה השפעת תיקוני ההמשכיות במקור המשותף ובבדיקות. ההתנהגות העצמאית והחישובים של הפיצר נשמרו. מקומי וטרם הופץ. שחזור, תיקונים, בדיקות ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "אימות פרסום קבוצות בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בדיקת קצה ואימות מקורי, 2.11.2026",
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "הרחבת שלדי הטעינה, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
-        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…",
-        "דוח הטיפול, הבדיקות והמגבלות."
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: תיקוני מדידת גלילה, שימור נתוני סגל בכשל נלווה, הפרדת מצב שיחות וכיוון קיצור ההודעות. כלי הבדיקה החדש מוגבל לשלושת שערי ההדגמה ואינו משנה נתיב מוצר. אין שינוי מכוון בתנאי הרשאות, בחישובים, במכנים או בכתיבות העסקיות…",
+        "בדיקות התנהגות חדשות: tests/logic/experiencePolish.test.ts. האימות החזותי כולל אזורי מקור עם נתוני הדגמה ומתאמי דפדפן בלבד, ללא אימות מכשיר או מסד. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
+        "מציגי הטעינה החדשים נמצאים ב-src/components/loading/PageSkeletons.tsx; תרחישי המתנה ובעלות נבדקים ב-tests/logic/pageSkeletonLoading.test.ts."
       ],
       "screens": [
         "src/screens/profile/StatisticsScreen.tsx"
       ],
       "documents": {
-        "statistics/personal-statistics.md": "b4256523c5d97073a88ee271da559c05d1287b58e93371ae5925c8d501be5b44",
-        "statistics/personal-statistics.simple.md": "6451f1fa09f2eca1aa34f6390499c4ead8c3c6b186cbb98f51f7fbe47e183efb"
+        "statistics/personal-statistics.md": "33462a31d5a86ea73bc3462bb27592958b53ebbec6932bab62a916e09e741549",
+        "statistics/personal-statistics.simple.md": "af474909d59bb046e77074f00131e5d70f40c4a930f41892c0cc8a7f5ab1fa35"
       },
       "sources": {
         "functions/src/index.ts": "e6e9b529f6f002be85742044e49f331ae241df4dbd34f98e7fde63a8f074df56",
@@ -3038,10 +3072,12 @@
         "functions/src/retroScores.ts": "3f65683b0d8e4f0123c50b1417e57f2c6338a8e7150a9d9d0747f80e9dfa9630",
         "functions/src/socialPlayers.ts": "c4e02a689f696aace64cd0f5ed7d7debb2e2d30d6ff7de7e56cdb0356a035b21",
         "src/components/UserAvatar.tsx": "7000dd63ff44cfb7be171a4a4d2eb88831fd048b946c737c549a34c041bfb8c0",
+        "src/components/loading/PageSkeletons.tsx": "261224d0a239fcc9d5bf0a50861c4f3dc024d5995f1aaa3b677c35faa3cb8002",
+        "src/components/loading/ScreenSkeletons.tsx": "cb480f4a1a245ae6c17d642a647b6fd9ab84e5e88b8f298a1504c31c59dbda9b",
         "src/components/stats/PersonalStatisticsCard.tsx": "95077ac0aad3744fc81c6b909b291610e15e617613ad5278e828db6ba022239c",
         "src/dev/personalStatisticsFixture.ts": "cfafb11fb053fd9832ac00308daaf9e70361b058f053437da0126a3b9039dda0",
         "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
-        "src/screens/profile/StatisticsScreen.tsx": "7c5f2e470a0f1e4702ca58c016ecefacba7f348db33bd418ca05d4275acb9f0f",
+        "src/screens/profile/StatisticsScreen.tsx": "510f2ea5f45fa2b687aaad1398587c85efc6322e1d54f7446f4440daa9dbbf8a",
         "src/services/gameService.ts": "d719dbddac7ca809457da1b1e4d4606287836fa00dd3a1ce4609e0536cf6155b",
         "src/services/playerStatsService.ts": "fb43c57f2470053eec7d37c4baf919edcb8336527587d2af7cf0564422926120",
         "src/types/index.ts": "503a6a4039500a421a91a5d200edf5734211bfceaed7de25d2da65bf22725603",
@@ -3053,8 +3089,10 @@
         "tests/logic/clientAuditRecovery.test.ts": "a61d5190c2242cff8815fdc43944df282baac2c3f3872d94a5f5d7d3961734ba",
         "tests/logic/dataLiveAudit.test.ts": "5b5856ad0a19e101b9dbab261323b1a1a4ff7fc22b1d3f7cb420d34b089d713f",
         "tests/logic/dataLiveAuditServerCommit.test.ts": "27585180165ce77555f997740059170e159d1cd3fed9361919d4de0a2ed03e0c",
+        "tests/logic/experiencePolish.test.ts": "1f0c864f110889d0bdc7cb07a8481a4f21d8532b66034863f1d91926cbe6f2cd",
         "tests/logic/liveTeamsEndToEnd.test.ts": "f9401a789f7d0e9519cdf890dd47fb4c422ef4f568691314f8f22ef53bd132b5",
         "tests/logic/matchStatsReadState.test.tsx": "755f7d1dd4fb0c038411c7dde13bfff6f02c26d2614f389bc099081b767d08d3",
+        "tests/logic/pageSkeletonLoading.test.ts": "a2ffa685029dff6fd8d3696a67d77d7d66db2858f5041912455dab8838ea0e55",
         "tests/logic/pairOrientation.test.ts": "69c92385c7565765e2ba5424f8b1c7a485fee74d8fbb22fa884932709e27c825",
         "tests/logic/penaltyStats.test.ts": "c76e91ac5ccac4a3604dd6a40d5e329cf10d174f416fbffe2fd8d48012954caf",
         "tests/logic/personalHistory.test.ts": "c224483025a2f27130483f0957064561dbdac7df5bcedbda3d9e9492f362f00f",
@@ -3132,25 +3170,25 @@
       "simple": "statistics/scopes-and-data.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
+      "summary": "נוסף מעבר עדין מההמתנה הראשונה לתוכן במסך הנתונים המשותף. החישובים והנתונים של הפיצר נשמרו. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "אימות פרסום קבוצות בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "שלדי טעינה בשלושה אזורים, 2.11.2026",
+        "אימות פרסום קבוצות בפולס, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
-        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…",
-        "דוח הטיפול, הבדיקות והמגבלות."
+        "ContentReveal מציג תוכן זמין מיד, ומבצע מעבר אטימות מ-0.78 ל-1 במשך 180 אלפיות שנייה רק אחרי ההמתנה הראשונה באותו הקשר. צמצום תנועה מכבה את המעבר. אין השהיה, חסימת מגע או הזזה, ורענון עם תוכן קיים אינו מפעיל אותו מחדש. נבדק ההפרש התחום ב-CommunityStatsScreen…",
+        "נבדק ההפרש התחום במקורות המשותפים של הפיצר. השינוי מוסיף שלדים בזמן שאין תוכן מוכן וחיווי רענון כשיש תוכן, וכן ניסיון חוזר לטעינת מחזורי הבית. נשמרו בחירת העונה, מכנים, פעולות, ניווט וחישובי הפיצר העצמאי. אין מכך בדיקת מכשיר חדשה שלו. השינוי מקומי וטרם הופץ.…",
+        "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה."
       ],
       "screens": [
         "src/screens/communities/CommunityStatsScreen.tsx",
         "src/screens/profile/SeasonSummaryScreen.tsx"
       ],
       "documents": {
-        "statistics/scopes-and-data.md": "a4ea7a3cdcc46dd1b65dbb193be2a0c5e351ca74eceb6c81010bf10e6ed1bc33",
-        "statistics/scopes-and-data.simple.md": "3fb19f8406d43283ef62b98a72c82afa010c39d335eb352ff219055f2d5ac848"
+        "statistics/scopes-and-data.md": "9c1a91ef574459c6554dfabcee30cdd204b1361e6569fe7f7e1269812ffa1fb3",
+        "statistics/scopes-and-data.simple.md": "a9bab2b47704c75d83a6980e45f331a6ceecf7525464fb76974ca0673e8e87d6"
       },
       "sources": {
         "functions/src/seasonLock.ts": "cadd550db990d2eabf487f551099dd932935b73ca7a50a13a2f99e3efce807c1",
@@ -3160,7 +3198,7 @@
         "src/components/stats/SeasonScopeBar.tsx": "07f41f51b6120e80fc4a7d399baef1ae61804fa42127e9f3e5146176a4b3c812",
         "src/components/summary/SeasonClubSummary.tsx": "0b7e371728d919407272e8342175268ee76da8629dced626cefad7b18d88bb15",
         "src/firebase/firestore.ts": "6b32976d2271ae49425ab319142056fdfc82ac6a0cf4b8b77e60d03ad34c6a31",
-        "src/screens/communities/CommunityStatsScreen.tsx": "cb5787a810e18d27c69ac76c080a534d954d435b5034942026f2f02de89479b4",
+        "src/screens/communities/CommunityStatsScreen.tsx": "c8bafdda0d81b1eb8fbf867015d7b5181fe5b586a1a68c04afc338cb5fd1a991",
         "src/screens/profile/SeasonSummaryScreen.tsx": "a783a17f3f863d509a462cd74b8a3eacd2195dc0f4ef73ebe6c947b851bba39f",
         "src/services/gameService.ts": "d719dbddac7ca809457da1b1e4d4606287836fa00dd3a1ce4609e0536cf6155b",
         "src/services/seasonArchiveData.ts": "61367893a8fa63ca9977a3cf917e802bc25984cba3888631f013c6c2d948bcef",
@@ -3191,18 +3229,18 @@
       "domain": "statistics",
       "technical": "statistics/season-summary.md",
       "simple": "statistics/season-summary.simple.md",
-      "capturedOn": "2026-10-27",
+      "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "הפעילות האישית וחיבור נתוני הספורט מוסתרים זמנית לקראת הגרסה הבאה. האפליקציה לא תבקש הרשאות מדידה ולא תתחיל סנכרון פעילות בגרסה הזאת. הנתונים שכבר נשמרו נשארים, והטיימר ונתוני הכדורגל הרגילים ממשיכים לפעול. השינוי מקומי וטרם הופץ; פרטים ומגבלות.",
-      "latestDatedSection": "2026-10-27",
+      "summary": "נוסף מעבר עדין מההמתנה הראשונה לתוכן במסך הנתונים המשותף. החישובים והנתונים של הפיצר נשמרו. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
+      "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "השבתת פעילות אישית לקראת הגרסה הבאה, 27.10.2026",
-        "השפעת תיקוני השיחה והחזרה, 27.10.2026"
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "שלדי טעינה בשלושה אזורים, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "נבדק השינוי הממוקד במקורות המשותפים: הכניסה לפעילות האישית וכרטיסי הפעילות מוסתרים לקראת הגרסה הבאה. מדידה, הרשאות ספורט וסנכרון הושבתו בשירותים, ללא שינוי בתוצאות הכדורגל או בפעולות הפיצר הזה. שינוי מקומי שטרם הופץ, ללא בדיקת מכשיר חדשה. היקף וראיות.",
-        "נבדקה השפעת השינוי הממוקד בקבצים המשותפים: מסך הבית מחבר כפתור לכרטיס השחקן העצמי ומדגים את העמוד הראשון בקרוסלת הסטטיסטיקה; כלי בדיקת רכיבי הבית הותאם לכפתור הנוסף. אין שינוי מכוון בחוזה העצמאי של הפיצר המתואר כאן. אין להסיק מכך שכל מצבי הפיצר הורצו מחדש. כל…",
-        "במקורות המשותפים נוסף שימור השעון המדויק של פנדל במהלך משחק, וכיתוב ההבקעה ביומן קוצר. אין שינוי במונים או בתהליך העצמאי המתואר כאן; לא נערכה לו בדיקת ממשק חדשה במסגרת העדכון. השינוי מקומי וטרם הופץ. פרטים וראיות."
+        "ContentReveal מציג תוכן זמין מיד, ומבצע מעבר אטימות מ-0.78 ל-1 במשך 180 אלפיות שנייה רק אחרי ההמתנה הראשונה באותו הקשר. צמצום תנועה מכבה את המעבר. אין השהיה, חסימת מגע או הזזה, ורענון עם תוכן קיים אינו מפעיל אותו מחדש. נבדק ההפרש התחום ב-CommunityStatsScreen…",
+        "נבדק ההפרש התחום במקורות המשותפים של הפיצר. השינוי מוסיף שלדים בזמן שאין תוכן מוכן וחיווי רענון כשיש תוכן, וכן ניסיון חוזר לטעינת מחזורי הבית. נשמרו בחירת העונה, מכנים, פעולות, ניווט וחישובי הפיצר העצמאי. אין מכך בדיקת מכשיר חדשה שלו. השינוי מקומי וטרם הופץ.…",
+        "נבדק השינוי הממוקד במקורות המשותפים: הכניסה לפעילות האישית וכרטיסי הפעילות מוסתרים לקראת הגרסה הבאה. מדידה, הרשאות ספורט וסנכרון הושבתו בשירותים, ללא שינוי בתוצאות הכדורגל או בפעולות הפיצר הזה. שינוי מקומי שטרם הופץ, ללא בדיקת מכשיר חדשה. היקף וראיות."
       ],
       "screens": [
         "src/screens/communities/CommunityStatsScreen.tsx",
@@ -3210,8 +3248,8 @@
         "src/screens/tabs/ProfileScreen.tsx"
       ],
       "documents": {
-        "statistics/season-summary.md": "5169045861f3642aa770ed9465ab4deb42dcb2279f8ac7c7eea02cc043fae6f6",
-        "statistics/season-summary.simple.md": "027983118c66d7e3166e9b91fde591551cf03e205743e7b1b9ee567cac1bc9ff"
+        "statistics/season-summary.md": "324addf797a3b6f18b2dcf0a76a95b1596e556bf76d10d65bacf5116601cc5af",
+        "statistics/season-summary.simple.md": "4f8a9d14e9514ac1cb3b5e6f56560ddddb2bfe3bcaa7681a3636fe80b6fa94d8"
       },
       "sources": {
         "functions/src/seasonAwards.ts": "c10e78b852731226a71a4fb832b527aa10332473f4339fef342f920f59b2a339",
@@ -3222,9 +3260,9 @@
         "src/components/summary/SeasonClubSummary.tsx": "0b7e371728d919407272e8342175268ee76da8629dced626cefad7b18d88bb15",
         "src/components/summary/SeasonSummaryButton.tsx": "5a3c790088ba25c41ce07b953c39629ce79b54a085c3fbb2916d17a1d9f5ada6",
         "src/i18n/he.ts": "879553b561caa3b877de144084d07ce384ed3678f8d9df90968e60eb8f5c0d02",
-        "src/screens/communities/CommunityStatsScreen.tsx": "cb5787a810e18d27c69ac76c080a534d954d435b5034942026f2f02de89479b4",
+        "src/screens/communities/CommunityStatsScreen.tsx": "c8bafdda0d81b1eb8fbf867015d7b5181fe5b586a1a68c04afc338cb5fd1a991",
         "src/screens/profile/SeasonSummaryScreen.tsx": "a783a17f3f863d509a462cd74b8a3eacd2195dc0f4ef73ebe6c947b851bba39f",
-        "src/screens/tabs/ProfileScreen.tsx": "304f53bb0ae95124001d088926d42d07e4d5139ccec9762b9bc46cf9f5e18b29",
+        "src/screens/tabs/ProfileScreen.tsx": "49ed9cfe2b97265136b23a99d9b1d508a15b00368caae5d13474f4a43f1898de",
         "src/services/seasonArchiveData.ts": "61367893a8fa63ca9977a3cf917e802bc25984cba3888631f013c6c2d948bcef",
         "src/services/seasonSummaryService.ts": "18773b6a23d256ead37ccd0796df4759d53c66ca7d30d298109ec55ffcd843fa",
         "src/utils/mapConcurrent.ts": "dae0a831cf73f65ab84b985e0ba8c3f695c5a18b6cdf725304485df476b35b51",
@@ -3248,30 +3286,37 @@
       "simple": "chat/chats-list.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נוספו אזור בקשות לשיחה, אזור בקשות שנדחו וחיפוש שחקנים מתוך שיחה חדשה. בקשות יוצאות מופיעות עם מצב המתנה או ביטול. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
+      "summary": "שחזור המיקום בתיבה ובבורר החברים מתחשב במדידות התאים ובתוצאה ריקה. רווחי השורות נשמרים בלי לשבש את חישוב גובה הרשימה. מקומי וטרם הופץ. שחזור, תיקונים, בדיקות ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "בקשות לשיחה אישית, 2.11.2026"
+        "בדיקת קצה ואימות מקורי, 2.11.2026",
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "הרחבת שלדי הטעינה, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "נוספו אזור בקשות לשיחה, אזור בקשות שנדחו וחיפוש שחקנים מתוך שיחה חדשה. בקשות יוצאות מופיעות עם מצב המתנה או ביטול. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
-        "מקורות משותפים שנבדקו בהיקף השינוי הזה: src/components/chat/ChatInbox.tsx, tests/logic/chatPushPolicy.test.ts. אין בסעיף זה טענה להרצת כל המסלולים ההיסטוריים של הפיצר. מסירת המימוש.",
-        "נוספו תצפיות דיווח בנקודות הכשל של המקורות המשויכים לפיצ׳ר, במסגרת הרחבה רוחבית. נשמרו ערכי החזרה, הזריקות ותנאי הפעולה הקיימים; נוסף מקור קוד והקשר לדיווח. כיסוי תחבירי אינו הוכחת הרצה של כל מצב. השינוי מקומי וטרם הופץ; בדיקות המסירה, מגבלות מניעת הכפילויות…"
+        "useRememberedScroll מבחין בין גאומטריית השלד לתוכן המוכן. מעבר או הקשר חדש ממתינים לשני פריימים כדי לא להחליף מיקום במדידה קודמת, בלי לעכב את הצגת התוכן. ברשימה וירטואלית מועבר גם מספר הפריטים, ומצביע onViewableItemsChanged מאשר שהפריט האחרון באמת נראה לפני…",
+        "הבדיקות ב-tests/logic/experiencePolish.test.ts וב-tests/logic/communityRosterLoading.test.ts כוללות תזמון מדידות, תוצאות קצרות וריקות, ביטול שחזור בגרירה, שימור נתון מאושר בכשל והפרדת הקשרים. צילום מקורי אינו אימות שרת או גרסת חנות. מקומי וטרם הופץ. שחזור,…",
+        "בדיקות התנהגות חדשות: tests/logic/experiencePolish.test.ts. האימות החזותי כולל אזורי מקור עם נתוני הדגמה ומתאמי דפדפן בלבד, ללא אימות מכשיר או מסד. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות."
       ],
       "screens": [
         "src/screens/chat/ChatsListScreen.tsx"
       ],
       "documents": {
-        "chat/chats-list.md": "f35fa9211eb449b8ab2c4f81382887d8fab2c7c8ca034381dd6c71987dc72c58",
-        "chat/chats-list.simple.md": "be9336225ca4757bf647ed4a9771d674c81bd53f27e059d9bce31a927a3f0b29"
+        "chat/chats-list.md": "2bb7b251a65f7e0ff8b63d3202fb1524035f3fe2c3382dc27ab5ca2965b14c37",
+        "chat/chats-list.simple.md": "d487201f6a99d7707205233a32abf561e9f9db78926ad3de8c0473c0cbc2b36b"
       },
       "sources": {
-        "src/components/chat/ChatInbox.tsx": "ec26a7ad3feb5d6ca2f53ed160c50f6c9ac4da6df3dba6c346d08d70d4462779",
+        "src/components/chat/ChatInbox.tsx": "03ae6c69c43bea0cf73a0f15efff6d8582707741b42bac9bb8e0a141fc4cb4fa",
+        "src/components/loading/PageSkeletons.tsx": "261224d0a239fcc9d5bf0a50861c4f3dc024d5995f1aaa3b677c35faa3cb8002",
+        "src/components/loading/ScreenSkeletons.tsx": "cb480f4a1a245ae6c17d642a647b6fd9ab84e5e88b8f298a1504c31c59dbda9b",
         "src/screens/chat/ChatsListScreen.tsx": "d39ce2b9626deed6d4fe622b5096cec77b5b915cb1089e829537fe7c6c9090d8",
         "tests/logic/chatDiscoveryLoading.test.ts": "1dac0c931108079c9d555fb1e4ee47f1f39c700e81f44a180f132f1c65953723",
         "tests/logic/chatInbox.test.ts": "78238423439ba110bcc19ed645f7a7f9425ed50e9228446920fbae8f863ce505",
         "tests/logic/chatPushPolicy.test.ts": "5f977e7a76b0dd91790140b1a94ec3d425d5fbf8e45dd233c55e5b9b4e9d05de",
         "tests/logic/chatSenderPreview.test.ts": "6c215b63f7f99d3c4c28c1f20bcfe8ccfb238bea6a09c653c149f33cf9ad0bc7",
+        "tests/logic/communityRosterLoading.test.ts": "0f183d289df0d4388694651d5d51922ad09f1a224c1f566b07095316a9c53eb1",
+        "tests/logic/experiencePolish.test.ts": "1f0c864f110889d0bdc7cb07a8481a4f21d8532b66034863f1d91926cbe6f2cd",
+        "tests/logic/pageSkeletonLoading.test.ts": "a2ffa685029dff6fd8d3696a67d77d7d66db2858f5041912455dab8838ea0e55",
         "tests/rules/roundChatLifecycle.test.mjs": "63d180bc0666e60d520f5bb2c26dd97c83f75f7783dc3bbe8ad0abc68a0e1575"
       },
       "missingDocumentedPaths": []
@@ -3284,15 +3329,17 @@
       "simple": "chat/conversation-scopes.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "שיחה אישית יכולה להיפתח גם בלי חברות באמצעות בקשה ואישור. לפני אישור אין אישורי קריאה או הקלדה; חסימה עוצרת כתיבה ושומרת את ההיסטוריה. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
+      "summary": "נבדקה השפעת תיקוני ההמשכיות במקור המשותף ובבדיקות. ההתנהגות העצמאית והחישובים של הפיצר נשמרו. מקומי וטרם הופץ. שחזור, תיקונים, בדיקות ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
+        "בדיקת קצה ואימות מקורי, 2.11.2026",
+        "המשכיות ומשוב בשימוש, 2.11.2026",
         "בקשות לשיחה אישית, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "שיחה אישית יכולה להיפתח גם בלי חברות באמצעות בקשה ואישור. לפני אישור אין אישורי קריאה או הקלדה; חסימה עוצרת כתיבה ושומרת את ההיסטוריה. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
-        "מקורות משותפים שנבדקו בהיקף השינוי הזה: src/components/chat/ChatView.tsx, src/screens/chat/DirectChatScreen.tsx, tests/logic/clientAuditRecovery.test.ts, tests/logic/directChatOpeningLoading.test.ts. אין בסעיף זה טענה להרצת כל המסלולים ההיסטוריים של הפיצר.…",
-        "השינוי מקומי וטרם הופץ או נפרס. אין שינוי חזותי ואין צילום מכשיר חדש. ממצאים, בדיקות ומגבלות."
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: תיקוני מדידת גלילה, שימור נתוני סגל בכשל נלווה, הפרדת מצב שיחות וכיוון קיצור ההודעות. כלי הבדיקה החדש מוגבל לשלושת שערי ההדגמה ואינו משנה נתיב מוצר. אין שינוי מכוון בתנאי הרשאות, בחישובים, במכנים או בכתיבות העסקיות…",
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: אישור אחרי הרשמה, מעבר אטימות, זיכרון תצוגה, הודעת עדכונים או ביטול ארכוב מותנה. אין שינוי מכוון בתנאי הרשאה, כתיבות, חישובים ומכנים של הפיצר העצמאי. בדיקת רישום ההרשמה הותאמה למתאם המשוב החדש, תוך שימור בדיקות המתנה…",
+        "שיחה אישית יכולה להיפתח גם בלי חברות באמצעות בקשה ואישור. לפני אישור אין אישורי קריאה או הקלדה; חסימה עוצרת כתיבה ושומרת את ההיסטוריה. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות."
       ],
       "screens": [
         "src/screens/chat/CommunityChatScreen.tsx",
@@ -3300,12 +3347,12 @@
         "src/screens/chat/GameChatScreen.tsx"
       ],
       "documents": {
-        "chat/conversation-scopes.md": "4f8e20481a7bf25bcdeeea69684980299104581272da10dc39a1e87a13d6675b",
-        "chat/conversation-scopes.simple.md": "8cab3772f06a2a47204bfad4531028ac8168e52317645a2487cb74d2364cc7f2"
+        "chat/conversation-scopes.md": "4a3309ff9efe65ea48a88d4d5975d5f35a9730cd80304438ad2271db7306a791",
+        "chat/conversation-scopes.simple.md": "624ec69452834561f6565c894f1c351c6590ce721e5b7e1a394659bc900b4314"
       },
       "sources": {
         "src/components/chat/ChatTermsModal.tsx": "a004ac2b44159259bf2553b75e94f2bf526f06ec15902ff368025bc8af62614a",
-        "src/components/chat/ChatView.tsx": "1b0ec1248b4326d9af4845c2f64e9325e73a402d3c0dbe3d3417686e91f8eafb",
+        "src/components/chat/ChatView.tsx": "78754f8d12baf6719a60985493d48f02d1114828ab4d38b5ef57e4069145d968",
         "src/screens/chat/CommunityChatScreen.tsx": "ce1a1fe40f2be25750aba006c50f7a162f204de2c93505ff65401bd9dc244920",
         "src/screens/chat/DirectChatScreen.tsx": "7a155aae69571fb01b8e21cb085a7237551fd24951c257a4da25192b242114cb",
         "src/screens/chat/GameChatScreen.tsx": "b89422fb8a62921a5feb1166bc538b5945614ea03ee896a4fdc785d9bc54effe",
@@ -3324,25 +3371,27 @@
       "simple": "chat/message-actions.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "דיווח וחסימה זמינים גם בבקשת שיחה. ההודעה הראשונה נשמרת לדיווח עד אישור, וביטול הבקשה אינו מאפשר פנייה חוזרת. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
+      "summary": "נבדקה השפעת תיקוני ההמשכיות במקור המשותף ובבדיקות. ההתנהגות העצמאית והחישובים של הפיצר נשמרו. מקומי וטרם הופץ. שחזור, תיקונים, בדיקות ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
+        "בדיקת קצה ואימות מקורי, 2.11.2026",
+        "המשכיות ומשוב בשימוש, 2.11.2026",
         "בקשות לשיחה אישית, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "דיווח וחסימה זמינים גם בבקשת שיחה. ההודעה הראשונה נשמרת לדיווח עד אישור, וביטול הבקשה אינו מאפשר פנייה חוזרת. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
-        "מקורות משותפים שנבדקו בהיקף השינוי הזה: src/components/chat/ChatView.tsx. אין בסעיף זה טענה להרצת כל המסלולים ההיסטוריים של הפיצר. מסירת המימוש.",
-        "נוספה מעטפת אבחון מקומית עם מצב בזמן הכשל, שלבים בעלי מזהה ותזמון, מצב רשת ובנייה ומופעים נפרדים לשגיאה. נקודת הכניסה לתעבורת השרת עוברת כעת דרך העטיפה המשותפת; תשובות, חריגות, אפשרויות קריאה ומדיניות הפיצר נשמרות. אין כאן שינוי בהרשאות או בחישובי המוצר.…"
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: תיקוני מדידת גלילה, שימור נתוני סגל בכשל נלווה, הפרדת מצב שיחות וכיוון קיצור ההודעות. כלי הבדיקה החדש מוגבל לשלושת שערי ההדגמה ואינו משנה נתיב מוצר. אין שינוי מכוון בתנאי הרשאות, בחישובים, במכנים או בכתיבות העסקיות…",
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: אישור אחרי הרשמה, מעבר אטימות, זיכרון תצוגה, הודעת עדכונים או ביטול ארכוב מותנה. אין שינוי מכוון בתנאי הרשאה, כתיבות, חישובים ומכנים של הפיצר העצמאי. בדיקת רישום ההרשמה הותאמה למתאם המשוב החדש, תוך שימור בדיקות המתנה…",
+        "דיווח וחסימה זמינים גם בבקשת שיחה. ההודעה הראשונה נשמרת לדיווח עד אישור, וביטול הבקשה אינו מאפשר פנייה חוזרת. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות."
       ],
       "screens": [],
       "documents": {
-        "chat/message-actions.md": "d42168e3c76b0dda28d063bcb1337fa0700e8b0d817db652c21598e908d3c13f",
-        "chat/message-actions.simple.md": "47462630b836e0ee75cb78119b5a6a6391b479676acc428c59c4ddfc38b28674"
+        "chat/message-actions.md": "4bae4daa2dcca8db95104455d2039eb725ab8c3ceefb4daa783263a2e3ba07de",
+        "chat/message-actions.simple.md": "7464c3407cbef16e1ba3be911e8593b45683096c0616d5d26016ca658ca2c557"
       },
       "sources": {
         "src/components/anim/SpringSheet.tsx": "39b0eee61e56c7080fd49c68c5fa2292baeba84b3fd51b1e8955b15471a25b95",
-        "src/components/chat/ChatView.tsx": "1b0ec1248b4326d9af4845c2f64e9325e73a402d3c0dbe3d3417686e91f8eafb",
-        "src/services/chatService.ts": "475d0a28c7f1b7e32275fa5773b06b8cc7d1d8b8fafc7549f40f31d59957c371"
+        "src/components/chat/ChatView.tsx": "78754f8d12baf6719a60985493d48f02d1114828ab4d38b5ef57e4069145d968",
+        "src/services/chatService.ts": "7455cb46b01947c852b992d173b537053404e04781629010a47f0f4b5d89db8c"
       },
       "missingDocumentedPaths": []
     },
@@ -3354,26 +3403,30 @@
       "simple": "chat/message-interface.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "שליחת בקשה ותשובה המאשרת ממתינות לאישור השרת, עם ניסיון יציב ושמירת טיוטה בכשל. בשיחות אחרות נשמר מסלול השליחה הקיים. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
+      "summary": "עדכוני הודעות מפנים כעת כלפי מטה, אל ההודעות החדשות. החלפת שיחה או חשבון מתחילה מצב קריאה נפרד, בלי להעביר תוכן או חיווי מהשיחה הקודמת. מקומי וטרם הופץ. שחזור, תיקונים, בדיקות ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
+        "בדיקת קצה ואימות מקורי, 2.11.2026",
+        "המשכיות ומשוב בשימוש, 2.11.2026",
         "בקשות לשיחה אישית, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "שליחת בקשה ותשובה המאשרת ממתינות לאישור השרת, עם ניסיון יציב ושמירת טיוטה בכשל. בשיחות אחרות נשמר מסלול השליחה הקיים. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
-        "מקורות משותפים שנבדקו בהיקף השינוי הזה: src/components/chat/ChatView.tsx, tests/logic/clientAuditRecovery.test.ts. אין בסעיף זה טענה להרצת כל המסלולים ההיסטוריים של הפיצר. מסירת המימוש.",
-        "השינוי מקומי וטרם הופץ או נפרס. אין שינוי חזותי ואין צילום מכשיר חדש. ממצאים, בדיקות ומגבלות."
+        "ChatView הוא כעת מעטפת שממפתחת את ChatViewBody לפי חשבון, תחום ומזהה שיחה. שינוי הקשר מפרק את גוף השיחה הקודם, את מאזיניו, הטיוטה, התפריטים, בסיס ההדגשות ומצב הגלילה; הודעות נכנסות לאותו הקשר שומרות את הגוף mounted ואת מקום הקריאה. ListUpdateNotice מקבל…",
+        "הבדיקות ב-tests/logic/experiencePolish.test.ts וב-tests/logic/communityRosterLoading.test.ts כוללות תזמון מדידות, תוצאות קצרות וריקות, ביטול שחזור בגרירה, שימור נתון מאושר בכשל והפרדת הקשרים. צילום מקורי אינו אימות שרת או גרסת חנות. מקומי וטרם הופץ. שחזור,…",
+        "בדיקות התנהגות חדשות: tests/logic/experiencePolish.test.ts. האימות החזותי כולל אזורי מקור עם נתוני הדגמה ומתאמי דפדפן בלבד, ללא אימות מכשיר או מסד. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות."
       ],
       "screens": [],
       "documents": {
-        "chat/message-interface.md": "15f26ad79d75d0a40f96756c7f23e85711d09215bd1e960eeefb4d98f2c03405",
-        "chat/message-interface.simple.md": "3d5c134ca0c6551aa866ca1fef230146283af8cab7d07fd9139aa2bdfd624831"
+        "chat/message-interface.md": "53f158e1ab947e40086d5568d5f7d3afc178a03def4663d59dce2a571439fbbc",
+        "chat/message-interface.simple.md": "9867a3411909270405dc1a17ee83b9b6052c708c8242113364f47fb83c6679f5"
       },
       "sources": {
-        "src/components/chat/ChatView.tsx": "1b0ec1248b4326d9af4845c2f64e9325e73a402d3c0dbe3d3417686e91f8eafb",
-        "src/services/chatService.ts": "475d0a28c7f1b7e32275fa5773b06b8cc7d1d8b8fafc7549f40f31d59957c371",
+        "src/components/chat/ChatView.tsx": "78754f8d12baf6719a60985493d48f02d1114828ab4d38b5ef57e4069145d968",
+        "src/services/chatService.ts": "7455cb46b01947c852b992d173b537053404e04781629010a47f0f4b5d89db8c",
         "tests/logic/chatDemoIsolation.test.ts": "1df51149d1aea9e9017a70c7db192b2c958d2dd39c8c6e4073912278e8eff64e",
-        "tests/logic/clientAuditRecovery.test.ts": "a61d5190c2242cff8815fdc43944df282baac2c3f3872d94a5f5d7d3961734ba"
+        "tests/logic/clientAuditRecovery.test.ts": "a61d5190c2242cff8815fdc43944df282baac2c3f3872d94a5f5d7d3961734ba",
+        "tests/logic/communityRosterLoading.test.ts": "0f183d289df0d4388694651d5d51922ad09f1a224c1f566b07095316a9c53eb1",
+        "tests/logic/experiencePolish.test.ts": "1f0c864f110889d0bdc7cb07a8481a4f21d8532b66034863f1d91926cbe6f2cd"
       },
       "missingDocumentedPaths": []
     },
@@ -3563,32 +3616,49 @@
       "domain": "shared",
       "technical": "shared/menus-and-motion.md",
       "simple": "shared/menus-and-motion.simple.md",
-      "capturedOn": "2026-10-25",
+      "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "עודכנה הקרוסלה האישית בבית, בקובץ משותף לתהליך הזה או לכלי הבדיקה שלו. אין שינוי נוסף בפעולות המתוארות כאן ולא נערכה להן בדיקת ממשק חדשה. מקומי וטרם הופץ. השינוי והבדיקות.",
-      "latestDatedSection": "2026-10-25",
+      "summary": "נבדקו שלדי הטעינה והשיפורים החדשים באנדרואיד במצב הדגמה. תוקנו מצבי חזרה לרשימה, תוצאה ריקה, כשל בנתוני הסגל והמשכיות בין שיחות. נבדקו גם לחיצה כפולה, ביטול וצמצום תנועה. מקומי וטרם הופץ. שחזור, תיקונים, בדיקות ומגבלות.",
+      "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "הכדורגל שלי בעמוד הראשון של הקרוסלה - 25.10.2026"
+        "בדיקת קצה ואימות מקורי, 2.11.2026",
+        "המשכיות ומשוב בשימוש, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "נבדקה השפעת השינוי הממוקד בקבצים המשותפים: מסך הבית מחבר כפתור לכרטיס השחקן העצמי ומדגים את העמוד הראשון בקרוסלת הסטטיסטיקה; כלי בדיקת רכיבי הבית הותאם לכפתור הנוסף. אין שינוי מכוון בחוזה העצמאי של הפיצר המתואר כאן. אין להסיק מכך שכל מצבי הפיצר הורצו מחדש. כל…",
-        "כלי הדמו המוגן תומך ב־campaign, campaign_custom, campaign_banner ומרכיב רק את המציג הטהור. נצפו חלונית ברירת מחדל, עיצוב מפורש ומצב תחתון. חזרת מכשיר נבדקה בין המצבים, וכפתור אישור במצב התחתון סגר לבית בדמו. אין סנכרון קמפיין/חשיפה/לחיצה מרוחקת בבדיקה. אין…",
-        "עברו בדיקת טיפוסים ו־3,593 בדיקות ב־280 חבילות. נצפו שישה רכיבים באימולטור אנדרואיד, לרבות עברית ואישור ביטול נעול. זו אינה הוכחה שכל החלוניות הורצו; נשארו סקירת קמפיינים/הדרכה/חגיגת זכייה, בדיקות גופן מוגדל, מקלדת, מצב כהה ואייפון. מיפוי כל המארחים ומצב…"
+        "useRememberedScroll מבחין בין גאומטריית השלד לתוכן המוכן. מעבר או הקשר חדש ממתינים לשני פריימים כדי לא להחליף מיקום במדידה קודמת, בלי לעכב את הצגת התוכן. ברשימה וירטואלית מועבר גם מספר הפריטים, ומצביע onViewableItemsChanged מאשר שהפריט האחרון באמת נראה לפני…",
+        "רווחים בין תאי רשימה הועברו מ-gap של המכל ל-ItemSeparatorComponent, כדי שייכללו במדידת התא ובאומדני הגלילה. המרווחים נשמרו: 16 בסגל, 9 בתיבת השיחות ו-8 בציר השיחה. רווחי כותרת ותחתית נשמרים במפורש במקומות שבהם היו.",
+        "src/dev/ExperienceAuditPreview.tsx הוא מארח בדיקה מקורי עם רכיבי המקור, נתונים מקומיים וממשקי הדגמה בלבד. src/dev/QARouteLauncher.tsx חושף אותו רק תחת __DEV__, EXPO_PUBLIC_QA_ROUTES=1 ו-EXPO_PUBLIC_FOOTY_FORCE_MOCK=1. אפשר לבחור זהות מוכנה מזיכרון ההדגמה ללא…"
       ],
       "screens": [],
       "documents": {
-        "shared/menus-and-motion.md": "9659f53c4eae3ab5b61e4dc885c4c0643d2c1033c7532e22c27660a3c93b3bbd",
-        "shared/menus-and-motion.simple.md": "dec8862388bad5fed3611eeb6d2cf020d4d671d10831a7ef522b317aae9830cb"
+        "shared/menus-and-motion.md": "b1718a610369da1944ce567ac599cfcf242f1863ee9d9912ea8a233de92e1d22",
+        "shared/menus-and-motion.simple.md": "d12c93f840dc7b72977c5d87dce64cec70a604c7f4868d5b7125cb0675c01baa"
       },
       "sources": {
+        "src/components/Button.tsx": "9fced8d771299571e1262ba16cf14e805a0d15d3ca88a9417e782902d2a294b1",
         "src/components/DraggableMenuSheet.tsx": "4724d96b666b198bf2dbab63d68570336fbdba2dec05dbb6338233721ca5378b",
+        "src/components/ListUpdateNotice.tsx": "17dfd8bd7bf923c31abc2cc2ba5f8ce41a6f7326ea6aa0f2b829933a8c900f59",
+        "src/components/NoticeCard.tsx": "19969313b7c40f4ac7262d51162d760578a0e733136caeb92a8b911be2396c6f",
+        "src/components/Toast.tsx": "4e22b76a52697a2c5522fea92f363746f4521125f83b569b9d3c2d423bdee55a",
+        "src/components/anim/ContentReveal.tsx": "1ab1ed4d0cb1b9bbd4075d5f85158e8f33f6e8222da461d54613f3169448b5ae",
+        "src/components/anim/UpdateHighlight.tsx": "e399ca24cf44eb8b7461da0767f4b21e1fcd7fc1e7ae213190934be807302f34",
         "src/components/chat/ChatTermsModal.tsx": "a004ac2b44159259bf2553b75e94f2bf526f06ec15902ff368025bc8af62614a",
         "src/components/community/RichRulesText.tsx": "7b874071edf7555d53b1e3806cc4b971b0260aefb919d9b7eda7b165a6d20650",
         "src/components/match/BalancedFillModal.tsx": "9128e0c3f77173c05c5ce889f266346e434d4d11d21e9fd110c571f738fbe54f",
         "src/components/match/SubstitutionModal.tsx": "c875c91b0476455e1d406976cefc17a1e48d91f9572b7d96598e118237c82b91",
+        "src/dev/ExperienceAuditPreview.tsx": "335c2260476ddd85c302f969a20f1bfa9da05b8a12000c3f816e6ea4ddc0ccfe",
         "src/dev/OverlayAuditPreview.tsx": "56416f5e2b6b90ea819498536f5fb9f06aadd4cceb3b68c47d5ac7eb0a558d32",
+        "src/dev/QARouteLauncher.tsx": "a60233c35ec604b6653a7ab3509593886ae71867cbba4772786f631217e05368",
+        "src/hooks/useConfirmedFeedback.ts": "29ef72835c482adf5cd5758a04a85fc71e79a18e065c0b0ebc067f2a329cf133",
+        "src/hooks/useListMemory.ts": "6398850797c90140c27460f751de08b55231e09497d6c903d89838f696d241c8",
+        "src/hooks/useListUpdates.ts": "9bfe99b029ee7434ea4a9471e4516d1e8d6292ace4172fdf1f26c60055d6b8f6",
         "src/theme/overlays.ts": "2833f4a90c963e2fe1034755c725ee4818048fd5707d8f8c97d99036ca1923de",
+        "src/utils/listMemory.ts": "8994c2d92bfb1d1a43e96477a7e0454803df9deb7c594bf1cb4e705aec8409af",
+        "src/utils/listUpdates.ts": "4dc889af6fa6fb335d1871d4abb5c0a606304e7ed98f28289d6cefe37cc19a38",
+        "src/utils/registrationFeedback.ts": "f98f16ab6693b386e102be15dcff4efb1154f03e2dc62627258c3011cdefbc2e",
         "tests/logic/clubTabsTouchDiagnostics.test.tsx": "3e9cba5cba8435d021b8b7fa395ac0556af166fe307bb6d9ca0527bee07da658",
+        "tests/logic/communityRosterLoading.test.ts": "0f183d289df0d4388694651d5d51922ad09f1a224c1f566b07095316a9c53eb1",
+        "tests/logic/experiencePolish.test.ts": "1f0c864f110889d0bdc7cb07a8481a4f21d8532b66034863f1d91926cbe6f2cd",
         "tests/logic/nativeCampaignView.test.tsx": "c89dadeb67ab54149ade0cfe3eb311130156b7986ab21d3bebb74583d3f4c408",
         "tests/logic/pulseCurrentDialogs.test.tsx": "fb8ef8ec296a220eaf12c534be05bf7b267c9bb11f2f0955875ba080a78dca4b",
         "tests/logic/safeContentMetrics.test.ts": "65385e9feaa448c72d38eaac9a91a00ff8281f326becf7a89144e585f625e372",
@@ -4071,24 +4141,24 @@
       "simple": "profile/player-discovery.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
+      "summary": "נבדקה השפעת הרחבת שלדי הטעינה במקור משותף. אין שינוי בפעולות או בחישובים העצמאיים של הפיצר הזה. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
+        "הרחבת שלדי הטעינה, 2.11.2026",
         "אימות פרסום קבוצות בפולס, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "אימות כשלים בקבלת פרסום, 2.11.2026"
+        "בקשות לשיחה אישית, 2.11.2026"
       ],
       "evidenceExcerpts": [
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים. השינוי מוסיף מציגי טעינה או חושף לשימוש חוזר את בסיס השלדים; בדיקות החברים כוללות כעת סמן תשובה מוכן, ובכשל בודקות שרשימה קיימת אינה נדרסת ואין סימון של תשובה ריקה מוצלחת. תנאי הרשאות, כתיבות, חישובים, מכנים, פעולות…",
         "נבדק ההפרש התחום בשירות המשותף של המחזורים: נוספה בדיקת אישור לפרסום קבוצות כאשר תשובת הפעולה אובדת. אין שינוי בחישוב, במכנים או בפעולות העצמאיות של הפיצר המתואר כאן. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה.",
-        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…",
-        "דוח הטיפול, הבדיקות והמגבלות."
+        "השינוי ב-src/services/gameService.ts מוגבל ל-publishDraftTeams ולתלות בסיווג כשלים זמניים. נבדקו גבולות קבלת השרת, התאמת החשבון והחלוקה, ושימור השגיאה כאשר האימות נכשל. tests/logic/publishTeamsReceipt.test.ts מפעיל את פונקציית השירות מול תחליפי קריאה וכתיבה;…"
       ],
       "screens": [
         "src/screens/profile/SocialPrivacyScreen.tsx"
       ],
       "documents": {
-        "profile/player-discovery.md": "e5dfcb0d884794328846e0737cd312132b9c9646733fd30042a2ab56c6b722d8",
-        "profile/player-discovery.simple.md": "4b2ac892a0ec218401dd8fa9911337465969c9dfe468faffc272129ecd78b985"
+        "profile/player-discovery.md": "5233089cdbc1d32abc8089a9b94a4e8571bfa10f24c8ad03088f9227c0d8aca4",
+        "profile/player-discovery.simple.md": "c9219ca5c4b32b8963102119293a6af84dd24d6755d7e130bf6c50df1ca40946"
       },
       "sources": {
         "functions/src/index.ts": "e6e9b529f6f002be85742044e49f331ae241df4dbd34f98e7fde63a8f074df56",
@@ -4110,7 +4180,7 @@
         "src/utils/socialPlayers.ts": "ef7cbccf78292e944388031e7221dc9eaf3bf850bffde75994ff3529397020e7",
         "tests/logic/authTransientReads.test.ts": "2a6424e2acbde15b1a30a6921da666983fa3dfc06f8ea8f9b414d1af36a8a42b",
         "tests/logic/discoveryDefaultFriends.test.ts": "b80c9a2a7c9de452465ab834f2ae18bfbdc03bb7db884f2d1d601e76d765c911",
-        "tests/logic/friendsLoadOrder.test.ts": "4431e16aab7a80d340aa7134f0242f0afb3c00148c3bb051cef4b27e349a8d8f",
+        "tests/logic/friendsLoadOrder.test.ts": "cd6422e214ddf4220dd838b9f755cf13aca39d8bd5f2a14981dcca5c3a1c0c39",
         "tests/logic/friendsOwnerIsolation.test.ts": "4e112dd725cfe9c599483f97b3535401239c77447bfe0a023852bad03b80a37f",
         "tests/logic/playerDiscoveryPagination.test.ts": "d96f0aa27b0d81cd0af1e0fdde8289c2fadbb585d66fb37f9e11882d94a4f44e",
         "tests/logic/publicPlayerRead.test.ts": "e2e8a4fb24e8f6f97aad0fa2d15589ad28daa412a4035dae757b6898bb027bfa",
@@ -4235,31 +4305,32 @@
       "simple": "shared/pulse-work-inbox.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נשמרו ואומתו 13 מסירות, מהן 11 פריטים פעילים ושתי מסירות קיימות, ונימוקים ל-37 פריטים. הספירה בקריאת הסיום היא 96 לבדיקת הבעלים ו-13 פתוחים או מנותחים: שמונה שגיאות ללא פתרון מאומת וחמש משימות להכרעה. מצבי המקור וצילומי הדיווח נשמרו; לא נסגר פריט סופית ולא נשלחה הודעה למשתמש.",
+      "summary": "בבית הפולס נוספה תמונת גרסאות מעל סעיפי הטיפול. המשימות ומצבי הטיפול שלהן לא השתנו. הבקשה הגיעה בשיחה, ולכן לא סומנה משימה ללא מזהה מאומת. השינוי מקומי וטרם הופץ. פירוט וראיות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
+        "תמונת גרסאות בבית, 2.11.2026",
         "מסירת הסבב שאומתה, 2.11.2026",
         "טיפול בפולס, 2.11.2026"
       ],
       "evidenceExcerpts": [
+        "נבדק השינוי במקור המשותף pulse/src/screens/HomeScreen.tsx: כרטיסי הגרסאות מתווספים לפני סעיפי הטיפול, ללא שינוי בתור העבודה, במקורותיו, בסימון המסירה או בסגירה. מדידת הגרסאות נקראת בנפרד ובמטמון משלה. הבקשה הגיעה בשיחה, ללא מזהה פריט מאומת; נשמרת מסירה מקומית…",
         "כל 6,536 הבדיקות ובדיקת הטיפוסים עברו. שבעה רישומי יומן ושני צילומי הוכחה נקראו חזרה ואומתו. התיקונים מקומיים וטרם הופצו; הראיות והחריגים.",
-        "נקראו מקורות הלוח דרך החיבור המקומי המתועד: 20 דיווחים, 22 משימות ו-67 שגיאות. 85 כבר היו מסירות לבעלים ו-24 היו פתוחים או מנותחים. לא היו פריטים פתוחים ב-pulseFeatures או ב-chatReports; 16 רעיונות שמורים לא קודמו. נבדקו גם 12 שיחות תמיכה, מתוכן אחת ממתינה עם…",
-        "דוח הטיפול, הבדיקות והמגבלות."
+        "נקראו מקורות הלוח דרך החיבור המקומי המתועד: 20 דיווחים, 22 משימות ו-67 שגיאות. 85 כבר היו מסירות לבעלים ו-24 היו פתוחים או מנותחים. לא היו פריטים פתוחים ב-pulseFeatures או ב-chatReports; 16 רעיונות שמורים לא קודמו. נבדקו גם 12 שיחות תמיכה, מתוכן אחת ממתינה עם…"
       ],
       "screens": [
         "pulse/src/screens/HomeScreen.tsx",
         "pulse/src/screens/TasksScreen.tsx"
       ],
       "documents": {
-        "shared/pulse-work-inbox.md": "ba8404146af86fc9c93569e20d4b964cd9b554ab012116fe0e9e837ed1339c5e",
-        "shared/pulse-work-inbox.simple.md": "b0f886367da19bee63a26b5ab6445c3aa63e89359239454259ac3047dcc3456b"
+        "shared/pulse-work-inbox.md": "c6efe470fae50f5ed508943331ef4155bd75c45fcebfcce4b6f16458d433620f",
+        "shared/pulse-work-inbox.simple.md": "ee68b2107d38f37dfeedb0f12c56d4f34e65c6137b15cba54e6179dfc9bbb571"
       },
       "sources": {
         "functions/src/crashlyticsBridge.ts": "ff9e793bc9d80a8f638a55f28704f82d4eb543f44e95d17a8ab2f399c29ec275",
         "functions/src/crashlyticsIngest.ts": "a90b7aa7d34aa89a5deb950c6026643a8e74de819ab04a733941d31f41d78a55",
         "pulse/src/components/HomeActionPanel.tsx": "bb891a907ca4307968ca5e916f40b69e2b934037c8be32aff9a33eec35aac54b",
         "pulse/src/navigation/RootTabs.tsx": "4ee7f3316adf2b72e653650e7b4f606e07eb80f7309cfc6250e727890431ea42",
-        "pulse/src/screens/HomeScreen.tsx": "62109f506088db00c8b63cc4dc9f88fd9d706792438721090bed0409a39d69ed",
+        "pulse/src/screens/HomeScreen.tsx": "ff305f418592ef4d186c9d1ba0ba8e8755102bfa4208fa4ddeb67b342233efc2",
         "pulse/src/screens/TasksScreen.tsx": "f4e15d9b8c1099eabdef779c608073020acf0298cc5bf1e3708efe26ad3a5bb9",
         "pulse/src/services/errorPresentation.ts": "a171ac5d05266c8987f2405cde3810efe0a75738191c835578e89b7b20e921bd",
         "pulse/src/services/errorsService.ts": "de4c3c92c35664402ccbae46e42decb38a0fdee49820f0e12fd94c3b9e5ccdbf",
@@ -4285,15 +4356,16 @@
       "simple": "shared/pulse-management.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
+      "summary": "מתחת למדדי הפעילות נוסף אזור \"מי כבר עדכן?\" עם כרטיס לאנדרואיד וכרטיס לאייפון. רואים מספר ואחוז בגרסה הציבורית האחרונה שאומתה, מספר בגרסאות ישנות, מידע חסר וכמה נצפו היום בגרסה האחרונה. אפשר לפתוח פירוט לפי גרסה ולהגיע לכרטיס המשתמש. גרסאות בדיקה חדשות מהחנות מופיעות בנפרד.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
+        "תמונת גרסאות בבית, 2.11.2026",
         "בקשות לשיחה אישית, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
-        "מקורות משותפים שנבדקו בהיקף השינוי הזה: src/services/userService.ts. אין בסעיף זה טענה להרצת כל המסלולים ההיסטוריים של הפיצר. מסירת המימוש.",
-        "מוני המועדונים החדשים אינם מוגבלים לחלון נע ואינם כוללים מועדונים קודמים ל־1.11.2026, בהתאם לבחירת הבעלים הקודמת. בקשות ושיחות הן תורים כלליים. כל המקורות נבדקים פעם בדקה כשמסך הבית ממוקד וברענון ידני, ללא שינוי בתזמונים או בשירותי השרת. שמות משתמשים נקראים…"
+        "נוסף pulse/src/components/VersionAdoptionPanel.tsx אחרי ארבעת מדדי הפעילות של pulse/src/screens/HomeScreen.tsx, לפני סעיפי הטיפול. אין מסך או נתיב חדש. הפירוט נפתח בתוך הכרטיס, עשרים משתמשים תחילה, עם סינון לפי גרסה או מידע חסר. קישור משתמש מפעיל…",
+        "מקורות הבדיקות: tests/logic/pulseVersionAdoption.test.ts, tests/logic/appVersionPresence.test.ts, tests/logic/pulseVersionPresenceReader.test.ts, ובדיקות הספירה והמכשירים הקיימות. כל 6,568 הבדיקות ב-590 חבילות ובדיקות הטיפוסים של שני היישומים עברו. הצילומים…",
+        "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות."
       ],
       "screens": [
         "pulse/src/screens/AdminLoginScreen.tsx",
@@ -4342,18 +4414,21 @@
         "pulse/src/screens/WorkspacesScreen.tsx"
       ],
       "documents": {
-        "shared/pulse-management.md": "c50121f9c21c007e5e8078745aba0cbcc2e632335f0ca113f69e2b0ff1bd9672",
-        "shared/pulse-management.simple.md": "1e28f7f6b5ecaad7d579eeb2de16f68ad7649b52434bc5e48649eed0fbfcdf6d"
+        "shared/pulse-management.md": "d11f0024d1d0e655aa99aff2095fa442f8a1cad34fa002fbaabd9db8ea2c1573",
+        "shared/pulse-management.simple.md": "4608bcff3231802ffdf97b1f5f384a72dcb7b09600fdc297633d82321d5ec0ec"
       },
       "sources": {
         "functions/src/crashlyticsBridge.ts": "ff9e793bc9d80a8f638a55f28704f82d4eb543f44e95d17a8ab2f399c29ec275",
         "functions/src/crashlyticsIngest.ts": "a90b7aa7d34aa89a5deb950c6026643a8e74de819ab04a733941d31f41d78a55",
         "functions/src/pulseProxyPolicy.ts": "8312d9d408e68d0270a336c6c3ea0eac5a88cc203be9d33a6a32a5faf8a7ee4a",
         "pulse/src/components/AppMenu.tsx": "4742784f693fe062b379b14d483447c6494f8e18785681919afedddad5a90572",
+        "pulse/src/components/DeviceVersions.tsx": "13a9704b7a40965373a41fa0848da7352e5f545cf11c32183679fc3b3833beb8",
         "pulse/src/components/GrowthNotes.tsx": "cff6b1b04fdb96eb5fe35f8b2a1baf51f494359004834817eda4ca53d08f174c",
         "pulse/src/components/GrowthUI.tsx": "09199913259173bc7a3884a47005e807166fc7ea10c5c67744a1c8d7d8b2f664",
         "pulse/src/components/HomeActionPanel.tsx": "bb891a907ca4307968ca5e916f40b69e2b934037c8be32aff9a33eec35aac54b",
         "pulse/src/components/UserInformation.tsx": "21a1987a3b287f57d71694183967631e6e9af08cf7e02e93f4923f32bf5bc081",
+        "pulse/src/components/VersionAdoptionPanel.tsx": "62d003475ac270bd3ab1adb7ff6cdc753db1614ac175897938594766494abc88",
+        "pulse/src/components/VersionInventory.tsx": "64349e4bcb60b8b7c72ecfdb15f72685ff025706d6265c385cc4cd8dcf13c298",
         "pulse/src/components/Workspace.tsx": "14acc4ba248659a3004d4499aab6b7b4fda3f9f378a9e1d6126f48b3566bf511",
         "pulse/src/data/proPlanningFeatures.ts": "399b8698a4f8d6028fd99e88c97ae999e373fddca82120f86f916f2d9885fd11",
         "pulse/src/navigation/ClubsStack.tsx": "f856710c35f311c05e0d5963bcbbb79f2064842e5da709a39dda0e2591ed6924",
@@ -4377,7 +4452,7 @@
         "pulse/src/screens/FeaturesScreen.tsx": "dce3b551d316dc424f5ce5946d6bbf9d1c5271f3b5a7e294a40272c783c240ee",
         "pulse/src/screens/GameDetailScreen.tsx": "75eedc41dbdf038b7aa3c695f215d9f4021aafaec5440695d59f851f4f49539c",
         "pulse/src/screens/GamesScreen.tsx": "4528adf3469f054f1e636ae34b796d581054445513b2507674bb17f00ce00292",
-        "pulse/src/screens/HomeScreen.tsx": "62109f506088db00c8b63cc4dc9f88fd9d706792438721090bed0409a39d69ed",
+        "pulse/src/screens/HomeScreen.tsx": "ff305f418592ef4d186c9d1ba0ba8e8755102bfa4208fa4ddeb67b342233efc2",
         "pulse/src/screens/IdeasScreen.tsx": "642d880afe1ec286b1c0e359a06506b4976884dc2e654f97795749dfcfb7c72f",
         "pulse/src/screens/JoryioJourneyScreen.tsx": "ebcef3b7a4104af058935d5acfd0d724323953cf4a1404e84aa954527454b54b",
         "pulse/src/screens/MapScreen.tsx": "0071757cf3a410ff778ac7c7d3b9546212c092acec9cb7ec47f3a8b20eeccbd9",
@@ -4405,6 +4480,8 @@
         "pulse/src/screens/UsersScreen.tsx": "9de7db48566a841b95eebdcc061277e0f7537fd34dcdb2123fbb8c66a815237f",
         "pulse/src/screens/VersionsScreen.tsx": "4f3340268951a5be37039b19506a1fcabebd833528376849d31ad5622d1c25b2",
         "pulse/src/screens/WorkspacesScreen.tsx": "394f527f4d596715e559715837c2a32e5822923bbb9e857ecbdb49f7fe48a385",
+        "pulse/src/services/appStoreConnect.ts": "081bb1e52522d08d2f45925bc23eddaeb4dee0e378dcb7f83a977ba4594da0f9",
+        "pulse/src/services/deviceVersions.ts": "3639ecb3cf351e5087e3575f5743bf4ce1232706a12ebd22fd852d7b809df60c",
         "pulse/src/services/downloads.ts": "52e72269d3a263b88af871cc2a3e91b566b9826a826fef147ba19f63dcd149a8",
         "pulse/src/services/errorCatalog.ts": "0f66b2b77203f3fa931a41580db51197bbf1cd5ae718bae3b9c7cf8c655c3b64",
         "pulse/src/services/errorPresentation.ts": "a171ac5d05266c8987f2405cde3810efe0a75738191c835578e89b7b20e921bd",
@@ -4421,8 +4498,10 @@
         "pulse/src/services/proPlanning.ts": "f19838b95bd19222cd5b94589c3eb999b9c936727f7efc64d5c55824897defc7",
         "pulse/src/services/quota.ts": "2d655f72f86ed06ef22aeb27d076577d8f4af75393143d6626299df7d0a98f93",
         "pulse/src/services/teamderChatService.ts": "44b6657ec6c92ecd04c8ccc3b905ed8072abcd329106b501e63ccb9e0e0c4963",
+        "pulse/src/services/versionAdoption.ts": "fd94d2f03e213762b47b772ed25290be30b33e3441425719ba7a158259bceb75",
         "pulse/src/services/workItems.ts": "e3a25c360a063a7a18824b55526b35fba7fd18828f5c3bc22ee58656c0296bf1",
         "pulse/src/theme.ts": "9e786d327a858280777cfe21feeb1bef7cbc62295e0ddde3e730d818c5faa1f5",
+        "src/services/appVersionPresence.ts": "799c49c3693ee1afbd10d357bd29ae4a0c9c9448d97aec74e027476ef5dee415",
         "src/services/clubInviteCampaign.ts": "6507ae9750d6d0e228bace6ae48f34c645dd60924e5268405431afe508075b34",
         "src/services/deepLinkService.ts": "bead415eb27ee49b7a5e331ead4421c61d61dfff36dd762fb2e76c9cf2eb887a",
         "src/services/incomingInvite.ts": "fc7de845bae9cd60b902a4d6bbf91dc5242b5360fc3c4667ccc071075f0ef8da",
@@ -4430,6 +4509,7 @@
         "src/services/userService.ts": "b2be368f0ddd1b5baa2aef109d6a48b1eb739babcbcf1870b3c91ae3df8c853c",
         "src/utils/eveningPlayed.ts": "d68d2824cf46b3f8ab5c714e1734392f89868d4feba880b5d321addda102117b",
         "src/utils/linkDomains.ts": "edf32486e9f09a12ff025050dfe7cd7354ca10816628c5c1e1f1f0c04bd6a630",
+        "tests/logic/appVersionPresence.test.ts": "d2e75b129a84b6c1b581f4a045328587cb0ca9b5af2d46e020e8969766f3de61",
         "tests/logic/clubInviteCampaign.test.ts": "e47dbcf914d85239d98ed6c92057662567297141f4e7c498144183e7fa29d500",
         "tests/logic/crashlyticsPulseBridge.test.ts": "f7adb3c845e3b493d66da2d8d552319430171d2b0830d13b93eabe52eb439714",
         "tests/logic/errorCatchCoverage.test.ts": "b5c77b53b366626d201ac6c0e2455eb72eab67aee20ae1377d1528ee3b6222c8",
@@ -4443,7 +4523,9 @@
         "tests/logic/pulsePollRecovery.test.ts": "f659823ba6936322d3907ef49b224ceab2ff50aba1dd04168f70cffb7fa1cb9d",
         "tests/logic/pulseProPlanning.test.ts": "9f566ed853761626df0a153fcb0d22a578f3b5cbc355c0e37ecde4280ade74f5",
         "tests/logic/pulseQuotaRecovery.test.ts": "6a154ae392ab6f44da9e17eb238a6b52fedc359afbf35857e0806ae9f6666cda",
-        "tests/logic/pulseStructure.test.ts": "4cad863c3fc7174ac8976916c69a12f333ba35c59c3917de9432b98bd878ff40"
+        "tests/logic/pulseStructure.test.ts": "4cad863c3fc7174ac8976916c69a12f333ba35c59c3917de9432b98bd878ff40",
+        "tests/logic/pulseVersionAdoption.test.ts": "08e86bc6ca5f8c8c4ae802f3f06f871ff3ccc3b399c048ec72a91ed589d14aef",
+        "tests/logic/pulseVersionPresenceReader.test.ts": "3285a5622e3787098e06618b0841aa89ff539102a7e7923af8c40bc47229025d"
       },
       "missingDocumentedPaths": []
     },
@@ -4455,23 +4537,25 @@
       "simple": "profile/my-activity.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
+      "summary": "נבדקה השפעת שיפורי המשוב וההמשכיות במקור משותף. אין שינוי בפעולות העצמאיות של הפיצר הזה. מימוש מקומי שטרם הופץ. התנהגות, בדיקות, צילומים ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "שלדי טעינה בשלושה אזורים, 2.11.2026",
         "בקשות לשיחה אישית, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
-        "מקורות משותפים שנבדקו בהיקף השינוי הזה: functions/src/index.ts, functions/src/socialPlayers.ts. אין בסעיף זה טענה להרצת כל המסלולים ההיסטוריים של הפיצר. מסירת המימוש.",
-        "נבדקה השפעת השינוי הממוקד במקורות המשותפים: הוסרה מגבלת החברים במועדון. אין שינוי מכוון בהתנהגות העצמאית של המסך המתואר כאן או במספר המקומות במחזור. התיקון מקומי וטרם הופץ; אין בדיקת מכשיר חדשה לפיצר זה."
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: אישור אחרי הרשמה, מעבר אטימות, זיכרון תצוגה, הודעת עדכונים או ביטול ארכוב מותנה. אין שינוי מכוון בתנאי הרשאה, כתיבות, חישובים ומכנים של הפיצר העצמאי. בדיקת רישום ההרשמה הותאמה למתאם המשוב החדש, תוך שימור בדיקות המתנה…",
+        "נבדק ההפרש התחום במקורות המשותפים של הפיצר. השינוי מוסיף שלדים בזמן שאין תוכן מוכן וחיווי רענון כשיש תוכן, וכן ניסיון חוזר לטעינת מחזורי הבית. נשמרו בחירת העונה, מכנים, פעולות, ניווט וחישובי הפיצר העצמאי. אין מכך בדיקת מכשיר חדשה שלו. השינוי מקומי וטרם הופץ.…",
+        "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות."
       ],
       "screens": [
         "src/screens/profile/MyActivityScreen.tsx",
         "src/screens/tabs/ProfileScreen.tsx"
       ],
       "documents": {
-        "profile/my-activity.md": "a15ad0c317fc6c4cb27d914615502e2d39a59f220cb344936bb9daab2ff6966c",
-        "profile/my-activity.simple.md": "3d01f78aecb7c1a6204191cedf7670575b519c662d5cac063f042a784c86d099"
+        "profile/my-activity.md": "f6f1b901b648a8e649a3de9b14b32d4b9ac61415d602a526c0c9699eed929d62",
+        "profile/my-activity.simple.md": "935739a63eebdcd66c612f39218adce4944cdc160cd309b4b88eb4a731a98791"
       },
       "sources": {
         "functions/src/clubDeletion.ts": "9b87f76c8343e551f6b114f90b66667cb1f87eed020b8aa6e357a43f685c0b62",
@@ -4499,7 +4583,7 @@
         "src/navigation/GameStack.tsx": "a33f33df3685892060762712a08331042d66a2b891c9af7a23d328e4df504283",
         "src/navigation/ProfileStack.tsx": "ff89d811e4e9f233b398695fbc83497fff7099cb9ce03c2b441e6c0fe52b59c4",
         "src/screens/profile/MyActivityScreen.tsx": "362424ab08aae9cdf8f0b38421843416c3aef7d62c929e41296e0706e6f9ca42",
-        "src/screens/tabs/ProfileScreen.tsx": "bab99a593bcc5c562da7d60c380cb832a44d559def7904285dc490801f6ec71e",
+        "src/screens/tabs/ProfileScreen.tsx": "49ed9cfe2b97265136b23a99d9b1d508a15b00368caae5d13474f4a43f1898de",
         "src/services/groupService.ts": "03fb4d90d4c4927065a644f2b89428b2f5c5df1807dae25fbdbf40624a2899af",
         "src/services/myActivityHealthConnect.ts": "a41cfce59be9fbbd638b2275cfb78ff21617b7aa4442e6aa3b619de93380f086",
         "src/services/myActivityService.ts": "8d88e69e13c7d2acae302ea8ec359582de23826e6d16efb8810edd839f96722c",
@@ -4534,25 +4618,25 @@
       "simple": "chat/message-requests.simple.md",
       "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
-      "summary": "בהמשך לבקשת הבעלים לתמונות התחבר אמולטור אנדרואיד, וצולמו שמונה מצבים מתוך אפליקציית הפיתוח עצמה: רשימת שיחות, פרופיל שחקן שאינו חבר, שיחה חדשה, בקשות שהתקבלו, בקשה נכנסת, המתנה לאישור, בקשות שנדחו ופרטיות. קוד הרכיבים הוא המקור הנוכחי, ומצבי הבקשות וההודעות הוזרקו בזיכרון במצב הדגמה מנותק. לא נשלחו הודעות, לא שונתה חברות ולא נשמרה הגדרת…",
+      "summary": "נבדקה השפעת תיקוני ההמשכיות במקור המשותף ובבדיקות. ההתנהגות העצמאית והחישובים של הפיצר נשמרו. מקומי וטרם הופץ. שחזור, תיקונים, בדיקות ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "צילומים מתוך אפליקציית האנדרואיד, 2.11.2026",
-        "בקשות לשיחה אישית, 2.11.2026",
-        "מימוש מקומי 2.11.2026"
+        "בדיקת קצה ואימות מקורי, 2.11.2026",
+        "המשכיות ומשוב בשימוש, 2.11.2026",
+        "הרחבת שלדי הטעינה, 2.11.2026"
       ],
       "evidenceExcerpts": [
-        "גלריית שמונת הצילומים. חותמות הקבצים והמקורות, פרטי הבידוד והמגבלות נמצאים ב-artifacts/dm-native-shots-2026-11-02/receipt.json. צילומי הדפדפן הקודמים נשמרו בנפרד ולא הוחלפו.",
-        "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
-        "מקורות משותפים שנבדקו בהיקף השינוי הזה: functions/src/chatPush.ts, functions/src/dmPolicy.ts, functions/src/dmRequests.ts, functions/src/index.ts, functions/src/socialPlayers.ts, src/components/chat/ChatInbox.tsx, src/components/chat/ChatView.tsx,…"
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: תיקוני מדידת גלילה, שימור נתוני סגל בכשל נלווה, הפרדת מצב שיחות וכיוון קיצור ההודעות. כלי הבדיקה החדש מוגבל לשלושת שערי ההדגמה ואינו משנה נתיב מוצר. אין שינוי מכוון בתנאי הרשאות, בחישובים, במכנים או בכתיבות העסקיות…",
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים: אישור אחרי הרשמה, מעבר אטימות, זיכרון תצוגה, הודעת עדכונים או ביטול ארכוב מותנה. אין שינוי מכוון בתנאי הרשאה, כתיבות, חישובים ומכנים של הפיצר העצמאי. בדיקת רישום ההרשמה הותאמה למתאם המשוב החדש, תוך שימור בדיקות המתנה…",
+        "נבדק ההפרש התחום במקור או בבדיקה המשותפים. השינוי מוסיף מציגי טעינה או חושף לשימוש חוזר את בסיס השלדים; בדיקות החברים כוללות כעת סמן תשובה מוכן, ובכשל בודקות שרשימה קיימת אינה נדרסת ואין סימון של תשובה ריקה מוצלחת. תנאי הרשאות, כתיבות, חישובים, מכנים, פעולות…"
       ],
       "screens": [
         "src/screens/chat/DirectChatScreen.tsx",
         "src/screens/profile/SocialPrivacyScreen.tsx"
       ],
       "documents": {
-        "chat/message-requests.md": "f7d03ecfce4580c27bb906f439c3213cbcfc7579582664ca006fc89972ea221a",
-        "chat/message-requests.simple.md": "48f1b68bf07d5fe050be8a341cac8d4b803e340a1d537f910e7afb4e0e0e4311"
+        "chat/message-requests.md": "55e2e1ce001ffd230ae2a026f60a637a01226b209ea8ea1465f9c22b7180b5ce",
+        "chat/message-requests.simple.md": "d91d88fbfb57e8b0c9df0e63b4d84e92385c319022fb400fdb46ad83382a0c2c"
       },
       "sources": {
         "functions/src/chatPush.ts": "bc6d2a99998692509453cfc3c832d15d8b494d082431fd3c5676af02d8082292",
@@ -4560,8 +4644,8 @@
         "functions/src/dmRequests.ts": "efa27e8f5f1de62410940f43bca9d64b5014a8c83dd9b609e1153a3d3cc3bf47",
         "functions/src/index.ts": "e6e9b529f6f002be85742044e49f331ae241df4dbd34f98e7fde63a8f074df56",
         "functions/src/socialPlayers.ts": "c4e02a689f696aace64cd0f5ed7d7debb2e2d30d6ff7de7e56cdb0356a035b21",
-        "src/components/chat/ChatInbox.tsx": "ec26a7ad3feb5d6ca2f53ed160c50f6c9ac4da6df3dba6c346d08d70d4462779",
-        "src/components/chat/ChatView.tsx": "1b0ec1248b4326d9af4845c2f64e9325e73a402d3c0dbe3d3417686e91f8eafb",
+        "src/components/chat/ChatInbox.tsx": "03ae6c69c43bea0cf73a0f15efff6d8582707741b42bac9bb8e0a141fc4cb4fa",
+        "src/components/chat/ChatView.tsx": "78754f8d12baf6719a60985493d48f02d1114828ab4d38b5ef57e4069145d968",
         "src/components/chat/DmPlayerSearch.tsx": "7b9aa7fa38bac2a2fe7efeb6476c9a2a5b96b1dedda86df9a5da0eb0c1fafa32",
         "src/components/chat/DmRequestBanner.tsx": "4ef0bc8ce0bfaa96b483498b7fb44ad04eba2d2ac34b3de48c2131f0d113b533",
         "src/components/chat/DmRequestsInbox.tsx": "d5c2cd10e583a418656a9ef672993003e7e3803c0933cf8b33523a456cf9b871",

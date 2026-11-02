@@ -1,0 +1,211 @@
+{
+  "readOnly": true,
+  "sourceService": true,
+  "sourceRestDeserializer": true,
+  "adminSessionTransport": false,
+  "at": "2026-11-02T15:42:13.678Z",
+  "totalUsers": 640,
+  "unknownPlatform": 39,
+  "failedStores": [],
+  "targets": {
+    "android": {
+      "version": "1.1.72",
+      "partial": false,
+      "source": "releaseLog"
+    },
+    "ios": {
+      "version": "1.1.69",
+      "partial": false,
+      "source": "store"
+    }
+  },
+  "reads": {
+    "appConfig": 1,
+    "users": 1438
+  },
+  "errors": [],
+  "android": {
+    "total": 270,
+    "known": 69,
+    "current": 4,
+    "older": 65,
+    "newer": 0,
+    "missing": 201,
+    "failed": 0,
+    "percent": 6,
+    "stale": 33,
+    "today": 13,
+    "todayCurrent": 4,
+    "todayOlder": 2,
+    "todayNewer": 0,
+    "todayUnknown": 7,
+    "versions": [
+      [
+        "1.1.72",
+        4
+      ],
+      [
+        "1.1.68",
+        1
+      ],
+      [
+        "1.1.66",
+        10
+      ],
+      [
+        "1.1.57",
+        5
+      ],
+      [
+        "1.1.56",
+        3
+      ],
+      [
+        "1.1.46",
+        3
+      ],
+      [
+        "1.1.38",
+        2
+      ],
+      [
+        "1.1.33",
+        1
+      ],
+      [
+        "1.1.27",
+        4
+      ],
+      [
+        "1.1.22",
+        2
+      ],
+      [
+        "1.1.17",
+        1
+      ],
+      [
+        "1.1.14",
+        4
+      ],
+      [
+        "1.1.11",
+        1
+      ],
+      [
+        "1.1.10",
+        1
+      ],
+      [
+        "1.1.9",
+        2
+      ],
+      [
+        "1.1.8",
+        2
+      ],
+      [
+        "1.1.6",
+        1
+      ],
+      [
+        "1.1.5",
+        5
+      ],
+      [
+        "1.1.4",
+        5
+      ],
+      [
+        "1.1.1",
+        7
+      ],
+      [
+        "1.1.0",
+        3
+      ],
+      [
+        "1.0.99",
+        2
+      ]
+    ]
+  },
+  "ios": {
+    "total": 331,
+    "known": 71,
+    "current": 8,
+    "older": 63,
+    "newer": 0,
+    "missing": 260,
+    "failed": 0,
+    "percent": 11,
+    "stale": 42,
+    "today": 6,
+    "todayCurrent": 2,
+    "todayOlder": 0,
+    "todayNewer": 0,
+    "todayUnknown": 4,
+    "versions": [
+      [
+        "1.1.69",
+        8
+      ],
+      [
+        "1.1.66",
+        1
+      ],
+      [
+        "1.1.56",
+        8
+      ],
+      [
+        "1.1.45",
+        4
+      ],
+      [
+        "1.1.22",
+        8
+      ],
+      [
+        "1.1.15",
+        5
+      ],
+      [
+        "1.1.14",
+        4
+      ],
+      [
+        "1.1.11",
+        1
+      ],
+      [
+        "1.1.10",
+        2
+      ],
+      [
+        "1.1.7",
+        5
+      ],
+      [
+        "1.1.6",
+        2
+      ],
+      [
+        "1.1.5",
+        4
+      ],
+      [
+        "1.1.3",
+        5
+      ],
+      [
+        "1.1.2",
+        11
+      ],
+      [
+        "1.1.0",
+        3
+      ]
+    ]
+  }
+}

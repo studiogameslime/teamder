@@ -1,6 +1,7 @@
 import fs from 'fs';
 import vm from 'vm';
 import ts from 'typescript';
+import { registrationFeedback } from '../../src/utils/registrationFeedback';
 
 // Execute the real handler with deferred network responses, without RN rendering.
 function fixture(redBlocked = false) {
@@ -18,6 +19,7 @@ function fixture(redBlocked = false) {
     primaryInFlight:{current:false},isGuest:false,setBusy,statusForUser:()=> 'none',canJoinGame:()=>true,
     redBlocked,myCommunities:[],communityEventsService:{hasActiveRedCard},setRedBlocked:jest.fn(),
     gameService:{requestJoinGame},toast:{info:jest.fn(),error:jest.fn(),success:jest.fn()},he:{},
+    registrationFeedback,confirmedFeedback:{confirm:jest.fn()},
     __DEV__:false,reload:jest.fn(),setGame:jest.fn(),joinAudit:{current:null},
     gameRouteRef:{current:'round'},gameDataRevision:{current:0},
     setRegAnim:jest.fn(),successHaptic:jest.fn(),setCelebrate:jest.fn(),
@@ -29,10 +31,11 @@ test('join shows busy before the request settles and rapid presses send only one
   const f=fixture(),first=f.run();
   expect(f.setBusy).toHaveBeenCalledWith(true);
   expect(f.requestJoinGame).toHaveBeenCalledTimes(1);
+  expect(f.confirmedFeedback.confirm).not.toHaveBeenCalled();
   await f.run();
   expect(f.requestJoinGame).toHaveBeenCalledTimes(1);
   f.resolve({bucket:'players'});await first;
-  expect(f.toast.success).toHaveBeenCalledTimes(1);
+  expect(f.confirmedFeedback.confirm).toHaveBeenCalledWith('round',registrationFeedback('players')!.label,'success');
   expect(f.toast.error).not.toHaveBeenCalled();
   expect(f.setBusy).toHaveBeenLastCalledWith(false);
   expect(f.primaryInFlight.current).toBe(false);
@@ -41,9 +44,15 @@ test('failed request clears busy and permits retry',async()=>{
   const f=fixture(),first=f.run();
   f.reject(new Error('unavailable'));await first;
   expect(f.toast.error).toHaveBeenCalledTimes(1);
+  expect(f.confirmedFeedback.confirm).not.toHaveBeenCalled();
   expect(f.setBusy).toHaveBeenLastCalledWith(false);
   expect(f.primaryInFlight.current).toBe(false);
   await f.run();expect(f.requestJoinGame).toHaveBeenCalledTimes(2);
+});
+test.each(['waitlist','pending'])('a %s receipt keeps its actual status in the confirmed feedback',async bucket=>{
+  const f=fixture(),pending=f.run();f.resolve({bucket});await pending;
+  expect(f.confirmedFeedback.confirm).toHaveBeenCalledWith('round',registrationFeedback(bucket)!.label,'info');
+  expect(f.toast.success).not.toHaveBeenCalled();expect(f.toast.error).not.toHaveBeenCalled();
 });
 test('busy also covers the preliminary red-card check and clears on early return',async()=>{
   const f=fixture(true),first=f.run();

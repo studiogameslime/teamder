@@ -16,6 +16,7 @@ interface Props {
   userId: UserId;
   onPrimary: (cta: MatchCardCta) => void;
   busy?: boolean;
+  confirmation?: string;
   /** undefined: club lookup pending; null: resolved without a club cover. */
   cover?: { coverPhotoUrl?: string; coverImageId?: string } | null;
   coverLoading?: boolean;
@@ -62,7 +63,7 @@ function fieldTypeLabel(f: FieldType): string {
   return he.fieldTypeGrass;
 }
 
-export function MatchListCard({ game, userId, onPrimary, busy, cover, coverLoading = false }: Props) {
+export function MatchListCard({ game, userId, onPrimary, busy, confirmation, cover, coverLoading = false }: Props) {
   const nav = useNavigation<{ navigate: (s: string, p?: unknown) => void }>();
   const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
   const activePhoto = useRef(cover?.coverPhotoUrl);
@@ -135,12 +136,13 @@ export function MatchListCard({ game, userId, onPrimary, busy, cover, coverLoadi
           {game.fieldType ? <Text style={styles.tag}>{fieldTypeLabel(game.fieldType)}</Text> : null}
         </View>
         <Pressable onPress={(e) => { e.stopPropagation(); recordDiagnostic('press','round_primary',{type:cta,gameId:game.id}); joinable ? onPrimary(cta) : openDetails(); }}
-          disabled={busy} hitSlop={{ top: 4, bottom: 4 }} accessibilityRole="button" accessibilityState={{ disabled: !!busy, busy: !!busy }}
+          disabled={busy || !!confirmation} hitSlop={{ top: 4, bottom: 4 }} accessibilityRole="button" accessibilityLabel={confirmation}
+          accessibilityLiveRegion={confirmation ? 'polite' : 'none'} accessibilityState={{ disabled: !!busy || !!confirmation, busy: !!busy }}
           style={[styles.action, joinable && styles.join, busy && { opacity: 0.55 }]}>
           <Text style={[styles.actionText, joinable && { color: '#FFFFFF' }]}>
-            {joinable ? action : he.roundFeedDetails}
+            {confirmation ?? (joinable ? action : he.roundFeedDetails)}
           </Text>
-            {busy ? <ActivityIndicator size="small" color={joinable ? '#FFFFFF' : '#1D4ED8'} /> : !joinable ? <Ionicons name="chevron-back" size={15} color="#1D4ED8" /> : null}
+            {busy ? <ActivityIndicator size="small" color={joinable ? '#FFFFFF' : '#1D4ED8'} /> : confirmation ? <Ionicons name="checkmark-circle" size={17} color={joinable ? '#FFFFFF' : '#1D4ED8'} /> : !joinable ? <Ionicons name="chevron-back" size={15} color="#1D4ED8" /> : null}
         </Pressable>
       </View>
     </PressableScale>

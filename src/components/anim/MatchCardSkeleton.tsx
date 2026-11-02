@@ -10,7 +10,7 @@
 
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Shimmer } from './Shimmer';
+import { SkeletonRegion, SkeletonBlock } from '@/components/loading/ScreenSkeletons';
 import { radius, spacing } from '@/theme';
 
 interface Props {
@@ -20,21 +20,23 @@ interface Props {
 
 export function MatchCardSkeleton({ count = 3 }: Props) {
   return (
+    <SkeletonRegion label="טוענים את המחזורים">
     <View style={{ gap: spacing.md }}>
       {Array.from({ length: count }, (_, i) => (
         <View key={i} style={styles.card}>
           <View style={styles.headerRow}>
-            <Shimmer style={styles.titleBlock} />
-            <Shimmer style={styles.statusPill} />
+            <SkeletonBlock style={styles.titleBlock} />
+            <SkeletonBlock style={styles.statusPill} />
           </View>
           <View style={styles.metaRow}>
-            <Shimmer style={styles.metaBlock} />
-            <Shimmer style={styles.metaBlock} />
+            <SkeletonBlock style={styles.metaBlock} />
+            <SkeletonBlock style={styles.metaBlock} />
           </View>
-          <Shimmer style={styles.ctaBlock} />
+          <SkeletonBlock style={styles.ctaBlock} />
         </View>
       ))}
     </View>
+    </SkeletonRegion>
   );
 }
 

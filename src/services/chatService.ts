@@ -15,12 +15,14 @@ import { socialPlayersService } from './socialPlayersService';
 import {
   addDoc,
   deleteDoc,
+  deleteField,
   doc,
   limit,
   onSnapshot,
   orderBy,
   query,
   setDoc,
+  runTransaction,
   where,
   Timestamp,
 } from 'firebase/firestore';
@@ -32,6 +34,7 @@ import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { waitForAuthRestore } from '@/firebase/auth';
 import { logError } from '@/services/errorLog';
 import { subscribeUserSession } from '@/services/userSessionListeners';
+import { StaleSessionError } from '@/services/staleSession';
 import type { ChatPreferences } from '@/utils/chatInbox';
 import type { Game, ChatMessage, ChatScope, ChatUnreadEntry, User, UserId } from '@/types';
 
@@ -124,6 +127,25 @@ export const chatService = {
   async setPreferences(uid: string, scope: ChatScope, parentId: string, patch: Partial<ChatPreferences>): Promise<void> {
     rejectDemoChatWrite();
     await setDoc(doc(col.userChatSettings(uid), chatKeyFor(scope, parentId)), { ...patch, scope, parentId }, { merge: true });
+  },
+  /** Restore only the archive fields, and only while this exact archive still owns them. */
+  async undoArchive(uid: string, scope: ChatScope, parentId: string, expected: Pick<ChatPreferences, 'archivedAt' | 'archivedMessageId'>,
+    previous: Pick<ChatPreferences, 'archivedAt' | 'archivedMessageId'>): Promise<'restored' | 'changed'> {
+    rejectDemoChatWrite();
+    const { auth, db } = getFirebase();
+    const assertOwner = () => { if (auth.currentUser?.uid !== uid) throw new StaleSessionError(uid, auth.currentUser?.uid ?? ''); };
+    assertOwner();
+    const target = doc(col.userChatSettings(uid), chatKeyFor(scope, parentId));
+    return runTransaction(db, async transaction => {
+      assertOwner();
+      const snapshot = await transaction.get(target);
+      assertOwner();
+      if (!snapshot.exists()) return 'changed';
+      const saved = snapshot.data();
+      if (saved.archivedAt !== expected.archivedAt || saved.archivedMessageId !== expected.archivedMessageId) return 'changed';
+      transaction.update(target, { archivedAt: previous.archivedAt, archivedMessageId: previous.archivedMessageId ?? deleteField() });
+      return 'restored';
+    });
   },
   /** Subscribe to parent state, including roster removal and actual end time. */
   subscribeGameParent(gameId: string, cb: (game: Game | null) => void, onError: (err: unknown) => void): () => void {

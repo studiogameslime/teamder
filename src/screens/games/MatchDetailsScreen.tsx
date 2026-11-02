@@ -1,3 +1,6 @@
+import { ContentReveal } from '@/components/anim/ContentReveal';
+import { useConfirmedFeedback } from '@/hooks/useConfirmedFeedback';
+import { registrationFeedback } from '@/utils/registrationFeedback';
 import { isMissingLinkHandler } from '@/utils/expectedIntegrationError';
 import { observeCaughtError } from '../../utils/errorObservation';
 import { upsertSavedGuest } from '@/utils/savedGuest';
@@ -59,7 +62,8 @@ import { CollapsibleContent } from '@/components/CollapsibleContent';
 import { Button } from '@/components/Button';
 import { goToGameChat } from '@/navigation/navigationRef';
 import { Badge } from '@/components/Badge';
-import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { MatchDetailsSkeleton } from '@/components/loading/PageSkeletons';
+import { ScrollSurface } from '@/components/ScrollSurface';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { GuestModal } from '@/components/GuestModal';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
@@ -590,6 +594,7 @@ export function MatchDetailsScreen() {
   const celebrateOnArrival =
     (route.params as { celebrate?: boolean } | undefined)?.celebrate === true;
   const user = useUserStore((s) => s.currentUser);
+  const confirmedFeedback = useConfirmedFeedback(`round:${user?.id}:${gameId}`, user?.id);
   const isGuest = useIsGuest();
   const authAction = useAuthenticatedAction();
   const myCommunities = useGroupStore((s) => s.groups);
@@ -1448,15 +1453,11 @@ export function MatchDetailsScreen() {
           });
         }
         if (result.bucket === 'players') {
-          successHaptic();
           setCelebrate(true);
           setTimeout(() => setCelebrate(false), 1600);
-          toast.success(he.toastGameJoined);
-        } else if (result.bucket === 'waitlist') {
-          toast.info(he.toastGameJoinedWaitlist);
-        } else {
-          toast.info(he.toastGameJoinedPending);
         }
+        const feedback = registrationFeedback(result.bucket);
+        if (feedback) confirmedFeedback.confirm(game.id, feedback.label, feedback.tone);
         // Silent-failure guard: a successful join MUST leave the user in
         // the roster the screen holds (players ∪ waitlist ∪ pending ∪
         // participantIds).
@@ -1645,7 +1646,7 @@ export function MatchDetailsScreen() {
   // the dead screen for somewhere meaningful.
   if (notFound) {
     return (
-      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <ContentReveal ready={!!game} scopeKey={JSON.stringify([user?.id,gameId])} style={{flex:1}}><SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.matchDetailsTitle} />
         <View style={styles.center}>
           <Ionicons
@@ -1671,7 +1672,7 @@ export function MatchDetailsScreen() {
             }}
           />
         </View>
-      </SafeAreaView>
+      </SafeAreaView></ContentReveal>
     );
   }
 
@@ -1682,7 +1683,7 @@ export function MatchDetailsScreen() {
   // title so even that doesn't leak the game name.
   if (accessBlocked) {
     return (
-      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <ContentReveal ready={!!game} scopeKey={JSON.stringify([user?.id,gameId])} style={{flex:1}}><SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.matchDetailsTitle} />
         <View style={styles.center}>
           <Ionicons
@@ -1700,7 +1701,7 @@ export function MatchDetailsScreen() {
             onPress={goBackSafe}
           />
         </View>
-      </SafeAreaView>
+      </SafeAreaView></ContentReveal>
     );
   }
 
@@ -1708,7 +1709,7 @@ export function MatchDetailsScreen() {
   // retry instead of an eternal spinner.
   if (loadError && !game) {
     return (
-      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <ContentReveal ready={!!game} scopeKey={JSON.stringify([user?.id,gameId])} style={{flex:1}}><SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.matchDetailsTitle} />
         <View style={styles.center}>
           <Ionicons
@@ -1731,7 +1732,7 @@ export function MatchDetailsScreen() {
             }}
           />
         </View>
-      </SafeAreaView>
+      </SafeAreaView></ContentReveal>
     );
   }
 
@@ -1740,12 +1741,10 @@ export function MatchDetailsScreen() {
   // spinner (that flash was the real "looks stale until you re-enter" symptom).
   if (loading && !game) {
     return (
-      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <ContentReveal ready={!!game} scopeKey={JSON.stringify([user?.id,gameId])} style={{flex:1}}><SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.matchDetailsTitle} />
-        <View style={styles.center}>
-          <SoccerBallLoader size={48} />
-        </View>
-      </SafeAreaView>
+        <ScrollSurface contentContainerStyle={{ padding: spacing.lg }}><MatchDetailsSkeleton /></ScrollSurface>
+      </SafeAreaView></ContentReveal>
     );
   }
 
@@ -1754,12 +1753,10 @@ export function MatchDetailsScreen() {
   // narrows `game` to non-null for the render below.
   if (!game) {
     return (
-      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <ContentReveal ready={!!game} scopeKey={JSON.stringify([user?.id,gameId])} style={{flex:1}}><SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.matchDetailsTitle} />
-        <View style={styles.center}>
-          <SoccerBallLoader size={48} />
-        </View>
-      </SafeAreaView>
+        <ScrollSurface contentContainerStyle={{ padding: spacing.lg }}><MatchDetailsSkeleton /></ScrollSurface>
+      </SafeAreaView></ContentReveal>
     );
   }
 
@@ -1921,7 +1918,7 @@ export function MatchDetailsScreen() {
           pendingPromotion: null,
         };
       });
-      toast.success(he.toastGameJoined);
+      confirmedFeedback.confirm(game.id, he.toastGameJoined);
     } catch (err) {
     observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"handleConfirmSpotOffer","site":"MatchDetailsScreen:2052ac28c9"});
       logError('confirmSpotOffer', err, {
@@ -3091,7 +3088,7 @@ export function MatchDetailsScreen() {
   );
 
   return (
-    <View style={styles.root}>
+    <ContentReveal ready={!!game} scopeKey={JSON.stringify([user?.id,gameId])} style={{flex:1}}><View style={styles.root}>
       {/* The contextual auth sheet. Rendered here rather than over a modal so
           it cannot stack on top of another one — and it unmounts itself the
           moment the person cancels or authenticates, which is what keeps it
@@ -3759,7 +3756,7 @@ export function MatchDetailsScreen() {
             <>
               <Pressable
                 onPress={ctaState.onPress}
-                disabled={busy}
+                disabled={busy || !!confirmedFeedback.labelFor(game.id)}
                 style={({ pressed }) => [
                   styles.inviteCta,
                   ctaState.tone === 'destructive' &&
@@ -3767,13 +3764,14 @@ export function MatchDetailsScreen() {
                   pressed && { opacity: 0.9 },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={busy && primary?.onPress === handlePrimary && !primaryDestructive ? 'שומרים את ההרשמה' : ctaState.label}
-                accessibilityState={{busy, disabled: busy}}
+                accessibilityLabel={confirmedFeedback.labelFor(game.id) ?? (busy && primary?.onPress === handlePrimary && !primaryDestructive ? 'שומרים את ההרשמה' : ctaState.label)}
+                accessibilityLiveRegion={confirmedFeedback.labelFor(game.id) ? 'polite' : 'none'}
+                accessibilityState={{busy, disabled: busy || !!confirmedFeedback.labelFor(game.id)}}
               >
                 {/* Text first so the icon lands on the visual LEFT (forceRTL
                     flips `row`: last child → visual left). */}
-                <Text style={styles.inviteCtaText}>{busy && primary?.onPress === handlePrimary && !primaryDestructive ? 'שומרים את ההרשמה…' : ctaState.label}</Text>
-                {busy ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Ionicons name={ctaState.icon} size={18} color="#FFFFFF" />}
+                <Text style={styles.inviteCtaText}>{confirmedFeedback.labelFor(game.id) ?? (busy && primary?.onPress === handlePrimary && !primaryDestructive ? 'שומרים את ההרשמה…' : ctaState.label)}</Text>
+                {busy ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Ionicons name={confirmedFeedback.labelFor(game.id) ? 'checkmark-circle' : ctaState.icon} size={18} color="#FFFFFF" />}
               </Pressable>
               {ctaState.tone === 'blocked' ? (
                 <Text style={styles.ctaHelper}>
@@ -3960,7 +3958,7 @@ export function MatchDetailsScreen() {
           onChanged={() => setRetroRefreshKey((k) => k + 1)}
         />
       ) : null}
-    </View>
+    </View></ContentReveal>
   );
 }
 
