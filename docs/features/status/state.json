@@ -3608,7 +3608,8 @@
       "summary": "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "בקשות לשיחה אישית, 2.11.2026"
+        "בקשות לשיחה אישית, 2.11.2026",
+        "תיקון הידור החיבור לשעון באייפון, 2.11.2026"
       ],
       "evidenceExcerpts": [
         "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
@@ -3617,8 +3618,8 @@
       ],
       "screens": [],
       "documents": {
-        "shared/native-integrations.md": "a69abec9d77a89013205fd8227422917ade014b082b30ed50f68ac7577879d75",
-        "shared/native-integrations.simple.md": "51c4727341d64915a40e39ef78a11abdd9ccf7232db41905792a14c50b0ad5e1"
+        "shared/native-integrations.md": "0fb4afb14930dc76fe9862355240ab278790bb289d71d5b9e51b90c8d53ba3e1",
+        "shared/native-integrations.simple.md": "620009b4645e34579f32de2a0bdf154df0659b8f8b01d36e4e5c05ce243bb487"
       },
       "sources": {
         "functions/src/clubDeletion.ts": "9b87f76c8343e551f6b114f90b66667cb1f87eed020b8aa6e357a43f685c0b62",
@@ -3628,7 +3629,7 @@
         "functions/src/socialPlayers.ts": "c4e02a689f696aace64cd0f5ed7d7debb2e2d30d6ff7de7e56cdb0356a035b21",
         "functions/src/widgetRosterSync.ts": "c2c0346afb8d890df64280b3c9277ed1a44b11075bf3e70051b9188d2843e2ec",
         "modules/watch-bridge/expo-module.config.json": "f9f6aebbd7bda8d95269233e7e0e3a0734bddadc94bf6939af593a7ca0e34410",
-        "modules/watch-bridge/ios/WatchBridgeModule.swift": "a7b8a791f2805d51c94b721769c9bc1fa860c3bf621bc17e145c47ca2ff4104f",
+        "modules/watch-bridge/ios/WatchBridgeModule.swift": "68ec8ce189df4a832a8b5b562eaee2f5fce80316544707c04c5422ebae29892e",
         "plugins/phone-activity-src/PhoneActivityModule.kt": "4fcc13978ca3ae4c0328079cba7c8cfdad0a90f5e2c7456b15eb692a072275d5",
         "plugins/phone-activity-src/PhoneActivityService.kt": "1343c5bf186aa237850fba41330f34f3c3a65bbbc4874d7689b3154bd8231069",
         "plugins/phone-activity-src/PhoneMovement.kt": "6011536932457fc3f9b97d1bf83c209cdbac55acc37b7a6969b3bf401d39664e",
@@ -3851,8 +3852,8 @@
         "src/screens/auth/SignInScreen.tsx"
       ],
       "documents": {
-        "shared/diagnostic-journal.md": "1db5b6f233c0ff9716bc784e29307d2785bb14b77a0b79c3759a02bdd490af3d",
-        "shared/diagnostic-journal.simple.md": "f9ad44f748c0a09e0e3250368ec4f7be3ed3d104d2cc97b1afebd64e9102beb1"
+        "shared/diagnostic-journal.md": "6b39c3b4ea604859fb4afd0f60f4e2d407d6572dc8f55788c3520314ee7d4b78",
+        "shared/diagnostic-journal.simple.md": "c3798f584914cb27f6443260eb422c9e373f9eb324d9c422a836bfc21aa3f9ab"
       },
       "sources": {
         "functions/src/clientDiagnostics.ts": "d2bf9486f88f0948a2babc2c73bc276f86bb700bd3842c26a778cd9c4bd34a4b",
@@ -3869,7 +3870,7 @@
         "functions/src/seasonManager.ts": "78f9db88a3312f37d4b145f19222006bad56f2b07da256c569c2344b2515631a",
         "functions/src/serverErrorLog.ts": "5bd9c20266dc7857f59b7cf45546e114761322acff6389b3423c7aec3996ba21",
         "functions/src/socialPlayers.ts": "c4e02a689f696aace64cd0f5ed7d7debb2e2d30d6ff7de7e56cdb0356a035b21",
-        "modules/watch-bridge/ios/WatchBridgeModule.swift": "a7b8a791f2805d51c94b721769c9bc1fa860c3bf621bc17e145c47ca2ff4104f",
+        "modules/watch-bridge/ios/WatchBridgeModule.swift": "68ec8ce189df4a832a8b5b562eaee2f5fce80316544707c04c5422ebae29892e",
         "plugins/wear-src/watch/WatchBridgeModule.kt": "6bfb691fd405d7217c16862eb9763a7d3d4fc4af5a31b9f983e307474205a899",
         "pulse/src/components/DiagnosticIncident.tsx": "0921c720c6dac045624a16d3e24362c4dcab5782996aca73c0794a39aec7171d",
         "pulse/src/components/DiagnosticTimeline.tsx": "64c21249816dd84897e2309d8e24ef1e04fc497851278b6bacb13dd747721fdf",

@@ -11,7 +11,32 @@ import ExpoModulesCore
 import WatchConnectivity
 import SystemConfiguration
 
-public class WatchBridgeModule: Module, WCSessionDelegate {
+// Expo's Module is not an NSObject. WatchConnectivity requires an
+// NSObjectProtocol delegate, so keep that responsibility in a retained adapter.
+private final class WatchSessionDelegate: NSObject, WCSessionDelegate {
+  private let onActivationError: () -> Void
+
+  init(onActivationError: @escaping () -> Void) {
+    self.onActivationError = onActivationError
+    super.init()
+  }
+
+  func session(_ session: WCSession,
+               activationDidCompleteWith state: WCSessionActivationState,
+               error: Error?) {
+    if error != nil { onActivationError() }
+  }
+
+  func sessionDidBecomeInactive(_ session: WCSession) {}
+  func sessionDidDeactivate(_ session: WCSession) {
+    WCSession.default.activate()
+  }
+}
+
+public class WatchBridgeModule: Module {
+  private lazy var sessionDelegate = WatchSessionDelegate { [weak self] in
+    self?.recordDiagnostic("watch.activation")
+  }
   private let diagnosticLock = NSLock()
   private var diagnosticCodes: [String] = []
   private var diagnosticOverflow = false
@@ -54,7 +79,7 @@ public class WatchBridgeModule: Module, WCSessionDelegate {
 
     OnCreate {
       if WCSession.isSupported() {
-        WCSession.default.delegate = self
+        WCSession.default.delegate = self.sessionDelegate
         WCSession.default.activate()
       }
     }
@@ -87,15 +112,4 @@ public class WatchBridgeModule: Module, WCSessionDelegate {
     }
   }
 
-  // WCSessionDelegate — required stubs on iOS. Re-activate after a watch swap
-  // so the session keeps working when the user pairs a different watch.
-  public func session(_ session: WCSession,
-                      activationDidCompleteWith state: WCSessionActivationState,
-                      error: Error?) {
-    if error != nil { recordDiagnostic("watch.activation") }
-  }
-  public func sessionDidBecomeInactive(_ session: WCSession) {}
-  public func sessionDidDeactivate(_ session: WCSession) {
-    WCSession.default.activate()
-  }
 }
