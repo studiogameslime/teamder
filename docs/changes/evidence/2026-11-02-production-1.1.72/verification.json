@@ -1,0 +1,59 @@
+{
+  "version": "1.1.72",
+  "sourceCommit": "fe8f28d39f569434dce84eaea4812e3b4adf7fa9",
+  "serverSourceCommit": "65cb54dde04d7295fbe1a5360062f9a79111ae96",
+  "android": {
+    "code": 304,
+    "internalVerified": true,
+    "productionTrackVerified": true,
+    "sha256": "c978da00ad3e62cc6904f513bc60ccc0a31fceaf1ed1945eaa7b2be5c067f905",
+    "publicPageVersionVerified": false
+  },
+  "ios": {
+    "build": 122,
+    "cloudBuildId": "11540c1e-3ea1-49b6-a01e-a7477843976f",
+    "sha256": "d82d158bef952b6793189b1b04a2fa8b50a891d2c8b1309ef4f69dbf10b2d66c",
+    "linkedSdk": "26.5.0",
+    "appleProcessedValid": true,
+    "storeState": "WAITING_FOR_REVIEW",
+    "releaseType": "AFTER_APPROVAL",
+    "publicAvailable": false
+  },
+  "tests": {
+    "suites": 585,
+    "application": 6536,
+    "strictRules": 360,
+    "backendEmulator": 38,
+    "typesClean": true
+  },
+  "backend": {
+    "verifiedServices": 29,
+    "runtime": "nodejs22",
+    "compatRulesReadBackVerified": true,
+    "legacyRosterReadsPreserved": true,
+    "scalingDefault20Count": 9,
+    "scalingIncreaseAutoReviewRejected": true,
+    "dataMigration": false,
+    "postDeployProtocolRejections": 17,
+    "allCorrelatedToGet400": true,
+    "unmodifiedNode20Services": 93
+  },
+  "verificationLimits": {
+    "deviceInstallVerified": false,
+    "physicalWatchVerified": false,
+    "realMessageSendVerified": false,
+    "newForceUpdateActivated": false,
+    "fullPrivacyLockdown": false
+  },
+  "pulse": {
+    "releaseNotesUpdated": 13,
+    "closed": 0,
+    "sourceScreenshotsPreserved": true,
+    "readBackVerified": true
+  },
+  "documentation": {
+    "existingFailures": 145,
+    "introducedFailures": 0,
+    "existingStatusDrift": 38
+  }
+}

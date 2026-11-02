@@ -3518,12 +3518,12 @@
       "domain": "shared",
       "technical": "shared/global-gates.md",
       "simple": "shared/global-gates.simple.md",
-      "capturedOn": "2026-10-28",
+      "capturedOn": "2026-11-02",
       "basis": "existing-documentation-only",
       "summary": "חדשות הגרסה ומדיניות עדכון החובה מנסות שוב אחרי כשל חיבור קצר. תוכן שלא הוצג אינו מסומן כנקרא, ועדכון שכבר אומת בחנות נשאר זמין גם כשמדיניות החובה אינה נטענת.",
-      "latestDatedSection": "2026-10-28",
+      "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "התאוששות משגיאות בפולס, 28.10.2026"
+        "תנאי עדכון חובה ל-1.1.72, 2.11.2026"
       ],
       "evidenceExcerpts": [
         "השינוי מקומי וטרם הופץ או נפרס. אין שינוי חזותי ואין צילום מכשיר חדש. ממצאים, בדיקות ומגבלות.",
@@ -3532,8 +3532,8 @@
       ],
       "screens": [],
       "documents": {
-        "shared/global-gates.md": "a8334a8d790be5da5299af53cb69ea9599bfac9add80fcdaf0327fe54825071b",
-        "shared/global-gates.simple.md": "f56f39621648e47f56e676b2e8fe74379b941e058a52c5a873cfb72038c91315"
+        "shared/global-gates.md": "1654f5b013ed2ab13e7846b0382a5a9fc055f92163c98d838f2b50e9f57cd802",
+        "shared/global-gates.simple.md": "454e5a5e95c72f87a4bb8c48123886f898251a8379d80ed1a721a75088860858"
       },
       "sources": {
         "src/components/CampaignGate.tsx": "9588f9f08ffede856c1b65241d2e21d5817ff680fdd53302ec41d9361a1d86c7",
@@ -3609,7 +3609,8 @@
       "latestDatedSection": "2026-11-02",
       "recentSections": [
         "בקשות לשיחה אישית, 2.11.2026",
-        "תיקון הידור החיבור לשעון באייפון, 2.11.2026"
+        "תיקון הידור החיבור לשעון באייפון, 2.11.2026",
+        "הפצת 1.1.72, 2.11.2026"
       ],
       "evidenceExcerpts": [
         "נבדקה השפעת תוספת בקשות השיחה במקורות המשותפים. השינוי ממוקד בהרשאת שיחה, בשדות פרטיות ההודעות ובחיבורי הבדיקות; אין מכך אימות חדש של מסך זה במכשיר. המימוש מקומי וטרם הופץ או נפרס. התנהגות, בדיקות ומגבלות.",
@@ -3618,8 +3619,8 @@
       ],
       "screens": [],
       "documents": {
-        "shared/native-integrations.md": "0fb4afb14930dc76fe9862355240ab278790bb289d71d5b9e51b90c8d53ba3e1",
-        "shared/native-integrations.simple.md": "620009b4645e34579f32de2a0bdf154df0659b8f8b01d36e4e5c05ce243bb487"
+        "shared/native-integrations.md": "63a80aadc2dcd94ddb4c525b0ba7e0af81a20e70d37ac3fac8ceec33f05d747d",
+        "shared/native-integrations.simple.md": "7ebbe19f70cd93dc835e0400d92c03cd675ba400e73aae4114414d97c7dc7b6b"
       },
       "sources": {
         "functions/src/clubDeletion.ts": "9b87f76c8343e551f6b114f90b66667cb1f87eed020b8aa6e357a43f685c0b62",
@@ -3852,8 +3853,8 @@
         "src/screens/auth/SignInScreen.tsx"
       ],
       "documents": {
-        "shared/diagnostic-journal.md": "6b39c3b4ea604859fb4afd0f60f4e2d407d6572dc8f55788c3520314ee7d4b78",
-        "shared/diagnostic-journal.simple.md": "c3798f584914cb27f6443260eb422c9e373f9eb324d9c422a836bfc21aa3f9ab"
+        "shared/diagnostic-journal.md": "0278fd437bae526a4ba5e4ceb0a98ccfb03d63bfcc7c728a3f6ec77a7add1001",
+        "shared/diagnostic-journal.simple.md": "f8831d767d001f5adc0d7dfbf70c66a523b06bca61d2cafd3e2f2ae027647870"
       },
       "sources": {
         "functions/src/clientDiagnostics.ts": "d2bf9486f88f0948a2babc2c73bc276f86bb700bd3842c26a778cd9c4bd34a4b",
@@ -4549,8 +4550,8 @@
         "src/screens/profile/SocialPrivacyScreen.tsx"
       ],
       "documents": {
-        "chat/message-requests.md": "1a1177d0f434bdce5ffacf184f1a2798d3a6a8a068523707f9de0b98fcec751e",
-        "chat/message-requests.simple.md": "b2287012bd04ef08ef02c88d7bc3d30d456904652f432839437254891cdcb7c6"
+        "chat/message-requests.md": "f7d03ecfce4580c27bb906f439c3213cbcfc7579582664ca006fc89972ea221a",
+        "chat/message-requests.simple.md": "48f1b68bf07d5fe050be8a341cac8d4b803e340a1d537f910e7afb4e0e0e4311"
       },
       "sources": {
         "functions/src/chatPush.ts": "bc6d2a99998692509453cfc3c832d15d8b494d082431fd3c5676af02d8082292",
