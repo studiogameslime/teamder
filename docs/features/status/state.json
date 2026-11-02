@@ -3523,7 +3523,8 @@
       "summary": "חדשות הגרסה ומדיניות עדכון החובה מנסות שוב אחרי כשל חיבור קצר. תוכן שלא הוצג אינו מסומן כנקרא, ועדכון שכבר אומת בחנות נשאר זמין גם כשמדיניות החובה אינה נטענת.",
       "latestDatedSection": "2026-11-02",
       "recentSections": [
-        "תנאי עדכון חובה ל-1.1.72, 2.11.2026"
+        "תנאי עדכון חובה ל-1.1.72, 2.11.2026",
+        "עדכון חובה באנדרואיד ל-1.1.72, 2.11.2026"
       ],
       "evidenceExcerpts": [
         "השינוי מקומי וטרם הופץ או נפרס. אין שינוי חזותי ואין צילום מכשיר חדש. ממצאים, בדיקות ומגבלות.",
@@ -3532,8 +3533,8 @@
       ],
       "screens": [],
       "documents": {
-        "shared/global-gates.md": "1654f5b013ed2ab13e7846b0382a5a9fc055f92163c98d838f2b50e9f57cd802",
-        "shared/global-gates.simple.md": "454e5a5e95c72f87a4bb8c48123886f898251a8379d80ed1a721a75088860858"
+        "shared/global-gates.md": "dcf98152f73977bbecb31cbb3f1cbccc5bcbb1df0456cffb1882ad80c86dad2e",
+        "shared/global-gates.simple.md": "9f761430a78a1c12fa3a206e47a11370c614cfb07adead28a39b43492c4cb0c8"
       },
       "sources": {
         "src/components/CampaignGate.tsx": "9588f9f08ffede856c1b65241d2e21d5817ff680fdd53302ec41d9361a1d86c7",

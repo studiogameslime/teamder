@@ -1,0 +1,23 @@
+{
+  "at": "2026-11-02T12:47:16.498137Z",
+  "platform": "android",
+  "fromMinimum": "1.1.56",
+  "minimumSupportedVersion": "1.1.72",
+  "latestVersion": "1.1.72",
+  "googleProductionVersionCode": 304,
+  "googleProductionStatus": "completed",
+  "availabilityConfirmedByOwner": true,
+  "readBackVerified": true,
+  "releaseLogReadBackVerified": true,
+  "iosUnchanged": true,
+  "whatsNewUnchanged": true,
+  "permissionsChanged": false,
+  "dataMigration": false,
+  "deviceUpdateFlowVerified": false,
+  "tests": {
+    "suites": 585,
+    "passed": 6536,
+    "typecheckClean": true
+  },
+  "applicationCodeChanged": false
+}
