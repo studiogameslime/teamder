@@ -1,0 +1,15 @@
+{
+  "exitCode": 0,
+  "node": "C:/Users/User/Documents/Codex/tools/node-v22.23.4-win-x64/node.exe",
+  "serial": true,
+  "emulatorOnly": true,
+  "files": [
+    "functions/fillerReview.emulator.test.mjs",
+    "functions/registrationContention.emulator.test.mjs"
+  ],
+  "summary": [
+    "# tests 23",
+    "# pass 20",
+    "# fail 0"
+  ]
+}

@@ -191,7 +191,7 @@
   {
     "path": "docs/RELEASING.md",
     "hashMode": "text-lf",
-    "sha256": "febab353466db1c4e1e9ac78b17b76e50ad656c5611ee41e8e4acee4eed1514f",
+    "sha256": "32e707028cbe114371fec12209830a29c39e6d00d02c6eacf5f8225f78d571d6",
     "review": "reviews/additional-rounds-sources.md",
     "auditDate": "2026-11-06"
   },

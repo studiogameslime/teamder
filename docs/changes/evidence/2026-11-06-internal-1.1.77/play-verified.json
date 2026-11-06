@@ -1,0 +1,83 @@
+{
+  "verified": true,
+  "at": "2026-11-06T18:01:47.309Z",
+  "internal": "1.1.77/309",
+  "buildCommit": "274d607fa1672b915c82503a0d6b5597a47e6456",
+  "bundle": {
+    "versionCode": 309,
+    "sha1": "b947c800d617c523f76b49b87c0266b4f46347bc",
+    "sha256": "e57c1418511f68fc7320842444aac8c64ac6faa2555fb493e0e359f2a9709c15"
+  },
+  "otherTracksUnchanged": true,
+  "deviceInstallVerified": false,
+  "tracks": [
+    {
+      "track": "production",
+      "releases": [
+        {
+          "name": "1.1.72",
+          "versionCodes": [
+            "304"
+          ],
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "track": "beta",
+      "releases": []
+    },
+    {
+      "track": "alpha",
+      "releases": [
+        {
+          "name": "27 (0.2.10)",
+          "versionCodes": [
+            "27"
+          ],
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "track": "internal",
+      "releases": [
+        {
+          "name": "1.1.77",
+          "versionCodes": [
+            "309"
+          ],
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "track": "wear:beta",
+      "releases": []
+    },
+    {
+      "track": "wear:internal",
+      "releases": [
+        {
+          "name": "1.0.32",
+          "versionCodes": [
+            "1029"
+          ],
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "track": "wear:production",
+      "releases": [
+        {
+          "name": "1.0.30",
+          "versionCodes": [
+            "1027"
+          ],
+          "status": "completed"
+        }
+      ]
+    }
+  ]
+}

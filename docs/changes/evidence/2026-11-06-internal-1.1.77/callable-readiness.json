@@ -1,0 +1,13 @@
+{
+  "fillerNoticeQueryReady": true,
+  "getMyRoundFillerNotices": {
+    "reachable": true,
+    "unauthenticatedStatus": 401,
+    "businessDataWritten": false
+  },
+  "commitRoundStatsWithDrawRotation": {
+    "reachable": true,
+    "unauthenticatedStatus": 401,
+    "businessDataWritten": false
+  }
+}

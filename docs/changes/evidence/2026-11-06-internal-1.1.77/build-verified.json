@@ -1,0 +1,19 @@
+{
+  "verified": true,
+  "head": "274d607fa1672b915c82503a0d6b5597a47e6456",
+  "sourceFilesUnchanged": 1178,
+  "phone": {
+    "version": "1.1.77",
+    "code": 309,
+    "sha256": "e57c1418511f68fc7320842444aac8c64ac6faa2555fb493e0e359f2a9709c15",
+    "usageEnabled": true,
+    "embeddedRevision": "0513903d9f3a6cda0e232c7f",
+    "buildId": "internal-1.1.77-309-274d607fa167"
+  },
+  "bundledSources": {
+    "src/utils/sharedEveningScore.ts": "688ef583ea57553937ede37e0f5989528e8bfb76b0397c154f7d7811d434f21a",
+    "src/utils/drawRotationPreview.ts": "8eac5c4691af39d3bc6aaf1c523f8bec3bceed1c2ce96637d573cc7369ce5e86",
+    "src/services/fillerReview.ts": "74e5d8658407498c5c518b03725068989bb1c3107bbc420f5062efdaafd8b0d1"
+  },
+  "deviceInstallVerified": false
+}

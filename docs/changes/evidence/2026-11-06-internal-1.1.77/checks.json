@@ -1,0 +1,35 @@
+{
+  "clientTests": {
+    "passed": 7274,
+    "suites": 651,
+    "logSha256": "8526814d94bfd01a556897c67d82aef78439c62b1d092741b76c259bd3248369"
+  },
+  "rulesTests": {
+    "passed": 361,
+    "serial": true,
+    "logSha256": "bcf96b0091c0188c29402cc086eb2449dcffcb05446c9661f5489260f73cfa83"
+  },
+  "backendTests": {
+    "passed": 72,
+    "todo": 3,
+    "emulatorOnly": true,
+    "includesIsolatedPackageTests": 4
+  },
+  "typechecks": {
+    "client": 0,
+    "server": 0,
+    "pulse": 0
+  },
+  "sourceCommit": "274d607fa1672b915c82503a0d6b5597a47e6456",
+  "sourcePushed": true,
+  "gitFilesCommitted": 1054,
+  "privateCredentialPatternHits": 0,
+  "errorsReadBeforeRelease": 40,
+  "openErrorsInRead": 32,
+  "unrelatedErrorsChanged": false,
+  "documentation": {
+    "featureStatusFailures": 0,
+    "preExistingMissingEvidenceLinks": 107,
+    "newFailures": 0
+  }
+}

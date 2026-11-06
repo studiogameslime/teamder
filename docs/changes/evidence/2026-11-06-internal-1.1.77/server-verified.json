@@ -1,0 +1,50 @@
+{
+  "at": "2026-11-06T17:58:19.199712+00:00",
+  "targets": {
+    "submitFillerInterest": {
+      "active": true,
+      "revision": "submitfillerinterest-00034-yog",
+      "sourceVerified": true,
+      "optionsStatus": 204
+    },
+    "getMyRoundFillerNotices": {
+      "active": true,
+      "revision": "getmyroundfillernotices-00001-buq",
+      "sourceVerified": true,
+      "optionsStatus": 204
+    },
+    "approveFiller": {
+      "active": true,
+      "revision": "approvefiller-00033-xah",
+      "sourceVerified": true,
+      "optionsStatus": 204
+    },
+    "declineFiller": {
+      "active": true,
+      "revision": "declinefiller-00033-yup",
+      "sourceVerified": true,
+      "optionsStatus": 204
+    },
+    "onGameRosterChanged": {
+      "active": true,
+      "revision": "ongamerosterchanged-00091-mer",
+      "sourceVerified": true,
+      "optionsStatus": null
+    },
+    "onFillerInterestCreated": {
+      "active": true,
+      "revision": "onfillerinterestcreated-00033-qam",
+      "sourceVerified": true,
+      "optionsStatus": null
+    },
+    "commitRoundStatsWithDrawRotation": {
+      "active": true,
+      "revision": "commitroundstatswithdrawrotation-00001-win",
+      "sourceVerified": true,
+      "optionsStatus": 204
+    }
+  },
+  "otherFunctionsUnchanged": 120,
+  "rulesChanged": false,
+  "dataMigrated": false
+}

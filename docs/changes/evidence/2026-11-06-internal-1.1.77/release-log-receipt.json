@@ -1,0 +1,41 @@
+{
+  "readBackVerified": true,
+  "version": "1.1.77",
+  "internalOnly": true,
+  "ids": [
+    "shared-evening-score-future-only-2026-11-06",
+    "manual-draw-two-three-teams-2026-11-06",
+    "round-penalties-card-2026-11-06",
+    "filler-review-round-2026-11-04",
+    "filler-review-bell-2026-11-04",
+    "internal-release-1.1.77-309-2026-11-06"
+  ],
+  "existingShots": {
+    "shared-evening-score-future-only-2026-11-06": {
+      "shotId": "l4GN8ES7JNf3jH6ih5Yw",
+      "existingProofReadBack": true,
+      "imageFieldSha256": "c594b93720889fbc20e49a5e6809c6f0e071ff543ffe899f8afd9ad02a01d608"
+    },
+    "manual-draw-two-three-teams-2026-11-06": {
+      "shotId": "5RXVViQtjnv0eLO1ZRfw",
+      "existingProofReadBack": true,
+      "imageFieldSha256": "a491351e23703b10c8e483aab4b65fb760ebacfaead0c4a909231d82d201376c"
+    },
+    "round-penalties-card-2026-11-06": {
+      "shotId": "I8VlHM0oP6V9Vo0jS5MJ",
+      "existingProofReadBack": true,
+      "imageFieldSha256": "6222042e4e87b36001b1e4b4e386ed07b6e5761d78e43b1d4e6f05cc7cdcf56f"
+    },
+    "filler-review-round-2026-11-04": {
+      "shotId": "vqLj0bisHJ2m9lAsOyZj",
+      "existingProofReadBack": true,
+      "imageFieldSha256": "e56f5805983780ba6b892e1574e1a5df653d7e787a2bf4cc681e4686ec30a39b"
+    },
+    "filler-review-bell-2026-11-04": {
+      "shotId": "j5AldEBMQeHPAqkOnawN",
+      "existingProofReadBack": true,
+      "imageFieldSha256": "039a3ebc2f6af1b7aa86e430598de2192a9748c5c18b7535b098dcf2259b7a7d"
+    }
+  },
+  "updateTime": "2026-11-06T18:02:09.348407Z"
+}
