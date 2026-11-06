@@ -20,6 +20,7 @@ function note(id, actual) { results.push({id,actual}); }
 async function main() {
   const fail = async () => { throw new Error('offline'); };
   const inbox = load('src/services/requestsService.ts', {
+    './fillerReview': {},
     './friendsService': {friendsService:{listIncomingRequests:fail}},
     './groupService': {groupService:{listForUser:fail}},
     './gameService': {gameService:{getMyLiveOrUpcomingGames:fail}},
@@ -29,9 +30,10 @@ async function main() {
   await assert.rejects(inbox.getInboxCount('owner'), /offline/);
   note('B01', {failuresPropagated:true});
   const mismatch = load('src/services/requestsService.ts', {
+    './fillerReview': {},
     './friendsService': {friendsService:{listIncomingRequests:async()=>[]}},
     './groupService': {groupService:{listForUser:async()=>[{id:'g',adminIds:['owner'],pendingPlayerIds:['p'] }]}},
-    './gameService': {gameService:{getMyLiveOrUpcomingGames:async()=>[]}},
+    './gameService': {gameService:{getMyLiveOrUpcomingGames:async()=>[],getUpcomingGamesForGroup:async()=>[]}},
     './userService': {userService:{getUserById:fail}},
   });
   const count=await mismatch.getInboxCount('owner');

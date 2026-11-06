@@ -30,6 +30,8 @@ import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { pickAndUploadAvatar, deleteUserPhoto } from '@/services/photoService';
+import { photoPhaseLabel, type PhotoPhase } from '@/utils/photoPhase';
+import { OperationStatus } from '@/components/ReadStatusNotice';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { readPendingAction } from '@/services/pendingAction';
 import { searchCities } from '@/services/israelLocationService';
@@ -83,6 +85,7 @@ function PostSignInProfileForm() {
   }, []);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [photoPhase, setPhotoPhase] = useState<PhotoPhase>('permission');
   const inFlight = useRef(false);
   const mounted = useRef(true);
   useEffect(() => {
@@ -133,8 +136,9 @@ function PostSignInProfileForm() {
     inFlight.current = true;
     logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'photo_picker_opened', step: 'profile' });
     setUploading(true);
+    setPhotoPhase('permission');
     try {
-      const res = await pickAndUploadAvatar(user.id);
+      const res = await pickAndUploadAvatar(user.id, phase => {if (isCurrentOwner()) setPhotoPhase(phase);});
       if (!isCurrentOwner()) return;
       if (!res.ok) {
         // Photo is optional — a built-in avatar grid sits right below. When
@@ -317,10 +321,11 @@ function PostSignInProfileForm() {
             accessibilityLabel={he.profilePhotoUpload}
           >
             <Text style={styles.uploadBtnText}>
-              {photoUrl ? he.profilePhotoChange : he.profilePhotoUpload}
+              {uploading ? photoPhaseLabel(photoPhase) : photoUrl ? he.profilePhotoChange : he.profilePhotoUpload}
             </Text>
             <Ionicons name="image-outline" size={18} color={ACCENT} />
           </Pressable>
+          <OperationStatus active={uploading || busy} label={busy ? 'משלימים את הפרופיל' : photoPhaseLabel(photoPhase)} scope={user?.id ?? 'onboarding'} awaitingConfirmation={busy}/>
 
           <Text style={styles.label}>{he.profileAvatarLabel}</Text>
           <View style={styles.avatarGrid}>

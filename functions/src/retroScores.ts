@@ -19,6 +19,7 @@ export async function prepareRetroScores(tx:Transaction,db:Firestore,gameId:stri
   const [stats,cumulative]=await Promise.all([tx.getAll(...statsRefs),tx.getAll(...cumulativeRefs)]);
   const entries:RetroScoreEntry[]=ids.map((userId,i)=>({userId,standing:standings[i].data(),stats:stats[i].data()??{},cumulative:cumulative[i].data()??{}}));
   let calibration=readScoreCalibration(stage.get('scoreCalibration'));
+  if(!calibration && stage.get('scoreCalibration')?.version)throw new HttpsError('failed-precondition','score-calibration:invalid');
   if(!calibration){
     // Current club benchmarks cannot calibrate an arbitrary historical night.
     // Accept the legacy fallback only on the last finished evening AND when
@@ -38,7 +39,7 @@ export async function prepareRetroScores(tx:Transaction,db:Firestore,gameId:stri
     const guestIds=[...new Set([change.scorerId,change.assisterId].filter((id):id is string=>!!id&&id.startsWith('guest:')))];
     if(guestIds.length){
       const guestRows=await tx.getAll(...guestIds.map(id=>db.doc(`gamePlayerStats/${gameId}__${id}`)));
-      guestIds.forEach((id,i)=>changedGuests.set(id,{gameId,userId:id,isGuest:true,...guestRows[i].data()}));
+      guestIds.forEach((id,i)=>{if(!entries.some(e=>e.userId===id))changedGuests.set(id,{gameId,userId:id,isGuest:true,...guestRows[i].data()});});
     }
     for(const [id,field] of [[change.scorerId,'goals'],[change.assisterId,'assists']] as const){
       if(!id)continue;
@@ -70,7 +71,8 @@ export async function prepareRetroScores(tx:Transaction,db:Firestore,gameId:stri
   return ()=>{
     if(summaryPatch)tx.update(summaryRef,summaryPatch);
     tx.update(stageRef,{scoreCalibration:calibration,scoreRecalculatedAt:now});
-    for(const [i,item] of plan.entries()){
+    for(const item of plan){
+      const i=ids.indexOf(item.userId);
       tx.update(standings[i].ref,item.standing);
       if(Object.keys(item.cumulative).length)tx.update(cumulativeRefs[i],item.cumulative);
       // Correct only the immediate following comparison, never its own score

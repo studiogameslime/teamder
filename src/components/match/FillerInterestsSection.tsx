@@ -29,9 +29,9 @@ import {
 import { appAlert } from '@/components/AppDialog';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, getDocs, query, where } from 'firebase/firestore';
 
 import { Card } from '@/components/Card';
+import { ReadStatusNotice } from '@/components/ReadStatusNotice';
 // TrustMeter hidden from UI for now — still computed server-side.
 // import { TrustMeter } from '@/components/TrustMeter';
 import { Avatar } from '@/components/Avatar';
@@ -39,16 +39,15 @@ import { toast } from '@/components/Toast';
 import { logError } from '@/services/errorLog';
 import { trustService, type TrustSummary } from '@/services/trustService';
 import { userService } from '@/services';
-import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
-import { docs } from '@/firebase/firestore';
+import { acceptsFillerApplications, actionableFillerIds, decideFiller, pendingFillerIds, type FillerRound } from '@/services/fillerReview';
 import type { User } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 interface Props {
-  gameId: string;
+  game: FillerRound;
+  isClubAdmin: boolean;
   isAdmin: boolean;
-  acceptsFillers: boolean;
 }
 
 interface CandidateRow {
@@ -58,17 +57,26 @@ interface CandidateRow {
 }
 
 export function FillerInterestsSection({
-  gameId,
+  game,
+  isClubAdmin,
   isAdmin,
-  acceptsFillers,
 }: Props) {
-  const [rows, setRows] = useState<CandidateRow[] | null>(null);
-  const [approved, setApproved] = useState<{ row: CandidateRow; at: number } | null>(null);
+  const gameId = game.id;
+  const acceptsFillers = acceptsFillerApplications(game);
+  const [result, setResult] = useState<{ gameId: string; rows: CandidateRow[] } | null>(null);
+  const [failedGame, setFailedGame] = useState<string | null>(null);
+  const fetched = result?.gameId === gameId ? result.rows : null;
+  const actionable = new Set(actionableFillerIds(game, fetched?.map(row => row.uid) ?? []));
+  const rows = fetched?.filter(row => actionable.has(row.uid)) ?? null;
+  const generation = useRef(0);
+  const [approved, setApproved] = useState<{ row: CandidateRow; at: number; message: string } | null>(null);
   const activeGame = useRef<string | null>(gameId);
   useEffect(() => { activeGame.current = gameId; setApproved(null); return () => { activeGame.current = null; }; }, [gameId]);
   const [busyUid, setBusyUid] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    const version = ++generation.current;
+    const setRows = (rows: CandidateRow[]) => { if (version === generation.current) { setResult({ gameId, rows }); setFailedGame(null); } };
     if (!gameId) return;
     // Read rule on /games/{id}/fillerInterests/{uid} grants access
     // only to the doc owner OR a group admin. Non-admin viewers
@@ -79,18 +87,8 @@ export function FillerInterestsSection({
       setRows([]);
       return;
     }
-    if (USE_MOCK_DATA) {
-      setRows([]);
-      return;
-    }
     try {
-      const { db } = getFirebase();
-      const q = query(
-        collection(db, 'games', gameId, 'fillerInterests'),
-        where('status', '==', 'pending'),
-      );
-      const snap = await getDocs(q);
-      const uids = snap.docs.map((d) => d.id);
+      const uids = await pendingFillerIds(gameId, isClubAdmin);
       if (uids.length === 0) {
         setRows([]);
         return;
@@ -121,23 +119,22 @@ export function FillerInterestsSection({
         gameId,
       });
       if (__DEV__) console.warn('[fillerInterests] load failed', err);
-      setRows([]);
+      if (version === generation.current) setFailedGame(gameId);
     }
-  }, [gameId, isAdmin, acceptsFillers]);
+  }, [gameId, isAdmin, isClubAdmin, acceptsFillers]);
 
   // Fetch on mount + every focus (admin returns from approving via
   // a different surface, push navigation, etc.).
-  useEffect(() => {
-    load();
-  }, [load]);
   useFocusEffect(
     useCallback(() => {
       setApproved(null);
-      load();
+      void load();
+      return () => { ++generation.current; };
     }, [load]),
   );
 
   if (!isAdmin || !acceptsFillers) return null;
+  if (failedGame === gameId) return <ReadStatusNotice loading={false} failed hasData={false} scope={gameId} onRetry={() => void load()} />;
   if (rows === null) {
     return (
       <Card style={styles.card}>
@@ -152,16 +149,18 @@ export function FillerInterestsSection({
   const handleApprove = async (candidateUid: string) => {
     setBusyUid(candidateUid);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { httpsCallable } = require('@/services/diagnosticCallable');
-      const { functions } = getFirebase();
-      const fn = httpsCallable(functions, 'approveFiller');
-      await fn({ gameId, candidateUid });
+      const { data } = await decideFiller(gameId, candidateUid, true);
+      if (data?.alreadyHandled) {
+        toast.info('השחקן כבר מופיע במחזור');
+        await load();
+        return;
+      }
       if (activeGame.current === gameId) {
         const row = rows.find(r => r.uid === candidateUid);
-        if (row) setApproved({ row, at: Date.now() });
+        if (row) setApproved({ row, at: Date.now(), message: data?.bucket === 'waitlist' ? he.requestsApprovedToWaitlist : he.fillerApproveSuccess });
       }
-      toast.success(he.fillerApproveSuccess);
+      if (data?.bucket === 'waitlist') toast.info(he.requestsApprovedToWaitlist);
+      else toast.success(he.fillerApproveSuccess);
       await load();
     } catch (err) {
     observeCaughtError(err, {"source":"src/components/match/FillerInterestsSection.tsx","handler":"handleApprove","site":"FillerInterestsSection:21dcb6c49d"});
@@ -183,6 +182,7 @@ export function FillerInterestsSection({
           ? he.fillerApproveStale
           : he.error,
       );
+      if (msg === 'failed-precondition') await load();
       if (__DEV__) console.warn('[fillerInterests] approve failed', err);
     } finally {
       setBusyUid(null);
@@ -201,14 +201,15 @@ export function FillerInterestsSection({
           onPress: async () => {
             setBusyUid(candidateUid);
             try {
-              // eslint-disable-next-line @typescript-eslint/no-var-requires
-              const { httpsCallable } = require('@/services/diagnosticCallable');
-              const { functions } = getFirebase();
-              const fn = httpsCallable(functions, 'declineFiller');
-              await fn({ gameId, candidateUid });
+              await decideFiller(gameId, candidateUid, false);
               await load();
             } catch (err) {
     observeCaughtError(err, {"source":"src/components/match/FillerInterestsSection.tsx","handler":"onPress","site":"FillerInterestsSection:5a89bd6f91"});
+              if ((err as { code?: string }).code === 'functions/failed-precondition') {
+                toast.info('הבקשה כבר אינה ממתינה לאישור');
+                await load();
+                return;
+              }
               logError('declineFiller', err, {
                 screen: 'FillerInterestsSection',
                 gameId,
@@ -231,7 +232,7 @@ export function FillerInterestsSection({
       {approved ? <ArrivalMotion at={approved.at}>
         <View style={[styles.row, { backgroundColor: '#ECFDF3', borderRadius: 12, paddingHorizontal: spacing.sm }]} accessibilityLiveRegion="polite">
           <Avatar avatarId={approved.row.user?.avatarId} uri={approved.row.user?.photoUrl} name={approved.row.user?.name ?? ''} size={40} />
-          <View style={styles.rowBody}><Text style={styles.rowName}>{approved.row.user?.name ?? he.fillerDefaultName}</Text><Text style={styles.subtitle}>{he.fillerApproveSuccess}</Text></View>
+          <View style={styles.rowBody}><Text style={styles.rowName}>{approved.row.user?.name ?? he.fillerDefaultName}</Text><Text style={styles.subtitle}>{approved.message}</Text></View>
           <Ionicons name="checkmark-circle" size={24} color={colors.success} />
         </View>
       </ArrivalMotion> : null}
@@ -296,11 +297,6 @@ export function FillerInterestsSection({
     </Card>
   );
 }
-
-// Defensive: keep `docs` referenced so the import doesn't get dropped
-// by a future change. (We use it implicitly via firestore.ts barrel.)
-const _ = docs;
-void _;
 
 const styles = StyleSheet.create({
   card: {

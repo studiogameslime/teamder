@@ -134,6 +134,8 @@ export interface SeasonSummaryModel {
    * summary that still reads after somebody deletes their account.
    */
   peerAvatars: Record<string, { avatarId?: string; photoUrl?: string }>;
+  /** Live-season identity enrichment only; frozen archives need no profile reads. */
+  peerIdentityStatus?: 'loading' | 'ready' | 'partial' | 'error';
   /**
    * Titles this player took in this season, decided when it closed.
    *
@@ -304,14 +306,15 @@ async function resolvePeers(
   const avatars: Record<string, { avatarId?: string; photoUrl?: string }> = {};
   const missing: string[] = [];
   for (const uid of uids) {
-    const f = frozen.get(uid);
+    const f = frozen.get(uid)?.trim();
     if (f) names[uid] = f;
     else missing.push(uid);
   }
   // Same public identity batch as the statistics screen; no private player reads.
-  const users = await groupService.hydrateUsers(missing).catch((caughtError30dac58d6a: unknown) => { observeCaughtError(caughtError30dac58d6a, {"source":"src/services/seasonSummaryService.ts","handler":"resolvePeers","site":"seasonSummaryService:30dac58d6a"}); return []; });
+  const users = missing.length ? await groupService.hydrateUsers(missing) : [];
   for (const u of users) {
-    if (u.name) names[u.id] = u.name;
+    const name = typeof u.name === 'string' ? u.name.trim() : '';
+    if (name) names[u.id] = name;
     if (u.avatarId || u.photoUrl) avatars[u.id] = {
       ...(u.avatarId ? { avatarId: u.avatarId } : {}),
       ...(u.photoUrl ? { photoUrl: u.photoUrl } : {}),
@@ -328,6 +331,16 @@ export interface LoadSeasonArgs {
   userId: UserId;
   /** Omit for the season currently running. */
   seasonId?: string;
+  /** Publish accurate live-season numbers without waiting for peer identities. */
+  onBase?: (model: SeasonSummaryModel) => void;
+  isCurrent?: () => boolean;
+}
+
+export class SeasonSummaryCancelledError extends Error {
+  constructor() {
+    super('Season summary request is no longer current');
+    this.name = 'SeasonSummaryCancelledError';
+  }
 }
 
 /**
@@ -416,10 +429,16 @@ export const seasonSummaryService = {
     groupId,
     userId,
     seasonId,
+    onBase,
+    isCurrent,
   }: LoadSeasonArgs): Promise<SeasonSummaryModel | null | 'error'> {
     if (!groupId || !userId) return null;
     if (USE_MOCK_DATA) return mockSeasonSummary(groupId, userId, seasonId);
+    const assertCurrent = () => {
+      if (isCurrent?.() === false) throw new SeasonSummaryCancelledError();
+    };
     try {
+      assertCurrent();
       const { db } = getFirebase();
       // A missing archive is denied by the real rules. A known current season
       // must go straight to live counters. Club access is optional here so a
@@ -428,13 +447,17 @@ export const seasonSummaryService = {
       if (seasonId) {
         try { groupSnap = await getDoc(doc(db, 'groups', groupId)); } catch (caughtErrorb4ed59465a) {
     observeCaughtError(caughtErrorb4ed59465a, {"source":"src/services/seasonSummaryService.ts","handler":"load","site":"seasonSummaryService:b4ed59465a"}); /* archive access is independent */ }
+        assertCurrent();
         const known = (groupSnap?.data() as { seasons?: GroupSeasons } | undefined)?.seasons;
         if (!(known?.enabled && known.currentId === seasonId)) {
         const archived = await getDoc(
           doc(db, 'seasonSummary', `${groupId}__${seasonId}`),
         );
+        assertCurrent();
         if (archived.exists() && !archived.data()?.publicationPending) {
-          return fromArchive(await readSeasonArchiveData(db, archived.data() as Record<string, unknown>), {
+          const archiveData = await readSeasonArchiveData(db, archived.data() as Record<string, unknown>);
+          assertCurrent();
+          return fromArchive(archiveData, {
             groupId,
             userId,
             seasonId,
@@ -447,6 +470,7 @@ export const seasonSummaryService = {
       }
 
       groupSnap ??= await getDoc(doc(db, 'groups', groupId));
+      assertCurrent();
       if (!groupSnap.exists()) return null;
       const g = groupSnap.data() as { name?: string; seasons?: GroupSeasons };
       const seasons = g.seasons;
@@ -468,12 +492,13 @@ export const seasonSummaryService = {
         getDocs(query(collection(db, 'communityPairStats'), where('groupId', '==', groupId))),
         getDocs(query(collection(db, 'communityStats'), where('groupId', '==', groupId))),
       ]);
+      assertCurrent();
       const rawPlayers: Record<string, Record<string, unknown>> = {};
       const players: SeasonPlayerRow[] = [];
       statRows.forEach((d) => {
         const x = d.data() as Record<string, unknown>;
         const uid = str(x.userId);
-        if (uid) { players.push(playerRow(x, uid)); rawPlayers[uid] = x; }
+        if (uid) { players.push(playerRow(x, uid)); rawPlayers[uid] = { ...x, displayName: str(x.displayName).trim() }; }
       });
       const pairs: SeasonPairRow[] = [];
       pairRows.forEach((d) => {
@@ -481,8 +506,6 @@ export const seasonSummaryService = {
         if (row) pairs.push(row);
       });
       const me = buildPersonalSeason({ me: userId, players, pairs });
-      const peers = await resolvePeers(Object.keys(rawPlayers), new Map());
-      for (const [id, name] of Object.entries(peers.names)) rawPlayers[id].displayName = name;
       const awards = computeSeasonAwards(Object.entries(rawPlayers).map(([uid, x]) => ({
         ...playerRow(x, uid), uid, games: num(x.games), rounds: num(x.rounds), goals: num(x.goals),
         assists: num(x.assists), wins: num(x.wins), cleanSheets: num(x.cleanSheets),
@@ -490,7 +513,7 @@ export const seasonSummaryService = {
         ratedRounds: num(x.eveningScoreCount),
         mvpAvg: num(x.eveningScoreCount) > 0 ? num(x.eveningScoreSum) / num(x.eveningScoreCount) : 0,
       })), pairs.map(p => ({ a: p.a, b: p.b, score: num(p.assistsAToB) + num(p.assistsBToA), together: num(p.sameTeam) })), num(seasons.playedRounds));
-      return {
+      const base: SeasonSummaryModel = {
         groupId,
         groupName,
         seasonId: seasons.currentId,
@@ -526,11 +549,38 @@ export const seasonSummaryService = {
         // A running season has no titles yet, by design.
         myTitles: [],
         seasonTitles: [],
-        names: { ...Object.fromEntries(Object.entries(rawPlayers).filter(([, p]) => str(p.displayName)).map(([id, p]) => [id, str(p.displayName)])), ...peers.names },
-        peerAvatars: peers.avatars,
+        names: Object.fromEntries(Object.entries(rawPlayers).filter(([, p]) => str(p.displayName)).map(([id, p]) => [id, str(p.displayName)])),
+        peerAvatars: {},
+        peerIdentityStatus: 'loading',
         available: seasonChoices(seasons),
       };
+      assertCurrent();
+      onBase?.(base);
+      assertCurrent();
+      let peers: PeerIdentity;
+      try {
+        peers = await resolvePeers(Object.keys(rawPlayers), new Map());
+      } catch (error) {
+        assertCurrent();
+        observeCaughtError(error, { source: 'src/services/seasonSummaryService.ts', handler: 'load', site: 'seasonSummaryPeerIdentity' });
+        logError('seasonSummaryPeerIdentity', error, { groupId, userId, seasonId: seasons.currentId });
+        return { ...base, peerIdentityStatus: 'error' };
+      }
+      assertCurrent();
+      const namedPlayers = Object.fromEntries(Object.entries(rawPlayers).map(([uid, row]) => [uid, {
+        ...row, ...(peers.names[uid] ? { displayName: peers.names[uid] } : {}),
+      }]));
+      const names = { ...base.names, ...peers.names };
+      const missingNames = Object.keys(rawPlayers).some(uid => !str(names[uid]).trim());
+      return {
+        ...base,
+        names,
+        peerAvatars: peers.avatars,
+        peerIdentityStatus: missingNames ? 'partial' : 'ready',
+        club: { ...base.club!, leaders: allTitlesOf({ ...awards, mvp: null }, namedPlayers, userId) },
+      };
     } catch (err) {
+      if (err instanceof SeasonSummaryCancelledError) throw err;
     observeCaughtError(err, {"source":"src/services/seasonSummaryService.ts","handler":"load","site":"seasonSummaryService:0e169caccb"});
       logError('seasonSummaryLoad', err, { groupId, userId, seasonId: seasonId ?? '' });
       // NOT null. Null means "this club does not run seasons", and saying that

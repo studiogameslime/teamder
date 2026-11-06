@@ -1,3 +1,4 @@
+import { useUsageSection } from '@/hooks/useUsageSection';
 import { ContentReveal } from '@/components/anim/ContentReveal';
 import { observeCaughtError } from '../../utils/errorObservation';
 
@@ -79,6 +80,7 @@ import { RichRulesText } from '@/components/community/RichRulesText';
 import { groupService } from '@/services';
 import { logError, isExpectedDenial } from '@/services/errorLog';
 import { pickAndUploadGroupCover } from '@/services/photoService';
+import { photoPhaseLabel } from '@/utils/photoPhase';
 import { gameService } from '@/services/gameService';
 import { seasonHistoryService } from '@/services/seasonHistoryService';
 import { hasArchivedStats } from '@/utils/statsScope';
@@ -183,6 +185,7 @@ export function CommunityDetailsScreen() {
   // what it IS, not on wherever the last club was left.
   const [failedRoundCover, setFailedRoundCover] = useState<string | null>(null);
   const [tab, setTab] = useState<ClubTabKey>('info');
+  useUsageSection(tab, { groupId });
   /**
    * Which tabs have ever been opened.
    *
@@ -222,6 +225,8 @@ export function CommunityDetailsScreen() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [coverUploadLabel, setCoverUploadLabel] = useState('בודקים גישה לתמונות');
+  const coverUploadInFlight = useRef(false);
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteIds, setInviteIds] = useState<string[]>([]);
@@ -518,9 +523,15 @@ export function CommunityDetailsScreen() {
 
   // Upload a custom cover from the device gallery.
   const handleUploadCover = async () => {
-    if (!group || !me || uploadingCover) return;
+    if (!group || !me || coverUploadInFlight.current) return;
+    coverUploadInFlight.current = true;
+    const scope = loadScope;
+    const isCurrent = () => currentLoadScope.current === scope && useUserStore.getState().currentUser?.id === me.id;
     setUploadingCover(true);
-    const res = await pickAndUploadGroupCover(group.id);
+    try {
+    setCoverUploadLabel('בודקים גישה לתמונות');
+    const res = await pickAndUploadGroupCover(group.id, phase => {if (isCurrent()) setCoverUploadLabel(photoPhaseLabel(phase));});
+    if (!isCurrent()) return;
     if (!res.ok) {
       setUploadingCover(false);
       // 'cancelled' is the user backing out, not a failure — don't log it.
@@ -543,15 +554,18 @@ export function CommunityDetailsScreen() {
       return;
     }
     try {
+      setCoverUploadLabel('שומרים את תמונת המועדון');
       const fresh = await groupService.updateGroupMetadata(group.id, me.id, {
         coverPhotoUrl: res.url,
       });
+      if (!isCurrent()) return;
       setGroup(fresh);
       setCoverPickerOpen(false);
       logEvent(AnalyticsEvent.PhotoUploaded, { source: 'community_cover' });
       logEvent(AnalyticsEvent.CommunityCoverUploaded, { groupId: group.id });
       toast.success(he.communityCoverUpdated);
     } catch (e) {
+      if (!isCurrent()) return;
     observeCaughtError(e, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"handleUploadCover","site":"CommunityDetailsScreen:acc2f6989c"});
       logError('updateGroupMetadata', e, {
         screen: 'CommunityDetailsScreen',
@@ -566,7 +580,11 @@ export function CommunityDetailsScreen() {
       });
       appAlert(he.error, he.communityCoverUploadFailed);
     } finally {
-      setUploadingCover(false);
+      if (isCurrent()) setUploadingCover(false);
+    }
+    } finally {
+      coverUploadInFlight.current = false;
+      if (isCurrent()) setUploadingCover(false);
     }
   };
 
@@ -743,7 +761,7 @@ export function CommunityDetailsScreen() {
     return (
       <ContentReveal ready={!!group} scopeKey={JSON.stringify([me?.id,groupId])} style={{flex:1}}><View style={styles.root}>
         <ScreenHeader title="פרטי המועדון" />
-        <ScrollSurface contentContainerStyle={{ padding: spacing.lg }}><ClubDetailsSkeleton /></ScrollSurface>
+        <ScrollSurface><ClubDetailsSkeleton /></ScrollSurface>
       </View></ContentReveal>
     );
   }
@@ -1435,6 +1453,7 @@ export function CommunityDetailsScreen() {
         selectedId={group.coverImageId}
         hasUploadedPhoto={!!group.coverPhotoUrl}
         uploading={uploadingCover}
+        uploadLabel={coverUploadLabel}
         onSelectBuiltin={handleSelectBuiltinCover}
         onUploadFromDevice={handleUploadCover}
         onClose={() => setCoverPickerOpen(false)}

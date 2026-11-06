@@ -29,7 +29,6 @@ export function draftColorTeams(game: Pick<Game, 'draftTeams' | 'draftTeamColors
 /** Colour-only transaction: retain all roster, score, timer and publication fields. */
 export function draftColorPatch(game: Pick<Game, 'draftTeams' | 'draftTeamColors' | 'numberOfTeams' | 'status' | 'rotation'>, colors: Record<number, string>, expected: Record<number, string>) {
   if (game.status === 'finished' || game.status === 'cancelled') throw new Error('ROUND_CLOSED');
-  if (game.rotation) throw new Error('DRAFT_COLORS_LOCKED');
   const count = game.draftTeams?.teams.length || game.numberOfTeams || 2;
   const current = draftColorTeams(game, count);
   if (Object.keys(colors).length !== count || current.some(t => expected[t.index] !== t.colorKey)) throw new Error('DRAFT_COLORS_CHANGED');

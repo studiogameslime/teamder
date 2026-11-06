@@ -8,6 +8,7 @@ import { closeSeason } from './seasonRollover';
 import { didEveningHappen, eveningPlayState, playEvidence, isOrganizedEveningAwaitingDecision } from './eveningPlayed';
 import { todayIn } from './seasonDates';
 import { assertSeasonTargetEditable } from './seasonLock';
+import type { SharedScoreCalibration } from './sharedEveningScore';
 import { CORRECTION_WINDOW_MS, MIN_SEASON_ROUNDS, SEASON_POLICY_VERSION,
   makeSeasonTarget, seasonTargetDue, seasonClosureKind, updateCorrectionWindow, validateSeasonTarget,
   type SeasonTarget, type CorrectionWindow, type SeasonHistoryChoice } from './seasonPolicy';
@@ -20,6 +21,7 @@ const del = () => admin.firestore.FieldValue.delete();
 export interface SeasonManagerDependencies {
   db: admin.firestore.Firestore;
   now?: () => number;
+  scoreCalibration?: (tx: admin.firestore.Transaction, game: Data, gameId: string, now: number) => Promise<SharedScoreCalibration | null>;
   announce: (args: { groupId: string; groupName: string; seasonId: string; seasonNo: number }) => Promise<void>;
   report: (args: { operation: string; err: unknown; context?: Record<string, unknown> }) => Promise<void>;
 }
@@ -195,7 +197,9 @@ export class SeasonManager {
       if (s?.enabled && g.seasonId && g.seasonId !== s.currentId) throw new HttpsError('failed-precondition', 'closedSeasonGame');
       const now = this.now();
       const period = s?.enabled ? s.currentId : s?.disabledAt ? `off_${s.count ?? 0}_${s.disabledAt}` : undefined;
+      const scoreCalibration = this.deps.scoreCalibration ? await this.deps.scoreCalibration(tx,g,gameId,now) : null;
       const patch: Data = { status: 'active', updatedAt: now, ...(period ? { seasonId: period } : {}), seasonStartedAt: g.seasonStartedAt ?? now };
+      if(scoreCalibration)patch.scoreCalibration=scoreCalibration;
       if (g.liveMatch) Object.assign(patch, { 'liveMatch.phase': 'roundRunning', 'liveMatch.startedAt': g.liveMatch.startedAt ?? now });
       else patch.liveMatch = { phase: 'roundRunning', assignments: {}, benchOrder: [], scoreA: 0, scoreB: 0, startedAt: now };
       tx.update(ref, patch);

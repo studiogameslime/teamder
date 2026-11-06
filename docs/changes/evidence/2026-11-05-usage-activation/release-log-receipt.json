@@ -1,0 +1,23 @@
+{
+  "at": "2026-11-05T09:05:41.794284+00:00",
+  "localOnly": false,
+  "deployed": true,
+  "entries": [
+    {
+      "id": "usage-activation-collection-2026-11-05",
+      "readBackVerified": true,
+      "version": "1.1.76",
+      "shotId": "K2dU0YRPeUqVv9BGjLWg",
+      "shotReadBackVerified": true,
+      "jpegSha256": "15310d1b9316c4100fca726bdcee14898db26eb33f4db9f71b152432f22cddf2"
+    },
+    {
+      "id": "usage-activation-clients-2026-11-05",
+      "readBackVerified": true,
+      "version": "1.1.76",
+      "shotId": "K2dU0YRPeUqVv9BGjLWg",
+      "shotReadBackVerified": true,
+      "jpegSha256": "15310d1b9316c4100fca726bdcee14898db26eb33f4db9f71b152432f22cddf2"
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -176,6 +177,7 @@ export function SignInScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
       <View style={styles.content}>
         <View style={styles.iconCircle}>
           <Ionicons name="football-outline" size={72} color={ACCENT} />
@@ -280,13 +282,15 @@ export function SignInScreen() {
         </Pressable>
         <Text style={styles.privacy}>{he.signInPrivacy}</Text>
       </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
-  content: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  root: { flex: 1, backgroundColor: colors.bg },
+  scrollContent: { flexGrow: 1, padding: spacing.lg, gap: spacing.lg },
+  content: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
   iconCircle: {
     width: 140,
     height: 140,

@@ -87,6 +87,17 @@ test.each(['generateDraftTeamsForGame', 'generateForGame'])('%s excludes waitlis
   expect(ids).not.toContain('guest:waiting');
 });
 
+test('scheduled balance and captain selection use 2.5 for unrated players', () => {
+  const h = harness();
+  const ratings = { rated: 2.8, low: 1, zero: 0 };
+  const actual = h.api.balanceTeamsV1(['missing', 'rated', 'low', 'zero'], ratings, 1, 5, []);
+  expect(actual.unratedCount).toBe(2);
+  expect(actual.teamRatings).toEqual([2.2]); // (2.5 + 2.8 + 1 + 2.5) / 4
+  const teams = h.api.buildDraftTeamsFromBalance(actual.assignments, ratings, 1, 'manager');
+  expect(teams[0].captainId).toBe('rated');
+  expect(ratings).toEqual({ rated: 2.8, low: 1, zero: 0 });
+});
+
 test('the legacy assignment reader retains teams six and seven', async () => {
   const h = harness({}, 'generateForGame');
   await h.api.generateForGame(h.ref, h.initial);

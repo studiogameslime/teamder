@@ -9,7 +9,7 @@ function fixture(){
  let resolve!:(data:any)=>void,reject!:(error:Error)=>void;
  const fresh=new Promise((yes,no)=>{resolve=yes;reject=no;});
  const setters=Object.fromEntries(['setStats','setPen','setPeople','setFailed','setLoading','setHighlightsLoading','setRestricted','setTargetUser'].map(k=>[k,jest.fn()]));
- const compute=jest.fn(async()=>({attendedGames:1})),observe=jest.fn(),log=jest.fn();
+ const compute=jest.fn(async(_uid:string,options:any)=>{await options.totals;return{attendedGames:1};}),observe=jest.fn(),log=jest.fn();
  const context:any={module:{exports:{}},...setters,targetId:'me',ownerKey:'me:me',statsOwnerRef:{current:'me:me'},otherPlayer:false,localUser:{id:'me'},
   userService:{getUserById:()=>fresh},playerStatsService:{compute},observeCaughtError:observe,logError:log};
  vm.runInNewContext(ts.transpileModule('module.exports='+effect,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
@@ -17,9 +17,9 @@ function fixture(){
 }
 const flush=async()=>{for(let i=0;i<15;i++)await Promise.resolve();};
 
-test('leaving before the user read completes cancels quietly, without starting statistics or reporting an error',async()=>{
+test('leaving before the user read completes prevents publication from parallel computation without reporting an error',async()=>{
  const f=fixture();f.cleanup();f.resolve({stats:{goals:3}});await flush();
- expect(f.compute).not.toHaveBeenCalled();expect(f.observe).not.toHaveBeenCalled();expect(f.log).not.toHaveBeenCalled();expect(f.setters.setStats).not.toHaveBeenCalled();
+ expect(f.compute).toHaveBeenCalledTimes(1);expect(f.observe).not.toHaveBeenCalled();expect(f.log).not.toHaveBeenCalled();expect(f.setters.setStats).not.toHaveBeenCalled();
 });
 test('a late failed read after leaving cannot report an obsolete failure or update a new screen',async()=>{
  const f=fixture();f.cleanup();f.reject(Error('unavailable'));await flush();expect(f.observe).not.toHaveBeenCalled();expect(f.log).not.toHaveBeenCalled();expect(f.setters.setFailed).not.toHaveBeenCalledWith(true);
@@ -28,5 +28,5 @@ test('a real failure while the screen is current still reports the error and exp
  const f=fixture();f.reject(Error('unavailable'));await flush();expect(f.observe).toHaveBeenCalledTimes(1);expect(f.log).toHaveBeenCalledWith('loadStatistics',expect.any(Error),{userId:'me'});expect(f.setters.setFailed).toHaveBeenCalledWith(true);expect(f.setters.setLoading).toHaveBeenLastCalledWith(false);
 });
 test('a current successful read still computes and publishes the actual statistics',async()=>{
- const f=fixture();f.resolve({stats:{goals:3,assists:2}});await flush();expect(f.compute).toHaveBeenCalledWith('me',expect.objectContaining({goals:3,assists:2}));expect(f.setters.setStats).toHaveBeenCalledWith({attendedGames:1});expect(f.observe).not.toHaveBeenCalled();
+ const f=fixture();f.resolve({stats:{goals:3,assists:2}});await flush();expect(f.compute).toHaveBeenCalledWith('me',expect.objectContaining({totals:expect.any(Promise)}));await expect(f.compute.mock.calls[0][1].totals).resolves.toEqual({goals:3,assists:2});expect(f.setters.setStats).toHaveBeenCalledWith({attendedGames:1});expect(f.observe).not.toHaveBeenCalled();
 });

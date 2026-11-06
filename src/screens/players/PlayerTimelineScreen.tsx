@@ -1,6 +1,6 @@
 import { observeCaughtError } from '../../utils/errorObservation';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Line, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useFocusEffect, useRoute } from '@react-navigation/native';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { EmptyState } from '@/components/EmptyState';
-import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { PlayerTimelineSkeleton } from '@/components/loading/CentralSkeletons';
 import { UserAvatar } from '@/components/UserAvatar';
 import { appAlert } from '@/components/AppDialog';
 import { toast } from '@/components/Toast';
@@ -185,7 +185,7 @@ export function PlayerTimelineScreen() {
       }
     }]);
   };
-  if (events === null && !failed) return <SafeAreaView style={styles.safe} edges={['top']}><ScreenHeader title="ציר הזמן" /><View style={styles.center}><SoccerBallLoader /></View></SafeAreaView>;
+  if (events === null && !failed) return <SafeAreaView style={styles.safe} edges={['top']}><ScreenHeader title="ציר הזמן" /><ScrollView contentContainerStyle={styles.list}><PlayerTimelineSkeleton /></ScrollView></SafeAreaView>;
   const error = <Pressable accessibilityRole="button" onPress={() => void reload()} style={styles.error}><Text style={styles.errorText}>לא ניתן לטעון את ציר הזמן. לחצו לניסיון חוזר</Text><Ionicons name="refresh-outline" size={18} color="#A33C24" /></Pressable>;
   if (!group) return <SafeAreaView style={styles.safe} edges={['top']}><ScreenHeader title="ציר הזמן" />{failed ? error : <EmptyState icon="information-circle-outline" title="המועדון אינו זמין" hint="חזרו למועדון ונסו שוב" />}</SafeAreaView>;
   return <SafeAreaView style={styles.safe} edges={['top']}>
@@ -223,7 +223,7 @@ export function PlayerTimelineScreen() {
         }} onPress={() => setFilter(f.id)} style={[styles.filter, filter === f.id && styles.selectedFilter]}><Text style={[styles.filterText, filter === f.id && styles.selectedText]}>{f.label}</Text>{f.icon ? <Ionicons name={f.icon} size={17} color={filter === f.id ? 'white' : '#496B9B'} /> : null}</Pressable>)}</View>
         {failed ? error : null}
         {events && events.length >= 200 ? <Text style={styles.limit}>מוצגים עד 200 האירועים האחרונים; הסיכום מתייחס לאירועים המוצגים</Text> : null}
-      </>} ListEmptyComponent={!failed ? <EmptyState fill={false} icon="time-outline" title={filter === 'all' ? he.timelineEmpty : filter === 'cards' ? 'אין אירועי כרטיסים בציר הזה' : 'אין אירועי ציוד בציר הזה'} /> : null} renderItem={({
+      </>} ListEmptyComponent={!failed ? <EmptyState fill={false} icon="time-outline" title={filter === 'all' ? he.timelineEmpty : filter === 'cards' ? 'אין אירועי כרטיסים בציר הזה' : 'אין אירועי ציוד בציר הזה'} hint={filter === 'all' ? 'אירועי ציוד וכרטיסים יוצגו כאן לאחר שיתועדו במועדון.' : 'אפשר להציג את כל סוגי האירועים בציר הזמן.'} ctaLabel={filter !== 'all' ? 'הצג את כל האירועים' : undefined} onCtaPress={filter !== 'all' ? () => setFilter('all') : undefined} /> : null} renderItem={({
       item,
       index
     }) => <TimelineEvent entry={item} group={group} actors={actors} now={now} last={index === model.entries.length - 1} stacked={stacked} canManage={isAdmin} busy={busy} onRevoke={revoke} />} />

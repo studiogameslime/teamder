@@ -28,12 +28,13 @@ interface Props {
   meId: string;
   otherUserId: string;
   compact?: boolean;
-  onChanged?: () => void;
+  relationship?: Exclude<FriendRelationship,'self'>;
+  onChanged?: (relationship: Exclude<FriendRelationship,'self'>) => void;
 }
 
-export function FriendActionButton({ meId, otherUserId, compact = false, onChanged }: Props) {
+export function FriendActionButton({ meId, otherUserId, compact = false, relationship, onChanged }: Props) {
   const epoch = useRef(0);
-  const [rel, setRel] = useState<FriendRelationship | null>(null);
+  const [rel, setRel] = useState<FriendRelationship | null>(relationship ?? null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   // Name is best-effort — comes from the gameStore players map (which
@@ -49,7 +50,7 @@ export function FriendActionButton({ meId, otherUserId, compact = false, onChang
     try {
       setFailed(false);
       const next = await friendsService.getRelationship(meId, otherUserId);
-      if (epoch.current === current) setRel(next);
+      if (epoch.current === current) {setRel(next);return next;}
     } catch (e) {
     observeCaughtError(e, {"source":"src/components/profile/FriendActionButton.tsx","handler":"FriendActionButton","site":"FriendActionButton:dc5b84418c"});
       // A failed relationship lookup (e.g. a blocked friendRequests read)
@@ -63,10 +64,11 @@ export function FriendActionButton({ meId, otherUserId, compact = false, onChang
   }, [meId, otherUserId]);
 
   useEffect(() => {
-    setRel(null);
-    void load();
+    setRel(relationship ?? null);
+    setFailed(false);
+    if (!relationship) void load();
     return () => { epoch.current++; };
-  }, [load]);
+  }, [load, relationship]);
 
   if (failed) return <Pressable accessibilityRole="button" onPress={() => void load()} style={styles.pending}><Text style={styles.labelPending}>נסה שוב</Text></Pressable>;
   if (rel === null) return <ActivityIndicator size="small" color={colors.primary} />;
@@ -81,8 +83,8 @@ export function FriendActionButton({ meId, otherUserId, compact = false, onChang
     try {
       await friendsService.cancelRequest(meId, otherUserId);
       toast.success(he.friendsRequestCancelled);
-      await load();
-      onChanged?.();
+      const next=await load();
+      if(next && next!=='self')onChanged?.(next);
     } catch (e) {
     observeCaughtError(e, {"source":"src/components/profile/FriendActionButton.tsx","handler":"doCancelOutgoing","site":"FriendActionButton:47c8ea15ba"});
       if (__DEV__) console.warn('[friendAction] cancel failed', e);
@@ -121,8 +123,8 @@ export function FriendActionButton({ meId, otherUserId, compact = false, onChang
         await friendsService.acceptRequest(otherUserId, meId);
         toast.success(he.friendsAccepted);
       }
-      await load();
-      onChanged?.();
+      const next=await load();
+      if(next && next!=='self')onChanged?.(next);
     } catch (e) {
     observeCaughtError(e, {"source":"src/components/profile/FriendActionButton.tsx","handler":"onPress","site":"FriendActionButton:8f0e903779"});
       if (__DEV__) console.warn('[friendAction] failed', e);
@@ -168,10 +170,9 @@ export function FriendActionButton({ meId, otherUserId, compact = false, onChang
       }
     >
       <Text
-        numberOfLines={compact ? 2 : 1}
         style={[
           styles.label,
-          compact && { fontSize: 11.5, lineHeight: 15, fontWeight: '600', flexShrink: 1, textAlign: 'center' },
+          compact && { fontSize: 11.5, lineHeight: 15, fontWeight: '600' },
           rel === 'outgoing'
             ? styles.labelPending
             : interactive
@@ -218,7 +219,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: 11,
-    // Stretch to fill its half-width slot so the label sits on one line.
     alignSelf: 'stretch',
   },
   active: { backgroundColor: colors.primary },
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primary,
   },
-  label: { ...typography.body, fontWeight: '700' },
+  label: { ...typography.body, flexShrink: 1, textAlign: 'center', fontWeight: '700' },
   labelActive: { color: '#FFFFFF' },
   labelMuted: { color: colors.textMuted },
   labelPending: { color: colors.primary },

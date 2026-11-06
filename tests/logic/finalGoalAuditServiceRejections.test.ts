@@ -55,7 +55,7 @@ test('a conflicting existing id is deliberately not classified as a new-selectio
 
 test('a matching event is acknowledged even if its old participants and turn have since changed', async()=>{
   const x=fixture();x.state.liveMatch.shootout.kicks=[{...kick(),at:1}];x.state.draftTeams.teams[0].playerIds=['a2'];x.state.draftTeams.teams[1].playerIds=['b2'];
-  await expect(x.record('evening',kick())).resolves.toBeUndefined();expect(x.update).not.toHaveBeenCalled();
+  await expect(x.record('evening',kick())).resolves.toBe(false);expect(x.update).not.toHaveBeenCalled();
 });
 
 test('retrying an acknowledged undo removes no earlier kick when the response was lost',async()=>{

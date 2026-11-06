@@ -1,5 +1,6 @@
 import { observeCaughtError } from '../services/errorObservation';
 import { DiagnosticTimeline } from '../components/DiagnosticTimeline';
+import { ConvertToTaskButton } from '../components/ConvertToTaskButton';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -101,6 +102,7 @@ export function ErrorDetailScreen() {
         <Text style={styles.missing}>השגיאה לא נמצאה</Text>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
+          {collection === 'feedback' ? <ConvertToTaskButton key={id} origin={{kind:'feedback',id}}/> : null}
           <SectionTabs value={section} onChange={setSection} items={[{key:'summary',label:'תקציר'}, {key:'evidence',label:'צילום ורצף'}, {key:'technical',label:'פרטים טכניים'}]} />
           <Panel active={section === 'summary'}>
           {/* What happened — friendly summary */}

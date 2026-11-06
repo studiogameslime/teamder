@@ -12,13 +12,13 @@
 
 // ─── Rating ───────────────────────────────────────────────────────────────
 
-/** Neutral score for an unrated player — the middle of the 1.0–5.0 scale. */
-export const NEUTRAL_RATING = 3;
+/** Default score for an unrated player during automatic balancing. */
+export const NEUTRAL_RATING = 2.5;
 
 /**
  * Coerce any stored rating onto the live 0–5 scale. Values created before the
  * 1–10 → 1–5 migration still sit in `adminRatings` / guest `estimatedRating`
- * as 6–10; read raw, an old "8" towers over a neutral 3 and skews every split.
+ * as 6–10; read raw, an old "8" towers over the unrated default and skews every split.
  * Anything above the max is treated as the old scale and halved. Idempotent.
  */
 export function normalizeRating(v: number): number {

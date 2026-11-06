@@ -1,0 +1,108 @@
+[copy-template] copied public\c\index.html → functions\templates\community.html
+[copy-template] copied public\invite.html → functions\templates\invite.html
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in C:/Users/User/Documents/Codex/Teamder/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+FAIL tests/logic/profileSaveIsolation.test.ts
+  × a save awaiting the profile read cannot write its draft to the next identity (695 ms)
+  × an acknowledgement delivered after account replacement cannot replace its store or offline profile (302 ms)
+  × a lost reply is acknowledged only when a server read verifies the intended fields (195 ms)
+  √ when neither the write nor a confirming read succeeds, keep the profile and accept a later retry (205 ms)
+  × a failed refresh keeps a known profile for its current owner and exposes that the read failed (286 ms)
+  × a failed or successful old refresh cannot clear or overwrite the new session (171 ms)
+
+  ● a save awaiting the profile read cannot write its draft to the next identity
+
+    expect(received).rejects.toMatchObject()
+
+    Received promise resolved instead of rejected
+    Resolved to value: undefined
+
+      49 |   const pending = w.state.updateProfile({ name: 'פרטי' });
+      50 |   w.switchToB(); gate.resolve(b);
+    > 51 |   await expect(pending).rejects.toMatchObject({ name: 'StaleSessionError' });
+         |         ^
+      52 |   expect(w.write).not.toHaveBeenCalled();
+      53 |   expect(w.state.currentUser).toEqual(b);
+      54 |   expect(w.cached()).toEqual(b);
+
+      at expect (node_modules/expect/build/index.js:113:15)
+      at Object.<anonymous> (tests/logic/profileSaveIsolation.test.ts:51:9)
+
+  ● an acknowledgement delivered after account replacement cannot replace its store or offline profile
+
+    expect(received).rejects.toMatchObject()
+
+    Received promise resolved instead of rejected
+    Resolved to value: undefined
+
+      61 |   expect(w.write).toHaveBeenCalledTimes(1);
+      62 |   w.switchToB(); gate.resolve();
+    > 63 |   await expect(pending).rejects.toMatchObject({ name: 'StaleSessionError' });
+         |         ^
+      64 |   expect(w.state.currentUser).toEqual(b);
+      65 |   expect(w.cached()).toEqual(b);
+      66 |   expect(w.statistics).toHaveLength(0);
+
+      at expect (node_modules/expect/build/index.js:113:15)
+      at Object.<anonymous> (tests/logic/profileSaveIsolation.test.ts:63:9)
+
+  ● a lost reply is acknowledged only when a server read verifies the intended fields
+
+    lost reply
+
+      69 |   const w = world();
+      70 |   const write = w.write.getMockImplementation()!;
+    > 71 |   w.write.mockImplementationOnce(async (...args) => { await write(...args); throw Object.assign(new Error('lost reply'), { code: 'unavailable' }); });
+         |                                                                                                 ^
+      72 |   await w.state.updateProfile({ name: 'שמור' });
+      73 |   expect(w.readBack).toHaveBeenCalledTimes(1);
+      74 |   expect(w.write).toHaveBeenCalledTimes(1);
+
+      at tests/logic/profileSaveIsolation.test.ts:71:97
+
+  ● a failed refresh keeps a known profile for its current owner and exposes that the read failed
+
+    expect(received).toEqual(expected) // deep equality
+
+    Expected: {"id": "first", "name": "ראשון"}
+    Received: null
+
+      93 |   w.service.getCurrentUser.mockRejectedValueOnce(Object.assign(new Error('offline'), { code: 'unavailable' }));
+      94 |   await expect(w.state.refreshFromSession(a.id)).rejects.toThrow('offline');
+    > 95 |   expect(w.state.currentUser).toEqual(a);
+         |                               ^
+      96 |   expect(w.state.profileRestoreFailed).toBe(true);
+      97 | });
+      98 | test('a failed or successful old refresh cannot clear or overwrite the new session', async () => {
+
+      at Object.<anonymous> (tests/logic/profileSaveIsolation.test.ts:95:31)
+
+  ● a failed or successful old refresh cannot clear or overwrite the new session
+
+    expect(received).rejects.toMatchObject(expected)
+
+    - Expected  - 3
+    + Received  + 1
+
+    - Object {
+    -   "name": "StaleSessionError",
+    - }
+    + [Error: offline]
+
+      102 |     const pending = w.state.refreshFromSession(a.id);
+      103 |     w.switchToB(); gate.resolve();
+    > 104 |     await expect(pending).rejects.toMatchObject({ name: 'StaleSessionError' });
+          |                                   ^
+      105 |     expect(w.state.currentUser).toEqual(b);
+      106 |     expect(w.state.profileRestoreFailed).toBe(false);
+      107 |   }
+
+      at Object.toMatchObject (node_modules/expect/build/index.js:218:22)
+      at Object.<anonymous> (tests/logic/profileSaveIsolation.test.ts:104:35)
+
+Test Suites: 1 failed, 1 total
+Tests:       5 failed, 1 passed, 6 total
+Snapshots:   0 total
+Time:        5.099 s
+Ran all test suites matching /tests\\logic\\profileSaveIsolation.test.ts/i.

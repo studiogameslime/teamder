@@ -1,4 +1,5 @@
 import fs from 'fs';
+import {readSharedCalibration} from '../../functions/src/sharedEveningScore';
 import vm from 'vm';
 import ts from 'typescript';
 import { buildRoundSides } from '../../functions/src/roundSides';
@@ -68,7 +69,7 @@ function world(size = 4, guests = false) {
   const handler = vm.runInNewContext(compiled, { onCall: (_: unknown, handler: any) => handler, ENFORCE_APP_CHECK: false,
     db, HttpsError, admin: { firestore: { FieldValue: { increment, delete: () => remove } } },
     liveRoundKey, matchesLiveRound, buildRoundSides, roundParticipantSides, StatBatch, MAX_ROUND_BATCH_OPS, commitRoundInOrder,
-    liveSeasonStamp, assertSeasonOpenForGame, isReal: (id: string) => !id.startsWith('guest:'),
+    readSharedCalibration,liveSeasonStamp, assertSeasonOpenForGame, isReal: (id: string) => !id.startsWith('guest:'),
     console: { log() {}, error() {} }, Date });
   const payload: any = { gameId: 'audit', roundId: 'r', sideA, sideB, teamAIndex: 0, teamBIndex: 1,
     winnerSide: 'A', goals: [], penalties: [], liveGoalIds: [], rotationUpdatedAt: 1 };

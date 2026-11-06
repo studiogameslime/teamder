@@ -141,3 +141,5 @@
 | תיבת משימות ובאגים שלא נפתרו בפולס | [הסבר פשוט](shared/pulse-work-inbox.simple.md) | [מסמך טכני](shared/pulse-work-inbox.md) |
 
 | ארגון וניהול בפולס | [הסבר פשוט](shared/pulse-management.simple.md) | [מסמך טכני](shared/pulse-management.md) |
+
+| ביקורים ופעילות משתמשים בפולס | [הסבר פשוט](shared/usage-activity.simple.md) | [מסמך טכני](shared/usage-activity.md) |

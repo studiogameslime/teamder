@@ -21,7 +21,7 @@ function fixture(otherPlayer=false) {
  const ctx:any={...setters,reloadTick:0,targetId:otherPlayer?'other':'me',ownerKey:otherPlayer?'me:other':'me:me',statsOwnerRef:{current:otherPlayer?'me:other':'me:me'},localUser:{id:'me',stats:{}},otherPlayer,
   userService:{getUserById:jest.fn((id:string)=>{if(id==='peer')return Promise.resolve({id,name:'חבר'});const r=deferred();reads.push(r);return r.promise;})},
   socialPlayersService:{profile:jest.fn(()=>{const r=deferred();reads.push(r);return r.promise;})},
-  playerStatsService:{compute:jest.fn((_id:string,opts:any)=>{opts.onBase(base);return highlights.promise;})},
+  playerStatsService:{compute:jest.fn(async(_id:string,opts:any)=>{await opts.totals;if(opts.isCurrent())opts.onBase(base);return highlights.promise;})},
   React:{useCallback:(cb:any)=>cb},useEffect:(cb:any)=>mount.push(cb),useFocusEffect:(cb:any)=>focus.push(cb),
   setReloadTick:()=>{tick=true;},observeCaughtError:jest.fn(),logError:jest.fn()};
  vm.runInNewContext(ts.transpileModule(registrations.join(';'),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,ctx);
@@ -42,11 +42,13 @@ test.each([false,true])('first entry loads once and returning refreshes once, ot
  if(other)expect(f.ctx.userService.getUserById).not.toHaveBeenCalled();
 });
 
-test('blur cancels the source before statistics computation and return can load again',async()=>{
+test('blur prevents publication from parallel reads and return starts a fresh computation',async()=>{
  const f=fixture();f.blur();f.reads[0].resolve({stats:{goals:4}});await flush();
- expect(f.ctx.playerStatsService.compute).not.toHaveBeenCalled();
- f.enter();f.reads[1].resolve({stats:{goals:5}});await flush();
  expect(f.ctx.playerStatsService.compute).toHaveBeenCalledTimes(1);
+ expect(f.ctx.setStats).not.toHaveBeenCalled();
+ f.enter();f.reads[1].resolve({stats:{goals:5}});await flush();
+ expect(f.ctx.playerStatsService.compute).toHaveBeenCalledTimes(2);
+ expect(f.ctx.setStats).toHaveBeenCalledWith(f.base);
 });
 
 test('peer identities resolve with base statistics while historical enrichment remains pending, without duplicate reads',async()=>{

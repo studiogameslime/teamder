@@ -56,6 +56,21 @@ test('successful visit increments one server-time summary, repeated id is idempo
   expect([...f.store.keys()].filter(path => path.startsWith('playerComparisonActivity/target/visits/'))).toHaveLength(1);
 });
 
+test('two viewers of the same target remain two distinct actors after one visit is delivered again', async () => {
+  const f = fixture();
+  f.store.set('users/second-viewer', { name: 'משווה נוסף' });
+  f.store.get('groups/club').playerIds.push('second-viewer');
+  await f.api.recordPlayerComparison(f.request());
+  const second = f.request({ expectedUid:'second-viewer' });
+  second.auth.uid = 'second-viewer';
+  await f.api.recordPlayerComparison(second);
+  await f.api.recordPlayerComparison(second);
+  const page = await f.api.getMyComparisonActivity(f.listRequest());
+  expect(page).toMatchObject({ players:2, comparisons:2 });
+  expect(page.rows.map((row:any)=>row.id).sort()).toEqual(['second-viewer','viewer']);
+  expect(page.rows.every((row:any)=>row.count===1)).toBe(true);
+});
+
 test('a second visit increments totals; spoofed names/times and actor ids never become server metadata', async () => {
   const f = fixture(); await f.api.recordPlayerComparison(f.request());
   await f.api.recordPlayerComparison(f.request({ visitId: 'unique-visit-00002', at: 1, viewerId: 'someone', groupName: 'fake', scopeLabel: 'fake' }));

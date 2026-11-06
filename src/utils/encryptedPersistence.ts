@@ -47,22 +47,30 @@ export function encryptedPersistence(secure: Storage, legacy: Storage,
     // Cleanup is best effort AFTER committing: a cleanup error must not revert the new login.
     await discard(base, old).catch((caughtErrorad7510b017: unknown) => { observeCaughtError(caughtErrorad7510b017, {"source":"src/utils/encryptedPersistence.ts","handler":"write","site":"encryptedPersistence:ad7510b017"}); return undefined; });
   }
+  async function cleanupLegacy(key: string): Promise<void> {
+    // The encrypted login is already verified and committed. Failure to clean
+    // the obsolete copy must not make Firebase discard a readable session.
+    try { await legacy.removeItem(key); }
+    catch (error) {
+      observeCaughtError(error, { source: 'src/utils/encryptedPersistence.ts', handler: 'cleanupLegacy', site: 'encryptedPersistence:legacyCleanup' });
+    }
+  }
   return {
     getItem: key => serial(key, async () => {
       const base = `firebaseAuth.${await hash(key)}`;
       const entry = await manifest(base);
       if (entry) {
         const value = await read(base, entry);
-        await legacy.removeItem(key);
+        await cleanupLegacy(key);
         return value;
       }
       const value = await legacy.getItem(key);
-      if (value !== null) { await write(base, value); await legacy.removeItem(key); }
+      if (value !== null) { await write(base, value); await cleanupLegacy(key); }
       return value;
     }),
     setItem: (key, value) => serial(key, async () => {
       await write(`firebaseAuth.${await hash(key)}`, value);
-      await legacy.removeItem(key);
+      await cleanupLegacy(key);
     }),
     removeItem: key => serial(key, async () => {
       const base = `firebaseAuth.${await hash(key)}`;

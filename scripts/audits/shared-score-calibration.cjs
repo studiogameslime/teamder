@@ -1,0 +1,11 @@
+const fs=require('fs'),ts=require('typescript');
+require.extensions['.ts']=(module,file)=>module._compile(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,file);
+const {verifiedSharedRecords}=require('../../functions/src/sharedScoreCalibration.ts');
+const {calibrateSharedScore}=require('../../functions/src/sharedEveningScore.ts');
+const source=JSON.parse(fs.readFileSync('artifacts/score-proposal-2026-11-04/dynamic-ten-round-source-2026-11-06.json','utf8'));
+const byGame=source.priorTenGames.map(g=>({gameId:g.id,records:verifiedSharedRecords(g.id,source.priorStats.filter(p=>p.gameId===g.id),source.history[g.id],source.retro[g.id])}));
+const records=byGame.flatMap(g=>g.records),calibration=calibrateSharedScore(records,1.4);
+if(records.length!==140||Math.abs(calibration.threshold-1.3915)>1e-10)throw Error('Historical calibration mismatch '+records.length+' '+calibration.threshold);
+const report={readOnly:true,source:'saved read-only November 6 snapshot',records:records.length,calibration,byGame:byGame.map(g=>({gameId:g.gameId,valid:g.records.length}))};
+fs.writeFileSync('artifacts/shared-score-implementation-2026-11-06/historical-calibration-verification.json',JSON.stringify(report,null,2));
+console.log(JSON.stringify({valid:records.length,threshold:calibration.threshold,target:calibration.target}));

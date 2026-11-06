@@ -1,5 +1,143 @@
 [
   {
+    "file": "manual-draw-before-2-2026-11-06.png",
+    "source": "artifacts/manual-draw-2026-11-06/before-2.png",
+    "platform": "Web",
+    "environment": "חלון סיום המשחק המקורי במתאם דפדפן עם נתוני הדגמה בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-06",
+    "notes": [
+      "שינויים מקומיים מעבר למקור הרשום. רוחב 390 וגופן רגיל. הצילום נפתח ונבחן.",
+      "כיווניות, גלילה ורכיבים מקוריים מותאמים לדפדפן. אין אימות מנוע פריסה מקורי במכשיר.",
+      "אין נתוני משחק בייצור או הפצה. נדרשת פריסה עתידית לשירות השמירה החדש."
+    ],
+    "sha256": "fd05dd116dd5122b1894e83bec6701b7fb5a8d03fef55c643dfda78d14e54e5f"
+  },
+  {
+    "file": "manual-draw-before-3-2026-11-06.png",
+    "source": "artifacts/manual-draw-2026-11-06/before-3.png",
+    "platform": "Web",
+    "environment": "חלון סיום המשחק המקורי במתאם דפדפן עם נתוני הדגמה בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-06",
+    "notes": [
+      "שינויים מקומיים מעבר למקור הרשום. רוחב 390 וגופן רגיל. הצילום נפתח ונבחן.",
+      "כיווניות, גלילה ורכיבים מקוריים מותאמים לדפדפן. אין אימות מנוע פריסה מקורי במכשיר.",
+      "אין נתוני משחק בייצור או הפצה. נדרשת פריסה עתידית לשירות השמירה החדש."
+    ],
+    "sha256": "fd05dd116dd5122b1894e83bec6701b7fb5a8d03fef55c643dfda78d14e54e5f"
+  },
+  {
+    "file": "manual-draw-after-2-2026-11-06.png",
+    "source": "artifacts/manual-draw-2026-11-06/after-2.png",
+    "platform": "Web",
+    "environment": "חלון סיום המשחק המקורי במתאם דפדפן עם נתוני הדגמה בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-06",
+    "notes": [
+      "שינויים מקומיים מעבר למקור הרשום. רוחב 390 וגופן רגיל. הצילום נפתח ונבחן.",
+      "כיווניות, גלילה ורכיבים מקוריים מותאמים לדפדפן. אין אימות מנוע פריסה מקורי במכשיר.",
+      "אין נתוני משחק בייצור או הפצה. נדרשת פריסה עתידית לשירות השמירה החדש."
+    ],
+    "sha256": "7373e79358bd6c65267bf4a032c1b078659abd4df9fb32df16465fa265bafbfe"
+  },
+  {
+    "file": "manual-draw-after-3-2026-11-06.png",
+    "source": "artifacts/manual-draw-2026-11-06/after-3.png",
+    "platform": "Web",
+    "environment": "חלון סיום המשחק המקורי במתאם דפדפן עם נתוני הדגמה בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-06",
+    "notes": [
+      "שינויים מקומיים מעבר למקור הרשום. רוחב 390 וגופן רגיל. הצילום נפתח ונבחן.",
+      "כיווניות, גלילה ורכיבים מקוריים מותאמים לדפדפן. אין אימות מנוע פריסה מקורי במכשיר.",
+      "אין נתוני משחק בייצור או הפצה. נדרשת פריסה עתידית לשירות השמירה החדש."
+    ],
+    "sha256": "ff1c0beb2b5fba37946e79044ec5cf2f8d0e3d6f5d318231d3c9c71fe763b870"
+  },
+  {
+    "file": "round-penalties-stats-before-2026-11-06.png",
+    "source": "artifacts/round-penalties-2026-11-06/stats-before.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור של לשונית סטטיסטיקת המחזור במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-06",
+    "notes": [
+      "שינויים מקומיים מעבר למקור הרשום. רוחב 390 וגופן רגיל. הצילום נפתח ונבחן.",
+      "אווטרים, סמלים ומעטפת מותאמים לדפדפן. הטבלה התחתונה הושמטה מהמארח.",
+      "אין בדיקת מכשיר או נתוני ייצור. מימוש מקומי וטרם הופץ."
+    ],
+    "sha256": "e58732fe50458111dbb053038171d8c232802a556ac25ed81a9fa8f233756f4c"
+  },
+  {
+    "file": "round-penalties-stats-after-2026-11-06.png",
+    "source": "artifacts/round-penalties-2026-11-06/stats-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור של לשונית סטטיסטיקת המחזור במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-06",
+    "notes": [
+      "שינויים מקומיים מעבר למקור הרשום. רוחב 390 וגופן רגיל. הצילום נפתח ונבחן.",
+      "אווטרים, סמלים ומעטפת מותאמים לדפדפן. הטבלה התחתונה הושמטה מהמארח.",
+      "אין בדיקת מכשיר או נתוני ייצור. מימוש מקומי וטרם הופץ."
+    ],
+    "sha256": "a9aeb807a457c6d65eee9fa571ae0f6df8ab64812ff6c2f7f9de4354288724aa"
+  },
+  {
+    "file": "round-penalties-kicker-details-after-2026-11-06.png",
+    "source": "artifacts/round-penalties-2026-11-06/kicker-details-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור של לשונית סטטיסטיקת המחזור במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-06",
+    "notes": [
+      "שינויים מקומיים מעבר למקור הרשום. רוחב 390 וגופן רגיל. הצילום נפתח ונבחן.",
+      "אווטרים, סמלים ומעטפת מותאמים לדפדפן. הטבלה התחתונה הושמטה מהמארח.",
+      "אין בדיקת מכשיר או נתוני ייצור. מימוש מקומי וטרם הופץ."
+    ],
+    "sha256": "3942108f96b6285609723571179d0dce39f7bd44f65695add2aef0521314342e"
+  },
+  {
+    "file": "round-penalties-keeper-details-after-2026-11-06.png",
+    "source": "artifacts/round-penalties-2026-11-06/keeper-details-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור של לשונית סטטיסטיקת המחזור במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-06",
+    "notes": [
+      "שינויים מקומיים מעבר למקור הרשום. רוחב 390 וגופן רגיל. הצילום נפתח ונבחן.",
+      "אווטרים, סמלים ומעטפת מותאמים לדפדפן. הטבלה התחתונה הושמטה מהמארח.",
+      "אין בדיקת מכשיר או נתוני ייצור. מימוש מקומי וטרם הופץ."
+    ],
+    "sha256": "9205c729a5e6511486a7847e59e1267ca9732661ac338938a9cf89b310e09579"
+  },
+  {
+    "file": "pulse-sources-night-before-2026-11-04.png",
+    "source": "artifacts/night-sources-2026-11-04/sources-before.png",
+    "platform": "Web",
+    "environment": "רכיב המקור של מסך המקורות במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-04",
+    "notes": [
+      "צולם ברוחב 390, רכיבי מקור, נתוני הדגמה והדמיית כשל מקומית.",
+      "רכיבי המעטפת והסמלים משתמשים במתאם. לא מכשיר מקורי ולא נתוני ייצור."
+    ],
+    "sha256": "19f46038c42b9cd98ca6f4f97f0fa3cb3ac1e29a44dbcf01764a698b4723a6d6"
+  },
+  {
+    "file": "pulse-sources-night-after-2026-11-04.png",
+    "source": "artifacts/night-sources-2026-11-04/sources-after.png",
+    "platform": "Web",
+    "environment": "רכיב המקור של מסך המקורות במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-04",
+    "notes": [
+      "צולם ברוחב 390, רכיבי מקור, נתוני הדגמה והדמיית כשל מקומית.",
+      "רכיבי המעטפת והסמלים משתמשים במתאם. לא מכשיר מקורי ולא נתוני ייצור."
+    ],
+    "sha256": "69042a4ce8eaed3646ab5f51917869bc6a184641fa96e195b592aa4459085ba7"
+  },
+  {
     "file": "CommunitiesFeed-filters.jpg",
     "source": "artifacts\\map-captures\\@CommunitiesFeed-filters.jpg",
     "platform": "Android",
@@ -23429,5 +23567,3577 @@
       "אנדרואיד במכשיר הדגמה לקריאה בלבד, עם חבילת פיתוח קיימת 1.1.56-demo והמקור הנוכחי ממטרו. לא נבנתה חבילת חנות."
     ],
     "sha256": "c4213ca0f84478b5c53db6a0bfe0f75d952ef5e16a4712e636db4328ea4d6b15"
+  },
+  {
+    "file": "overnight-polish-before-rtl-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/polish-before-rtl.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-02",
+    "capturedAtUTC": "2026-11-02T21:58:56.208106+00:00",
+    "notes": [
+      "רכיבי מקור לפני תיקון תמונה וצבע, במארח מקומי.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "1723ee94fc85bb83386d206efdb2391df26f9a9cebcf386a0d6adda393e3deaf"
+  },
+  {
+    "file": "overnight-polish-after-rtl-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/polish-after-rtl.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T22:12:57.672396+00:00",
+    "notes": [
+      "רכיבי מקור לאחר תיקון תמונה וצבע, במארח מקומי.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "a7ab21f366fa689fb0ce40ed169196d78b9631ce1c7e62deef642322f76c1080"
+  },
+  {
+    "file": "overnight-confirm-busy-after-back-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/confirm-busy-after-back.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T22:21:20.537208+00:00",
+    "notes": [
+      "חלון אישור מקור נשאר אחרי חזרת אנדרואיד בזמן הבטחה מקומית.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "dcc4436caa97857cc9d3ef0e342ae961934f6fb9e88117a3baaf35a9f404f80e"
+  },
+  {
+    "file": "overnight-destructive-busy-after-back-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/destructive-busy-after-back.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T22:21:35.077888+00:00",
+    "notes": [
+      "חלון מקור ותיבת סימון, בזמן הבטחה מקומית בלבד. לא בוצעה פעולה הרסנית.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "df2e81588e6a0599854680063a39bc889e7865d3b8404c58a5a18724e873155b"
+  },
+  {
+    "file": "overnight-autocomplete-native-after-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/autocomplete-native-after.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T22:24:48.466743+00:00",
+    "notes": [
+      "קלט מקור ושתי הצעות עיר מקומיות. אין שירות חיפוש חי.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "b0c9c66a28f8cc7325944129f009d97cb1b3c2c729fe7ffca3d70db2c469f668"
+  },
+  {
+    "file": "overnight-delete-busy-before-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/delete-busy-before.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T22:29:11.770315+00:00",
+    "notes": [
+      "חלון מקור במצב המתנה מדומה לפני נעילת נתיבי הסגירה. אין שירות חשבון.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "f3816f0554d77e2613d4fb8745049e42b9e73b54f68f5c5ecd9d3b90b719e774"
+  },
+  {
+    "file": "overnight-delete-busy-after-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/delete-busy-after.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T22:50:50.858525+00:00",
+    "notes": [
+      "חלון מקור במצב המתנה מדומה נשאר אחרי חזרת אנדרואיד. אין מחיקה או שירות חשבון.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "bad810bc650df1a74598519b6a14c96bd0e56e56a2768610a40b72473e6371b3"
+  },
+  {
+    "file": "overnight-rtl-empty-before-verified-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/rtl-empty-before-verified.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-02",
+    "capturedAtUTC": "2026-11-02T21:57:49.528032+00:00",
+    "notes": [
+      "מסך רשימת המחזורים עם תשובות ריקות שהוזרקו לזיכרון הדמו לפני איחוד חוזה הכיווניות. הכותרות כבר נראו מימין.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "71b0a53d0eb79df41b46bedfad73c933eaee3954eaf38c704e4727277053e6b9"
+  },
+  {
+    "file": "overnight-availability-enabled-before-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/availability-enabled-before.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T22:00:05.680468+00:00",
+    "notes": [
+      "זמינות פעילה לפני איחוד היישור. לא נשמר מיקום אמיתי.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "e81a57725dea94cbb1217eb4c14973df099da4b32f83dd29a6954b11ceb58a7c"
+  },
+  {
+    "file": "overnight-availability-warning-before-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/availability-warning-before.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T22:00:24.977236+00:00",
+    "notes": [
+      "אזהרת אזור לפני השינוי. הטקסט כבר נראה מימין.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "34ef8761caf193a369ee1a26782a671b493795b6ce24ce18a3f857391b745da3"
+  },
+  {
+    "file": "overnight-census-DraftBoard-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/census/DraftBoard.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T22:02:18.266623+00:00",
+    "notes": [
+      "לוח חלוקה לפני הסתרת העזרה במסכים משניים. מצב דמו ופרמטרים של כלי בדיקה.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "74831289f17058649ea819623c6ea765f41e74a54d74463e2aa44d4ed88c29ef"
+  },
+  {
+    "file": "overnight-native-final-DraftBoard-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/native-final/DraftBoard.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T22:32:50.925443+00:00",
+    "notes": [
+      "לוח חלוקה אחרי הסתרת העזרה. צילום תקין גם כאשר כלי עץ הנגישות לא התייצב.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "fdaac5d58b6a5c85511349693f3e60320414ff15743a6a3deb32d41cc1adc7db"
+  },
+  {
+    "file": "overnight-census-AvailablePlayers-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/census/AvailablePlayers.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T22:04:46.115856+00:00",
+    "notes": [
+      "מחזור מלא לפני שינוי שער הפעימות. אין הוכחת שליחת הזמנות.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "af2143b2ade922e080d6af49d499e3fa9635b9969386f9d3f2bf2a72e2514f9d"
+  },
+  {
+    "file": "overnight-native-final-AvailablePlayers-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/native-final/AvailablePlayers.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T22:35:54.424239+00:00",
+    "notes": [
+      "מחזור מלא אחרי שער הפעימות המקומי. הזמנה ידנית נשמרת, אין שליחת הזמנות.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "a77c5dd7ac4e995ee15d35ab94a51574481adf9137702bdaab51d06fc4eed7f6"
+  },
+  {
+    "file": "overnight-functional-native-games-empty-rtl-after-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/games-empty-rtl-after.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T23:30:39.115903+00:00",
+    "notes": [
+      "רשימת מחזורים עם תשובות ריקות בזיכרון הדמו, לאחר איחוד חוזה הכיווניות. הכותרות והפעולה נצפו מימין.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "fd6a33dae16c370b6971e6d350d129011f21809c739a9883325af9f3f8a12ed6"
+  },
+  {
+    "file": "overnight-functional-native-availability-enabled-days-after-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/availability-enabled-days-after.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T23:32:53.765372+00:00",
+    "notes": [
+      "זמינות פעילה עם ימי השבוע לאחר שינוי יישור התוויות. לא נשמר מיקום או שינוי עסקי.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "0ff043e288ad865e3ac0f3955c61385056ddebc49cfb9f0a29bac11bb42841d0"
+  },
+  {
+    "file": "overnight-functional-native-availability-home-area-warning-after-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/availability-home-area-warning-after.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T23:34:15.039815+00:00",
+    "notes": [
+      "אזהרת אזור בית במצב זמינות פעילה. השמירה נחסמה ללא אזור, והחלון נפתח במכשיר.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "b3e90767f83534d1bce0313295c049060c1719efaeae357e644001cbeddacfc0"
+  },
+  {
+    "file": "overnight-functional-native-player-card-singular-after-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/player-card-singular-after.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T23:29:08.065780+00:00",
+    "notes": [
+      "כרטיס שחקן במידע דמו עם מועדון משותף אחד. מחרוזת היחיד נצפתה לאחר התיקון.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "52909d8d523c51aeebca1a85a2a736e1cd2da3bf1e0dd88f2ae5db0088665072"
+  },
+  {
+    "file": "overnight-functional-native-availability-unsaved-wrong-copy-before-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/availability-unsaved-wrong-copy-before.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T23:36:15.141401+00:00",
+    "notes": [
+      "אזהרת יציאה משינוי זמינות לפני התיקון, עם אזכור שגוי של תמונת פרופיל.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "492f61cc19314e6881c8e0d0413e923bebb2f2b76bbd0868d011d3257b2c14b6"
+  },
+  {
+    "file": "overnight-functional-native-availability-unsaved-copy-after-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/availability-unsaved-copy-after.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T23:50:27.009297+00:00",
+    "notes": [
+      "אזהרת יציאה משינוי זמינות לאחר התיקון, עם גוף המתייחס לזמינות. לא נשמר שינוי אמיתי.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "62b85e347bbc80d205ff960a79b33a7d2fafbd12f23e5db21a33ec6c79c99be4"
+  },
+  {
+    "file": "overnight-functional-native-bidi-source-native-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/bidi-source-native.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T23:49:18.285118+00:00",
+    "notes": [
+      "מחרוזת המקור לסיכום צמד עם שם עברי ושם לועזי ושני שמות עבריים, במארח מקומי. אין טענה למסך סיכום מלא.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "eb7d6fe82c1984d84ef973f675a499d2ac3f35697f7beb5477efc62f6ead768a"
+  },
+  {
+    "file": "overnight-functional-native-create-partial-toast-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/create-partial-toast.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-02T23:55:03.370245+00:00",
+    "notes": [
+      "משוב המקור עם תוצאת הזמנות חלקית במארח בדיקה, לאחר יצירת מחזור נפרדת בדמו. לא בוצעה שליחה או יצירה נוספת במארח.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "258839a22529e7c44455d7a080aba3b1409a78bdc443621a69cd6941de98802e"
+  },
+  {
+    "file": "overnight-functional-native-conflict-busy-before-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/conflict-busy-before.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-03T00:19:07.742731+00:00",
+    "notes": [
+      "חלון התנגשות מקור בהמתנה חיצונית לפני תיקון הסגירה. שלוש פעולות מושבתות ואין קריאת שירות.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "4bffe51f0e463638d3c91feacaa047d8bb41bc728db0566a49cc68e7afedf7c2"
+  },
+  {
+    "file": "overnight-functional-native-conflict-busy-before-back-closed-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/conflict-busy-before-back-closed.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-03T00:19:15.212428+00:00",
+    "notes": [
+      "לפני התיקון, חזרת אנדרואיד סגרה את החלון למרות דגל ההמתנה. אין ביטול הרשמה או הצטרפות.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "92ce816171620a26f10e502c7e7725561298a9b61783694f42997d141b845a47"
+  },
+  {
+    "file": "overnight-functional-native-conflict-busy-after-back-blocked-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/conflict-busy-after-back-blocked.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-03T00:23:56.945491+00:00",
+    "notes": [
+      "לאחר התיקון, חזרת אנדרואיד ולחיצה ברקע השאירו את חלון ההתנגשות בהמתנה. מארח מקור מקומי ללא שירות.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "aa9a70e3b545d543a2981705176caf48c1e0e4b7b75e604267312cd6b1a1c0d7"
+  },
+  {
+    "file": "overnight-functional-native-draft-team-contrast-before-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/draft-team-contrast-before.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-03T00:25:01.762549+00:00",
+    "notes": [
+      "כרטיסי מקור רגילים של הלבנים והצהובים לפני שימוש בצבע הכותרת הקריא. אין שמירת צבע או חלוקה חדשה.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "dab2c253904394784e5f2abd57185d1c03c7b5e5fa10faa44e3817fa8840f408"
+  },
+  {
+    "file": "overnight-functional-native-draft-team-contrast-after-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/draft-team-contrast-after.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-03T00:28:59.074726+00:00",
+    "notes": [
+      "אותם כרטיסי מקור לאחר שימוש ב-teamTextColor הקיים. הנקודות והמסגרות שומרות על צבע החולצה.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "47ea951f669cce1f9cd41b5eb09214ec59a087612d28006cc6b82374d1ae6cdf"
+  },
+  {
+    "file": "overnight-functional-native-secondary-community-invalid-exit-before-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/secondary-community-invalid-exit-before.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-03T00:33:36.415107+00:00",
+    "notes": [
+      "טיוטת מועדון עם שם ריק ואזהרת יציאה לפני תיקון מסלול השמירה. שמור לא נלחץ כאן; המעקף שוחזר במבחן עם שמירה מדומה.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "ff49785bf4d80b6bda22ab3e798bdde0872c204587a6e7806456315b3ee5d206"
+  },
+  {
+    "file": "overnight-functional-native-community-invalid-exit-save-after-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/community-invalid-exit-save-after.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-03T01:00:02.487461+00:00",
+    "notes": [
+      "לאחר שמור מאזהרת יציאה, שם מועדון ריק נשאר בשלב הפרטים והמשך מושבת. מחסום שירות מקומי אימת אפס קריאות שמירה.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "3dd33065d651e1f032a2588fd50667307832992c47529e1a505422347b972d4a"
+  },
+  {
+    "file": "overnight-functional-native-availability-invalid-exit-save-after-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/availability-invalid-exit-save-after.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-03T01:00:55.099093+00:00",
+    "notes": [
+      "לאחר שמור מאזהרת יציאה, זמינות ללא אזור מציגה דרישת אזור. מחסום שירות מקומי אימת אפס קריאות שמירה.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "326dcf0877a3021343ebedaba647b2a80fe34da5e912c088bc4120747a08f481"
+  },
+  {
+    "file": "overnight-functional-native-cover-upload-before-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/cover-upload-before.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-03T00:49:54.933218+00:00",
+    "notes": [
+      "בורר שער מקור בזמן הבטחת העלאה מקומית לפני תיקון הנעילה. אין פתיחת ספריית מכשיר או העלאה.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "0474fd31c2c3703a121fd9d319fbd1805710ad7403cf58ad6e5f079983f955c0"
+  },
+  {
+    "file": "overnight-functional-native-cover-upload-before-closed-confirmed-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/cover-upload-before-closed-confirmed.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-03T00:54:39.419732+00:00",
+    "notes": [
+      "לפני התיקון התקבלה בחירה מקומית c02 והבורר נסגר בזמן uploading. אין תמונה או רשומת מועדון שנשמרו.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "bcb9501a7724976f12dde0d5c4cfe5031351cd5796dde7c834eef6ebdeb30db9"
+  },
+  {
+    "file": "overnight-functional-native-cover-upload-after-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/cover-upload-after.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-03T01:04:15.176976+00:00",
+    "notes": [
+      "אחרי התיקון, בחירה בגלריה וחזרת אנדרואיד נחסמו בזמן הבטחה מקומית. הבורר נשאר פתוח עם c01 מסומן ופעולות מושבתות.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "a9c4c096ddd525a75a4b41f0b41f5aad35b6e14ba437dbbe1f0c362aea4a6bd1"
+  },
+  {
+    "file": "overnight-functional-native-season-record-loading-before-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/season-record-loading-before.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-03T00:51:30.075092+00:00",
+    "notes": [
+      "שיא מחזור בטעינה מקומית לפני התיקון מוצג בטעות כאין נתון מתועד. החישובים והספירות במארח הם דמו.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "944126a21e56d834c4098759289f11e288df6ba56e2e2dd6cfe800ed80765db7"
+  },
+  {
+    "file": "overnight-functional-native-season-record-error-before-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/season-record-error-before.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-03T00:50:47.891952+00:00",
+    "notes": [
+      "כשל קריאה מקומי לפני התיקון מוצג בטעות כאין נתון מתועד. אין קריאת שרת ייצור.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "e154cd692182f11905b869ba73f2a4d89c45ba489446a019323d0d4a0920d80b"
+  },
+  {
+    "file": "overnight-functional-native-season-record-loading-after-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/season-record-loading-after.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-03T01:05:08.434262+00:00",
+    "notes": [
+      "לאחר התיקון שיא המחזור מציג הודעת טעינה מפורשת, עם אותה שיטת חישוב וגבולות.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "edba532079d1fb2ff4ac3ec4d0ee79b9ed8b275fba98d8d628f1cc1dda1b5e7b"
+  },
+  {
+    "file": "overnight-functional-native-season-record-error-after-2026-11-03.png",
+    "source": "artifacts/overnight-2026-11-02/functional-native/season-record-error-after.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "נתוני הדגמה מקומיים בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-03T01:05:55.481313+00:00",
+    "notes": [
+      "לאחר התיקון שיא המחזור מציג כשל וניסיון חוזר. ניסיון חוזר נלחץ מול כשל מקומי בלבד.",
+      "מקור מקומי מעל הקומיט הרשום, עם חותמות מקור נפרדות. חבילת הפיתוח הקיימת היא 1.1.56-demo.",
+      "כיווניות מקורית מימין לשמאל אומתה לפני הצילום. אין אימות אייפון, גרסת חנות או שרת ייצור."
+    ],
+    "sha256": "179e44069e27f6cbf19a46108d5b406ba24bc01019322d89dcd5e1839b476c4c"
+  },
+  {
+    "file": "guest-waitlist-before-2026-11-03.png",
+    "source": "artifacts/guest-waitlist-2026-11-03/before.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "מארח רכיב מקור עם נתוני הדגמה ומתאם שמירה מקומי",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-03T06:23:50.729975+00:00",
+    "notes": [
+      "מקור לפני התיקון מהקומיט הרשום; מקור אחרי התיקון מהשינוי המקומי מעליו.",
+      "כיווניות עברית אומתה. כפתור ההעברה נלחץ, וההרכב השתנה מ-2/2 ל-1/2 וההמתנה מ-1 ל-2.",
+      "חבילת פיתוח קיימת 1.1.56-demo; אין בדיקת כתיבת שרת, ייצור, אייפון או גרסת חנות."
+    ],
+    "sha256": "c1eb5a161aee62f3fcce70929b5c2f9118460d575c9047209e19dc71ee98aca9"
+  },
+  {
+    "file": "guest-waitlist-after-2026-11-03.png",
+    "source": "artifacts/guest-waitlist-2026-11-03/after.png",
+    "platform": "אנדרואיד API 35",
+    "environment": "מארח רכיב מקור עם נתוני הדגמה ומתאם שמירה מקומי",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-03",
+    "capturedAtUTC": "2026-11-03T06:25:15.390573+00:00",
+    "notes": [
+      "מקור לפני התיקון מהקומיט הרשום; מקור אחרי התיקון מהשינוי המקומי מעליו.",
+      "כיווניות עברית אומתה. כפתור ההעברה נלחץ, וההרכב השתנה מ-2/2 ל-1/2 וההמתנה מ-1 ל-2.",
+      "חבילת פיתוח קיימת 1.1.56-demo; אין בדיקת כתיבת שרת, ייצור, אייפון או גרסת חנות."
+    ],
+    "sha256": "031440a20f7c02cc70926ba543419c8ea54da7387120ecfe5f61233b70ba9bdd"
+  },
+  {
+    "file": "pulse-requests-before-2026-11-03.png",
+    "source": "artifacts/pulse-review-2026-11-03/requests-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמים ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מתאמי דפדפן לרכיבים מקוריים, ניווט ושירותי קריאה; תמונות משתמש הוחלפו בראשי תיבות.",
+      "אין אימות אנדרואיד או אייפון."
+    ],
+    "sha256": "20458acfec41aad9df9cc14681db6ae0941d6f8624a19c892024a3175d2d3022"
+  },
+  {
+    "file": "pulse-requests-after-2026-11-03.png",
+    "source": "artifacts/pulse-review-2026-11-03/requests-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמים ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מתאמי דפדפן לרכיבים מקוריים, ניווט ושירותי קריאה; תמונות משתמש הוחלפו בראשי תיבות.",
+      "אין אימות אנדרואיד או אייפון."
+    ],
+    "sha256": "342728b25c2d6fce4b27c42dc994b690bf5f023b5f24eb702a3643f24dc11405"
+  },
+  {
+    "file": "pulse-home-before-2026-11-03.png",
+    "source": "artifacts/pulse-review-2026-11-03/home-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמים ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מתאמי דפדפן לרכיבים מקוריים, ניווט ושירותי קריאה; תמונות משתמש הוחלפו בראשי תיבות.",
+      "אין אימות אנדרואיד או אייפון."
+    ],
+    "sha256": "c42b3299a8cafe38158df05f3d5df4b9f89ef312ebf8f480b1b32c261cd06581"
+  },
+  {
+    "file": "pulse-home-after-2026-11-03.png",
+    "source": "artifacts/pulse-review-2026-11-03/home-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמים ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מתאמי דפדפן לרכיבים מקוריים, ניווט ושירותי קריאה; תמונות משתמש הוחלפו בראשי תיבות.",
+      "אין אימות אנדרואיד או אייפון."
+    ],
+    "sha256": "c65a00bfeb040c08c236119dd44abcc331e0433330bbc3c8fed8be0d8c65bdf9"
+  },
+  {
+    "file": "pulse-card-before-2026-11-03.png",
+    "source": "artifacts/pulse-review-2026-11-03/card-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמים ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מתאמי דפדפן לרכיבים מקוריים, ניווט ושירותי קריאה; תמונות משתמש הוחלפו בראשי תיבות.",
+      "אין אימות אנדרואיד או אייפון."
+    ],
+    "sha256": "4d80e37c352c23b7a5661f2465a2f2df70e106de98ca1ce3585157adc6a5ebfe"
+  },
+  {
+    "file": "pulse-card-after-2026-11-03.png",
+    "source": "artifacts/pulse-review-2026-11-03/card-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמים ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מתאמי דפדפן לרכיבים מקוריים, ניווט ושירותי קריאה; תמונות משתמש הוחלפו בראשי תיבות.",
+      "אין אימות אנדרואיד או אייפון."
+    ],
+    "sha256": "cf73f2394a16a9f89b45c5e8b6defeadd615a91ff5daa00f28781eb483f27a5a"
+  },
+  {
+    "file": "pulse-penalties-before-2026-11-03.png",
+    "source": "artifacts/pulse-review-2026-11-03/penalties-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמים ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מתאמי דפדפן לרכיבים מקוריים, ניווט ושירותי קריאה; תמונות משתמש הוחלפו בראשי תיבות.",
+      "אין אימות אנדרואיד או אייפון."
+    ],
+    "sha256": "9b5b797fe421cc2ed9dc98798ae90761c84a49c5d5bd4fa72ae802d733d753ac"
+  },
+  {
+    "file": "pulse-penalties-after-2026-11-03.png",
+    "source": "artifacts/pulse-review-2026-11-03/penalties-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמים ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מתאמי דפדפן לרכיבים מקוריים, ניווט ושירותי קריאה; תמונות משתמש הוחלפו בראשי תיבות.",
+      "אין אימות אנדרואיד או אייפון."
+    ],
+    "sha256": "4af4e4f31273a2a2324e2394cc02661dfe40d1eb94ac6c42bdb415ae66ddd49e"
+  },
+  {
+    "file": "pulse-colors-before-2026-11-03.png",
+    "source": "artifacts/pulse-review-2026-11-03/colors-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמים ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מתאמי דפדפן לרכיבים מקוריים, ניווט ושירותי קריאה; תמונות משתמש הוחלפו בראשי תיבות.",
+      "אין אימות אנדרואיד או אייפון.",
+      "בקרת הצבעים מצולמת מתוך רכיב האריחים ותנאי הזמינות שהופק מהמקור, ולא כמסך הכוחות המלא."
+    ],
+    "sha256": "281aa4a7e9407822347537f61976a6370ea02f5aaa83a8649d933564ebff7ea7"
+  },
+  {
+    "file": "pulse-colors-after-2026-11-03.png",
+    "source": "artifacts/pulse-review-2026-11-03/colors-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמים ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מתאמי דפדפן לרכיבים מקוריים, ניווט ושירותי קריאה; תמונות משתמש הוחלפו בראשי תיבות.",
+      "אין אימות אנדרואיד או אייפון.",
+      "בקרת הצבעים מצולמת מתוך רכיב האריחים ותנאי הזמינות שהופק מהמקור, ולא כמסך הכוחות המלא."
+    ],
+    "sha256": "b64a1f4036544723a1038b56b00421dcd4f558311130c57a2cddd05ba0546d83"
+  },
+  {
+    "file": "club-feed-skeleton-before-2026-11-03.png",
+    "source": "artifacts/club-feed-skeleton-2026-11-03/before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן, ללא חיבור לנתונים",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והכותרת מקומיות; זה אינו מסך מלא במכשיר.",
+      "נבדקו רוחבים 320, 390 ו-430; צמצום תנועה פעיל במתאם.",
+      "אין אימות אנדרואיד, אייפון, אנימציה מקורית או שרת חי."
+    ],
+    "sha256": "b7779fe71d2e7756203055cc2943ca116a7f6f09c7bd75decbe304baa3d2a3d1"
+  },
+  {
+    "file": "club-feed-skeleton-after-2026-11-03.png",
+    "source": "artifacts/club-feed-skeleton-2026-11-03/after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן, ללא חיבור לנתונים",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והכותרת מקומיות; זה אינו מסך מלא במכשיר.",
+      "נבדקו רוחבים 320, 390 ו-430; צמצום תנועה פעיל במתאם.",
+      "אין אימות אנדרואיד, אייפון, אנימציה מקורית או שרת חי."
+    ],
+    "sha256": "02daa92c0deca03c6829ff02d9e230d4ebc6b2bb78ba07a395e6ca1ee9032ac0"
+  },
+  {
+    "file": "club-feed-skeleton-failure-2026-11-03.png",
+    "source": "artifacts/club-feed-skeleton-2026-11-03/failure.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן, ללא חיבור לנתונים",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והכותרת מקומיות; זה אינו מסך מלא במכשיר.",
+      "נבדקו רוחבים 320, 390 ו-430; צמצום תנועה פעיל במתאם.",
+      "אין אימות אנדרואיד, אייפון, אנימציה מקורית או שרת חי."
+    ],
+    "sha256": "3a2173bf190f1f64d87522f035473c2b673e8cc55b3837b4e5a73a2e8ebb7c86"
+  },
+  {
+    "file": "skeleton-layout-home-before-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/home-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "7d402e7551699bb51f9ecbfafecc7888cd9de73f9a0045a20b47c3f0836e0a49"
+  },
+  {
+    "file": "skeleton-layout-home-after-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/home-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "e79c2c631d7229e50d6fdceca559be82857f7a79c50dce7e94a1c0d3f525b5aa"
+  },
+  {
+    "file": "skeleton-layout-overview-before-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/overview-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "40c6997732e2fdcc8531415e599070fa6f026b6c2ea56eda7033c645e8a186ce"
+  },
+  {
+    "file": "skeleton-layout-overview-after-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/overview-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "87a0afe1faa6975fb1d85746977a4405608dbe7f2fb5136b176fa282653b55fc"
+  },
+  {
+    "file": "skeleton-layout-players-before-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/players-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "32f427b79ca403f7454f6bb2f3390830ff1d5945f3d3dad501e9d0b54bb7a6b8"
+  },
+  {
+    "file": "skeleton-layout-players-after-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/players-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "6ea6b17194edfaebc82527128fec74bb1e5358865f7c851af15c88c3247c86b9"
+  },
+  {
+    "file": "skeleton-layout-stats-before-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/stats-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "ac950cbf98c396b2038b9acb2f58bdf4b6740762518c8ae4a086372e0207a3d8"
+  },
+  {
+    "file": "skeleton-layout-stats-after-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/stats-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "b54f64d30fc6408eb26c72734b60b2f3933adea894a4d2dae2b4567b13a37398"
+  },
+  {
+    "file": "skeleton-layout-match-before-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/match-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "3b4a77fbf99c457675e25a875534a0371ef7aa84ce4736b448909f1d738adcd9"
+  },
+  {
+    "file": "skeleton-layout-match-after-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/match-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "37bc7b5846413d2e9715aea8a98f1c19526cecd940a73a6e68f5f8b58aef3f9c"
+  },
+  {
+    "file": "skeleton-layout-club-before-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/club-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "974c30d5fa5455399fa2a65cd6193600c334beee18d8b51011aaa6011bff9f53"
+  },
+  {
+    "file": "skeleton-layout-club-after-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/club-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "4b802f2b4791d51bd42440cfedad1e0add4db26f54eea996910d86c76949e79b"
+  },
+  {
+    "file": "skeleton-layout-personal-before-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/personal-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "586273a94306a7d01f521b59dc727647c630aba2fac9fa4bf769a4befcb05a5a"
+  },
+  {
+    "file": "skeleton-layout-personal-after-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/personal-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "ddc40f8c4b7dab9526ba5d7505fe816ea071ee7feec95ebc1f14ba367c951aad"
+  },
+  {
+    "file": "skeleton-layout-inbox-before-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/inbox-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "8102933dc7208d5ea94afb0fc0c1ea18f7d13aefbfba2c02aece471afb84ae08"
+  },
+  {
+    "file": "skeleton-layout-inbox-after-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/inbox-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "50f972a4f68ae3cc6d38ef22cd29e52a493a6032435021f90873ccc87fad6ffd"
+  },
+  {
+    "file": "skeleton-layout-newchat-before-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/newchat-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "20e24698df0b3b80475f16671e50483a5ef0b3205794315a8783aa47cff3b299"
+  },
+  {
+    "file": "skeleton-layout-newchat-after-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/newchat-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "da746261c7ccadaddd7a8e86956016c0ebe9a1b1607a2a979934b2612751d734"
+  },
+  {
+    "file": "skeleton-layout-friends-before-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/friends-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "20e24698df0b3b80475f16671e50483a5ef0b3205794315a8783aa47cff3b299"
+  },
+  {
+    "file": "skeleton-layout-friends-after-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/friends-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "1f243cbbc51ad27e88a7ff11c582db88d466ab10543f91c665a74cf767b21bfe"
+  },
+  {
+    "file": "skeleton-layout-rounds-before-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/rounds-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "ec4034e6fcda141f080680cf950a3b8a381495b1d17e0351bbfe0a727d8581a5"
+  },
+  {
+    "file": "skeleton-layout-rounds-after-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/rounds-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "4867eb79c7ad03281a41a8e2ff7311d83d9d0647425d71158fbfc519b18ac515"
+  },
+  {
+    "file": "skeleton-layout-clubs-before-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/clubs-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "b45f49d110ed103d82dcece5153db2503aa1ddd862d623751d6b6eae9d107871"
+  },
+  {
+    "file": "skeleton-layout-clubs-after-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/clubs-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "19f3d62e6f681b721706f769181092d5d53864b715a75c1bd47e4192bcc73711"
+  },
+  {
+    "file": "skeleton-layout-ready-home-after-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/ready-home-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "bcb3e286cf2944f3c78661f3e100324bc74dcab6d56dfc27403103b786b47761"
+  },
+  {
+    "file": "skeleton-layout-ready-overview-after-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/ready-overview-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "f33c9b8f43bc026fc807858d36c10acbde4e6b419a1729ca30699723b20fd02f"
+  },
+  {
+    "file": "skeleton-layout-ready-rounds-after-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/ready-rounds-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "56579384e63b5b819530aad3c6031c5548895d45bfe6a854dc3daf5512831595"
+  },
+  {
+    "file": "skeleton-layout-ready-clubs-after-2026-11-03.png",
+    "source": "artifacts/skeleton-layout-2026-11-03/ready-clubs-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת ושירותי התצוגה הם מתאמים; אין אימות מסך מלא, אנדרואיד או אייפון.",
+      "תמונות וסמלים הוחלפו במצייני מקום; צמצום תנועה פעיל במתאם.",
+      "נבדקו רוחבים 320, 390 ו-430. מספר פריטים, טקסט ארוך וגופן מוגדל עשויים לשנות גובה."
+    ],
+    "sha256": "cc11214cb0fc0c7922d063c140e65a6d9122e3875d71ab5c5024ea6320ce035d"
+  },
+  {
+    "file": "central-skeleton-own-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/own-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "a6834b545c880354fc06736578065afcfbf743eeb221cbba87ee8a66c3df95d0"
+  },
+  {
+    "file": "central-skeleton-own-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/own-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "acf77617cc412352613c79101fc5c8f630dcd992e33fd17fdad8145bc1eae648"
+  },
+  {
+    "file": "central-skeleton-social-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/social-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "3709faf384ba5d99efe8eac20328ebc6bec33899bdf8b04f13e58790a38ef852"
+  },
+  {
+    "file": "central-skeleton-social-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/social-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "441bf64257fa8c143faaede0844153c50de4382b6189099124d691ec9232e397"
+  },
+  {
+    "file": "central-skeleton-guest-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/guest-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "a6834b545c880354fc06736578065afcfbf743eeb221cbba87ee8a66c3df95d0"
+  },
+  {
+    "file": "central-skeleton-guest-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/guest-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "1ee281bb50aa9d684534f3039f6322f6570d0915d8bf7ebac47d1ff2cb4e0c42"
+  },
+  {
+    "file": "central-skeleton-section-upcoming-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/section-upcoming-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "3b3337cf9b5c577db16b42626ed34bfd1216bee1ae37fb524113c2bbb6e1ef8a"
+  },
+  {
+    "file": "central-skeleton-section-upcoming-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/section-upcoming-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "6d7298cb9bfe4d878f837e39444878388a48a40ddb6236cd5752db1c0125372d"
+  },
+  {
+    "file": "central-skeleton-section-round-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/section-round-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "3b3337cf9b5c577db16b42626ed34bfd1216bee1ae37fb524113c2bbb6e1ef8a"
+  },
+  {
+    "file": "central-skeleton-section-round-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/section-round-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "9c6c8c923fec45d5e7955c4e853a765b1cd39bd511a9f4711e63edb08d85df1c"
+  },
+  {
+    "file": "central-skeleton-section-numbers-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/section-numbers-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "3b3337cf9b5c577db16b42626ed34bfd1216bee1ae37fb524113c2bbb6e1ef8a"
+  },
+  {
+    "file": "central-skeleton-section-numbers-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/section-numbers-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "27294a885768edeeeec02756ef29f0a8b5396f59ec2a45580b1b42812ab17fae"
+  },
+  {
+    "file": "central-skeleton-section-clubs-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/section-clubs-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "3b3337cf9b5c577db16b42626ed34bfd1216bee1ae37fb524113c2bbb6e1ef8a"
+  },
+  {
+    "file": "central-skeleton-section-clubs-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/section-clubs-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "f0910b03e7046a1aae4894afcbd0db03293320c7bcb3deab6be69b9cacfb4719"
+  },
+  {
+    "file": "central-skeleton-section-referrals-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/section-referrals-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "3b3337cf9b5c577db16b42626ed34bfd1216bee1ae37fb524113c2bbb6e1ef8a"
+  },
+  {
+    "file": "central-skeleton-section-referrals-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/section-referrals-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "7fe149dfa10d5706f848754a97d5fca52539084c08540aa71ee273a5a6e122d5"
+  },
+  {
+    "file": "central-skeleton-section-profile-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/section-profile-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "3b3337cf9b5c577db16b42626ed34bfd1216bee1ae37fb524113c2bbb6e1ef8a"
+  },
+  {
+    "file": "central-skeleton-section-profile-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/section-profile-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "13761c62f3a026f88b09be569ed4097eb99de279c5d241c38a587e189d235e86"
+  },
+  {
+    "file": "central-skeleton-compare-together-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/compare-together-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "a6834b545c880354fc06736578065afcfbf743eeb221cbba87ee8a66c3df95d0"
+  },
+  {
+    "file": "central-skeleton-compare-together-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/compare-together-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "ce9620ac0f950e8ef5867f387dddb30ef3797fd92ecad4f54e98fc371b36529a"
+  },
+  {
+    "file": "central-skeleton-compare-h2h-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/compare-h2h-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "a6834b545c880354fc06736578065afcfbf743eeb221cbba87ee8a66c3df95d0"
+  },
+  {
+    "file": "central-skeleton-compare-h2h-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/compare-h2h-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "c6ddff5b813ba2a23e12e88720b56c427b2c020fc32433041c8355dbf56927d5"
+  },
+  {
+    "file": "central-skeleton-stats-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/stats-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "3709faf384ba5d99efe8eac20328ebc6bec33899bdf8b04f13e58790a38ef852"
+  },
+  {
+    "file": "central-skeleton-stats-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/stats-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "157ce0519262d885cf8725fd9d89fdd9c9c5e9ceda08a85f0a1f9257058628c9"
+  },
+  {
+    "file": "central-skeleton-evening-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/evening-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "a6834b545c880354fc06736578065afcfbf743eeb221cbba87ee8a66c3df95d0"
+  },
+  {
+    "file": "central-skeleton-evening-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/evening-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "4bee1b6508e4e94b6a26b0e3c5aa6aaf16919e89611ae2a0c8c1cce6810dc726"
+  },
+  {
+    "file": "central-skeleton-season-personal-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/season-personal-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "44836be9aa3a47219f9cbdcf26fc61289a74bc20e085de65daec5060e78ad8a8"
+  },
+  {
+    "file": "central-skeleton-season-personal-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/season-personal-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "ec7f64938c1e8c2eb93c0d1bf248545122786eca8fc69a97e26967553cfc391f"
+  },
+  {
+    "file": "central-skeleton-season-club-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/season-club-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "44836be9aa3a47219f9cbdcf26fc61289a74bc20e085de65daec5060e78ad8a8"
+  },
+  {
+    "file": "central-skeleton-season-club-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/season-club-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "530ac48528d95eef2baf7e32d5f35d147ab5113c56407394d705006acd79f136"
+  },
+  {
+    "file": "central-skeleton-awards-season-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/awards-season-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "52014da58a644cc4ff240f6502ed3246d4ece56937fe47997d8961df1abec2d6"
+  },
+  {
+    "file": "central-skeleton-awards-season-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/awards-season-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "2d403ea39f24a88460724593e03230339126ea19042988a5c9c3761c86643053"
+  },
+  {
+    "file": "central-skeleton-awards-personal-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/awards-personal-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "52014da58a644cc4ff240f6502ed3246d4ece56937fe47997d8961df1abec2d6"
+  },
+  {
+    "file": "central-skeleton-awards-personal-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/awards-personal-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "1f17fb216abc54a31b23f63250ce1f10c9c85f805229caea86447b43550ff0d0"
+  },
+  {
+    "file": "central-skeleton-manager-club-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/manager-club-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "3709faf384ba5d99efe8eac20328ebc6bec33899bdf8b04f13e58790a38ef852"
+  },
+  {
+    "file": "central-skeleton-manager-club-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/manager-club-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "6c9c6332f3617dc9aeebf1a8c2bcfc12d80c14b035fd3644d5c8e2f2c997437c"
+  },
+  {
+    "file": "central-skeleton-manager-ratings-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/manager-ratings-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "3709faf384ba5d99efe8eac20328ebc6bec33899bdf8b04f13e58790a38ef852"
+  },
+  {
+    "file": "central-skeleton-manager-ratings-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/manager-ratings-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "dcd161146633dc366b5627571b6d33f28ee09e9e38fc5a1c9626c3ef46a203e2"
+  },
+  {
+    "file": "central-skeleton-manager-equipment-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/manager-equipment-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "3709faf384ba5d99efe8eac20328ebc6bec33899bdf8b04f13e58790a38ef852"
+  },
+  {
+    "file": "central-skeleton-manager-equipment-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/manager-equipment-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "2aad067b8898cff71bd064131a28013f4496de1de93d3ffa595c385af376e73e"
+  },
+  {
+    "file": "central-skeleton-history-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/history-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "6e664de2629ba8ab0189656d194f9e985b408f894217aa0ec124b235ea8994c1"
+  },
+  {
+    "file": "central-skeleton-history-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/history-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "94d762e056fd4059fdc813516c00c9daa6dde716ba91dcf5cd130b9f58989efa"
+  },
+  {
+    "file": "central-skeleton-timeline-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/timeline-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "a6834b545c880354fc06736578065afcfbf743eeb221cbba87ee8a66c3df95d0"
+  },
+  {
+    "file": "central-skeleton-timeline-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/timeline-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "2419763742acf5134b447e7b7bc0ab8d8924d1774d0553dcd36bb0907fa89180"
+  },
+  {
+    "file": "central-skeleton-games-false-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/games-false-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "a6834b545c880354fc06736578065afcfbf743eeb221cbba87ee8a66c3df95d0"
+  },
+  {
+    "file": "central-skeleton-games-false-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/games-false-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "c48f525aecf7a42c54fc170a20e8c1421b2df0b0371c0250972d662883d1866a"
+  },
+  {
+    "file": "central-skeleton-games-true-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/games-true-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "a6834b545c880354fc06736578065afcfbf743eeb221cbba87ee8a66c3df95d0"
+  },
+  {
+    "file": "central-skeleton-games-true-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/games-true-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "34719b6b9d5d0e10f0d1728eb4b69e5c16053f4f920e0e0ec66523377a015448"
+  },
+  {
+    "file": "central-skeleton-public-club-before-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/public-club-before.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "3e72f0b149e4144156a9ea10886efab2fa5b34b26342385d091c40edc890c4af"
+  },
+  {
+    "file": "central-skeleton-public-club-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/public-club-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "83f97cfec5231033d5df16619ee46873ccd1176fb2d92b47ca92bf2cf0a04591"
+  },
+  {
+    "file": "central-skeleton-ready-own-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/ready-own-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "29a4ca3668a4a3832517d41be8b3e11858b5e89480c0f61bdc235d251143593b"
+  },
+  {
+    "file": "central-skeleton-ready-social-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/ready-social-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "778e65a372334d06fbb5361ecb17a1fb983dfd69307ed761b7d0aed5957a433b"
+  },
+  {
+    "file": "central-skeleton-ready-awards-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/ready-awards-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "d258d074fbb06546e98b8d06de4a945beea1748855bcdab8a7e8b6def104aa5f"
+  },
+  {
+    "file": "central-skeleton-ready-history-after-2026-11-03.png",
+    "source": "artifacts/central-skeletons-2026-11-03/ready-history-after.png",
+    "platform": "דפדפן",
+    "environment": "אזור מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "המסגרת והמחוון לפני השינוי אינם המסך המלא; תמונות וסמלים הוחלפו במצייני מקום.",
+      "נבדקו רוחבים 320, 390 ו-430, עם צמצום תנועה במתאם.",
+      "אין אימות אנדרואיד, אייפון, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "ebe4da049bf8828f7cb58aea331cc2e3c31d8bbd0d3d97b37d2fcb590df3becf"
+  },
+  {
+    "file": "experience-followup-clubs-search-before-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/clubs-search-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/screens/communities/PublicGroupsFeedScreen.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "eec2f304f2c323ea715ae95d3e65db29eb535fe638829618fcf027c741ca2eb4"
+  },
+  {
+    "file": "experience-followup-clubs-filters-before-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/clubs-filters-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/screens/communities/PublicGroupsFeedScreen.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "d4f86b2cb923aae33e3b1fc533035e040baf0eb8870e3cb2ef0a24b6a6ff59a3"
+  },
+  {
+    "file": "experience-followup-clubs-search-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/clubs-search.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/screens/communities/PublicGroupsFeedScreen.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "92ac6bfc06f56f417c83544018669d1d439a0dc90bfbb5ff79ff0101fedb6093"
+  },
+  {
+    "file": "experience-followup-clubs-filters-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/clubs-filters.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/screens/communities/PublicGroupsFeedScreen.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "3a378c356398b926f1b6ab7e964aa8b2a990413832d7c529123cee7705b36edf"
+  },
+  {
+    "file": "experience-followup-timeline-all-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/timeline-all.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/screens/players/PlayerTimelineScreen.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "6b04e8d04a864a54be057458ee63242bb0530e8061e5e0c5291e2016bb96f037"
+  },
+  {
+    "file": "experience-followup-timeline-cards-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/timeline-cards.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/screens/players/PlayerTimelineScreen.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "375260b321ee61357607467f4a71a0efd471c2123c05db7414eb9a634af0df69"
+  },
+  {
+    "file": "experience-followup-timeline-equipment-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/timeline-equipment.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/screens/players/PlayerTimelineScreen.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "ebef09ffca500bad5397fc3e3557df01acc11e30b31a28759b3bbd01bed9be11"
+  },
+  {
+    "file": "experience-followup-players-filtered-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/players-filtered.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/social/PlayerDiscovery.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "37f1dee1e6ea03f7ffbd749f0f0c6e5bffcbb375c6351726b27ba09004692de7"
+  },
+  {
+    "file": "experience-followup-players-private-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/players-private.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/social/PlayerDiscovery.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "a4573a26827d749d06a6e1936c4e8d093ee7c8e04f7013134f1f66e5f6534140"
+  },
+  {
+    "file": "experience-followup-players-guest-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/players-guest.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/social/PlayerDiscovery.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "662b759d9a9059685882186f770fa83f19eb3207af796a9eeee2e73f1930bbc0"
+  },
+  {
+    "file": "experience-followup-read-first-failed-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/read-first-failed.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/ReadStatusNotice.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "df7d77de5071215f6c5f4190d92c4b7fcf9b9e3a3508f08b42326597b1f7d00d"
+  },
+  {
+    "file": "experience-followup-read-saved-failed-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/read-saved-failed.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/ReadStatusNotice.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "f49d4f209643c217fdbfd717e1ee404ead3da82be85c7b52823122233b80aae8"
+  },
+  {
+    "file": "experience-followup-read-first-slow-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/read-first-slow.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/ReadStatusNotice.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "מצב העיכוב מוזן למתאם; התזמון עצמו נבדק בבדיקות הקוד.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "d009c67beed16ff4bdbb23667849f3d57214e86ac6d7c1d487b329c3f82a447f"
+  },
+  {
+    "file": "experience-followup-read-saved-slow-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/read-saved-slow.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/ReadStatusNotice.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "מצב העיכוב מוזן למתאם; התזמון עצמו נבדק בבדיקות הקוד.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "006fb4e5fe755cc2900efa1326cd4129f791231e5705a3908862c996e7a0baab"
+  },
+  {
+    "file": "experience-followup-round-unchanged-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/round-unchanged.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/match/MatchStadiumHero.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "c6bb8d92914479f9780abfe40cac9de999c095872c3cb98a52a7fa2a7e62af01"
+  },
+  {
+    "file": "experience-followup-round-time-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/round-time.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/match/MatchStadiumHero.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "cc611622e556e05338ed79e93a779b930d0f36c790e1b3b4a57c1284f9692a78"
+  },
+  {
+    "file": "experience-followup-round-location-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/round-location.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/match/MatchStadiumHero.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "40bc80ce1c624b068ad8a9a0b24c87efba5eec418948ef91d87fd8c77749ddc6"
+  },
+  {
+    "file": "experience-followup-round-both-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/round-both.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/match/MatchStadiumHero.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "e17031503791470b6fd53385afac10abe4c073890e41df732701c27bdd495784"
+  },
+  {
+    "file": "experience-followup-cover-upload-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/cover-upload.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/community/CoverImagePicker.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "e6d5df18182035e4465a58518c69d7f37ece41be5384f5655bf2f09c62099fc2"
+  },
+  {
+    "file": "experience-followup-cover-save-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/cover-save.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/community/CoverImagePicker.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "מצב העיכוב מוזן למתאם; התזמון עצמו נבדק בבדיקות הקוד.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "e95694cd2aa210201c10dd0845ea7d4c186980bb308fa459e035ffefa389cf72"
+  },
+  {
+    "file": "experience-followup-photo-prepare-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/photo-prepare.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/ReadStatusNotice.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "14d3ac7f5ab0aca9f8041194ad13cd6ac628ccfc016bd356bd4fb1ee554985d5"
+  },
+  {
+    "file": "experience-followup-photo-upload-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/photo-upload.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/ReadStatusNotice.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "אזור מקור, ללא מסך מלא.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "6bea3bdd4c1646bc955d619592155849f5667c11a17017bb13312d356a614ef7"
+  },
+  {
+    "file": "experience-followup-profile-save-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/profile-save.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/ReadStatusNotice.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "מצב העיכוב מוזן למתאם; התזמון עצמו נבדק בבדיקות הקוד.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "cb4db4773aa568625fa811d3888aacd478d63e704d00e566b113e3025d42e607"
+  },
+  {
+    "file": "experience-followup-registration-pending-2026-11-03.png",
+    "source": "artifacts/experience-followup-2026-11-03/registration-pending.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-03",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/ReadStatusNotice.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430. סמלים ותמונות הם מצייני מקום, ורקע תמונת המחזור קבוע כהה.",
+      "מצב העיכוב מוזן למתאם; התזמון עצמו נבדק בבדיקות הקוד.",
+      "אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "b01246ffe7565ebbae3f1fe433f292ffde7ab1552eb85a9fd6073fa1876ed8c0"
+  },
+  {
+    "file": "performance-draft-before-2026-11-04.png",
+    "source": "artifacts/performance-2026-11-04/draft-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/screens/games/DraftSetupScreen.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן הוא חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "בספלאש נשמרת תמונת המקור. בסגל ובבית נקודת התקדמות הקריאות מוזנת למתאם, והתזמון נבדק בנפרד.",
+      "אזור מקור ללא מסך מלא. אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "bbc91fbafff9508ed1b189d48ed09fe939c7172c2cb79ca2e1a182337e5c1a0b"
+  },
+  {
+    "file": "performance-draft-after-2026-11-04.png",
+    "source": "artifacts/performance-2026-11-04/draft-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/screens/games/DraftSetupScreen.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן הוא חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "בספלאש נשמרת תמונת המקור. בסגל ובבית נקודת התקדמות הקריאות מוזנת למתאם, והתזמון נבדק בנפרד.",
+      "אזור מקור ללא מסך מלא. אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "14d5c9661e45d0e7e6b2836657249f44dea90c3d66d31be89680c2e09420bbb2"
+  },
+  {
+    "file": "performance-home-before-2026-11-04.png",
+    "source": "artifacts/performance-2026-11-04/home-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/home/HomeProfileOverview.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן הוא חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "בספלאש נשמרת תמונת המקור. בסגל ובבית נקודת התקדמות הקריאות מוזנת למתאם, והתזמון נבדק בנפרד.",
+      "אזור מקור ללא מסך מלא. אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "cdee9f8788bd0c79a3c3018dff3dd5594dd3fe0a17d2cf0fbdd7501bafc54418"
+  },
+  {
+    "file": "performance-home-after-2026-11-04.png",
+    "source": "artifacts/performance-2026-11-04/home-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/components/home/HomeProfileOverview.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן הוא חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "בספלאש נשמרת תמונת המקור. בסגל ובבית נקודת התקדמות הקריאות מוזנת למתאם, והתזמון נבדק בנפרד.",
+      "אזור מקור ללא מסך מלא. אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "d149e8dbc2e502841f1f51a6b9dbf7ff70834b3a89c979e7c8f0f911feac48b7"
+  },
+  {
+    "file": "performance-roster-before-2026-11-04.png",
+    "source": "artifacts/performance-2026-11-04/roster-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/screens/communities/CommunityPlayersScreen.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן הוא חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "בספלאש נשמרת תמונת המקור. בסגל ובבית נקודת התקדמות הקריאות מוזנת למתאם, והתזמון נבדק בנפרד.",
+      "אזור מקור ללא מסך מלא. אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "c7f970558a897b89360b31b522e4597f680a1a70cc540ab33d95bb0a0a67a220"
+  },
+  {
+    "file": "performance-roster-after-2026-11-04.png",
+    "source": "artifacts/performance-2026-11-04/roster-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/screens/communities/CommunityPlayersScreen.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן הוא חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "בספלאש נשמרת תמונת המקור. בסגל ובבית נקודת התקדמות הקריאות מוזנת למתאם, והתזמון נבדק בנפרד.",
+      "אזור מקור ללא מסך מלא. אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "fde41a1ed97bad9709ebe464757a3e03420a1286d3030e1a7efcd89263bf7a0f"
+  },
+  {
+    "file": "performance-splash-before-2026-11-04.png",
+    "source": "artifacts/performance-2026-11-04/splash-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/screens/SplashScreen.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן הוא חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "בספלאש נשמרת תמונת המקור. בסגל ובבית נקודת התקדמות הקריאות מוזנת למתאם, והתזמון נבדק בנפרד.",
+      "אזור מקור ללא מסך מלא. אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "0cd56b9e625cfb73a09d8972630e59e952ddd50a1eb12ff4e1f7fa483250ccb7"
+  },
+  {
+    "file": "performance-splash-after-2026-11-04.png",
+    "source": "artifacts/performance-2026-11-04/splash-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם מתאמי דפדפן ונתוני הדגמה",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור האזור: src/screens/SplashScreen.tsx.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן הוא חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "בספלאש נשמרת תמונת המקור. בסגל ובבית נקודת התקדמות הקריאות מוזנת למתאם, והתזמון נבדק בנפרד.",
+      "אזור מקור ללא מסך מלא. אין אימות מכשיר, גופן מוגדל או שירות חי."
+    ],
+    "sha256": "0cd56b9e625cfb73a09d8972630e59e952ddd50a1eb12ff4e1f7fa483250ccb7"
+  },
+  {
+    "file": "detail-performance-manager-club-before-2026-11-04.png",
+    "source": "artifacts/detail-performance-2026-11-04/manager-club-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם נתוני הדגמה ומתאמי דפדפן",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור: src/screens/communities/ManagerDashboardScreen.tsx.",
+      "מצבי ההשלמה מוזנים למתאם ונבדקים בנפרד עם עיכובים מבוקרים. אין כאן מדידת ציור בטלפון.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "רכיבי ניווט, חלונות מערכת ואזור פעילות השוואות מוחלפים או מושמטים. תנועה מנוטרלת ומשטחי שיתוף שמחוץ למסך אינם חלק מהתוכן הגלוי.",
+      "אין אימות מכשיר, גופן מוגדל, נגישות במכשיר או שירות חי."
+    ],
+    "sha256": "0e55b0042ad58a7c93860104367735136122b2d5c49e8d35f1ff79e20afa0c6b"
+  },
+  {
+    "file": "detail-performance-manager-club-after-2026-11-04.png",
+    "source": "artifacts/detail-performance-2026-11-04/manager-club-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם נתוני הדגמה ומתאמי דפדפן",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור: src/screens/communities/ManagerDashboardScreen.tsx.",
+      "מצבי ההשלמה מוזנים למתאם ונבדקים בנפרד עם עיכובים מבוקרים. אין כאן מדידת ציור בטלפון.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "רכיבי ניווט, חלונות מערכת ואזור פעילות השוואות מוחלפים או מושמטים. תנועה מנוטרלת ומשטחי שיתוף שמחוץ למסך אינם חלק מהתוכן הגלוי.",
+      "אין אימות מכשיר, גופן מוגדל, נגישות במכשיר או שירות חי."
+    ],
+    "sha256": "bc23c629e616eb4128a9924ebda458dc5ef35a8a048eceb21da17fb6a5809235"
+  },
+  {
+    "file": "detail-performance-manager-ratings-before-2026-11-04.png",
+    "source": "artifacts/detail-performance-2026-11-04/manager-ratings-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם נתוני הדגמה ומתאמי דפדפן",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור: src/screens/communities/ManagerDashboardScreen.tsx.",
+      "מצבי ההשלמה מוזנים למתאם ונבדקים בנפרד עם עיכובים מבוקרים. אין כאן מדידת ציור בטלפון.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "רכיבי ניווט, חלונות מערכת ואזור פעילות השוואות מוחלפים או מושמטים. תנועה מנוטרלת ומשטחי שיתוף שמחוץ למסך אינם חלק מהתוכן הגלוי.",
+      "אין אימות מכשיר, גופן מוגדל, נגישות במכשיר או שירות חי."
+    ],
+    "sha256": "e3cc75d15136025bb578b85d5fe2c45208627a9e687344634f1ae5a7288579ef"
+  },
+  {
+    "file": "detail-performance-manager-ratings-after-2026-11-04.png",
+    "source": "artifacts/detail-performance-2026-11-04/manager-ratings-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם נתוני הדגמה ומתאמי דפדפן",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור: src/screens/communities/ManagerDashboardScreen.tsx.",
+      "מצבי ההשלמה מוזנים למתאם ונבדקים בנפרד עם עיכובים מבוקרים. אין כאן מדידת ציור בטלפון.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "רכיבי ניווט, חלונות מערכת ואזור פעילות השוואות מוחלפים או מושמטים. תנועה מנוטרלת ומשטחי שיתוף שמחוץ למסך אינם חלק מהתוכן הגלוי.",
+      "אין אימות מכשיר, גופן מוגדל, נגישות במכשיר או שירות חי."
+    ],
+    "sha256": "1c64e042333837af04d360f7fdbf0f075219bd5319503d87571e1cf1fe968100"
+  },
+  {
+    "file": "detail-performance-manager-player-before-2026-11-04.png",
+    "source": "artifacts/detail-performance-2026-11-04/manager-player-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם נתוני הדגמה ומתאמי דפדפן",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור: src/components/manager/ManagerWorkspace.tsx.",
+      "מצבי ההשלמה מוזנים למתאם ונבדקים בנפרד עם עיכובים מבוקרים. אין כאן מדידת ציור בטלפון.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "רכיבי ניווט, חלונות מערכת ואזור פעילות השוואות מוחלפים או מושמטים. תנועה מנוטרלת ומשטחי שיתוף שמחוץ למסך אינם חלק מהתוכן הגלוי.",
+      "אין אימות מכשיר, גופן מוגדל, נגישות במכשיר או שירות חי."
+    ],
+    "sha256": "d175fb5cac09cc63b2d3e7edfa3875761c4b23e7b7a3f266ccc0b6769c5c5de0"
+  },
+  {
+    "file": "detail-performance-manager-player-after-2026-11-04.png",
+    "source": "artifacts/detail-performance-2026-11-04/manager-player-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם נתוני הדגמה ומתאמי דפדפן",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור: src/components/manager/ManagerWorkspace.tsx.",
+      "מצבי ההשלמה מוזנים למתאם ונבדקים בנפרד עם עיכובים מבוקרים. אין כאן מדידת ציור בטלפון.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "רכיבי ניווט, חלונות מערכת ואזור פעילות השוואות מוחלפים או מושמטים. תנועה מנוטרלת ומשטחי שיתוף שמחוץ למסך אינם חלק מהתוכן הגלוי.",
+      "אין אימות מכשיר, גופן מוגדל, נגישות במכשיר או שירות חי."
+    ],
+    "sha256": "9fe796fa6e867a0d2c25281dc0e320feb6a2411d7879c5fea6666b7cebd05e18"
+  },
+  {
+    "file": "detail-performance-card-early-before-2026-11-04.png",
+    "source": "artifacts/detail-performance-2026-11-04/card-early-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם נתוני הדגמה ומתאמי דפדפן",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור: src/components/profile/OwnPlayerCard.tsx.",
+      "מצבי ההשלמה מוזנים למתאם ונבדקים בנפרד עם עיכובים מבוקרים. אין כאן מדידת ציור בטלפון.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "רכיבי ניווט, חלונות מערכת ואזור פעילות השוואות מוחלפים או מושמטים. תנועה מנוטרלת ומשטחי שיתוף שמחוץ למסך אינם חלק מהתוכן הגלוי.",
+      "אין אימות מכשיר, גופן מוגדל, נגישות במכשיר או שירות חי."
+    ],
+    "sha256": "d3404ada9315e0990edfe13c075d834a4ed3723f626608bcde71797448358bb8"
+  },
+  {
+    "file": "detail-performance-card-early-after-2026-11-04.png",
+    "source": "artifacts/detail-performance-2026-11-04/card-early-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם נתוני הדגמה ומתאמי דפדפן",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור: src/components/profile/OwnPlayerCard.tsx.",
+      "מצבי ההשלמה מוזנים למתאם ונבדקים בנפרד עם עיכובים מבוקרים. אין כאן מדידת ציור בטלפון.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "רכיבי ניווט, חלונות מערכת ואזור פעילות השוואות מוחלפים או מושמטים. תנועה מנוטרלת ומשטחי שיתוף שמחוץ למסך אינם חלק מהתוכן הגלוי.",
+      "אין אימות מכשיר, גופן מוגדל, נגישות במכשיר או שירות חי."
+    ],
+    "sha256": "5ab494d6b1442aa4f2c350ebb4e536974dd1024a86da17338de40d686d47630b"
+  },
+  {
+    "file": "detail-performance-season-early-before-2026-11-04.png",
+    "source": "artifacts/detail-performance-2026-11-04/season-early-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם נתוני הדגמה ומתאמי דפדפן",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור: src/screens/profile/SeasonSummaryScreen.tsx.",
+      "מצבי ההשלמה מוזנים למתאם ונבדקים בנפרד עם עיכובים מבוקרים. אין כאן מדידת ציור בטלפון.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "רכיבי ניווט, חלונות מערכת ואזור פעילות השוואות מוחלפים או מושמטים. תנועה מנוטרלת ומשטחי שיתוף שמחוץ למסך אינם חלק מהתוכן הגלוי.",
+      "אין אימות מכשיר, גופן מוגדל, נגישות במכשיר או שירות חי."
+    ],
+    "sha256": "43630ce561e4c8da3f87138fda6263187f0f7f0a1ddc2e507a06047fcc16c274"
+  },
+  {
+    "file": "detail-performance-season-early-after-2026-11-04.png",
+    "source": "artifacts/detail-performance-2026-11-04/season-early-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיבי מקור עם נתוני הדגמה ומתאמי דפדפן",
+    "sourceCommit": "06417f61",
+    "captured": "2026-11-04",
+    "notes": [
+      "כולל שינויים מקומיים שלא נשמרו למאגר.",
+      "מקור: src/screens/profile/SeasonSummaryScreen.tsx.",
+      "מצבי ההשלמה מוזנים למתאם ונבדקים בנפרד עם עיכובים מבוקרים. אין כאן מדידת ציור בטלפון.",
+      "נבדקו רוחבים 320, 390 ו-430 ונבדקה כיווניות. גופן הדפדפן חלופי; סמלים ותמונות שחקנים הם מצייני מקום.",
+      "רכיבי ניווט, חלונות מערכת ואזור פעילות השוואות מוחלפים או מושמטים. תנועה מנוטרלת ומשטחי שיתוף שמחוץ למסך אינם חלק מהתוכן הגלוי.",
+      "אין אימות מכשיר, גופן מוגדל, נגישות במכשיר או שירות חי."
+    ],
+    "sha256": "0fd5d768e07b6d222a07e15114dc465912a8e08e8dcd7c4d2aeeb679b88e27e1"
+  },
+  {
+    "file": "usage-history-before-2026-11-04.png",
+    "source": "artifacts/usage-activity-2026-11-04/history-before.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-04",
+    "notes": [
+      "עץ מקורות מקומי עם שינויים שלא נשמרו בקומיט.",
+      "אין אימות מכשיר, מסד הדגמה, משתמש אמיתי או איסוף חי."
+    ],
+    "sha256": "c7194afba07774ca22f51ab13bdffb2a382c8f0a0aa7481514fd96cf6156f69a"
+  },
+  {
+    "file": "usage-history-after-2026-11-04.png",
+    "source": "artifacts/usage-activity-2026-11-04/history-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-04",
+    "notes": [
+      "עץ מקורות מקומי עם שינויים שלא נשמרו בקומיט.",
+      "אין אימות מכשיר, מסד הדגמה, משתמש אמיתי או איסוף חי."
+    ],
+    "sha256": "4fb137f57269548c90bc762bc6d592ee6e45f055557188104aa1c8543bb345fb"
+  },
+  {
+    "file": "usage-history-read-failure-2026-11-04.png",
+    "source": "artifacts/usage-activity-2026-11-04/history-read-failure.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-04",
+    "notes": [
+      "עץ מקורות מקומי עם שינויים שלא נשמרו בקומיט.",
+      "אין אימות מכשיר, מסד הדגמה, משתמש אמיתי או איסוף חי."
+    ],
+    "sha256": "2387dfcd2a6a2d9465b2d9f9954e47f14948f625181e20937c3641e1dbeb3bf4"
+  },
+  {
+    "file": "usage-history-empty-2026-11-04.png",
+    "source": "artifacts/usage-activity-2026-11-04/history-empty.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-04",
+    "notes": [
+      "עץ מקורות מקומי עם שינויים שלא נשמרו בקומיט.",
+      "אין אימות מכשיר, מסד הדגמה, משתמש אמיתי או איסוף חי."
+    ],
+    "sha256": "4405eb95658c636e4db58657d18084de47085ec8b91ade01e17119022f491771"
+  },
+  {
+    "file": "usage-history-disabled-2026-11-04.png",
+    "source": "artifacts/usage-activity-2026-11-04/history-disabled.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-04",
+    "notes": [
+      "עץ מקורות מקומי עם שינויים שלא נשמרו בקומיט.",
+      "אין אימות מכשיר, מסד הדגמה, משתמש אמיתי או איסוף חי."
+    ],
+    "sha256": "28ed264323aef7215cf3da724438b730325403d4c4046aa82f2e389473d173dc"
+  },
+  {
+    "file": "usage-history-new-updates-2026-11-04.png",
+    "source": "artifacts/usage-activity-2026-11-04/history-new-updates.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-04",
+    "notes": [
+      "עץ מקורות מקומי עם שינויים שלא נשמרו בקומיט.",
+      "אין אימות מכשיר, מסד הדגמה, משתמש אמיתי או איסוף חי."
+    ],
+    "sha256": "5091b20be16e10894045c562f9b6c0b7c4702d4e326418f7b37a663213aa8f60"
+  },
+  {
+    "file": "font-layout-city-2026-11-04.png",
+    "source": "adb exec-out screencap -p, Teamder_API_35",
+    "platform": "Android API 35",
+    "environment": "חבילת פיתוח קיימת, מקור מקומי, עברית, נתוני דמה. 320x640, 200%",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9 + local changes",
+    "captured": "2026-11-04",
+    "notes": [
+      "הכרטיס הרגיל בחשבון הדגמה. שם העיר וכפתורי ההודעה וההזמנה קריאים.",
+      "סימוני הדגמה, ניווט ופרסום זמניים עשויים להופיע בצילום. לא נבדק מכשיר המדווח או אייפון."
+    ],
+    "sha256": "67b4f25cae4fb6af7716d1630eaf61eed58765719634e3140945b5f427a06dc0"
+  },
+  {
+    "file": "font-layout-club-2026-11-04.png",
+    "source": "adb exec-out screencap -p, Teamder_API_35",
+    "platform": "Android API 35",
+    "environment": "חבילת פיתוח קיימת, מקור מקומי, עברית, נתוני דמה. 320x640, 200%",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9 + local changes",
+    "captured": "2026-11-04",
+    "notes": [
+      "לאחר גלילה, תגית סגור מופיעה במלואה.",
+      "סימוני הדגמה, ניווט ופרסום זמניים עשויים להופיע בצילום. לא נבדק מכשיר המדווח או אייפון."
+    ],
+    "sha256": "ec486f93393bb204e5afb44eca88441f1c13b8eed3efcbbf17386dafdeef0225"
+  },
+  {
+    "file": "font-layout-phone-2026-11-04.png",
+    "source": "adb exec-out screencap -p, Teamder_API_35",
+    "platform": "Android API 35",
+    "environment": "חבילת פיתוח קיימת, מקור מקומי, עברית, נתוני דמה. 360x740, 150%",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9 + local changes",
+    "captured": "2026-11-04",
+    "notes": [
+      "כרטיס המחשה עם גופן מוגדל ותגית מועדון.",
+      "סימוני הדגמה, ניווט ופרסום זמניים עשויים להופיע בצילום. לא נבדק מכשיר המדווח או אייפון."
+    ],
+    "sha256": "990607e1a2c2d8c46a3aefc36f82c45f9de51a316630c0e42a05fd64dea9ea4e"
+  },
+  {
+    "file": "font-layout-standard-2026-11-04.png",
+    "source": "adb exec-out screencap -p, Teamder_API_35",
+    "platform": "Android API 35",
+    "environment": "חבילת פיתוח קיימת, מקור מקומי, עברית, נתוני דמה. 390x844, 100%",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9 + local changes",
+    "captured": "2026-11-04",
+    "notes": [
+      "כרטיס המחשה, פעולות זו לצד זו ושני הטקסטים באותו מסך.",
+      "סימוני הדגמה, ניווט ופרסום זמניים עשויים להופיע בצילום. לא נבדק מכשיר המדווח או אייפון."
+    ],
+    "sha256": "9ca28ca9fd848649895b5c1e31d33c0f9617eaa0344169ff6f51c883516c4134"
+  },
+  {
+    "file": "font-layout-tablet-2026-11-04.png",
+    "source": "adb exec-out screencap -p, Teamder_API_35",
+    "platform": "Android API 35",
+    "environment": "חבילת פיתוח קיימת, מקור מקומי, עברית, נתוני דמה. 768x1024, 200%",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9 + local changes",
+    "captured": "2026-11-04",
+    "notes": [
+      "כרטיס המחשה, פעולות זו לצד זו בתצורת טאבלט אנדרואיד.",
+      "סימוני הדגמה, ניווט ופרסום זמניים עשויים להופיע בצילום. לא נבדק מכשיר המדווח או אייפון."
+    ],
+    "sha256": "30da06b1cf0b7c0071e88ed940440a28b4e438351eb423eb17b82eb74415fa47"
+  },
+  {
+    "file": "font-layout-search-2026-11-04.png",
+    "source": "adb exec-out screencap -p, Teamder_API_35",
+    "platform": "Android API 35",
+    "environment": "חבילת פיתוח קיימת, מקור מקומי, עברית, נתוני דמה. 320x640, 200%",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9 + local changes",
+    "captured": "2026-11-04",
+    "notes": [
+      "שלושת מסנני החיפוש קריאים לאחר גלילה.",
+      "סימוני הדגמה, ניווט ופרסום זמניים עשויים להופיע בצילום. לא נבדק מכשיר המדווח או אייפון."
+    ],
+    "sha256": "2e18b8dc3ca2dd7497455e1a5113e817043589c87b4afbd7befc434afcf85156"
+  },
+  {
+    "file": "font-layout-dialog-2026-11-04.png",
+    "source": "adb exec-out screencap -p, Teamder_API_35",
+    "platform": "Android API 35",
+    "environment": "חבילת פיתוח קיימת, מקור מקומי, עברית, נתוני דמה. 320x640, 200%",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9 + local changes",
+    "captured": "2026-11-04",
+    "notes": [
+      "לאחר גלילה שני כפתורי האישור גלויים. לא אושרה פעולה.",
+      "סימוני הדגמה, ניווט ופרסום זמניים עשויים להופיע בצילום. לא נבדק מכשיר המדווח או אייפון."
+    ],
+    "sha256": "cb99b8b12c3eeb4772848a8be477a168e2a4938db051710fe11ede0467907973"
+  },
+  {
+    "file": "font-layout-filter-2026-11-04.png",
+    "source": "adb exec-out screencap -p, Teamder_API_35",
+    "platform": "Android API 35",
+    "environment": "חבילת פיתוח קיימת, מקור מקומי, עברית, נתוני דמה. 320x640, 200%",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9 + local changes",
+    "captured": "2026-11-04",
+    "notes": [
+      "חלונית מסנני מחזור וכפתור הצגת התוצאות.",
+      "סימוני הדגמה, ניווט ופרסום זמניים עשויים להופיע בצילום. לא נבדק מכשיר המדווח או אייפון."
+    ],
+    "sha256": "81e28fd929ba5911ece29c89a82bb910b636977921e0fa529aaa6aa8094070cf"
+  },
+  {
+    "file": "font-layout-calendar-2026-11-04.png",
+    "source": "adb exec-out screencap -p, Teamder_API_35",
+    "platform": "Android API 35",
+    "environment": "חבילת פיתוח קיימת, מקור מקומי, עברית, נתוני דמה. 320x640, 200%",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9 + local changes",
+    "captured": "2026-11-04",
+    "notes": [
+      "בורר תאריך עם ימי החודש וכפתורי אישור וביטול.",
+      "סימוני הדגמה, ניווט ופרסום זמניים עשויים להופיע בצילום. לא נבדק מכשיר המדווח או אייפון."
+    ],
+    "sha256": "71353d97ff93edad4924f21f628bf920900af83afc558b1d2f4df00973984f5e"
+  },
+  {
+    "file": "font-layout-round-2026-11-04.png",
+    "source": "adb exec-out screencap -p, Teamder_API_35",
+    "platform": "Android API 35",
+    "environment": "חבילת פיתוח קיימת, מקור מקומי, עברית, נתוני דמה. 320x640, 200%",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9 + local changes",
+    "captured": "2026-11-04",
+    "notes": [
+      "כרטיס המחשה למחזור הקרוב, מקום וזמן מעל תמונת המגרש.",
+      "סימוני הדגמה, ניווט ופרסום זמניים עשויים להופיע בצילום. לא נבדק מכשיר המדווח או אייפון."
+    ],
+    "sha256": "366a0cddfaccf86f3351517c31aa83f1f46fa3952553aa85e28dd9ff214aa1e2"
+  },
+  {
+    "file": "discovery-speed-search-before-2026-11-04.png",
+    "source": "artifacts/discovery-speed-2026-11-04/search-before.png",
+    "platform": "Android",
+    "environment": "אמולטור אנדרואיד מקומי עם מסד הדגמה",
+    "sourceCommit": "06417f61 עם השינויים המקומיים לפני המימוש",
+    "captured": "2026-11-04",
+    "notes": [
+      "profile/player-discovery",
+      "צילום אמולטור אנדרואיד בגודל 1080 על 2400, מסך המקור ומסד הדגמה עם 400 מסמכים. מעטפת הבדיקה החליפה ניווט ראשי, סמלים, זהויות ותעבורה. ללא נתוני ייצור, אייפון או מדידת הורדת תמונה."
+    ],
+    "sha256": "986757354844d7e00d2f5bb4c34c91be72c6f37f311b7f6bbb2934e72d5cc1f4"
+  },
+  {
+    "file": "discovery-speed-search-after-2026-11-04.png",
+    "source": "artifacts/discovery-speed-2026-11-04/search-after.png",
+    "platform": "Android",
+    "environment": "אמולטור אנדרואיד מקומי עם מסד הדגמה",
+    "sourceCommit": "06417f61 עם השינויים המקומיים אחרי המימוש",
+    "captured": "2026-11-04",
+    "notes": [
+      "profile/player-discovery",
+      "צילום אמולטור אנדרואיד בגודל 1080 על 2400, מסך המקור ומסד הדגמה עם 400 מסמכים. מעטפת הבדיקה החליפה ניווט ראשי, סמלים, זהויות ותעבורה. ללא נתוני ייצור, אייפון או מדידת הורדת תמונה."
+    ],
+    "sha256": "dcfee562ac728bed7d4fe1e041af69ba1032f446b4711ff20f62bc5847b7158b"
+  },
+  {
+    "file": "discovery-speed-card-before-2026-11-04.png",
+    "source": "artifacts/discovery-speed-2026-11-04/card-before.png",
+    "platform": "Android",
+    "environment": "אמולטור אנדרואיד מקומי עם מסד הדגמה",
+    "sourceCommit": "06417f61 עם השינויים המקומיים לפני המימוש",
+    "captured": "2026-11-04",
+    "notes": [
+      "profile/player-card",
+      "צילום אמולטור אנדרואיד בגודל 1080 על 2400, מסך המקור ומסד הדגמה עם 400 מסמכים. מעטפת הבדיקה החליפה ניווט ראשי, סמלים, זהויות ותעבורה. ללא נתוני ייצור, אייפון או מדידת הורדת תמונה."
+    ],
+    "sha256": "30e80a4e672b0d4f256e046f4d1f29d3fff0d5bcbdb46a4a8f72eb02ab4ad558"
+  },
+  {
+    "file": "discovery-speed-card-after-2026-11-04.png",
+    "source": "artifacts/discovery-speed-2026-11-04/card-after.png",
+    "platform": "Android",
+    "environment": "אמולטור אנדרואיד מקומי עם מסד הדגמה",
+    "sourceCommit": "06417f61 עם השינויים המקומיים אחרי המימוש",
+    "captured": "2026-11-04",
+    "notes": [
+      "profile/player-card",
+      "צילום אמולטור אנדרואיד בגודל 1080 על 2400, מסך המקור ומסד הדגמה עם 400 מסמכים. מעטפת הבדיקה החליפה ניווט ראשי, סמלים, זהויות ותעבורה. ללא נתוני ייצור, אייפון או מדידת הורדת תמונה."
+    ],
+    "sha256": "ed7e3f13450fe15144d2356eeb1460fd8fc3f3bc4adf92ab7a44468bb27f4070"
+  },
+  {
+    "file": "discovery-speed-recruit-before-2026-11-04.png",
+    "source": "artifacts/discovery-speed-2026-11-04/recruit-before.png",
+    "platform": "Android",
+    "environment": "אמולטור אנדרואיד מקומי עם מסד הדגמה",
+    "sourceCommit": "06417f61 עם השינויים המקומיים לפני המימוש",
+    "captured": "2026-11-04",
+    "notes": [
+      "rounds/available-players",
+      "צילום אמולטור אנדרואיד בגודל 1080 על 2400, מסך המקור ומסד הדגמה עם 400 מסמכים. מעטפת הבדיקה החליפה ניווט ראשי, סמלים, זהויות ותעבורה. ללא נתוני ייצור, אייפון או מדידת הורדת תמונה."
+    ],
+    "sha256": "e767afff392df263ddb81ca3ed04ed882638701837027df76f2768d7356a69e1"
+  },
+  {
+    "file": "discovery-speed-recruit-after-2026-11-04.png",
+    "source": "artifacts/discovery-speed-2026-11-04/recruit-after.png",
+    "platform": "Android",
+    "environment": "אמולטור אנדרואיד מקומי עם מסד הדגמה",
+    "sourceCommit": "06417f61 עם השינויים המקומיים אחרי המימוש",
+    "captured": "2026-11-04",
+    "notes": [
+      "rounds/available-players",
+      "צילום אמולטור אנדרואיד בגודל 1080 על 2400, מסך המקור ומסד הדגמה עם 400 מסמכים. מעטפת הבדיקה החליפה ניווט ראשי, סמלים, זהויות ותעבורה. ללא נתוני ייצור, אייפון או מדידת הורדת תמונה."
+    ],
+    "sha256": "e767afff392df263ddb81ca3ed04ed882638701837027df76f2768d7356a69e1"
+  },
+  {
+    "file": "filler-review-round-before-2026-11-04.png",
+    "source": "artifacts/filler-inbox-2026-11-04/round-before.png",
+    "platform": "Android",
+    "environment": "עותק אמולטור זמני, רכיבי המקור עם נתוני הדגמה מקומיים",
+    "sourceCommit": "06417f61 עם השינויים המקומיים",
+    "captured": "2026-11-04",
+    "notes": [
+      "רכיב כרטיס המחזור",
+      "לפני",
+      "1080 על 2400. החשבונות והמחזור מדומים. ניווט, סמלים, תמונות ושירותי נתונים משתמשים במתאמי בדיקה. ללא פעולת ייצור, בדיקת מכשיר פיזי או אייפון."
+    ],
+    "sha256": "987c9f8f2839fcc46044df360082fe618cceb76a9588cad5e4d8bbce0a521c50"
+  },
+  {
+    "file": "filler-review-round-after-2026-11-04.png",
+    "source": "artifacts/filler-inbox-2026-11-04/round-after.png",
+    "platform": "Android",
+    "environment": "עותק אמולטור זמני, רכיבי המקור עם נתוני הדגמה מקומיים",
+    "sourceCommit": "06417f61 עם השינויים המקומיים",
+    "captured": "2026-11-04",
+    "notes": [
+      "רכיב כרטיס המחזור",
+      "אחרי",
+      "1080 על 2400. החשבונות והמחזור מדומים. ניווט, סמלים, תמונות ושירותי נתונים משתמשים במתאמי בדיקה. ללא פעולת ייצור, בדיקת מכשיר פיזי או אייפון."
+    ],
+    "sha256": "9fdacc1695a764cc8f8265b80673d544b45a9527f160a10ab6a0166593c5c300"
+  },
+  {
+    "file": "filler-review-inbox-before-2026-11-04.png",
+    "source": "artifacts/filler-inbox-2026-11-04/inbox-before.png",
+    "platform": "Android",
+    "environment": "עותק אמולטור זמני, רכיבי המקור עם נתוני הדגמה מקומיים",
+    "sourceCommit": "06417f61 עם השינויים המקומיים",
+    "captured": "2026-11-04",
+    "notes": [
+      "מסך הבקשות",
+      "לפני",
+      "1080 על 2400. החשבונות והמחזור מדומים. ניווט, סמלים, תמונות ושירותי נתונים משתמשים במתאמי בדיקה. ללא פעולת ייצור, בדיקת מכשיר פיזי או אייפון."
+    ],
+    "sha256": "383cbb51753f186cf456e5b4f0aa9876df76937ca8f73abbc3d153d2b066e00f"
+  },
+  {
+    "file": "filler-review-inbox-after-2026-11-04.png",
+    "source": "artifacts/filler-inbox-2026-11-04/inbox-after.png",
+    "platform": "Android",
+    "environment": "עותק אמולטור זמני, רכיבי המקור עם נתוני הדגמה מקומיים",
+    "sourceCommit": "06417f61 עם השינויים המקומיים",
+    "captured": "2026-11-04",
+    "notes": [
+      "מסך הבקשות",
+      "אחרי",
+      "1080 על 2400. החשבונות והמחזור מדומים. ניווט, סמלים, תמונות ושירותי נתונים משתמשים במתאמי בדיקה. ללא פעולת ייצור, בדיקת מכשיר פיזי או אייפון."
+    ],
+    "sha256": "8b09fe20837b75e9d9608b7b06ed02818ba279bab989b5861658fd63397ec177"
+  },
+  {
+    "file": "club-evening-milestone-before-2026-11-04.jpg",
+    "source": ".codex-remote-attachments/01a1a86a-b7e6-7fb2-be4c-5bf0c7238467/25dc4a51-acba-4f41-8a57-8196e7091f0d/1-1000229226.jpg",
+    "platform": "Android",
+    "environment": "צילום הדיווח כפי שסופק",
+    "sourceCommit": "גרסת היישום בצילום לא ידועה",
+    "captured": "2026-11-04",
+    "notes": [
+      "הצילום המקורי ללא עריכה. הוא אינו צילום של הפיתוח המקומי."
+    ],
+    "sha256": "0f3519ae3b0d2d5e4a50178ed4e915cdaadb338e1cf188bfca18c79ed3ee72d9"
+  },
+  {
+    "file": "club-evening-milestone-after-2026-11-04.png",
+    "source": "artifacts/club-milestone-2026-11-04/after.png",
+    "platform": "דפדפן",
+    "environment": "רכיב המקור עם אירועי המחזור שנקראו מהשרת",
+    "sourceCommit": "06417f61 עם השינויים המקומיים",
+    "captured": "2026-11-04",
+    "notes": [
+      "הכרטיס בלבד במתאם דפדפן, ברוחב 390. גופן וסמל הכותרת חלופיים. אין הרצת טלפון או פריסה."
+    ],
+    "sha256": "cc24f11b1750eae6eb9567e63ff28b9f45420634d6068c25e88c4a85961a8e66"
+  },
+  {
+    "file": "pulse-actions-before-390-1-2026-11-04.png",
+    "source": "docs/audits/2026-11-04-system-night/pulse-actions-before-390-1.png",
+    "platform": "דפדפן",
+    "environment": "רכיב המקור של פולס עם נתוני הדגמה מקומיים",
+    "sourceCommit": "06417f61 עם השינויים המקומיים",
+    "captured": "2026-11-04",
+    "notes": [
+      "צילום אזור הפעולות בלבד. תצוגת דפדפן עם מתאם לרכיבים מקוריים. ללא אימות בטלפון, נתוני אמת או פריסה."
+    ],
+    "sha256": "83b6e2071e731f265efc3cfc18ff0b7313a7edea98b05e97a5314b8a52fe708e"
+  },
+  {
+    "file": "pulse-actions-after-390-1-2026-11-04.png",
+    "source": "docs/audits/2026-11-04-system-night/pulse-actions-after-390-1.png",
+    "platform": "דפדפן",
+    "environment": "רכיב המקור של פולס עם נתוני הדגמה מקומיים",
+    "sourceCommit": "06417f61 עם השינויים המקומיים",
+    "captured": "2026-11-04",
+    "notes": [
+      "צילום אזור הפעולות בלבד. תצוגת דפדפן עם מתאם לרכיבים מקוריים. ללא אימות בטלפון, נתוני אמת או פריסה."
+    ],
+    "sha256": "c8b014889ac7ec3af48798d79559aa42cf93843f95d59beafba9864056bd7c0d"
+  },
+  {
+    "file": "pulse-actions-after-320-1_5-2026-11-04.png",
+    "source": "docs/audits/2026-11-04-system-night/pulse-actions-after-320-1_5.png",
+    "platform": "דפדפן",
+    "environment": "רכיב המקור של פולס עם נתוני הדגמה מקומיים",
+    "sourceCommit": "06417f61 עם השינויים המקומיים",
+    "captured": "2026-11-04",
+    "notes": [
+      "צילום אזור הפעולות בלבד. תצוגת דפדפן עם מתאם לרכיבים מקוריים. ללא אימות בטלפון, נתוני אמת או פריסה."
+    ],
+    "sha256": "19a45be0cae65d698e06b47ff6d3b87dd44f3764ca6388461bb724774eb66cfa"
+  },
+  {
+    "file": "night-signin-before-2026-11-05.png",
+    "source": "artifacts/system-night/invite-auth-large.png",
+    "platform": "אנדרואיד",
+    "environment": "אמולטור מבודד עם רשת כבויה ונתוני הדגמה",
+    "sourceCommit": "06417f61 עם השינויים המקומיים",
+    "captured": "2026-11-04T21:53:53.825607+00:00",
+    "notes": [
+      "החפיפה במסך ההתחברות בגופן 150 אחוזים לפני התיקון.",
+      "הראיה תחומה למצב המצולם. אין התחברות ספק אמיתי או קליטת מדידה בייצור."
+    ],
+    "sha256": "a981e8ed45b9ca3c7bbea824035d99658458587003e798bf02ba3caa2294128e"
+  },
+  {
+    "file": "night-signin-after-2026-11-05.png",
+    "source": "artifacts/system-night/invite-auth-final.png",
+    "platform": "אנדרואיד",
+    "environment": "אמולטור מבודד עם רשת כבויה ונתוני הדגמה",
+    "sourceCommit": "06417f61 עם השינויים המקומיים",
+    "captured": "2026-11-04T22:01:17.049142+00:00",
+    "notes": [
+      "המסך לאחר התיקון במעטפת עם המדידה הפעילה.",
+      "הראיה תחומה למצב המצולם. אין התחברות ספק אמיתי או קליטת מדידה בייצור."
+    ],
+    "sha256": "79d0aff783b166fce22adaf3a92d58cafdef8e204be272ce76e94eeca00d0a29"
+  },
+  {
+    "file": "night-keyboard-after-2026-11-05.png",
+    "source": "artifacts/system-night/email-keyboard-final.png",
+    "platform": "אנדרואיד",
+    "environment": "אמולטור מבודד עם רשת כבויה ונתוני הדגמה",
+    "sourceCommit": "06417f61 עם השינויים המקומיים",
+    "captured": "2026-11-04T22:01:39.871507+00:00",
+    "notes": [
+      "הקלדת שם עם מקלדת מערכת בטופס ההדגמה.",
+      "הראיה תחומה למצב המצולם. אין התחברות ספק אמיתי או קליטת מדידה בייצור."
+    ],
+    "sha256": "5d49e3fe254f247db9120b25fa5c5fc43b607c97afede9e9f38f855d540637b7"
+  },
+  {
+    "file": "pulse-accounts-night-2026-11-05.png",
+    "source": "docs/audits/2026-11-04-system-night/pulse-actions-after-390-1-account-ready.png",
+    "platform": "דפדפן",
+    "environment": "רכיב מקור עם מתאם דפדפן ונתונים מקומיים",
+    "sourceCommit": "06417f61 עם השינויים המקומיים",
+    "captured": "2026-11-04T21:59:45.347994+00:00",
+    "notes": [
+      "חשבון אחד ושלושה ביצועים בנתוני הדגמה של רכיב המקור.",
+      "הראיה תחומה למצב המצולם. אין התחברות ספק אמיתי או קליטת מדידה בייצור."
+    ],
+    "sha256": "1f5800dfe205d9b5ededda8ea3d0b2967dc9df6d32097f42640058e710e20ff9"
+  },
+  {
+    "file": "pulse-account-time-quality-before-2026-11-05.png",
+    "source": "docs/audits/2026-11-04-system-night/pulse-actions-quality-before-390-1-account-time-quality.png",
+    "platform": "דפדפן",
+    "environment": "רכיב המקור של פולס עם נתוני הדגמה מקומיים",
+    "sourceCommit": "06417f61 עם השינויים המקומיים",
+    "captured": "2026-11-05",
+    "notes": [
+      "לפני תוספת החיווי. גוף הרכיב הקודם שוחזר בהסרת שורות החיווי בלבד, עם אותם נתוני הדגמה.",
+      "מתאם לרכיבים מקוריים בדפדפן. אין כאן אימות מכשיר, נתוני ייצור או פריסה."
+    ],
+    "sha256": "1f5800dfe205d9b5ededda8ea3d0b2967dc9df6d32097f42640058e710e20ff9"
+  },
+  {
+    "file": "pulse-account-time-quality-after-2026-11-05.png",
+    "source": "docs/audits/2026-11-04-system-night/pulse-actions-quality-after-390-1-account-time-quality.png",
+    "platform": "דפדפן",
+    "environment": "רכיב המקור של פולס עם נתוני הדגמה מקומיים",
+    "sourceCommit": "06417f61 עם השינויים המקומיים",
+    "captured": "2026-11-05",
+    "notes": [
+      "רוחב 390. שורת זמן הקליטה ושורת איכות הזמן החסרה נראו לצד חשבון אחד ושלושה ביצועים.",
+      "מתאם לרכיבים מקוריים בדפדפן. אין כאן אימות מכשיר, נתוני ייצור או פריסה."
+    ],
+    "sha256": "87f546088c06d903c5771aa79ff91b8cbc48a1b9aff2aeadc5874f0548fd9f48"
+  },
+  {
+    "file": "pulse-account-time-quality-large-2026-11-05.png",
+    "source": "docs/audits/2026-11-04-system-night/pulse-actions-quality-after-320-1_5-account-time-quality.png",
+    "platform": "דפדפן",
+    "environment": "רכיב המקור של פולס עם נתוני הדגמה מקומיים",
+    "sourceCommit": "06417f61 עם השינויים המקומיים",
+    "captured": "2026-11-05",
+    "notes": [
+      "רוחב 320 וגופן מוגדל פי 1.5. שני חיוויי איכות הזמן נשמרו ללא גלישה אופקית.",
+      "מתאם לרכיבים מקוריים בדפדפן. אין כאן אימות מכשיר, נתוני ייצור או פריסה."
+    ],
+    "sha256": "d1b89d1d22e03d9114531ce754798d52bb23a3ed907dc82c44004321deb9dcce"
+  },
+  {
+    "file": "pulse-proposals-board-before-2026-11-05.png",
+    "source": "artifacts/pulse-source-tasks-2026-11-05/board-before.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור ושירותים עם מסד בזיכרון ומתאמי דפדפן",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "notes": [
+      "עץ מקורות מקומי עם שינויים שלא נשמרו בקומיט.",
+      "סמלים ופקדים מקוריים קיבלו מתאמי דפדפן. אין הוכחת מכשיר או שרת פרוס."
+    ],
+    "sha256": "5bc2ed03d287cd8186c40e95110bd287e135dde8b86ac1a2c48ce05739764632"
+  },
+  {
+    "file": "pulse-proposals-board-after-2026-11-05.png",
+    "source": "artifacts/pulse-source-tasks-2026-11-05/board-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור ושירותים עם מסד בזיכרון ומתאמי דפדפן",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "notes": [
+      "עץ מקורות מקומי עם שינויים שלא נשמרו בקומיט.",
+      "סמלים ופקדים מקוריים קיבלו מתאמי דפדפן. אין הוכחת מכשיר או שרת פרוס."
+    ],
+    "sha256": "53329ffb7ab3bbd3d6d52a5e687a58d881b06ce519d1dc604dd15c2c0925c08f"
+  },
+  {
+    "file": "pulse-proposals-reports-before-2026-11-05.png",
+    "source": "artifacts/pulse-source-tasks-2026-11-05/reports-before.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור ושירותים עם מסד בזיכרון ומתאמי דפדפן",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "notes": [
+      "עץ מקורות מקומי עם שינויים שלא נשמרו בקומיט.",
+      "סמלים ופקדים מקוריים קיבלו מתאמי דפדפן. אין הוכחת מכשיר או שרת פרוס."
+    ],
+    "sha256": "3398f144ca844e415530eaa33006f29cf8a156c5af068acfc7cf0f7227637e69"
+  },
+  {
+    "file": "pulse-proposals-reports-after-2026-11-05.png",
+    "source": "artifacts/pulse-source-tasks-2026-11-05/reports-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור ושירותים עם מסד בזיכרון ומתאמי דפדפן",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "notes": [
+      "עץ מקורות מקומי עם שינויים שלא נשמרו בקומיט.",
+      "סמלים ופקדים מקוריים קיבלו מתאמי דפדפן. אין הוכחת מכשיר או שרת פרוס."
+    ],
+    "sha256": "0b0953515dd780214425bcdb1325d67e09164007596aa66c4cb9433bd1d4fadc"
+  },
+  {
+    "file": "pulse-support-task-before-2026-11-05.png",
+    "source": "artifacts/pulse-source-tasks-2026-11-05/support-before.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור ושירותים עם מסד בזיכרון ומתאמי דפדפן",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "notes": [
+      "עץ מקורות מקומי עם שינויים שלא נשמרו בקומיט.",
+      "סמלים ופקדים מקוריים קיבלו מתאמי דפדפן. אין הוכחת מכשיר או שרת פרוס."
+    ],
+    "sha256": "d79a8b6c01087e4c67a54bbda46aa0745f6b9cdfac416bcc8691c02e37740074"
+  },
+  {
+    "file": "pulse-support-task-after-2026-11-05.png",
+    "source": "artifacts/pulse-source-tasks-2026-11-05/support-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור ושירותים עם מסד בזיכרון ומתאמי דפדפן",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "notes": [
+      "עץ מקורות מקומי עם שינויים שלא נשמרו בקומיט.",
+      "סמלים ופקדים מקוריים קיבלו מתאמי דפדפן. אין הוכחת מכשיר או שרת פרוס."
+    ],
+    "sha256": "939b73786aec46381102f98654aecf178f6afa32daed7b91f4259b1405db3f9f"
+  },
+  {
+    "file": "pulse-converted-proposal-after-2026-11-05.png",
+    "source": "artifacts/pulse-source-tasks-2026-11-05/converted-proposal-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור ושירותים עם מסד בזיכרון ומתאמי דפדפן",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "notes": [
+      "עץ מקורות מקומי עם שינויים שלא נשמרו בקומיט.",
+      "סמלים ופקדים מקוריים קיבלו מתאמי דפדפן. אין הוכחת מכשיר או שרת פרוס."
+    ],
+    "sha256": "0e8c161ee970c81cba95b75c633072b61a49084f97ecd1e245e9e494037375bd"
+  },
+  {
+    "file": "pulse-converted-message-after-2026-11-05.png",
+    "source": "artifacts/pulse-source-tasks-2026-11-05/converted-message-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור ושירותים עם מסד בזיכרון ומתאמי דפדפן",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "notes": [
+      "עץ מקורות מקומי עם שינויים שלא נשמרו בקומיט.",
+      "סמלים ופקדים מקוריים קיבלו מתאמי דפדפן. אין הוכחת מכשיר או שרת פרוס."
+    ],
+    "sha256": "97b4002ef49d21e487eb025398adc2d2c6f5aa43384dafa981fd8e5c5e726bf3"
+  },
+  {
+    "file": "usage-activation-live-2026-11-05.png",
+    "source": "artifacts/usage-activation-2026-11-05/live-history.png",
+    "platform": "Web",
+    "environment": "רכיב מקור עם מתאמי דפדפן ותשובת שרת חיה שנקראה דרך שער הפולס",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "notes": [
+      "הנתונים התקבלו בשרת מחשבון בדיקה קיים. התצוגה מרונדרת מתשובת הקריאה המאומתת.",
+      "אין צילום מכשיר או אימות התקנה. מתאמי תצוגה וסמלים חלופיים."
+    ],
+    "sha256": "f8ca6a027bbe95df57f3ed4bd3369a521533fec140d1caf269ed860c5ee8c3e3"
+  },
+  {
+    "file": "pulse-review-awards-before-2026-11-05.png",
+    "source": "artifacts/pulse-review-2026-11-05/awards-before.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן, נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "sha256": "3a5433dc1ae70ee4e684b7f1cb27bf1b907ce50ada0eae027b3b6d43149de8a5",
+    "notes": [
+      "שינויים מקומיים. רכיבי התשתית, האזורים הבטוחים ותמונות השחקנים מוחלפים במתאמים; גופן מערכת בדפדפן. אין בדיקת מכשיר או פעולה בייצור.",
+      "נבדקו רוחבים 320, 390 ו-600. כרטיס היעד מוזן בגובה תוכן מדוד לצורך השוואה; תזמון התצוגה המקדימה נבדק בנפרד מול הבטחות מושהות.",
+      "תפריט השחקן מוצג כמצב מבוקר של רכיבי המקור. צילום סיום התיקו מציג את בחירת המשחק האחרון לאחר גלילה; אינו מוכיח שמירה בשרת. צילומי הדיווח נשמרו ללא שינוי."
+    ]
+  },
+  {
+    "file": "pulse-review-awards-after-2026-11-05.png",
+    "source": "artifacts/pulse-review-2026-11-05/awards-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן, נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "sha256": "da1e994d60120c858f281e5b0af2a124777f1454fb1bc0bd4a87b150176201e3",
+    "notes": [
+      "שינויים מקומיים. רכיבי התשתית, האזורים הבטוחים ותמונות השחקנים מוחלפים במתאמים; גופן מערכת בדפדפן. אין בדיקת מכשיר או פעולה בייצור.",
+      "נבדקו רוחבים 320, 390 ו-600. כרטיס היעד מוזן בגובה תוכן מדוד לצורך השוואה; תזמון התצוגה המקדימה נבדק בנפרד מול הבטחות מושהות.",
+      "תפריט השחקן מוצג כמצב מבוקר של רכיבי המקור. צילום סיום התיקו מציג את בחירת המשחק האחרון לאחר גלילה; אינו מוכיח שמירה בשרת. צילומי הדיווח נשמרו ללא שינוי."
+    ]
+  },
+  {
+    "file": "pulse-review-facts-before-2026-11-05.png",
+    "source": "artifacts/pulse-review-2026-11-05/facts-before.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן, נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "sha256": "7096c7dd8b4b526abd7ca5482ac77f24bf1b67acdb473296439ae9163fa1a26b",
+    "notes": [
+      "שינויים מקומיים. רכיבי התשתית, האזורים הבטוחים ותמונות השחקנים מוחלפים במתאמים; גופן מערכת בדפדפן. אין בדיקת מכשיר או פעולה בייצור.",
+      "נבדקו רוחבים 320, 390 ו-600. כרטיס היעד מוזן בגובה תוכן מדוד לצורך השוואה; תזמון התצוגה המקדימה נבדק בנפרד מול הבטחות מושהות.",
+      "תפריט השחקן מוצג כמצב מבוקר של רכיבי המקור. צילום סיום התיקו מציג את בחירת המשחק האחרון לאחר גלילה; אינו מוכיח שמירה בשרת. צילומי הדיווח נשמרו ללא שינוי."
+    ]
+  },
+  {
+    "file": "pulse-review-facts-after-2026-11-05.png",
+    "source": "artifacts/pulse-review-2026-11-05/facts-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן, נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "sha256": "514211045f719997cb0622b211f208677956ad0c0931e672ebb29be7c0a0cc02",
+    "notes": [
+      "שינויים מקומיים. רכיבי התשתית, האזורים הבטוחים ותמונות השחקנים מוחלפים במתאמים; גופן מערכת בדפדפן. אין בדיקת מכשיר או פעולה בייצור.",
+      "נבדקו רוחבים 320, 390 ו-600. כרטיס היעד מוזן בגובה תוכן מדוד לצורך השוואה; תזמון התצוגה המקדימה נבדק בנפרד מול הבטחות מושהות.",
+      "תפריט השחקן מוצג כמצב מבוקר של רכיבי המקור. צילום סיום התיקו מציג את בחירת המשחק האחרון לאחר גלילה; אינו מוכיח שמירה בשרת. צילומי הדיווח נשמרו ללא שינוי."
+    ]
+  },
+  {
+    "file": "pulse-review-requests-before-2026-11-05.png",
+    "source": "artifacts/pulse-review-2026-11-05/requests-before.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן, נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "sha256": "e97c7bc046058a5120ba0fc61d91b688ee885087aabd48b845c7c83daefbc595",
+    "notes": [
+      "שינויים מקומיים. רכיבי התשתית, האזורים הבטוחים ותמונות השחקנים מוחלפים במתאמים; גופן מערכת בדפדפן. אין בדיקת מכשיר או פעולה בייצור.",
+      "נבדקו רוחבים 320, 390 ו-600. כרטיס היעד מוזן בגובה תוכן מדוד לצורך השוואה; תזמון התצוגה המקדימה נבדק בנפרד מול הבטחות מושהות.",
+      "תפריט השחקן מוצג כמצב מבוקר של רכיבי המקור. צילום סיום התיקו מציג את בחירת המשחק האחרון לאחר גלילה; אינו מוכיח שמירה בשרת. צילומי הדיווח נשמרו ללא שינוי."
+    ]
+  },
+  {
+    "file": "pulse-review-requests-after-2026-11-05.png",
+    "source": "artifacts/pulse-review-2026-11-05/requests-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן, נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "sha256": "784dcbf7b5d0b7bcba0518a900b70def24a8953d2c46ee839c4f929ec87bf205",
+    "notes": [
+      "שינויים מקומיים. רכיבי התשתית, האזורים הבטוחים ותמונות השחקנים מוחלפים במתאמים; גופן מערכת בדפדפן. אין בדיקת מכשיר או פעולה בייצור.",
+      "נבדקו רוחבים 320, 390 ו-600. כרטיס היעד מוזן בגובה תוכן מדוד לצורך השוואה; תזמון התצוגה המקדימה נבדק בנפרד מול הבטחות מושהות.",
+      "תפריט השחקן מוצג כמצב מבוקר של רכיבי המקור. צילום סיום התיקו מציג את בחירת המשחק האחרון לאחר גלילה; אינו מוכיח שמירה בשרת. צילומי הדיווח נשמרו ללא שינוי."
+    ]
+  },
+  {
+    "file": "pulse-review-manager-before-2026-11-05.png",
+    "source": "artifacts/pulse-review-2026-11-05/manager-before.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן, נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "sha256": "1a25a85f4bd5a51eb4f817af9d2059e491e9cfaa0df840f1fb8f948fd609d35f",
+    "notes": [
+      "שינויים מקומיים. רכיבי התשתית, האזורים הבטוחים ותמונות השחקנים מוחלפים במתאמים; גופן מערכת בדפדפן. אין בדיקת מכשיר או פעולה בייצור.",
+      "נבדקו רוחבים 320, 390 ו-600. כרטיס היעד מוזן בגובה תוכן מדוד לצורך השוואה; תזמון התצוגה המקדימה נבדק בנפרד מול הבטחות מושהות.",
+      "תפריט השחקן מוצג כמצב מבוקר של רכיבי המקור. צילום סיום התיקו מציג את בחירת המשחק האחרון לאחר גלילה; אינו מוכיח שמירה בשרת. צילומי הדיווח נשמרו ללא שינוי."
+    ]
+  },
+  {
+    "file": "pulse-review-manager-after-2026-11-05.png",
+    "source": "artifacts/pulse-review-2026-11-05/manager-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן, נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "sha256": "e3c7d88ceedf13c3ef56a7bf342bd58c9ef1084680e0454d90fe8f5b7f90d070",
+    "notes": [
+      "שינויים מקומיים. רכיבי התשתית, האזורים הבטוחים ותמונות השחקנים מוחלפים במתאמים; גופן מערכת בדפדפן. אין בדיקת מכשיר או פעולה בייצור.",
+      "נבדקו רוחבים 320, 390 ו-600. כרטיס היעד מוזן בגובה תוכן מדוד לצורך השוואה; תזמון התצוגה המקדימה נבדק בנפרד מול הבטחות מושהות.",
+      "תפריט השחקן מוצג כמצב מבוקר של רכיבי המקור. צילום סיום התיקו מציג את בחירת המשחק האחרון לאחר גלילה; אינו מוכיח שמירה בשרת. צילומי הדיווח נשמרו ללא שינוי."
+    ]
+  },
+  {
+    "file": "pulse-review-milestone-before-2026-11-05.png",
+    "source": "artifacts/pulse-review-2026-11-05/milestone-before.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן, נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "sha256": "bf7cd48d14a248216e29bf6d4834e067e0755806774811c60a40425c1475a3ba",
+    "notes": [
+      "שינויים מקומיים. רכיבי התשתית, האזורים הבטוחים ותמונות השחקנים מוחלפים במתאמים; גופן מערכת בדפדפן. אין בדיקת מכשיר או פעולה בייצור.",
+      "נבדקו רוחבים 320, 390 ו-600. כרטיס היעד מוזן בגובה תוכן מדוד לצורך השוואה; תזמון התצוגה המקדימה נבדק בנפרד מול הבטחות מושהות.",
+      "תפריט השחקן מוצג כמצב מבוקר של רכיבי המקור. צילום סיום התיקו מציג את בחירת המשחק האחרון לאחר גלילה; אינו מוכיח שמירה בשרת. צילומי הדיווח נשמרו ללא שינוי."
+    ]
+  },
+  {
+    "file": "pulse-review-milestone-after-2026-11-05.png",
+    "source": "artifacts/pulse-review-2026-11-05/milestone-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן, נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "sha256": "63e57cfe9ab30dad1089815abaa95036b17ddcf8abd332234a91f90d821b9ad3",
+    "notes": [
+      "שינויים מקומיים. רכיבי התשתית, האזורים הבטוחים ותמונות השחקנים מוחלפים במתאמים; גופן מערכת בדפדפן. אין בדיקת מכשיר או פעולה בייצור.",
+      "נבדקו רוחבים 320, 390 ו-600. כרטיס היעד מוזן בגובה תוכן מדוד לצורך השוואה; תזמון התצוגה המקדימה נבדק בנפרד מול הבטחות מושהות.",
+      "תפריט השחקן מוצג כמצב מבוקר של רכיבי המקור. צילום סיום התיקו מציג את בחירת המשחק האחרון לאחר גלילה; אינו מוכיח שמירה בשרת. צילומי הדיווח נשמרו ללא שינוי."
+    ]
+  },
+  {
+    "file": "pulse-review-tie-before-2026-11-05.png",
+    "source": "artifacts/pulse-review-2026-11-05/tie-before.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן, נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "sha256": "66e689250d0e2c4fd5e1c2c4c361a705fc731273c4a6b7e55deb2a57b286dc0d",
+    "notes": [
+      "שינויים מקומיים. רכיבי התשתית, האזורים הבטוחים ותמונות השחקנים מוחלפים במתאמים; גופן מערכת בדפדפן. אין בדיקת מכשיר או פעולה בייצור.",
+      "נבדקו רוחבים 320, 390 ו-600. כרטיס היעד מוזן בגובה תוכן מדוד לצורך השוואה; תזמון התצוגה המקדימה נבדק בנפרד מול הבטחות מושהות.",
+      "תפריט השחקן מוצג כמצב מבוקר של רכיבי המקור. צילום סיום התיקו מציג את בחירת המשחק האחרון לאחר גלילה; אינו מוכיח שמירה בשרת. צילומי הדיווח נשמרו ללא שינוי."
+    ]
+  },
+  {
+    "file": "pulse-review-tie-after-2026-11-05.png",
+    "source": "artifacts/pulse-review-2026-11-05/tie-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן, נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "sha256": "5fe85590412d1b5fabd733847b9d3cd3cbc96cc5a899576a636391ed5ac98515",
+    "notes": [
+      "שינויים מקומיים. רכיבי התשתית, האזורים הבטוחים ותמונות השחקנים מוחלפים במתאמים; גופן מערכת בדפדפן. אין בדיקת מכשיר או פעולה בייצור.",
+      "נבדקו רוחבים 320, 390 ו-600. כרטיס היעד מוזן בגובה תוכן מדוד לצורך השוואה; תזמון התצוגה המקדימה נבדק בנפרד מול הבטחות מושהות.",
+      "תפריט השחקן מוצג כמצב מבוקר של רכיבי המקור. צילום סיום התיקו מציג את בחירת המשחק האחרון לאחר גלילה; אינו מוכיח שמירה בשרת. צילומי הדיווח נשמרו ללא שינוי."
+    ]
+  },
+  {
+    "file": "pulse-review-preview-before-2026-11-05.png",
+    "source": "artifacts/pulse-review-2026-11-05/preview-before.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן, נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "sha256": "23e7ab98696b1246cc24c29bf0a66b1040e6adbf83fb9a4f1cbc780422ce44e3",
+    "notes": [
+      "שינויים מקומיים. רכיבי התשתית, האזורים הבטוחים ותמונות השחקנים מוחלפים במתאמים; גופן מערכת בדפדפן. אין בדיקת מכשיר או פעולה בייצור.",
+      "נבדקו רוחבים 320, 390 ו-600. כרטיס היעד מוזן בגובה תוכן מדוד לצורך השוואה; תזמון התצוגה המקדימה נבדק בנפרד מול הבטחות מושהות.",
+      "תפריט השחקן מוצג כמצב מבוקר של רכיבי המקור. צילום סיום התיקו מציג את בחירת המשחק האחרון לאחר גלילה; אינו מוכיח שמירה בשרת. צילומי הדיווח נשמרו ללא שינוי."
+    ]
+  },
+  {
+    "file": "pulse-review-preview-after-2026-11-05.png",
+    "source": "artifacts/pulse-review-2026-11-05/preview-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן, נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "sha256": "edbef2d373c84d9afd6cf7e1ba0168fceaa9b4ab1dd4be4966a70395e619fc48",
+    "notes": [
+      "שינויים מקומיים. רכיבי התשתית, האזורים הבטוחים ותמונות השחקנים מוחלפים במתאמים; גופן מערכת בדפדפן. אין בדיקת מכשיר או פעולה בייצור.",
+      "נבדקו רוחבים 320, 390 ו-600. כרטיס היעד מוזן בגובה תוכן מדוד לצורך השוואה; תזמון התצוגה המקדימה נבדק בנפרד מול הבטחות מושהות.",
+      "תפריט השחקן מוצג כמצב מבוקר של רכיבי המקור. צילום סיום התיקו מציג את בחירת המשחק האחרון לאחר גלילה; אינו מוכיח שמירה בשרת. צילומי הדיווח נשמרו ללא שינוי."
+    ]
+  },
+  {
+    "file": "pulse-review-offpitch-before-2026-11-05.png",
+    "source": "artifacts/pulse-review-2026-11-05/offpitch-before.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן, נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "sha256": "5e9617edaf2bc3562ffd254a62d15fc922c9cf05c38190ed66b4021d2f7fe1e7",
+    "notes": [
+      "שינויים מקומיים. רכיבי התשתית, האזורים הבטוחים ותמונות השחקנים מוחלפים במתאמים; גופן מערכת בדפדפן. אין בדיקת מכשיר או פעולה בייצור.",
+      "נבדקו רוחבים 320, 390 ו-600. כרטיס היעד מוזן בגובה תוכן מדוד לצורך השוואה; תזמון התצוגה המקדימה נבדק בנפרד מול הבטחות מושהות.",
+      "תפריט השחקן מוצג כמצב מבוקר של רכיבי המקור. צילום סיום התיקו מציג את בחירת המשחק האחרון לאחר גלילה; אינו מוכיח שמירה בשרת. צילומי הדיווח נשמרו ללא שינוי."
+    ]
+  },
+  {
+    "file": "pulse-review-offpitch-after-2026-11-05.png",
+    "source": "artifacts/pulse-review-2026-11-05/offpitch-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור במתאם דפדפן, נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-05",
+    "sha256": "b6cb89163c0a708a5ccdcc089428096e5446150b19157f8574e8980ce1459a3e",
+    "notes": [
+      "שינויים מקומיים. רכיבי התשתית, האזורים הבטוחים ותמונות השחקנים מוחלפים במתאמים; גופן מערכת בדפדפן. אין בדיקת מכשיר או פעולה בייצור.",
+      "נבדקו רוחבים 320, 390 ו-600. כרטיס היעד מוזן בגובה תוכן מדוד לצורך השוואה; תזמון התצוגה המקדימה נבדק בנפרד מול הבטחות מושהות.",
+      "תפריט השחקן מוצג כמצב מבוקר של רכיבי המקור. צילום סיום התיקו מציג את בחירת המשחק האחרון לאחר גלילה; אינו מוכיח שמירה בשרת. צילומי הדיווח נשמרו ללא שינוי."
+    ]
+  },
+  {
+    "file": "unrated-default-before-2026-11-06.png",
+    "source": "artifacts/unrated-default-2026-11-06/before.png",
+    "platform": "Web",
+    "environment": "רכיב מקור במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-06",
+    "sha256": "78a0c6d1b6b726209d37f15aea82b4060f48d47c8e6a186483067db10cad1bdd",
+    "notes": [
+      "שינויים מקומיים. רכיב DraftGenerationPreview מתוך המקור, עם מתאמי תשתית, סמלים וחולצות. אין בדיקת מכשיר או חיבור לשרת.",
+      "צילום ברוחב 390. נבדקו גם 320 ו-600, ללא גלישה אופקית או חיתוך של הסבר הדירוג. צילום הלפני נשמר לפני עריכת המקור."
+    ]
+  },
+  {
+    "file": "unrated-default-after-2026-11-06.png",
+    "source": "artifacts/unrated-default-2026-11-06/after.png",
+    "platform": "Web",
+    "environment": "רכיב מקור במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-06",
+    "sha256": "38ca143bd7b24c7f2ff3b8f45c3e10124b164b013b3a800dc620c780cb5c6336",
+    "notes": [
+      "שינויים מקומיים. רכיב DraftGenerationPreview מתוך המקור, עם מתאמי תשתית, סמלים וחולצות. אין בדיקת מכשיר או חיבור לשרת.",
+      "צילום ברוחב 390. נבדקו גם 320 ו-600, ללא גלישה אופקית או חיתוך של הסבר הדירוג. צילום הלפני נשמר לפני עריכת המקור."
+    ]
+  },
+  {
+    "file": "shared-evening-score-before-2026-11-06.png",
+    "source": "artifacts/shared-score-implementation-2026-11-06/info-before.png",
+    "platform": "Web",
+    "environment": "רכיב חלונית ההסבר המקורי במתאם דפדפן, עם גרסת מחזור לדוגמה בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-06",
+    "notes": [
+      "שינויים מקומיים מעבר למקור הרשום. רוחב 390 וגופן רגיל. הצילום נפתח ונבחן.",
+      "נבדקו מעבר בין גרסאות, גלילה וסגירה בשלושה רוחבים ובשני גדלי גופן. אין אימות מכשיר חדש.",
+      "המעטפת והסמלים מותאמים לדפדפן. אין נתוני ייצור, שינוי ציונים ישנים או פריסה."
+    ],
+    "sha256": "eb83dc28b25a05a570c2d634d23b5273336cfd6da2304b71c4c9ce75f546324c"
+  },
+  {
+    "file": "shared-evening-score-after-2026-11-06.png",
+    "source": "artifacts/shared-score-implementation-2026-11-06/info-after.png",
+    "platform": "Web",
+    "environment": "רכיב חלונית ההסבר המקורי במתאם דפדפן, עם גרסת מחזור לדוגמה בלבד",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "captured": "2026-11-06",
+    "notes": [
+      "שינויים מקומיים מעבר למקור הרשום. רוחב 390 וגופן רגיל. הצילום נפתח ונבחן.",
+      "נבדקו מעבר בין גרסאות, גלילה וסגירה בשלושה רוחבים ובשני גדלי גופן. אין אימות מכשיר חדש.",
+      "המעטפת והסמלים מותאמים לדפדפן. אין נתוני ייצור, שינוי ציונים ישנים או פריסה."
+    ],
+    "sha256": "823790231d9dd1e6d3a5e897033b069d4a7e17cbb11e7d64fb595c14923ff6cd"
   }
 ]

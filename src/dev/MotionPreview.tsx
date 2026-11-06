@@ -33,7 +33,7 @@ export function MotionPreview({ onClose }: { onClose: () => void }) {
         <Text style={{ textAlign: 'center', color: '#B45309' }}>בדיקת הנפשות — נתונים מקומיים בלבד</Text>
         {button('סגור', onClose)}
         {button('בחירת מחזיקי ציוד', () => setEquipment(true))}
-        <FillerInterestsSection gameId="gv2-live" isAdmin acceptsFillers />
+        {game && <FillerInterestsSection game={game} isAdmin isClubAdmin />}
         {button('הצטרפות לרשימת המתנה', () => setWaiting(v => !v))}
         {game && me ? <UpcomingRoundCard game={game} state={deriveRoundState(game, me.id)} actions={{ onDetails: () => {}, onJoin: () => {}, onSummary: () => {}, onCreate: () => {}, onFind: () => {} }} busy={false} now={Date.now()} /> : null}
         {button('הוסף שחקן להרכב', () => setAdded(v => !v))}

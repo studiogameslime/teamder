@@ -1,3 +1,5 @@
+import { useRoute } from '@react-navigation/native';
+import { ConvertToTaskButton } from '../components/ConvertToTaskButton';
 import { observeCaughtError } from '../services/errorObservation';
 import { Dropdown } from '../components/Dropdown';
 import { boardBuckets, boardSections, type BoardTab } from '../services/workBoard';
@@ -42,6 +44,7 @@ import { listAwaitingReply } from '../services/teamderChatService';
 import {
   PRIORITIES,
   PRIORITY_LABEL,
+  getTask,
   createTask,
   loadCachedTasks,
   removeTask,
@@ -55,6 +58,7 @@ import {
   KIND_LABEL,
   KIND_ORDER,
   closeItem,
+  workItemFromTask,
   listWorkSnapshot,
   retainFailedWork,
   STREAM_LABEL,
@@ -91,6 +95,9 @@ type Filter = 'all' | WorkCategory;
 
 export function TasksScreen({initialTab='open',initialFilter='all'}:{initialTab?:BoardTab;initialFilter?:Filter} = {}) {
   const [items, setItems] = useState<WorkItem[]>([]);
+  const taskRoute = useRoute();
+  const taskParams = taskRoute.params as {taskId?:string;taskOpenAt?:number} | undefined;
+  const [targetTask,setTargetTask] = useState<WorkItem|null>(null);
   const [failedStreams, setFailedStreams] = useState<WorkStream[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -115,31 +122,7 @@ export function TasksScreen({initialTab='open',initialFilter='all'}:{initialTab?
       const cachedTasks = await loadCachedTasks();
       if (alive && cachedTasks.length) {
         setItems(
-          cachedTasks.map((t) => ({
-            key: `task:${t.id}`,
-            stream: 'task' as const,
-            sourceReportId: t.source === 'teamder' && t.sourceId && !t.sourceId.includes('/') ? t.sourceId : undefined,
-            kind: (t.category === 'ui'
-              ? 'ui'
-              : t.category === 'feature'
-                ? 'feature'
-                : 'bug') as WorkKind,
-            id: t.id,
-            docPath: `tasks/${t.id}`,
-            title: t.title,
-            body: t.notes,
-            images: t.images,
-            state: t.status === 'done' ? ('done' as const) : ('open' as const),
-            claude: null,
-            createdAt: t.createdAt,
-            priority: t.priority,
-            screen: t.screen,
-            reporterId: t.reporterId,
-            reporterName: t.reporterName,
-            count: 1,
-            claudeMayAct: true,
-            hint: '',
-          })),
+          cachedTasks.map(workItemFromTask),
         );
         setLoading(false);
       }
@@ -173,6 +156,27 @@ export function TasksScreen({initialTab='open',initialFilter='all'}:{initialTab?
       setRefreshing(false);
     }
   }, []);
+
+  useEffect(() => {
+    const id=taskParams?.taskId;
+    if(!id)return;
+    let alive=true;setTargetTask(null);
+    void getTask(id).then(task=>{
+      if(!alive)return;
+      if(!task){Alert.alert('המשימה אינה זמינה','המשימה לא נמצאה. מקור הפנייה נשמר.');return;}
+      setTargetTask(workItemFromTask(task));void reload(true);
+    }).catch(error=>{
+      observeCaughtError(error,{source:'pulse/src/screens/TasksScreen.tsx',handler:'openTask',site:'task:open'});
+      if(alive)Alert.alert('פתיחת המשימה נכשלה','אפשר לנסות לפתוח אותה שוב.');
+    });
+    return()=>{alive=false;};
+  },[taskParams?.taskId,taskParams?.taskOpenAt,reload]);
+  const refreshTargetAfter = async (action:()=>void|Promise<void>) => {
+    const id=targetTask?.id;if(!id)return;
+    await action();
+    try{const task=await getTask(id);setTargetTask(current=>current?.id===id?(task?workItemFromTask(task):null):current);}
+    catch(error){observeCaughtError(error,{source:'pulse/src/screens/TasksScreen.tsx',handler:'refreshTargetAfter',site:'task:detail-refresh'});}
+  };
 
   useEffect(()=>setRowLimit(40),[tab,filter,search]);
 
@@ -341,6 +345,11 @@ export function TasksScreen({initialTab='open',initialFilter='all'}:{initialTab?
         </ScrollView>
       )}
 
+      {targetTask ? <WorkRow key={`target:${targetTask.id}:${taskParams?.taskOpenAt}`} item={targetTask} autoExpand hideRow
+        onZoom={lightbox.open} onAccept={()=>refreshTargetAfter(()=>accept(targetTask))} onReopen={()=>refreshTargetAfter(()=>reopen(targetTask))}
+        onWithdraw={()=>refreshTargetAfter(()=>withdraw(targetTask))} onPriority={p=>{void refreshTargetAfter(()=>setPriority(targetTask,p));}}
+        onEdit={()=>setEditing(targetTask)} onDelete={()=>{destroy(targetTask);setTargetTask(null);}} onReply={targetTask.reporterId?()=>setReplyTo(targetTask):undefined}/>:null}
+
       <ImageLightbox {...lightbox.props} onClose={lightbox.close} />
 
       <TeamderChatSheet
@@ -390,7 +399,11 @@ function WorkRow({
   onReply,
   onZoom,
   onPromote,
+  autoExpand = false,
+  hideRow = false,
 }: {
+  autoExpand?: boolean;
+  hideRow?: boolean;
   item: WorkItem;
   onPromote?: (status:'spec'|'build')=>Promise<void>;
   onAccept: () => void;
@@ -405,11 +418,11 @@ function WorkRow({
   /** Open the full-screen zoomable viewer on a set of images. */
   onZoom: (images: string[], at?: number) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(autoExpand);
   const [savingStatus, setSavingStatus] = useState(false);
   // Images are NOT in the list payload — they are the bulk of it, so the list
   // projects them away and one document is fetched here when it is opened.
-  const [shots, setShots] = useState<{ images: string[]; claudeImages: string[] } | null>(
+  const [shots, setShots] = useState<{ images: string[]; claudeImages: string[]; sourceText?:string; sourceCreatedAt?:number } | null>(
     null,
   );
   const [shotsFailed, setShotsFailed] = useState(false);
@@ -448,8 +461,8 @@ function WorkRow({
   const proofShots = shots?.claudeImages ?? [];
 
   return (
-    <View style={[st.row, isDone && st.rowDone, byClaude && st.rowClaude]}>
-      <Pressable
+    <View style={hideRow ? undefined : [st.row, isDone && st.rowDone, byClaude && st.rowClaude]}>
+      {!hideRow ? <Pressable
         accessibilityRole="button" accessibilityLabel={item.title}
         style={st.rowMain}
         // A conversation has no body to expand — tapping it opens the thread,
@@ -501,7 +514,7 @@ function WorkRow({
           </View>
         </View>
         <Ionicons name="chevron-back" size={16} color={colors.textMuted}/>
-      </Pressable>
+      </Pressable> : null}
 
       {expanded ? (
         <Modal visible animationType="slide" onRequestClose={()=>setExpanded(false)}>
@@ -513,6 +526,9 @@ function WorkRow({
           {item.unresolved && item.state === 'open' ? <View style={{padding:12,borderRadius:12,backgroundColor:'#F59E0B18',gap:8}}><Text style={[st.notes,{color:colors.text}]}>מה כבר נבדק: {item.unresolved.reason}</Text><Text style={st.notes}>מה חסר לפתרון: {item.unresolved.nextStep}</Text></View> : null}
           {item.reviewReason ? <View style={{padding:12,borderRadius:12,backgroundColor:colors.surfaceAlt,gap:6}}><Text style={font.title}>למה הפריט עדיין פתוח</Text><Text style={st.notes}>{item.reviewReason}</Text></View> : null}
           {item.body ? <Text style={st.notes}>{item.body}</Text> : null}
+          {item.linkedTaskId ? <Text style={st.meta}>לפנייה הזו כבר קיימת משימה מקושרת. הפנייה נשמרת כמקור.</Text>:null}
+          {item.stream === 'report' ? <ConvertToTaskButton origin={{kind:'feedback',id:item.id}} linkedTaskId={item.linkedTaskId} onOpen={()=>setExpanded(false)}/>:null}
+          {shots && typeof shots.sourceText === 'string' ? <View style={{gap:8}}><Text style={st.groupTitle}>המקור שממנו נוצרה המשימה</Text><Text selectable style={st.notes}>{shots.sourceText || 'הודעה ללא טקסט'}</Text>{shots.sourceCreatedAt ? <Text style={st.meta}>{new Date(shots.sourceCreatedAt).toLocaleString('he-IL')}</Text>:null}</View>:null}
           {loadingShots ? (
             <ActivityIndicator color={colors.primary} style={{ alignSelf: 'flex-end' }} />
           ) : null}
@@ -581,6 +597,7 @@ function WorkRow({
             {item.reporterId ? <Pressable style={st.chip} onPress={() => {setExpanded(false); (navRef as any).navigate('Users', { screen: 'UserDetail', params: { userId: item.reporterId } });}}>
               <Text style={st.chipTxt}>כרטיס המשתמש</Text>
             </Pressable> : null}
+            {item.sourceChat && onReply ? <Pressable style={st.chip} onPress={()=>{setExpanded(false);onReply();}}><Text style={st.chipTxt}>פתיחת שיחת התמיכה המקורית</Text></Pressable>:null}
             {item.sourceReportId ? <Pressable style={st.chip} onPress={() => {setExpanded(false); (navRef as any).navigate('DevInbox', { screen: 'ErrorDetail', params: { id: item.sourceReportId, collection: 'feedback' } });}}>
               <Text style={st.chipTxt}>משימה מקושרת — פתיחת דיווח המקור</Text>
             </Pressable> : null}

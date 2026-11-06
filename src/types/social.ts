@@ -8,6 +8,7 @@ export type SocialPlayer = Pick<User, 'id' | 'name' | 'avatarId' | 'photoUrl'> &
   city: string;
   availability?: Pick<UserAvailability, 'preferredDays' | 'preferredTimes' | 'availabilitySlots' | 'isAvailableForInvites'>;
   friend: boolean;
+  relationship?: 'friends' | 'none' | 'outgoing' | 'incoming' | 'rejected';
   commonClubCount: number;
   sharedRounds: number;
 };
@@ -21,6 +22,10 @@ export type SocialPairSummary = {
   lastSharedRoundAt: number | null;
 };
 export type SocialProfile = {
+  detailsPending?: boolean;
+  canInviteCreated?: boolean;
+  messaging?: 'request'|'conversation'|'unavailable';
+  cardStats?: Pick<PlayerStatsSummary,'attendedGames'|'goals'|'assists'> | null;
   player: SocialPlayer;
   clubs: SocialClub[];
   canSeeStatistics: boolean;

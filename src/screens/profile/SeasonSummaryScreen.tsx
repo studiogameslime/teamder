@@ -13,6 +13,7 @@ import { observeCaughtError } from '../../utils/errorObservation';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -33,7 +34,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { UserAvatar } from '@/components/UserAvatar';
 import { SeasonShareCard, SHARE_CARD_WIDTH } from '@/components/summary/SeasonShareCard';
 import { toast } from '@/components/Toast';
-import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { SeasonSummarySkeleton } from '@/components/loading/CentralSkeletons';
 import {
   seasonSummaryService,
   type SeasonSummaryModel,
@@ -212,60 +213,136 @@ export function SeasonSummaryScreen() {
   const params = useRoute<Params>().params;
   const groupId = params?.groupId ?? '';
   const currentUser = useUserStore((s) => s.currentUser);
+  const viewerId = currentUser?.id;
+  const viewerIsGuest = currentUser?.isGuest === true;
   // The entry point owns season selection; switching tabs never changes it.
   const seasonId = params?.seasonId;
+  const summaryScope = JSON.stringify([groupId, viewerId, viewerIsGuest, seasonId]);
+  const currentSummaryScope = useRef(summaryScope);
+  currentSummaryScope.current = summaryScope;
+  const confirmedSummary = useRef<{ scope: string; model: SeasonSummaryModel } | null>(null);
+  if (confirmedSummary.current?.scope !== summaryScope) confirmedSummary.current = null;
   const [tab, setTab] = useState<'personal' | 'club'>('personal');
 
-  const [model, setModel] = useState<SeasonSummaryModel | null>(null);
+  const [storedModel, setModel] = useState<SeasonSummaryModel | null>(null);
+  const [loadedScope, setLoadedScope] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [storedRefreshFailed, setRefreshFailed] = useState(false);
+  const [storedLoading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const model = loadedScope === summaryScope ? storedModel : null;
+  const loading = loadedScope !== summaryScope || storedLoading;
+  const refreshFailed = loadedScope === summaryScope && storedRefreshFailed;
 
   // A late response must not replace a newer route or refresh.
   const loadSeq = useRef(0);
 
   const load = useCallback(async () => {
+    if (currentSummaryScope.current !== summaryScope) return;
     const seq = (loadSeq.current += 1);
-    if (!currentUser?.id || !groupId) {
+    const isCurrent = () => {
+      const account = useUserStore.getState().currentUser;
+      return seq === loadSeq.current && currentSummaryScope.current === summaryScope &&
+        account?.id === viewerId && (account?.isGuest === true) === viewerIsGuest;
+    };
+    const showFailure = () => {
+      const previous = confirmedSummary.current?.scope === summaryScope ? confirmedSummary.current.model : null;
+      setLoadedScope(summaryScope);
+      if (previous) {
+        // A replacement read cancelled the old enrichment. It cannot leave a
+        // retained base claiming that its identities are still on the way.
+        const retained = previous.peerIdentityStatus === 'loading' ? { ...previous, peerIdentityStatus: 'error' as const } : previous;
+        confirmedSummary.current = { scope: summaryScope, model: retained };
+        setModel(retained);
+        setFailed(false);
+        setRefreshFailed(true);
+      } else {
+        setModel(null);
+        setFailed(true);
+        setRefreshFailed(false);
+      }
+      setLoading(false);
+    };
+    if (!viewerId || !groupId) {
+      confirmedSummary.current = null;
+      setLoadedScope(summaryScope);
       setModel(null);
       setFailed(false);
       setLoading(false);
+      setRefreshing(false);
+      setRefreshFailed(false);
       return;
     }
-    const m = await seasonSummaryService.load({
-      groupId,
-      userId: currentUser.id,
-      seasonId,
-    });
-    if (seq !== loadSeq.current) return; // a newer load is already in flight
-    setFailed(m === 'error');
-    setModel(m === 'error' ? null : m);
-    setLoading(false);
-    if (m && m !== 'error') {
-      logEvent(AnalyticsEvent.SeasonSummaryViewed, {
+    try {
+      const m = await seasonSummaryService.load({
         groupId,
-        seasonNo: m.seasonNo,
-        closed: m.closed,
-        titles: m.myTitles.length,
+        userId: viewerId,
+        seasonId,
+        isCurrent,
+        onBase: base => {
+          if (!isCurrent()) return;
+          confirmedSummary.current = { scope: summaryScope, model: base };
+          setLoadedScope(summaryScope);
+          setModel(base);
+          setFailed(false);
+          setRefreshFailed(false);
+          setLoading(false);
+          setRefreshing(false);
+        },
       });
+      if (!isCurrent()) return;
+      if (m === 'error') { showFailure(); return; }
+      confirmedSummary.current = m ? { scope: summaryScope, model: m } : null;
+      setLoadedScope(summaryScope);
+      setFailed(false);
+      setRefreshFailed(false);
+      setModel(m);
+      setLoading(false);
+      if (m) {
+        logEvent(AnalyticsEvent.SeasonSummaryViewed, {
+          groupId,
+          seasonNo: m.seasonNo,
+          closed: m.closed,
+          titles: m.myTitles.length,
+        });
+      }
+    } catch (error) {
+      if (!isCurrent()) return;
+      observeCaughtError(error, { source: 'src/screens/profile/SeasonSummaryScreen.tsx', handler: 'load', site: 'seasonSummaryLoad' });
+      showFailure();
+    } finally {
+      if (isCurrent()) setRefreshing(false);
     }
-  }, [currentUser?.id, groupId, seasonId]);
+  }, [viewerId, viewerIsGuest, groupId, seasonId, summaryScope]);
 
   useEffect(() => {
     setLoading(true);
     void load();
+    return () => { loadSeq.current += 1; };
   }, [load]);
 
   const onRefresh = useCallback(async () => {
+    if (currentSummaryScope.current !== summaryScope) return;
     setRefreshing(true);
     await load();
-    setRefreshing(false);
-  }, [load]);
+  }, [load, summaryScope]);
 
   const shareCardRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
+  const shareGeneration = useRef(0);
+  useEffect(() => {
+    shareGeneration.current += 1;
+    setSharing(false);
+    return () => { shareGeneration.current += 1; };
+  }, [summaryScope]);
   const onShare = useCallback(async () => {
-    if (!shareCardRef.current || sharing) return;
+    const ticket = shareGeneration.current;
+    const isCurrentShare = () => {
+      const account = useUserStore.getState().currentUser;
+      return ticket === shareGeneration.current && currentSummaryScope.current === summaryScope &&
+        account?.id === viewerId && (account?.isGuest === true) === viewerIsGuest;
+    };
+    if (!isCurrentShare() || !model || !shareCardRef.current || sharing || model.peerIdentityStatus === 'loading') return;
     setSharing(true);
     try {
       const uri = await captureRef(shareCardRef, {
@@ -273,16 +350,20 @@ export function SeasonSummaryScreen() {
         quality: 1,
         result: 'tmpfile',
       });
+      if (!isCurrentShare()) return;
       // Lazy-required so the screen still loads on a binary that predates
       // expo-sharing — the require only runs on a share tap. Same arrangement
       // the evening summary uses.
       // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
       const Sharing = require('expo-sharing') as typeof import('expo-sharing');
-      if (await Sharing.isAvailableAsync()) {
+      const available = await Sharing.isAvailableAsync();
+      if (!isCurrentShare()) return;
+      if (available) {
         await Sharing.shareAsync(uri, {
           mimeType: 'image/png',
           dialogTitle: he.seasonShareTitle,
         });
+        if (!isCurrentShare()) return;
         logEvent(AnalyticsEvent.SeasonSummaryShared, {
           groupId,
           seasonNo: model?.seasonNo ?? 0,
@@ -293,21 +374,20 @@ export function SeasonSummaryScreen() {
         toast.error(he.summaryShareUnavailable);
       }
     } catch (err) {
+      if (!isCurrentShare()) return;
     observeCaughtError(err, {"source":"src/screens/profile/SeasonSummaryScreen.tsx","handler":"SeasonSummaryScreen","site":"SeasonSummaryScreen:50f3e9ab52"});
       logError('shareSeasonSummary', err, { groupId });
       toast.error(he.summaryShareFailed);
     } finally {
-      setSharing(false);
+      if (isCurrentShare()) setSharing(false);
     }
-  }, [groupId, model, sharing, tab]);
+  }, [groupId, model, sharing, tab, summaryScope, viewerId, viewerIsGuest]);
 
   if (loading) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScreenHeader title={he.seasonSummaryTitle} />
-        <View style={styles.center}>
-          <SoccerBallLoader />
-        </View>
+        <ScrollView contentContainerStyle={styles.content}><SeasonSummarySkeleton tab={tab} /></ScrollView>
       </SafeAreaView>
     );
   }
@@ -377,6 +457,18 @@ export function SeasonSummaryScreen() {
             <Text style={[styles.tabText, tab === key && styles.activeTabText]}>{label}</Text>
           </Pressable>)}
         </View>
+        {refreshFailed ? <Pressable style={styles.identityNotice} onPress={() => void onRefresh()} accessibilityRole="button">
+          <Text style={styles.identityNoticeText}>לא הצלחנו לרענן את סיכום העונה. הנתונים הקודמים נשמרו. לחצו לניסיון חוזר.</Text>
+          <Ionicons name="refresh-outline" size={18} color={colors.primary} />
+        </Pressable> : model.peerIdentityStatus === 'loading' ? <View style={styles.identityNotice}>
+          <Text style={styles.identityNoticeText} accessibilityLiveRegion="polite">טוענים שמות ותמונות</Text>
+          <ActivityIndicator size="small" color={colors.primary} />
+        </View> : model.peerIdentityStatus === 'error' ? <Pressable style={styles.identityNotice} onPress={() => void onRefresh()} accessibilityRole="button">
+          <Text style={styles.identityNoticeText}>המספרים מוכנים. השמות והתמונות לא נטענו. לחצו לניסיון חוזר.</Text>
+          <Ionicons name="refresh-outline" size={18} color={colors.primary} />
+        </Pressable> : model.peerIdentityStatus === 'partial' ? <View style={styles.identityNotice}>
+          <Text style={styles.identityNoticeText}>חלק מהשמות והתמונות אינם זמינים.</Text>
+        </View> : null}
         {tab === 'club' ? <SeasonClubSummary model={model} /> : <>
           {me.hasData && currentUser ? <View style={styles.card}>
             <View style={styles.identity}>
@@ -535,7 +627,7 @@ export function SeasonSummaryScreen() {
         {tab === 'club' || me.hasData ? (
           <Pressable
             onPress={onShare}
-            disabled={sharing}
+            disabled={sharing || model.peerIdentityStatus === 'loading'}
             style={({ pressed }) => [styles.shareBtn, pressed && { opacity: 0.9 }]}
             accessibilityRole="button"
             accessibilityLabel={tab === 'club' ? 'שיתוף סיכום המועדון' : 'שיתוף הסיכום האישי'}
@@ -578,6 +670,8 @@ const styles = StyleSheet.create({
   identity: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   identityName: { fontSize: 19, lineHeight: 24, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN },
   identityCaption: { fontSize: 11, lineHeight: 15, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  identityNotice: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 34, paddingHorizontal: 4 },
+  identityNoticeText: { flex: 1, fontSize: 12, lineHeight: 17, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
   centerScroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
   content: { padding: 10, gap: 8, paddingBottom: spacing.xl },

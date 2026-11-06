@@ -1,0 +1,70 @@
+{
+  "ready": true,
+  "count": 3,
+  "indexes": [
+    {
+      "name": "projects/soccer-app-52b6b/databases/(default)/collectionGroups/usageActivity/indexes/CICAgLjRnZMK",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "action",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sortAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "state": "READY",
+      "density": "SPARSE_ALL"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/databases/(default)/collectionGroups/usageSessions/indexes/CICAgNir3pgK",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lastActivityAt",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "state": "READY",
+      "density": "SPARSE_ALL"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/databases/(default)/collectionGroups/usageActivity/indexes/CICAgLiI_5oK",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "visitId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sequence",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "state": "READY",
+      "density": "SPARSE_ALL"
+    }
+  ]
+}

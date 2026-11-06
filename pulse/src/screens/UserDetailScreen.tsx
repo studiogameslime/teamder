@@ -1,15 +1,18 @@
 import { observeCaughtError } from '../services/errorObservation';
 import { PlayerHistory } from '../components/PlayerHistory';
+import { UserUsageTimeline } from '../components/UserUsageTimeline';
+import { getDoc } from '../services/firestoreRest';
+import type { UsageRow } from '../services/usageActivity';
 import { PlayerDisclosure as Disclosure } from '../components/PlayerDisclosure';
 import { PlayerOverview, PlayerClubs, PlayerRounds } from '../components/PlayerOverview';
 import { playerSummary } from '../services/playerSummary';
 import { UserProfileInformation, UserRelationships, UserRelatedRecords, PublicInformation, RecordFields } from '../components/UserInformation';
 import { UserDevicesCard } from '../components/DeviceVersions';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, RefreshControl, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, RefreshControl, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import { useIsFocused, useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TeamderChatSheet } from '../components/TeamderChatSheet';
 import { isolateText, RTL_LABEL_ALIGN, RTL_VALUE_ALIGN, colors, font, radius  } from '../theme';
@@ -31,6 +34,7 @@ const BUG_STATUS: Record<'new' | 'reviewed' | 'resolved', { label: string; color
 export function UserDetailScreen() {
   const route = useRoute<RouteProp<UsersStackParams, 'UserDetail'>>();
   const nav = useNavigation();
+  const focused = useIsFocused();
   const { snapshot } = useDashboard();
   const { userId } = route.params;
   const [data, setData] = useState<UserActivity | null>(null);
@@ -42,6 +46,26 @@ export function UserDetailScreen() {
   const [copied, setCopied] = useState(false);
   const [messaging, setMessaging] = useState(false);
   const [section, setSection] = useState('overview');
+  const targetGeneration = useRef(0);
+  useEffect(() => { targetGeneration.current++; return () => { targetGeneration.current++; }; }, [userId]);
+  const openUsageTarget = async (row: UsageRow) => {
+    const version = targetGeneration.current;
+    const target = ['PlayerCard', 'PlayerCompare'].includes(row.screen ?? '')
+      ? row.playerId ? { path: `users/${row.playerId}`, tab: 'Users', screen: 'UserDetail', params: { userId: row.playerId } } : null
+      : row.gameId ? { path: `games/${row.gameId}`, tab: 'Games', screen: 'GameDetail', params: { gameId: row.gameId } }
+      : row.groupId ? { path: `groups/${row.groupId}`, tab: 'Clubs', screen: 'ClubDetail', params: { groupId: row.groupId } }
+      : row.playerId ? { path: `users/${row.playerId}`, tab: 'Users', screen: 'UserDetail', params: { userId: row.playerId } } : null;
+    if (!target) { Alert.alert('היעד אינו זמין', 'לא נשמר מזהה מתאים ליעד המקורי של האירוע.'); return; }
+    try {
+      const doc = await getDoc(target.path, ['name']);
+      if (version !== targetGeneration.current) return;
+      if (!doc) { Alert.alert('היעד אינו זמין', 'המסמך כבר אינו קיים. האירוע ההיסטורי נשמר.'); return; }
+      (nav as any).getParent()?.navigate(target.tab, { screen: target.screen, params: target.params });
+    } catch (error) {
+      observeCaughtError(error, { source: 'pulse/src/screens/UserDetailScreen.tsx', handler: 'openUsageTarget', site: 'usage:target' });
+      if (version === targetGeneration.current) Alert.alert('היעד אינו זמין', 'לא ניתן לפתוח את היעד בהרשאה הנוכחית. אפשר לנסות שוב.');
+    }
+  };
   const scrollRef=useRef<ScrollView>(null);
   const clubsRef=useRef<View>(null);
   const [focusClubs,setFocusClubs]=useState(false);
@@ -261,6 +285,7 @@ export function UserDetailScreen() {
 
 
         <Panel key={`activity:${userId}`} active={section === 'history'}>
+        <UserUsageTimeline key={`usage:${userId}`} userId={userId} active={focused && section === 'history'} onTarget={row => void openUsageTarget(row)}/>
         {loading?<ActivityIndicator color={colors.primary}/>:loadFailed?<Pressable onPress={()=>setRetry(n=>n+1)}><Text style={styles.empty}>טעינת הפעילות נכשלה. לחצו לניסיון חוזר.</Text></Pressable>:data?<PlayerHistory data={data} onError={id=>(nav as any).getParent()?.navigate('DevInbox',{screen:'ErrorDetail',params:{id,collection:'errors'}})}/>:null}
         {qa || data?.related?.reports.length ? <Disclosure title="דיווחים ששלח המשתמש">{data?.related?.reports.length ? data.related.reports.map(report=><Pressable key={report.id} onPress={()=>(nav as any).getParent()?.navigate('DevInbox',{screen:'ErrorDetail',params:{id:report.id,collection:'feedback'}})}><Card><Text style={font.body}>{report.message || 'דיווח ללא טקסט'}</Text><Text style={font.small}>{report.status} · {report.screen} · {timeAgo(report.at)}</Text><Text style={{...font.body,color:colors.primary}}>פתיחת הדיווח והצילום</Text></Card></Pressable>) : <Text style={font.small}>לא נטענו דיווחים להצגה</Text>}</Disclosure> : null}
         <Disclosure title="התראות למשתמש"><UserRelatedRecords userId={userId} source="notifications"/></Disclosure>

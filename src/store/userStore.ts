@@ -14,7 +14,7 @@ import { useChatStore } from '@/store/chatStore';
 import { onSnapshot } from 'firebase/firestore';
 import { docs } from '@/firebase/firestore';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
-import { StaleSessionError } from '@/services/staleSession';
+import { isStaleSession, StaleSessionError } from '@/services/staleSession';
 import { subscribeUserSession, suspendUserSessionListeners } from '@/services/userSessionListeners';
 
 interface UserStore {
@@ -63,6 +63,7 @@ interface UserStore {
   deleteOwnAccount: (password?: string) => Promise<void>;
   updateProfile: (
     patch: Partial<Pick<User, 'name' | 'avatarId' | 'photoUrl' | 'position'>>,
+    expectedUid?: string,
   ) => Promise<void>;
   /** Live listener on /users/{uid} → keeps currentUser fresh with every
    *  server-derived change (stats.goals/assists/wins, internal rating,
@@ -322,17 +323,30 @@ export const useUserStore = create<UserStore>((set, get) => ({
   },
 
   refreshFromSession: async (expectedUid) => {
+    const owner = USE_MOCK_DATA ? undefined : getFirebase().auth.currentUser;
+    const ownerId = expectedUid ?? owner?.uid;
+    const check = () => {
+      if (!USE_MOCK_DATA && (getFirebase().auth.currentUser !== owner || owner?.uid !== ownerId)) {
+        throw new StaleSessionError(ownerId ?? '', getFirebase().auth.currentUser?.uid ?? '');
+      }
+    };
     try {
-      const user = await userService.getCurrentUser();
-      if (!user || user.isGuest === true || (expectedUid && user.id !== expectedUid)) {
+      check();
+      const prior = get().currentUser;
+      const user = await userService.getCurrentUser({ requireServer: !!prior && !prior.isGuest && prior.id === ownerId });
+      check();
+      if (!user || user.isGuest === true || (ownerId && user.id !== ownerId)) {
         throw new Error('Authenticated profile is not available for the expected account');
       }
       set({ currentUser: user, guestInitFailed: false, profileRestoreFailed: false });
     } catch (err) {
+      check();
+      if (isStaleSession(err)) throw err;
     observeCaughtError(err, {"source":"src/store/userStore.ts","handler":"refreshFromSession","site":"userStore:752a48d487"});
       // Provider authentication succeeded, but profile restore did not. Stop
       // the pending action and let the root retry without manufacturing a guest.
-      set({ currentUser: null, guestInitFailed: false, profileRestoreFailed: true });
+      const known = get().currentUser;
+      set({ currentUser: known && known.id === ownerId && !known.isGuest ? known : null, guestInitFailed: false, profileRestoreFailed: true });
       logError('refreshFromSession', err, {});
       if (__DEV__) console.warn('[userStore] refreshFromSession failed', err);
       throw err;
@@ -453,11 +467,19 @@ export const useUserStore = create<UserStore>((set, get) => ({
     ), reportError);
   },
 
-  updateProfile: async (patch) => {
+  updateProfile: async (patch, expectedUid) => {
     const prev = get().currentUser;
+    if (!prev || (expectedUid && prev.id !== expectedUid)) throw new StaleSessionError(expectedUid ?? '', prev?.id ?? '');
     const wasComplete = !!prev && prev.name.trim().length > 0;
-    const next = await userService.updateProfile(patch);
-    set({ currentUser: next });
+    const next = await userService.updateProfile(patch, prev.id);
+    const latest = get().currentUser;
+    if (!latest || latest.id !== prev.id || next.id !== prev.id ||
+        (!USE_MOCK_DATA && getFirebase().auth.currentUser?.uid !== prev.id)) {
+      throw new StaleSessionError(prev.id, latest?.id ?? '');
+    }
+    // Keep newer unrelated fields delivered by the profile listener.
+    const fields = Object.fromEntries((Object.keys(patch) as Array<keyof typeof patch>).map(key => [key, next[key]]));
+    set({ currentUser: { ...latest, ...fields } });
     // First time the profile transitions from "incomplete" → "has name".
     if (!wasComplete && next.name.trim().length > 0) {
       logEvent(AnalyticsEvent.ProfileCreated);

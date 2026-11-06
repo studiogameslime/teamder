@@ -1,0 +1,79 @@
+(node:21544) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/User/Documents/Codex/Teamder/src/services/enqueueGameJoin.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to C:\Users\User\Documents\Codex\Teamder\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ retrying a queued tap from a second device keeps its original place behind no later rival (6646.9448ms)
+[2026-11-04T21:34:26.816Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x45c305ea error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1626:26 for 'create' @ L1626, false for 'update' @ L1643, false for 'update' @ L1643
+✖ simultaneous devices and a redelivered event create one registration, and leaving permits a fresh request (154.0111ms)
+[createNotificationOnce] wrote {
+  type: 'approved',
+  recipientId: 'mw2mwti2-member-first-filler',
+  id: 'approved:mw2mwti2-member-first-filler:game:mw2mwti2-member-first:approved__b498285',
+  entityId: 'mw2mwti2-member-first',
+  reason: 'approved'
+}
+✔ one place shared by member registration and manager approval: member-first (321.1452ms)
+[createNotificationOnce] wrote {
+  type: 'approved',
+  recipientId: 'mw2mwti2-filler-first-filler',
+  id: 'approved:mw2mwti2-filler-first-filler:game:mw2mwti2-filler-first:approved__b498285',
+  entityId: 'mw2mwti2-filler-first',
+  reason: 'approved'
+}
+✔ one place shared by member registration and manager approval: filler-first (323.8886ms)
+[createNotificationOnce] wrote {
+  type: 'approved',
+  recipientId: 'mw2mwti2-simultaneous-filler',
+  id: 'approved:mw2mwti2-simultaneous-filler:game:mw2mwti2-simultaneous:approved__b498285',
+  entityId: 'mw2mwti2-simultaneous',
+  reason: 'approved'
+}
+✔ one place shared by member registration and manager approval: simultaneous (3225.4604ms)
+[createNotificationOnce] wrote {
+  type: 'approved',
+  recipientId: 'mw2mwti2-reserved-filler',
+  id: 'approved:mw2mwti2-reserved-filler:game:mw2mwti2-reserved:approved__b498285',
+  entityId: 'mw2mwti2-reserved',
+  reason: 'approved'
+}
+✔ an active guest and an outstanding promotion reserve seats across both registration paths (3590.1277ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 4
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15538.7528
+
+✖ failing tests:
+
+test at functions\registrationContention.emulator.test.mjs:44:1
+✖ retrying a queued tap from a second device keeps its original place behind no later rival (6646.9448ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 1793828065851
+  - 1793828065771
+              ^
+  
+      at TestContext.<anonymous> (file:///C:/Users/User/Documents/Codex/Teamder/functions/registrationContention.emulator.test.mjs:54:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async Test.run (node:internal/test_runner/test:1054:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1793828065851,
+    expected: 1793828065771,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at functions\registrationContention.emulator.test.mjs:62:1
+✖ simultaneous devices and a redelivered event create one registration, and leaving permits a fresh request (154.0111ms)
+  [Error [FirebaseError]: 7 PERMISSION_DENIED: 
+  evaluation error at L1626:26 for 'create' @ L1626, false for 'update' @ L1643, false for 'update' @ L1643] {
+    code: 'permission-denied',
+    customData: undefined
+  }

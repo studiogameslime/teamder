@@ -1,5 +1,5 @@
 import { observeCaughtError } from '../utils/errorObservation';
-// requestsService — aggregates the three kinds of incoming ACTIONABLE requests
+// Aggregates actionable friend, club, round and outside-player requests
 // into one "Requests" inbox: friend requests, community-join requests (for
 // communities I admin), and game-join requests (for games I created). Powers
 // the header bell badge + the unified Requests screen, plus bulk "approve all".
@@ -12,6 +12,7 @@ import { friendsService, type FriendRequestWithUser } from './friendsService';
 import { groupService } from './groupService';
 import { gameService } from './gameService';
 import { userService } from './userService';
+import { acceptsFillerApplications, actionableFillerIds, pendingFillerIds } from './fillerReview';
 import type { Game, Group, User, UserId } from '@/types';
 
 export interface CommunityRequests {
@@ -21,29 +22,52 @@ export interface CommunityRequests {
 export interface GameRequests {
   game: Game;
   pending: User[];
+  fillers?: User[];
 }
 export interface InboxRequests {
   friends: FriendRequestWithUser[];
   communities: CommunityRequests[];
   games: GameRequests[];
   total: number;
+  partial?: boolean;
 }
 
-/** Groups the user ADMINS that have at least one pending join request. */
-async function myAdminGroupsWithPending(userId: UserId): Promise<Group[]> {
+async function myAdminGroups(userId: UserId): Promise<Group[]> {
   const groups = await groupService.listForUser(userId, { includeAdminRatings: false });
-  return groups.filter(
-    (g) => (g.adminIds ?? []).includes(userId) && (g.pendingPlayerIds ?? []).length > 0,
-  );
+  return groups.filter(g => (g.adminIds ?? []).includes(userId));
 }
 
-/** Games the user CREATED that have at least one pending join request. */
-async function myGamesWithPending(userId: UserId): Promise<Game[]> {
-  const games = await gameService
-    .getMyLiveOrUpcomingGames(userId);
-  return games.filter(
-    (g) => g.createdBy === userId && (g.pending ?? []).length > 0,
-  );
+async function inboxSources(userId: UserId) {
+  const [friends, adminGroups, mine] = await Promise.all([
+    friendsService.listIncomingRequests(userId), myAdminGroups(userId), gameService.getMyLiveOrUpcomingGames(userId),
+  ]);
+  const clubs = new Set(adminGroups.map(g => g.id));
+  const rounds = new Map(mine.filter(g => g.createdBy === userId).map(g => [g.id, g]));
+  const failures: unknown[] = [];
+  const upcoming = await Promise.all(adminGroups.map(async g => {
+    try { return await gameService.getUpcomingGamesForGroup(g.id, true); }
+    catch (error) {
+      observeCaughtError(error, { source: 'src/services/requestsService.ts', handler: 'inboxSources', site: 'inbox:managed-rounds' });
+      failures.push(error);
+      return null;
+    }
+  }));
+  for (const list of upcoming) {
+    if (list) for (const game of list) rounds.set(game.id, game);
+  }
+  const games = await Promise.all([...rounds.values()].map(async game => {
+    const pending = game.createdBy === userId ? game.pending ?? [] : [];
+    let fillerIds: string[] = [];
+    if (acceptsFillerApplications(game)) {
+      try { fillerIds = actionableFillerIds(game, await pendingFillerIds(game.id, clubs.has(game.groupId))); }
+      catch (error) {
+        observeCaughtError(error, { source: 'src/services/requestsService.ts', handler: 'inboxSources', site: 'inbox:filler-interests' });
+        failures.push(error);
+      }
+    }
+    return { game, pending, fillerIds };
+  }));
+  return { friends, groups: adminGroups.filter(g => g.pendingPlayerIds?.length), games: games.filter(g => g.pending.length || g.fillerIds.length), failures };
 }
 
 // Resolve a set of uids to User objects, in parallel, dropping any that fail.
@@ -58,13 +82,10 @@ async function resolveUsers(uids: UserId[]): Promise<User[]> {
 /** Cheap count for the header badge — no user-name resolution. */
 export async function getInboxCount(userId: UserId): Promise<number> {
   if (!userId) return 0;
-  const [friends, groups, games] = await Promise.all([
-    friendsService.listIncomingRequests(userId),
-    myAdminGroupsWithPending(userId),
-    myGamesWithPending(userId),
-  ]);
+  const { friends, groups, games, failures } = await inboxSources(userId);
+  if (failures.length) throw failures[0];
   const groupPending = groups.reduce((s, g) => s + (g.pendingPlayerIds?.length ?? 0), 0);
-  const gamePending = games.reduce((s, g) => s + (g.pending?.length ?? 0), 0);
+  const gamePending = games.reduce((s, g) => s + g.pending.length + g.fillerIds.length, 0);
   return friends.length + groupPending + gamePending;
 }
 
@@ -72,11 +93,7 @@ export async function getInboxCount(userId: UserId): Promise<number> {
 export async function getInboxRequests(userId: UserId): Promise<InboxRequests> {
   const empty: InboxRequests = { friends: [], communities: [], games: [], total: 0 };
   if (!userId) return empty;
-  const [friends, groups, games] = await Promise.all([
-    friendsService.listIncomingRequests(userId),
-    myAdminGroupsWithPending(userId),
-    myGamesWithPending(userId),
-  ]);
+  const { friends, groups, games, failures } = await inboxSources(userId);
   const communities = await Promise.all(
     groups.map(async (group) => ({
       group,
@@ -84,16 +101,16 @@ export async function getInboxRequests(userId: UserId): Promise<InboxRequests> {
     })),
   );
   const gameReqs = await Promise.all(
-    games.map(async (game) => ({
-      game,
-      pending: await resolveUsers(game.pending ?? []),
-    })),
+    games.map(async ({ game, pending, fillerIds }) => {
+      const [members, fillers] = await Promise.all([resolveUsers(pending), resolveUsers(fillerIds)]);
+      return { game, pending: members, fillers };
+    }),
   );
   const total =
     friends.length +
     communities.reduce((s, c) => s + c.pending.length, 0) +
-    gameReqs.reduce((s, g) => s + g.pending.length, 0);
-  return { friends, communities, games: gameReqs, total };
+    gameReqs.reduce((s, g) => s + g.pending.length + g.fillers.length, 0);
+  return { friends, communities, games: gameReqs, total, partial: failures.length > 0 };
 }
 
 export interface BulkResult {

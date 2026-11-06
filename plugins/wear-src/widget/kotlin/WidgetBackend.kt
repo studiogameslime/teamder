@@ -42,12 +42,14 @@ class FirebaseWidgetBackend : WidgetBackend {
             val at = now()
             val fields = WidgetTimerModel.mutate(game, uid, round, action, at, command)?.toMutableMap()
             if (fields != null) {
-                fields["timerControlledByName"] = name
-                @Suppress("UNCHECKED_CAST")
-                fields["timerEvents"] = (fields["timerEvents"] as? List<*>)?.map { value ->
-                    val event = value as? Map<String, Any?> ?: return@map value
-                    if (event["at"] == at && !event.containsKey("byName")) event + ("byName" to name) else event
-                } ?: emptyList<Any>()
+                if ("timerControlledBy" in fields) {
+                    fields["timerControlledByName"] = name
+                    @Suppress("UNCHECKED_CAST")
+                    fields["timerEvents"] = (fields["timerEvents"] as? List<*>)?.map { value ->
+                        val event = value as? Map<String, Any?> ?: return@map value
+                        if (event["at"] == at && !event.containsKey("byName")) event + ("byName" to name) else event
+                    } ?: emptyList<Any>()
+                }
                 tx.update(ref, fields.mapKeys { "liveMatch.${it.key}" } + ("updatedAt" to at))
             }
             val oldLive = game?.get("liveMatch") as? Map<*, *> ?: emptyMap<Any, Any>()

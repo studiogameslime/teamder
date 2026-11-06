@@ -263,7 +263,7 @@ export function AvailabilityEditScreen() {
     radiusKm !== initialRadius ||
     notify !== (initial.acceptsFillerPush !== false) ||
     locationEnabled !== initialLocationEnabled;
-  const savingRef = useUnsavedChangesGuard({ isDirty, onSave: () => save() });
+  const savingRef = useUnsavedChangesGuard({ isDirty, onSave: () => save(), body: 'שינית את הזמינות שלך ולא שמרת. לשמור עכשיו?' });
 
   useEffect(() => {
     let cancelled = false;
@@ -678,7 +678,7 @@ export function AvailabilityEditScreen() {
             onPress={() => setSearchOpen(true)}
             style={({ pressed }) => [styles.areaBtn, pressed && { opacity: 0.85 }]}
           >
-            <Text style={styles.areaBtnText} numberOfLines={1}>
+            <Text style={styles.areaBtnText}>
               {he.availabilitySearchCity}
             </Text>
             <Ionicons name="search" size={16} color={ACCENT} />
@@ -688,7 +688,7 @@ export function AvailabilityEditScreen() {
             disabled={gpsBusy}
             style={({ pressed }) => [styles.areaBtn, pressed && { opacity: 0.85 }]}
           >
-            <Text style={styles.areaBtnText} numberOfLines={1}>
+            <Text style={styles.areaBtnText}>
               {he.availabilityUseCurrent}
             </Text>
             {gpsBusy ? (
@@ -927,7 +927,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  areaBtnText: { fontSize: 13, fontWeight: '700', color: ACCENT, flexShrink: 1 },
+  areaBtnText: { fontSize: 13, fontWeight: '700', color: ACCENT, textAlign: 'center', flexShrink: 1 },
   areaCityLabel: {
     fontSize: 13,
     fontWeight: '700',
@@ -951,14 +951,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.text,
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
   areaWarnHint: {
     fontSize: 12.5,
     lineHeight: 18,
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
 
   // Day chips — 7 equal cells in one row
@@ -1015,7 +1013,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   gridDayWeekend: { color: '#7C3AED' },
   gridCell: {
@@ -1031,6 +1029,7 @@ const styles = StyleSheet.create({
   gridCellOn: { backgroundColor: colors.success, borderColor: colors.success },
   gridLegend: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'center',
     gap: spacing.lg,
     marginTop: spacing.sm,
@@ -1172,8 +1171,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    height: 56,
+    minHeight: 56,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: radius.pill,
   },
-  saveText: { fontSize: 17, fontWeight: '800', color: '#fff' },
+  saveText: { flexShrink: 1, fontSize: 17, fontWeight: '800', color: '#fff', textAlign: 'center' },
 });

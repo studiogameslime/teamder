@@ -16,6 +16,25 @@ async function goal(w:World,team:'A'|'B',scorerId:string|null,assisterId?:string
 async function finish(w:World){await w.service.endEvening('audit');await w.finishStages();}
 const rows=(w:World,prefix:string)=>[...w.documents.entries()].filter(([p])=>p.startsWith(prefix)).map(([,v])=>v);
 
+test.each([[19,9,20],[9,3,10],[24,9,25]])('with %i played evenings and %i seals, the next summary uses lifetime position %i',async(before,seals,ordinal)=>{
+ const w=liveTeamsEndToEndWorld(), at=1000;
+ w.state().startsAt=at;
+ for(let i=0;i<before;i++) w.documents.set('games/old'+i,{groupId:'club',status:'finished',startsAt:at-i-1,seasonId:'past'});
+ for(const [id,data] of Object.entries({
+   cancelled:{status:'cancelled'}, rejected:{playVerified:false}, unverified:{endedBy:'auto'},
+   later:{startsAt:at+100}, otherClub:{groupId:'elsewhere'}, sameTimeLater:{startsAt:at},
+ })) w.documents.set('games/'+id,{groupId:'club',status:'finished',startsAt:at-5,...data});
+ w.documents.set('clubRecords/club',{eveningsSealed:seals});
+ await finish(w);
+ const summary=w.documents.get('roundSummaries/audit');
+ expect(summary.clubEveningOrdinal).toBe(ordinal);
+ expect(summary.correctionBasis.club.evenings).toBe(ordinal);
+ expect(summary.basis.eveningsCompared).toBe(seals);
+ expect(w.documents.get('clubRecords/club').eveningsSealed).toBe(seals+1);
+ expect(summary.events.filter((e:any)=>e.type==='club_milestone'&&e.metric==='evenings').map((e:any)=>e.threshold))
+   .toEqual(ordinal===20?[]:[ordinal]);
+});
+
 test.each([3,4,5,6,7,8,9,10,11])('%s-a-side: saved first game, discarded second, replacement and full evening summaries agree',async size=>{
  const w=liveTeamsEndToEndWorld(size);await next(w);const first=structuredClone(w.history()[0]);
  const discarded=roundCommitKey(w.read().rotation!);
@@ -142,6 +161,16 @@ test('a drawn replacement saved with both-out is one draw in history, summaries,
  expect(w.history()).toHaveLength(1);expect(w.history()[0].winnerSide).toBe('tie');
  expect(w.documents.get('communityStats/club')).toMatchObject({rounds:1,tiedRounds:1});
  expect((await w.summaryService.getEveningSummary('audit','t2-p0'))).toMatchObject({rounds:1,wins:0,losses:0,winRate:0,outcomes:['draw']});
+ expect(w.documents.get('roundSummaries/audit').stats).toMatchObject({rounds:1,ties:1,goals:0});
+});
+
+test('the final played game can remain tied when ending the evening without rotating teams',async()=>{
+ const w=liveTeamsEndToEndWorld();await replace(w);w.state().liveMatch.timerAccumulatedMs=10000;
+ await finish(w);await finish(w);
+ expect(w.history()).toHaveLength(1);expect(w.history()[0].winnerSide).toBe('tie');
+ expect(w.state().status).toBe('finished');
+ expect(w.documents.get('communityStats/club')).toMatchObject({rounds:1,tiedRounds:1});
+ expect(await w.summaryService.getEveningSummary('audit','t2-p0')).toMatchObject({rounds:1,wins:0,losses:0,winRate:0,outcomes:['draw']});
  expect(w.documents.get('roundSummaries/audit').stats).toMatchObject({rounds:1,ties:1,goals:0});
 });
 

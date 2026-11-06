@@ -520,5 +520,11 @@
     "domain": "chat",
     "simple": "chat/message-requests.simple.md",
     "technical": "chat/message-requests.md"
+  },
+  {
+    "title": "ביקורים ופעילות משתמשים בפולס",
+    "domain": "shared",
+    "simple": "shared/usage-activity.simple.md",
+    "technical": "shared/usage-activity.md"
   }
 ]

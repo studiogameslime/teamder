@@ -1,6 +1,7 @@
 import { observeCaughtError } from '../utils/errorObservation';
 import { readPlayerIdentities } from './publicPlayerService';
 import { StaleSessionError } from './staleSession';
+import { retryRead, isTransientReadError } from './readRetry';
 import { mockCurrentUser } from '@/data/mockUsers';
 // friendsService — mutual friendships + friend requests.
 //
@@ -317,18 +318,19 @@ export const friendsService = {
     // card and tapping created a duplicate reverse request.
     const readReq = async (id: string) => {
       try {
-        return await getDoc(docs.friendRequest(id));
-      } catch (e) {
-        const code = (e as { code?: string })?.code;
-        if (code !== 'permission-denied') {
-          observeCaughtError(e, {"source":"src/services/friendsService.ts","handler":"readReq","site":"friendsService:067c18b928"});
-          logError('getFriendRelationship', e, { uid, otherId });
-          throw e;
-        }
-        if (__DEV__) {
-          console.warn('[friends] getRelationship request read failed', e);
-        }
-        return null;
+        return await retryRead(async () => {
+          try { return await getDoc(docs.friendRequest(id)); }
+          catch (error) {
+            // A missing request is denied by the legacy rule, not a failed read.
+            if ((error as { code?: string })?.code === 'permission-denied') return null;
+            if (!isTransientReadError(error)) observeCaughtError(error, {source:'src/services/friendsService.ts',handler:'readReq',site:'friendsService:067c18b928'});
+            throw error;
+          }
+        }, () => assertFriendOwner(uid));
+      } catch (error) {
+        observeCaughtError(error, {source:'src/services/friendsService.ts',handler:'readReq',site:'friendsService:067c18b928'});
+        logError('getFriendRelationship', error, { uid, otherId });
+        throw error;
       }
     };
     const outSnap = await readReq(friendRequestId(uid, otherId));

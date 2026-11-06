@@ -1,3 +1,4 @@
+import { readSharedCalibration } from '@/utils/sharedEveningScore';
 // Typed wrappers around the six Firestore collections plus FirestoreDataConverters.
 //
 // Schema:
@@ -1009,6 +1010,10 @@ export function readLiveMatch(v: unknown): LiveMatchState | undefined {
     timerAccumulatedMs:
       typeof o.timerAccumulatedMs === 'number' ? o.timerAccumulatedMs : undefined,
     lastWidgetCommandId: typeof o.lastWidgetCommandId === 'string' ? o.lastWidgetCommandId : undefined,
+    widgetCommandReceipts: o.widgetCommandReceipts && typeof o.widgetCommandReceipts === 'object' && !Array.isArray(o.widgetCommandReceipts)
+      ? Object.fromEntries(Object.entries(o.widgetCommandReceipts).filter(([id,at]) =>
+          id.length > 0 && id.length <= 128 && typeof at === 'number' && Number.isFinite(at))) as Record<string, number>
+      : undefined,
     timerControlledBy:
       typeof o.timerControlledBy === 'string' ? o.timerControlledBy : undefined,
     timerControlledByName:
@@ -1580,9 +1585,11 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
         ? rawStatus
         : 'open';
     const format = readGameFormat(d.format);
+    if(d.scoreCalibration !== undefined && !readSharedCalibration(d.scoreCalibration))throw new Error('SCORE_CALIBRATION_INVALID');
     return {
       id: snap.id,
       groupId: d.groupId,
+      ...(d.scoreCalibration && readSharedCalibration(d.scoreCalibration) ? {scoreCalibration:readSharedCalibration(d.scoreCalibration)!} : {}),
       title: d.title ?? '',
       startsAt: d.startsAt ?? Date.now(),
       fieldName: d.fieldName ?? '',

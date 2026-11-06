@@ -1,6 +1,6 @@
 import { observeCaughtError } from '../../utils/errorObservation';
 // One cabinet for frozen season awards and tiered personal milestones.
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
@@ -10,6 +10,7 @@ import { SeasonTitlesShelf } from '@/components/profile/SeasonTitlesShelf';
 import { AchievementTile, AchievementDetail } from '@/components/profile/AchievementCabinetCards';
 import { AchievementCelebration } from '@/components/AchievementCelebration';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { AchievementsSkeleton } from '@/components/loading/CentralSkeletons';
 import { achievementsService, type NewlyUnlocked } from '@/services/achievementsService';
 import { seasonTitlesService, type HeldSeasonTitle } from '@/services/seasonTitlesService';
 import { userService } from '@/services';
@@ -27,6 +28,17 @@ export function AchievementsScreen() {
   const [titleState, setTitleState] = useState<{ owner: string; items: HeldSeasonTitle[] | null; failed: boolean } | null>(null);
   const localUser = useUserStore((s) => s.currentUser);
   const groups = useGroupStore((s) => s.groups);
+  // Only membership, founder and coached-player identities affect these
+  // metrics. New names, photos or equivalent array references do not.
+  const groupsScope = useMemo(() => JSON.stringify(groups.map(group => [
+    group.id, group.creatorId ?? group.adminIds?.[0] ?? null,
+    [...new Set(group.adminIds ?? [])].sort(), [...new Set(group.playerIds ?? [])].sort(),
+  ]).sort((a, b) => String(a[0]).localeCompare(String(b[0])))), [groups]);
+  const owner = JSON.stringify([localUser?.id, localUser?.isGuest === true]);
+  const deriveScope = JSON.stringify([owner, groupsScope, localUser?.friends?.length,
+    localUser?.stats?.goals, localUser?.stats?.assists, localUser?.stats?.cleanSheets]);
+  const currentDeriveScope = useRef(deriveScope);
+  currentDeriveScope.current = deriveScope;
   const [user, setUser] = useState<User | null>(localUser);
   const [loading, setLoading] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -35,6 +47,7 @@ export function AchievementsScreen() {
   // counters for the unlock check. The persisted unlocked-id list
   // still wins, so a badge already earned stays earned.
   const [counters, setCounters] = useState<UserAchievementState | null>(null);
+  const [countersOwner, setCountersOwner] = useState<string | null>(null);
   // Set if deriveCounters fails — then we fall back to the stored counters
   // instead of waiting forever on the loader.
   const [deriveFailed, setDeriveFailed] = useState(false);
@@ -91,6 +104,11 @@ export function AchievementsScreen() {
   useEffect(() => {
     if (!localUser) return;
     let alive = true;
+    const isCurrent = () => {
+      const account = useUserStore.getState().currentUser;
+      return alive && currentDeriveScope.current === deriveScope && account?.id === localUser.id &&
+        (account.isGuest === true) === (localUser.isGuest === true);
+    };
     setDeriveFailed(false);
     achievementsService
       .deriveCounters(localUser.id, {
@@ -101,7 +119,8 @@ export function AchievementsScreen() {
         cleanSheets: localUser.stats?.cleanSheets ?? 0,
       })
       .then(async (c) => {
-        if (!alive) return;
+        if (!isCurrent()) return;
+        setCountersOwner(owner);
         setCounters(c);
         // Reconcile the persisted unlocked list with the new truth and
         // celebrate any tiers that were just crossed.
@@ -109,24 +128,24 @@ export function AchievementsScreen() {
           localUser.id,
           c,
         );
-        if (alive && fresh.length) setCelebrate(fresh);
+        if (isCurrent() && fresh.length) setCelebrate(fresh);
       })
       .catch((caughtError7579262712: unknown) => {
+        if (!isCurrent()) return;
     observeCaughtError(caughtError7579262712, {"source":"src/screens/profile/AchievementsScreen.tsx","handler":"AchievementsScreen","site":"AchievementsScreen:7579262712"});
         // Derivation failed → fall back to the stored counters via
         // achievementsService.list as a last resort (flag so the loader
         // doesn't spin forever).
-        if (alive) setDeriveFailed(true);
+        setCountersOwner(owner); setDeriveFailed(true);
       });
     return () => {
       alive = false;
     };
-    // groups is included so adding/leaving a community refreshes the
-    // teams* metrics on the next render.
-  }, [localUser?.id, groups, reloadTick, localUser?.friends?.length, localUser?.stats?.goals, localUser?.stats?.assists, localUser?.stats?.cleanSheets]);
+    // Actual membership/admin/founder changes still refresh the metrics.
+  }, [deriveScope, reloadTick]);
 
   const titles = titleState?.owner === localUser?.id ? titleState : null;
-  const ready = !!counters || deriveFailed;
+  const ready = countersOwner === owner && (!!counters || deriveFailed);
   const items = user && user.id === localUser?.id && ready
     ? counters ? achievementsService.listFromCounters(user, counters) : achievementsService.list(user)
     : [];
@@ -155,16 +174,16 @@ export function AchievementsScreen() {
       </View>
       {tab === 'season' ? <>
         {titles?.failed ? <View style={styles.notice}><Text style={styles.note}>טעינת תארי העונה לא הצליחה.</Text><Button title={he.retry} variant="outline" onPress={() => setTitleAttempt(value => value + 1)} /></View>
-          : titles?.items ? <SeasonTitlesShelf key={localUser.id} titles={titles.items} /> : <View style={styles.wait}><SoccerBallLoader size={30} /></View>}
+          : titles?.items ? <SeasonTitlesShelf key={localUser.id} titles={titles.items} /> : <AchievementsSkeleton kind="season" />}
       </> : <>
         <View style={{ gap: 2 }}><Text style={styles.sectionTitle}>ההישגים האישיים</Text><Text style={styles.note}>{ready ? `${unlockedCount} מתוך ${items.length} סוגים נפתחו · ${goldCount} בדרגת זהב` : 'טוענים את ההישגים שלך…'}</Text></View>
         {deriveFailed ? <View style={styles.notice}><Text style={styles.note}>העדכון לא הצליח. ההישגים השמורים שלך מוצגים כאן.</Text><Button title={he.retry} variant="outline" onPress={() => setReloadTick(value => value + 1)} /></View> : null}
-        {ready ? <View style={styles.grid}>{ordered.map(item => <AchievementTile key={item.def.id} item={item} unavailable={deriveFailed} onPress={() => setActiveId(item.def.id)} />)}</View> : <View style={styles.wait}><SoccerBallLoader size={30} /></View>}
+        {ready ? <View style={styles.grid}>{ordered.map(item => <AchievementTile key={item.def.id} item={item} unavailable={deriveFailed} onPress={() => setActiveId(item.def.id)} />)}</View> : <AchievementsSkeleton kind="personal" />}
         {loading ? <SoccerBallLoader size={18} /> : null}
       </>}
     </ScrollView>
     <AchievementDetail item={active} unavailable={deriveFailed} onClose={() => setActiveId(null)} />
-    {celebrate.length ? <AchievementCelebration items={celebrate} onDone={() => setCelebrate([])} /> : null}
+    {countersOwner === owner && celebrate.length ? <AchievementCelebration items={celebrate} onDone={() => setCelebrate([])} /> : null}
   </SafeAreaView>;
 }
 const styles = StyleSheet.create({

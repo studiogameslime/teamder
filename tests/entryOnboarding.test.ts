@@ -332,11 +332,11 @@ describe('the launch artwork', () => {
 
   it('never finishes before the screen does, even on a warm boot', () => {
     const splash = read(path.join('src', 'screens', 'SplashScreen.tsx'));
-    // The screen holds for MIN_HOLD_MS regardless of how fast boot is. A bar
-    // that completed in 260ms would then sit full and idle — the exact
-    // "fills and waits" this rework exists to remove.
-    expect(splash).toContain('Math.max(MIN_HOLD_MS, v ?? DEFAULT_BOOT_MS)');
-    expect(splash).toContain('MIN_HOLD_MS - (Date.now() - mountTsRef.current)');
+    // The selected hold follows the same welcome decision as dismissal.
+    // The bar still completes against that hold, including the shorter
+    // returning-user path; storage is read once rather than on gate changes.
+    expect(splash).toContain('Math.max(minHoldMs, expectedMs)');
+    expect(splash).toContain('minHoldMs - (Date.now() - mountTsRef.current)');
     expect(splash).toContain('duration: Math.max(240, finishMs)');
   });
 

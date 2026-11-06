@@ -51,6 +51,30 @@ fun main() {
         val newer = g + ("liveMatch" to (live(g) + reset + mapOf("scoreA" to 1L, "goals" to listOf(mapOf("scorerId" to "p1")))))
         check(WidgetTimerModel.mutate(newer, "owner", "plain:1", "reset", 3000L, "command") == null)
     }
+    test("replaying reset after a phone start preserves the goal recorded since reset") {
+        val g = game()
+        val reset = WidgetTimerModel.mutate(g, "owner", "plain:1", "reset", 2000L, "watch-a")!!
+        val resetGame = g + ("liveMatch" to (live(g) + reset))
+        val start = WidgetTimerModel.mutate(resetGame, "owner", "plain:1", "start", 3000L, "phone-b")!!
+        val later = resetGame + ("liveMatch" to (live(resetGame) + start + mapOf("scoreA" to 1L, "goals" to listOf(mapOf("scorerId" to "p1")))))
+        check(WidgetTimerModel.mutate(later, "owner", "plain:1", "reset", 4000L, "watch-a") == null)
+    }
+    test("an acknowledged no-op cannot execute after the timer changes") {
+        val g = game()
+        val noop = WidgetTimerModel.mutate(g, "owner", "plain:1", "pause", 1000L, "watch-noop")!!
+        check(noop.keys == setOf("lastWidgetCommandId", "widgetCommandReceipts"))
+        val acknowledged = g + ("liveMatch" to (live(g) + noop))
+        val start = WidgetTimerModel.mutate(acknowledged, "owner", "plain:1", "start", 2000L, "phone-start")!!
+        val running = acknowledged + ("liveMatch" to (live(acknowledged) + start))
+        check(WidgetTimerModel.mutate(running, "owner", "plain:1", "pause", 3000L, "watch-noop") == null)
+    }
+    test("a receipt from a legacy client survives a following command and stale receipts expire") {
+        val g = game()
+        val later = g + ("liveMatch" to (live(g) + mapOf("lastWidgetCommandId" to "legacy", "widgetCommandReceipts" to mapOf("old" to 1L))))
+        val start = WidgetTimerModel.mutate(later, "owner", "plain:1", "start", 200_000L, "new")!!
+        val receipts = start["widgetCommandReceipts"] as Map<*, *>
+        check(receipts.keys == setOf("legacy", "new"))
+    }
     test("negative active intervals are never appended") {
         val g = game(mapOf("liveMatch" to (live(game()) + mapOf("timerRunning" to true, "timerLastStartedAt" to 3000L))))
         val result = WidgetTimerModel.mutate(g, "owner", "plain:1", "pause", 2000L)!!

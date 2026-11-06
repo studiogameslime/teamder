@@ -1,16 +1,22 @@
 import { eveningScoreServer, BENCHMARK_FLOOR, DEFAULT_GOALS_FOR_10, DEFAULT_ASSISTS_FOR_10 } from './eveningScoreCore';
+import { readSharedCalibration, sharedEveningScore, sharedInputFromStats, sharedAwardMinimum, type SharedScoreCalibration } from './sharedEveningScore';
 
 type Row = Record<string, any>;
-export interface ScoreCalibration { goalsFor10:number; assistsFor10:number; }
+export type ScoreCalibration = { goalsFor10:number; assistsFor10:number; } | SharedScoreCalibration;
 export interface RetroScoreEntry { userId:string; standing:Row; stats:Row; cumulative:Row; }
 export const scoreNumber=(v:unknown):number=>typeof v==='number'&&Number.isFinite(v)?v:0;
 const tenth=(v:number)=>Math.round(v*10)/10;
 export function scoreWithCalibration(stats:Row,basis:ScoreCalibration):number {
+  const shared=readSharedCalibration(basis);
+  if(shared){const score=sharedEveningScore(sharedInputFromStats(stats),shared.threshold);if(score===null)throw Error('SCORE_INPUT_INVALID');return score;}
+  if(!('goalsFor10' in basis))throw Error('SCORE_CALIBRATION_INVALID');
   return eveningScoreServer(scoreNumber(stats.goals),scoreNumber(stats.assists),scoreNumber(stats.wins),scoreNumber(stats.rounds),basis.goalsFor10,basis.assistsFor10,
     {scored:scoreNumber(stats.penScored),saved:scoreNumber(stats.penSaved),missed:scoreNumber(stats.penMissed),conceded:scoreNumber(stats.penConceded)});
 }
 export function readScoreCalibration(value:unknown):ScoreCalibration|null {
-  const v=value as Partial<ScoreCalibration>|undefined;
+  const shared=readSharedCalibration(value);if(shared)return shared;
+  if((value as Row)?.version)return null;
+  const v=value as Partial<{goalsFor10:number;assistsFor10:number}>|undefined;
   return v && scoreNumber(v.goalsFor10)>0 && scoreNumber(v.assistsFor10)>0
     ? {goalsFor10:v.goalsFor10!,assistsFor10:v.assistsFor10!} : null;
 }
@@ -31,8 +37,11 @@ export function recoverScoreCalibration(entries:RetroScoreEntry[],community:Row,
 /** Replace this evening's contribution by its difference. Never add attendance
  * or re-credit any goal, game, win or penalty here. */
 export function planRetroScores(entries:RetroScoreEntry[],calibration:ScoreCalibration,eveningAt:number,now:number) {
-  const scored=entries.map(e=>({...e,score:scoreWithCalibration(e.stats,calibration)}));
+  const shared=readSharedCalibration(calibration);
+  const scored=entries.filter(e=>!shared||scoreNumber(e.stats.rounds)>0).map(e=>({...e,score:scoreWithCalibration(e.stats,calibration)}));
   const ranked=[...scored].sort((a,b)=>b.score-a.score || a.userId.localeCompare(b.userId));
+  const minimum=sharedAwardMinimum(Math.max(0,...entries.map(e=>scoreNumber(e.stats.rounds))));
+  const awardScore=ranked.find(e=>scoreNumber(e.stats.rounds)>=minimum)?.score;
   return scored.map(e=>{
     if(!Number.isFinite(e.standing.score))throw Error('SCORE_STANDING_MISSING');
     const oldBasis=e.standing.scoreBasis as Row|undefined;
@@ -45,7 +54,8 @@ export function planRetroScores(entries:RetroScoreEntry[],calibration:ScoreCalib
     if(counted && delta!==0)cumulative.eveningScoreSum=tenth(e.cumulative.eveningScoreSum+delta);
     if(e.cumulative.lastEveningAt===eveningAt)cumulative.lastEveningScore=e.score;
     return {userId:e.userId,oldScore:e.standing.score,score:e.score,delta,cumulative,
-      standing:{score:e.score,scoreDelta:previousScore===null?null:tenth(e.score-previousScore),scoreRank:ranked.findIndex(r=>r.userId===e.userId)+1,scoreTotal:entries.length,
+      standing:{score:e.score,scoreDelta:previousScore===null?null:tenth(e.score-previousScore),scoreRank:ranked.findIndex(r=>shared?r.score===e.score:r.userId===e.userId)+1,scoreTotal:scored.length,
+        ...(shared?{scoreAwardEligible:scoreNumber(e.stats.rounds)>=minimum,scoreAwardWinner:scoreNumber(e.stats.rounds)>=minimum&&e.score===awardScore}:{}),
         scoreBasis:{...calibration,previousScore,previousAt:oldBasis?.previousAt??null,counted},scoreCorrectedAt:now}};
   });
 }

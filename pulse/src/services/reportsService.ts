@@ -1,11 +1,10 @@
-import { observeCaughtError } from './errorObservation';
 // reportsService — user-authored bug reports / suggestions from the app's
 // `feedback` collection, INCLUDING the screenshot the user attached (the
 // screenshot-to-report flow writes a base64 `image` field). Read + status +
 // delete, via the same datastore.user service-account token as everything
 // else (bypasses rules).
 
-import { patchDoc, deleteDoc, type FsDoc } from './firestoreRest';
+import { patchDoc, deleteDoc } from './firestoreRest';
 import { screenHe } from './screenNames';
 import { invalidate } from './cache';
 import { rawFeedback } from './errorsService';
@@ -43,7 +42,7 @@ export interface ReportGroup {
 const STATUSES: ReportStatus[] = ['new', 'reviewed', 'done'];
 
 export async function listReports(force = false): Promise<ReportItem[]> {
-  const docs = await rawFeedback(force).catch((caughtError51a8ac2a52: unknown) => { observeCaughtError(caughtError51a8ac2a52, {"source":"pulse/src/services/reportsService.ts","handler":"listReports","site":"reportsService:51a8ac2a52"}); return [] as FsDoc[]; });
+  const docs = await rawFeedback(force);
   return docs
     .map((d): ReportItem => ({
       id: d.id,

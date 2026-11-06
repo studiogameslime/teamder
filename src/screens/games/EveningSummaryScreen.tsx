@@ -22,7 +22,7 @@ import { captureRef } from 'react-native-view-shot';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { EveningSummarySkeleton } from '@/components/loading/CentralSkeletons';
 import { EveningSummaryCard } from '@/components/summary/EveningSummaryCard';
 import { PersonalActivityPanel } from '@/components/summary/PersonalActivityPanel';
 import { EveningScoreInfoSheet } from '@/components/summary/EveningScoreInfoSheet';
@@ -156,9 +156,7 @@ export function EveningSummaryScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenHeader title="הסיכום שלי" />
       {!ownsSummary || loading ? (
-        <View style={styles.center}>
-          <SoccerBallLoader />
-        </View>
+        <ScrollSurface contentContainerStyle={styles.scroll}><EveningSummarySkeleton /></ScrollSurface>
       ) : failed ? (
         <View style={styles.center}>
           <Text style={styles.empty}>לא ניתן לטעון את הסיכום כרגע.</Text>
@@ -194,7 +192,7 @@ export function EveningSummaryScreen() {
           {SPORTS_ACTIVITY_ENABLED && currentUser && !currentUser.isGuest ? <PersonalActivityPanel key={summaryOwner} gameId={gameId} userId={currentUser.id} /> : null}
         </ScrollSurface>
       )}
-      <EveningScoreInfoSheet visible={ownsSummary && scoreInfoVisible} onClose={() => setScoreInfoVisible(false)} />
+      <EveningScoreInfoSheet visible={ownsSummary && scoreInfoVisible} onClose={() => setScoreInfoVisible(false)} shared={ownsSummary && model?.scoreModel === 'shared-v1'} />
     </SafeAreaView>
   );
 }

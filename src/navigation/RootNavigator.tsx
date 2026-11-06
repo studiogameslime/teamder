@@ -18,8 +18,6 @@ import { he } from '@/i18n/he';
 import { SplashVisual } from '@/screens/SplashScreen';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
-import { PostSignInOnboardingScreen } from '@/screens/onboarding/PostSignInOnboardingScreen';
-import { QARouteLauncher } from '@/dev/QARouteLauncher';
 import { AuthStack } from './AuthStack';
 import { MainTabs } from './MainTabs';
 import { EntryStack } from './EntryStack';
@@ -54,6 +52,12 @@ import { useGameStore } from '@/store/gameStore';
 
 // Backward-compat: GameRegistrationScreen imports RootStackParamList from here.
 export type { GameStackParamList as RootStackParamList } from './GameStack';
+
+// The disabled QA launcher used to evaluate its entire preview dependency
+// graph even in production. The same two gates must protect the import too.
+const QARouteLauncher = __DEV__ && process.env.EXPO_PUBLIC_QA_ROUTES === '1'
+  ? (require('@/dev/QARouteLauncher') as typeof import('@/dev/QARouteLauncher')).QARouteLauncher
+  : () => null;
 
 export function RootNavigator() {
   const userHydrated = useUserStore((s) => s.hydrated);
@@ -563,22 +567,24 @@ export function RootNavigator() {
   // After we know who the user is, hydrate their group state and tell
   // gameStore who "self" is (so registerSelf/cancelSelf use the auth uid in
   // Firebase mode rather than the mock-seed uid).
+  const currentUserId = currentUser?.id;
   const setGameCurrentUserId = useGameStore((s) => s.setCurrentUserId);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
   const subscribeGroups = useGroupStore((s) => s.subscribe);
   useEffect(() => {
-    if (currentUser) {
-      hydrateGroup(currentUser.id);
-      setGameCurrentUserId(currentUser.id);
-      hydratePlayers([currentUser.id]);
+    if (currentUserId) {
+      hydrateGroup(currentUserId);
+      setGameCurrentUserId(currentUserId);
+      hydratePlayers([currentUserId]);
       // Live listener so incoming join requests (and any group change)
       // reach admins without an app restart. Torn down on sign-out / user
       // switch via the returned cleanup.
-      const unsub = subscribeGroups(currentUser.id);
+      const unsub = subscribeGroups(currentUserId);
       return unsub;
     }
   }, [
-    currentUser,
+    currentUserId,
+    currentUser?.isGuest,
     hydrateGroup,
     subscribeGroups,
     setGameCurrentUserId,
@@ -590,7 +596,6 @@ export function RootNavigator() {
   // achievements). Keyed on the ID only so a profile EDIT doesn't tear down
   // and re-attach the listener. Root fix for the "stale store" bug class.
   const subscribeCurrentUser = useUserStore((s) => s.subscribeCurrentUser);
-  const currentUserId = currentUser?.id;
   useEffect(() => {
     if (!currentUserId) return;
     return subscribeCurrentUser(currentUserId);
@@ -688,6 +693,7 @@ export function RootNavigator() {
   // never had this field stay grandfathered as long as the converter writes
   // `false` rather than promoting them — they'll see it once.
   if (!isGuest && currentUser && !hasCompletedOnboarding) {
+    const { PostSignInOnboardingScreen } = require('@/screens/onboarding/PostSignInOnboardingScreen') as typeof import('@/screens/onboarding/PostSignInOnboardingScreen');
     return <PostSignInOnboardingScreen />;
   }
 

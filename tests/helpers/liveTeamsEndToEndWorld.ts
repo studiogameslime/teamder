@@ -30,10 +30,16 @@ import {commitRoundInOrder} from '../../functions/src/commitProtocol';
 import {liveSeasonStamp} from '../../functions/src/liveSeasonStamp';
 import {assertSeasonOpenForGame} from '../../functions/src/seasonLock';
 import {eveningScoreServer} from '../../functions/src/eveningScoreCore';
+import * as sharedScore from '../../functions/src/sharedEveningScore';
+import {freezeSharedScoreCalibration} from '../../functions/src/sharedScoreCalibration';
 import {computeMovement} from '../../functions/src/eveningMovement';
 import {buildRoundSummary,nextRecordBaseline} from '../../functions/src/roundSummary';
 import {pairsFromRounds,pairMembers} from '../../functions/src/clubChemistry';
 import {liveTeamsFixture} from './liveTeamsWorld';
+import {prepareRetroScores} from '../../functions/src/retroScores';
+import {isAttendedGame} from '@/utils/playedGames';
+import {personalPartnerResults} from '@/utils/personalPartnerStats';
+import {rankChampionshipRows} from '@/utils/championship';
 
 const compile=(code:string)=>ts.transpileModule(code,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
 const backend=ts.createSourceFile('server.ts',fs.readFileSync('functions/src/index.ts','utf8'),ts.ScriptTarget.Latest,true);
@@ -62,24 +68,32 @@ export function liveTeamsEndToEndWorld(size=4) {
   else parent[last]=clone(value);
  }}
  const snapshot=(path:string)=>{const data=clone(documents.get(path));return{id:path.split('/').at(-1),ref:ref(path),exists:documents.has(path),updateTime:versions.get(path)??1,createTime:{toMillis:()=>1},data:()=>data,get:(key:string)=>field(data,key)};};
- function ref(path:string,filters:any[]=[],sorting?:string):any{return{path,collection:(name:string)=>ref(`${path}/${name}`),doc:(id:string)=>ref(`${path}/${id}`),
+ function ref(path:string,filters:any[]=[],sorting?:string):any{return{path,id:path.split('/').at(-1),collection:(name:string)=>ref(`${path}/${name}`),doc:(id:string)=>ref(`${path}/${id}`),
   where:(key:string,op:string,value:any)=>ref(path,[...filters,[key,op,value]],sorting),orderBy:(key:string)=>ref(path,filters,key),limit:()=>ref(path,filters,sorting),
   get:async()=>{if(path.split('/').length%2===0)return snapshot(path);
-   let rows=[...documents.keys()].filter(k=>k.startsWith(path+'/')&&k.split('/').length===path.split('/').length+1&&filters.every(([key,op,value])=>op==='=='?field(documents.get(k),key)===value:op==='in'?value.includes(field(documents.get(k),key)):true)).map(snapshot);
+   let rows=[...documents.keys()].filter(k=>k.startsWith(path+'/')&&k.split('/').length===path.split('/').length+1&&filters.every(([key,op,value])=>op==='=='?field(documents.get(k),key)===value:op==='in'?value.includes(field(documents.get(k),key)):op==='array-contains'?field(documents.get(k),key)?.includes(value):true)).map(snapshot);
    if(sorting)rows.sort((a,b)=>(a.get(sorting)??0)-(b.get(sorting)??0));return{docs:rows,empty:!rows.length,size:rows.length};},
   set:async(data:any,options?:any)=>apply({kind:options?.merge?'merge':'set',reference:{path},data}),
   update:async(data:any)=>apply({kind:'update',reference:{path},data}),
   create:async(data:any)=>{if(documents.has(path))throw Object.assign(Error('exists'),{code:6});apply({kind:'set',reference:{path},data});},
  };}
- function apply(write:any){const path=write.reference.path;const value=write.kind==='set'||write.kind==='create'?{}:documents.get(path)??{};
+ function apply(write:any){const path=write.reference.path;if(write.kind==='delete'){documents.delete(path);versions.set(path,(versions.get(path)??1)+1);return;}const value=write.kind==='set'||write.kind==='create'?{}:documents.get(path)??{};
   merge(value,write.data,write.kind!=='update');documents.set(path,value);versions.set(path,(versions.get(path)??1)+1);}
- const db={collection:ref,getAll:async(...refs:any[])=>Promise.all(refs.map(r=>r.get())),batch:()=>{
+ const db={collection:ref,doc:ref,getAll:async(...refs:any[])=>Promise.all(refs.map(r=>r.get())),batch:()=>{
   const writes:any[]=[];const batch:any={};for(const kind of ['create','set','update'])batch[kind]=(reference:any,data:any,options:any)=>{writes.push({kind:kind==='set'&&options?.merge?'merge':kind,reference,data,precondition:kind==='update'?options:undefined});return batch;};
+  batch.delete=(reference:any)=>{writes.push({kind:'delete',reference});return batch;};
   batch.commit=async()=>{if(failure||writes.some(w=>w.reference.path===failPath))throw Error('UNAVAILABLE');for(const w of writes){if(w.kind==='create'&&documents.has(w.reference.path))throw Object.assign(Error('exists'),{code:6});
-   if(w.precondition&&w.precondition.lastUpdateTime!==(versions.get(w.reference.path)??1))throw Error('STALE_VERSION');}writes.forEach(apply);commits.push(writes.map(w=>({kind:w.kind,path:w.reference.path,data:clone(w.data)})));};return batch;}};
+   if(w.precondition&&w.precondition.lastUpdateTime!==(versions.get(w.reference.path)??1))throw Error('STALE_VERSION');}writes.forEach(apply);commits.push(writes.map(w=>({kind:w.kind,path:w.reference.path,data:clone(w.data)})));};return batch;},
+  runTransaction:async(callback:(tx:any)=>Promise<unknown>)=>{
+   const batch=db.batch();let writeStarted=false;
+   const read=(reference:any)=>{if(writeStarted)throw Error('READ_AFTER_WRITE');return reference.get();};
+   const tx:any={get:read,getAll:(...refs:any[])=>Promise.all(refs.map(read))};
+   for(const op of ['create','set','update','delete'])tx[op]=(...args:any[])=>{writeStarted=true;return batch[op](...args);};
+   const result=await callback(tx);await batch.commit();return result;
+  }};
  const marker={increment:(__increment:number)=>({__increment}),delete:()=>({__delete:true}),arrayUnion:(...__union:any[])=>({__union})};
  const logs=jest.fn();const consoleQuiet={log:jest.fn(),warn:jest.fn(),error:logs};
- const serverContext:any={verifiedInPlayPenalties,penaltyParticipants,db,admin:{firestore:{FieldValue:marker}},Date,console:consoleQuiet,observeCaughtError:logs,
+ const serverContext:any={...sharedScore,verifiedInPlayPenalties,penaltyParticipants,db,admin:{firestore:{FieldValue:marker}},Date,console:consoleQuiet,observeCaughtError:logs,
   onCall:(_:any,handler:any)=>handler,ENFORCE_APP_CHECK:false,HttpsError:class extends Error{constructor(public code:string,message:string){super(message);}},
   liveRoundKey,matchesLiveRound,buildRoundSides,roundParticipantSides,StatBatch,MAX_ROUND_BATCH_OPS,commitRoundInOrder,liveSeasonStamp,assertSeasonOpenForGame,
   isReal:(id:string)=>!id.startsWith('guest:')};
@@ -94,33 +108,51 @@ export function liveTeamsEndToEndWorld(size=4) {
   runTransaction:async(_:any,callback:any)=>{const staged:any[]=[];const reads=new Map<string,number>();await callback({get:async(r:any)=>{reads.set(r.path,versions.get(r.path)??1);return clientSnap(r);},update:(reference:any,data:any)=>staged.push({kind:'update',reference,data})});
    if(failure)throw Error('UNAVAILABLE');for(const [path,version]of reads)if((versions.get(path)??1)!==version)throw Error('STALE_VERSION');staged.forEach(apply);},
  };
- const deps:any={'@/utils/inPlayPenalty':inPlayPenalty,'../utils/errorObservation':{observeCaughtError:logs},'firebase/firestore':io,'firebase/functions':{httpsCallable:()=>call},
-  '@/firebase/config':{USE_MOCK_DATA:false,getFirebase:()=>({db,functions:{}})},'@/firebase/firestore':{docs:{game:(id:string)=>({...ref(`games/${id}`),converted:true})}},
+ let retroCalls:Record<string,(req:any)=>Promise<any>>|undefined;
+ function getRetroCallable(name:string){
+  if(!retroCalls){
+   const context={...serverContext,prepareRetroScores};
+   const guard=sourceNode(n=>ts.isFunctionDeclaration(n)&&n.name?.text==='loadRetroGameContext').getText(backend);
+   vm.runInNewContext(compile(guard),context);
+   retroCalls={};
+   for(const key of ['addRetroGoal','removeRetroGoal']){
+    const definition=sourceNode(n=>ts.isVariableDeclaration(n)&&n.name.getText(backend)===key) as ts.VariableDeclaration;
+    retroCalls[key]=vm.runInNewContext(compile(`(${definition.initializer!.getText(backend)})`),context);
+   }
+  }
+  return (data:any)=>retroCalls![name]({auth:{uid:'owner'},data});
+ }
+ const deps:any={'@/utils/inPlayPenalty':inPlayPenalty,'../utils/errorObservation':{observeCaughtError:logs},'firebase/firestore':io,'firebase/functions':{httpsCallable:(_:any,name:string)=>['addRetroGoal','removeRetroGoal'].includes(name)?getRetroCallable(name):call},
+  '@/firebase/config':{USE_MOCK_DATA:false,getFirebase:()=>({db,functions:{}})},'@/firebase/firestore':{docs:{game:(id:string)=>({...ref(`games/${id}`),converted:true})},col:{games:()=>ref('games'),pairStats:()=>ref('pairStats')}},
+  '@/utils/playedGames':{isAttendedGame},'@/utils/personalPartnerStats':{personalPartnerResults},
+  '@/utils/championship':{rankChampionshipRows},'@/firebase/authRace':{withAuthRaceRetry:(read:()=>unknown)=>read()},
   '@/types':types,'@/services/rotationEngine':engine,'@/utils/liveTeamsEdit':edit,'@/utils/goalTally':tally,'@/utils/roundDecision':decision,'@/utils/shootoutDecision':shootout,
   '@/utils/alternativeRoundDecision':{alternativeRoundFingerprint},'@/utils/liveLineupFingerprint':{liveLineupFingerprint},'@/utils/penaltyStats':{buildShootoutPenaltyPayload},
   '@/utils/stripUndefined':{stripUndefined},'@/services/rotationWriteSource':{rotationWriteSource},'@/utils/roundParticipants':{roundParticipantSides},
   '@/utils/roundHistoryOrder':{sortRounds},'@/services/serverClock':{serverNow:()=>Date.now()},'@/services/errorLog':{logError:logs,logUnexpected:logs},
   '@/services/analyticsService':{AnalyticsEvent:{GameFinished:'finished'},logEvent:jest.fn()},
   './analyticsService':{AnalyticsEvent:{GameFinished:'finished'},logEvent:jest.fn()},
-  '@/utils/eveningPlayed':played,'@/utils/eveningNarrative':narrative,'@/utils/eveningHighlights':highlights,'@/utils/eveningStats':eveningStats,'@/utils/eveningScore':{eveningScore},
+  '@/utils/sharedEveningScore':sharedScore,'@/utils/eveningPlayed':played,'@/utils/eveningNarrative':narrative,'@/utils/eveningHighlights':highlights,'@/utils/eveningStats':eveningStats,'@/utils/eveningScore':{eveningScore},
   '@/services/userService':{userService:{getUserById:async(id:string)=>({id,name:id})}},'@/services/eveningRecordService':{readPersonalEveningRecords:async()=>[]}};
- function load(path:string){const exports:any={};vm.runInNewContext(compile(fs.readFileSync(path,'utf8')),{exports,require:(id:string)=>{if(id.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(id.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(id==='@/services/diagnosticCallable')id='firebase/functions';return deps[id]??{};},__DEV__:false,Date,console:consoleQuiet,setTimeout,clearTimeout});return exports;}
+ function load(path:string){const exports:any={};vm.runInNewContext(compile(fs.readFileSync(path,'utf8')),{exports,require:(id:string)=>{if(id==='@/utils/sharedEveningScore')return sharedScore;if(id.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(id.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(id==='@/services/diagnosticCallable')id='firebase/functions';return deps[id]??{};},__DEV__:false,Date,console:consoleQuiet,setTimeout,clearTimeout});return exports;}
  // The real full document converter is used on every getGameById read.
- const converterExports:any={};vm.runInNewContext(compile(fs.readFileSync('src/firebase/firestore.ts','utf8')),{exports:converterExports,Date,require:(id:string)=>{if(id.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(id.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(id==='@/services/diagnosticCallable')id='firebase/functions';return id==='firebase/firestore'?{collection:()=>({withConverter:(converter:any)=>({converter})}),doc:(c:any)=>c}:id==='./config'?{getFirebase:()=>({db:{}})}:id==='@/utils/draftColors'?draftColors:types;}});
+ const converterExports:any={};vm.runInNewContext(compile(fs.readFileSync('src/firebase/firestore.ts','utf8')),{exports:converterExports,Date,require:(id:string)=>{if(id==='@/utils/sharedEveningScore')return sharedScore;if(id.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(id.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(id==='@/services/diagnosticCallable')id='firebase/functions';return id==='firebase/firestore'?{collection:()=>({withConverter:(converter:any)=>({converter})}),doc:(c:any)=>c}:id==='./config'?{getFirebase:()=>({db:{}})}:id==='@/utils/draftColors'?draftColors:types;}});
  converter=converterExports.docs.game('audit').converter;
  const read=()=>({...converter.fromFirestore({id:'audit',data:()=>clone(documents.get('games/audit'))}),matches:[]});
  const service=load('src/services/gameService.ts').gameService;service.getGameById=async()=>read();deps['@/services/gameService']={gameService:service};
  const summaryService=load('src/services/eveningSummaryService.ts').eveningSummaryService;
  const roundSummaryService=load('src/services/roundSummaryService.ts').roundSummaryService;
- const finishContext:any={...serverContext,module:{exports:{}},eveningScoreServer,computeMovement,wasHappened:false,isHappened:true,
+ const finishContext:any={...serverContext,...sharedScore,freezeSharedScoreCalibration,module:{exports:{}},eveningScoreServer,computeMovement,wasHappened:false,isHappened:true,
   groupOnce:()=>ref('groups/club').get(),stampedSeasonId:'',buildRoundSummary,nextRecordBaseline,pairsFromRounds,pairMembers,
   isPersonalGroup:async()=>false,archivedClubTotals:new Map(),archNum:(v:any)=>typeof v==='number'?v:0,TONIGHT_MS:12*60*60*1000,
   createNotificationOnce:jest.fn()};
  const definitions=['archivedCareerOf','guardFinishSeasonBatch','rollUpClubPairs','sealRoundSummary'].map(name=>sourceNode(n=>ts.isFunctionDeclaration(n)&&n.name?.text===name).getText(backend)).join('\n');
  finishContext.commitFreshSeasonBatch = commitFreshSeasonBatch;
+ finishContext.playedEveningOrdinal = played.playedEveningOrdinal;
  vm.runInNewContext(compile(definitions),finishContext);
  vm.runInNewContext(compile(`module.exports=async function(){${finishSource}}`),finishContext);
  return{documents,commits,payloads,logs,service,read,summaryService,roundSummaryService,
+  playerStats:()=>load('src/services/playerStatsService.ts').playerStatsService,
   state:()=>documents.get('games/audit'),fail:(on=true)=>{failure=on;},loseAck:()=>{lostAck=true;},
   failAt:(path?:string)=>{failPath=path;},
   history:()=>[...documents.entries()].filter(([p])=>p.startsWith('games/audit/roundHistory/')).map(([,v])=>clone(v)),

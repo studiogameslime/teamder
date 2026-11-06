@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Keyboard, Platform, View } from 'react-native';
+import { Keyboard, Platform, Text, useWindowDimensions, View } from 'react-native';
 import {
   BottomTabBar,
   BottomTabBarProps,
@@ -13,11 +13,12 @@ import { CommunitiesStack } from './CommunitiesStack';
 import { ChatStack } from './ChatStack';
 import { BannerAd } from '@/services/adsService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { DockHighlight, DockIcon, DockIndexContext } from '@/components/NavigationDock';
+import { DockCenterContext, DockHighlight, DockIcon } from '@/components/NavigationDock';
 import { chatService } from '@/services/chatService';
 import { useChatStore, totalUnread } from '@/store/chatStore';
 import { useUserStore } from '@/store/userStore';
 import { tabRootFor } from '@/navigation/homeRouting';
+import { useDockHeight } from '@/navigation/dockHeight';
 import { colors } from '@/theme';
 import { he } from '@/i18n/he';
 import { recordDiagnostic } from '@/services/diagnosticJournal';
@@ -37,6 +38,14 @@ export type MainTabsParamList = {
 };
 
 const Tab = createBottomTabNavigator<MainTabsParamList>();
+const dockTitles = {
+  ProfileTab: he.tabHome, CommunitiesTab: he.tabCommunities,
+  GameTab: he.tabGame, ChatTab: he.tabChat,
+};
+const dockRoutes = Object.keys(dockTitles);
+const narrowDockWeights: Record<keyof MainTabsParamList, number> = {
+  ProfileTab: 0.7, CommunitiesTab: 1.28, GameTab: 1.13, ChatTab: 0.89,
+};
 
 // Walks the (possibly nested) navigation state down to the leaf so we can
 // suppress ads on routes that need a clean screen (e.g., the live match
@@ -52,12 +61,15 @@ function leafRouteName(state: BottomTabBarProps['state']): string | undefined {
 
 const NO_ADS_ROUTES = new Set<string>(['LiveMatch']);
 
-function TabBarWithBanner(props: BottomTabBarProps) {
+function TabBarWithBanner(props: BottomTabBarProps & { narrow: boolean }) {
   const [keyboardShown, setKeyboardShown] = useState(Keyboard.isVisible());
   useEffect(() => {
-    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardShown(true));
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => {
+      useDockHeight.setState(0, true);
+      setKeyboardShown(true);
+    });
     const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardShown(false));
-    return () => { show.remove(); hide.remove(); };
+    return () => { show.remove(); hide.remove(); useDockHeight.setState(0, true); };
   }, []);
   const showBanner = !NO_ADS_ROUTES.has(leafRouteName(props.state) ?? '');
   // `width: '100%'` is load-bearing — `ANCHORED_ADAPTIVE_BANNER` (and
@@ -65,19 +77,29 @@ function TabBarWithBanner(props: BottomTabBarProps) {
   // the native ad request never fires. Without it the banner mounts
   // into a 0-width View and AdMob shows 0 requests in the console.
   if (keyboardShown) return null;
+  const weights = props.state.routes.map(route => props.narrow ? narrowDockWeights[route.name as keyof MainTabsParamList] : 1);
+  const sum = (total: number, weight: number) => total + weight;
+  const center = (weights.slice(0, props.state.index).reduce(sum, 0) + weights[props.state.index] / 2) / weights.reduce(sum, 0);
   return (
-    <View style={{ width: '100%', backgroundColor: colors.bg }}>
+    <View style={{ width: '100%', backgroundColor: colors.bg }}
+      onLayout={({ nativeEvent }) => useDockHeight.setState(nativeEvent.layout.height, true)}>
       {showBanner ? <BannerAd /> : null}
-      <View style={{ paddingTop: 8, paddingBottom: 10 + props.insets.bottom, paddingHorizontal: 16 + Math.max(props.insets.left, props.insets.right) }}>
-        <DockIndexContext.Provider value={{ index: props.state.index, count: props.state.routes.length }}>
+      <View style={{ paddingTop: 8, paddingBottom: 10 + props.insets.bottom, paddingHorizontal: (props.narrow ? 6 : 16) + Math.max(props.insets.left, props.insets.right) }}>
+        <DockCenterContext.Provider value={center}>
           <BottomTabBar {...props} insets={{ top: 0, bottom: 0, left: 0, right: 0 }} />
-        </DockIndexContext.Provider>
+        </DockCenterContext.Provider>
       </View>
     </View>
   );
 }
 
 export function MainTabs() {
+  const { width, fontScale } = useWindowDimensions();
+  const narrow = width / Math.max(1, fontScale) < 235;
+  const [labelHeights, setLabelHeights] = useState<Partial<Record<keyof MainTabsParamList, number>>>({});
+  // Leave the 42-point icon, border and vertical padding intact when a
+  // native label needs extra lines. Layout runs again on font/width changes.
+  const dockHeight = 54 + Math.max(16, ...Object.values(labelHeights));
   // App-wide unread subscriber: keeps the chat store fresh so the tab
   // badge + chats-list previews update no matter which tab is open.
   const uid = useUserStore((s) => s.currentUser?.id);
@@ -102,7 +124,7 @@ export function MainTabs() {
       // this no longer diverts them to the games feed: the diversion existed
       // because the Home tab had nothing to show a guest, and now it does.
       initialRouteName="ProfileTab"
-      tabBar={(props) => <TabBarWithBanner {...props} />}
+      tabBar={(props) => <TabBarWithBanner {...props} narrow={narrow} />}
       screenOptions={({ route }) => ({
         headerShown: false,
         // Slide the whole bottom bar (banner + tabs) away when the keyboard
@@ -112,11 +134,26 @@ export function MainTabs() {
         tabBarActiveTintColor: '#2463EB',
         tabBarInactiveTintColor: '#667085',
         tabBarLabelPosition: 'below-icon',
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '700', lineHeight: 16 },
-        tabBarIconStyle: { width: 42, height: 42 },
-        tabBarItemStyle: { paddingTop: 6, paddingBottom: 6 },
+        title: dockTitles[route.name],
+        // A custom multiline label bypasses the library's positional hint
+        // on iOS, where tabs expose the button accessibility role.
+        tabBarAccessibilityLabel: Platform.OS === 'ios'
+          ? `${dockTitles[route.name]}, לשונית ${dockRoutes.indexOf(route.name) + 1} מתוך ${dockRoutes.length}`
+          : dockTitles[route.name],
+        tabBarLabel: ({ color, children }) => (
+          <Text
+            style={{ alignSelf: 'stretch', textAlign: 'center', fontSize: 11, fontWeight: '700', lineHeight: 16, color }}
+            onLayout={({ nativeEvent }) => {
+              const height = Math.ceil(nativeEvent.layout.height);
+              setLabelHeights(previous => previous[route.name] === height ? previous : { ...previous, [route.name]: height });
+            }}
+          >{children}</Text>
+        ),
+        tabBarIconStyle: { width: 42, height: 42, flex: 0 },
+        tabBarItemStyle: { flex: narrow ? narrowDockWeights[route.name] : 1, paddingVertical: 5, justifyContent: 'flex-start' },
+        tabBarBadgeStyle: { height: 'auto', minHeight: 19 },
         tabBarStyle: {
-          height: 70, backgroundColor: '#FFFFFF', borderWidth: 1,
+          height: dockHeight, backgroundColor: '#FFFFFF', borderWidth: 1,
           borderColor: '#DCE7FA', borderTopColor: '#DCE7FA', borderRadius: 16,
           shadowColor: '#18335B', shadowOpacity: 0.1, shadowRadius: 12,
           shadowOffset: { width: 0, height: 4 }, elevation: 4,
@@ -129,7 +166,6 @@ export function MainTabs() {
       <Tab.Screen
         name="ProfileTab"
         component={ProfileStack}
-        options={{ title: he.tabHome }}
         listeners={({ navigation, route }) => ({
           tabPress: (e) => resetTabToRoot(e, navigation, route.name, isGuest),
         })}
@@ -137,7 +173,6 @@ export function MainTabs() {
       <Tab.Screen
         name="CommunitiesTab"
         component={CommunitiesStack}
-        options={{ title: he.tabCommunities }}
         listeners={({ navigation, route }) => ({
           // Tapping a tab from inside a deep route (e.g. CommunityDetails
           // → MatchDetails) used to leave the user on that nested
@@ -150,7 +185,6 @@ export function MainTabs() {
       <Tab.Screen
         name="GameTab"
         component={GameStack}
-        options={{ title: he.tabGame }}
         listeners={({ navigation, route }) => ({
           tabPress: (e) => resetTabToRoot(e, navigation, route.name, isGuest),
         })}
@@ -159,7 +193,6 @@ export function MainTabs() {
         name="ChatTab"
         component={ChatStack}
         options={{
-          title: he.tabChat,
           tabBarBadge: chatBadge > 0 ? (chatBadge > 99 ? '99+' : chatBadge) : undefined,
         }}
         listeners={({ navigation, route }) => ({

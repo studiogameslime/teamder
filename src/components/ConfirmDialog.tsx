@@ -8,8 +8,8 @@ import { overlaySurfaces } from '@/theme/overlays';
 //   • Notice  → omit `cancelLabel`: a single confirm button (e.g. "הבנתי").
 //   • Confirm → pass `cancelLabel` for a two-button cancel/confirm dialog.
 
-import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/Button';
@@ -55,16 +55,25 @@ export function ConfirmDialog({
   onClose,
 }: Props) {
   const [busy, setBusy] = useState(false);
+  // Native back and queued presses may arrive before React commits `busy`.
+  // One synchronous gate covers confirmation and every dismissal path.
+  const confirming = useRef(false);
   useEffect(() => {
-    if (visible) setBusy(false);
+    if (visible) setBusy(confirming.current);
   }, [visible]);
 
+  const handleClose = () => {
+    if (!confirming.current) onClose();
+  };
+
   const handleConfirm = async () => {
-    if (busy) return;
+    if (!visible || confirming.current) return;
+    confirming.current = true;
     setBusy(true);
     try {
       await onConfirm();
     } finally {
+      confirming.current = false;
       setBusy(false);
     }
   };
@@ -72,15 +81,15 @@ export function ConfirmDialog({
   const t = TONE[tone];
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
       <SpringSheet
         visible={visible}
-        onBackdropPress={busy ? undefined : onClose}
+        onBackdropPress={busy ? undefined : handleClose}
         position="center"
         fromOffsetY={60}
         panelStyle={{ paddingHorizontal: spacing.lg, alignSelf: 'stretch' }}
       >
-        <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
+        <ScrollView style={styles.card} contentContainerStyle={styles.cardContent} bounces={false}>
           <View style={[styles.iconWrap, { backgroundColor: t.bg }]}>
             <Ionicons name={t.icon} size={28} color={t.color} />
           </View>
@@ -94,7 +103,7 @@ export function ConfirmDialog({
                 title={cancelLabel}
                 variant="outline"
                 size="sm"
-                onPress={onClose}
+                onPress={handleClose}
                 disabled={busy}
               />
             ) : null}
@@ -106,7 +115,7 @@ export function ConfirmDialog({
               onPress={handleConfirm}
             />
           </View>
-        </Pressable>
+        </ScrollView>
       </SpringSheet>
     </Modal>
   );
@@ -114,6 +123,12 @@ export function ConfirmDialog({
 
 const styles = StyleSheet.create({
   card: { ...overlaySurfaces.dialog,
+    width: '100%',
+    maxWidth: 440,
+    maxHeight: '92%',
+    flexGrow: 0,
+  },
+  cardContent: {
     padding: spacing.xl,
     gap: spacing.md,
   },
@@ -137,6 +152,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'flex-end',
     gap: spacing.sm,
     marginTop: spacing.sm,

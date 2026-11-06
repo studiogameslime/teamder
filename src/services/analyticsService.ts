@@ -18,6 +18,7 @@ import { logError } from '@/services/errorLog';
 import { crumbAct } from '@/services/breadcrumbs';
 import { joryio } from '@/services/joryio';
 import { recordOnboardingActivity } from '@/services/onboardingActivity';
+import { captureProductActor, recordProductAction } from './productActor';
 
 export const AnalyticsEvent = {
   UpdatePromptShown: 'update_prompt_shown',
@@ -60,6 +61,8 @@ export const AnalyticsEvent = {
   SeasonsDisabled: 'seasons_disabled',
   SeasonTargetChanged: 'season_target_changed',
   SeasonEndedEarly: 'season_ended_early',
+  SeasonCloseDeferred: 'season_close_deferred',
+  SeasonResumeRequested: 'season_resume_requested',
   // SeasonReopened was here. Removed 20.09.2026 with the button that fired it:
   // a club admin can no longer reopen a closed season (§12), and the operator
   // maintenance hook runs from `firebase functions:shell`, which emits no
@@ -304,6 +307,7 @@ export const AnalyticsEvent = {
   /** A user expressed interest in being a filler for a specific
    *  short-handed game. */
   FillerInterestExpressed: 'filler_interest_expressed',
+  FillerReviewDecided: 'filler_review_decided',
   /** Admin toggled "accepts fillers" on a game (opt-in to the
    *  cross-community matcher). */
   AcceptsFillersToggled: 'accepts_fillers_toggled',
@@ -516,6 +520,8 @@ export const AnalyticsEvent = {
 
   // ─── Player drill-ins ───
   PlayerCompareOpened: 'player_compare_opened',
+  PlayerComparisonViewed: 'player_comparison_viewed',
+  PlayerCompareTabChanged: 'player_compare_tab_changed',
 
   // ─── Discipline ───
   DisciplineCardPrompted: 'discipline_card_prompted',
@@ -552,6 +558,7 @@ export const AnalyticsEvent = {
 
   // ─── Goals & assists ───
   GoalWizardOpened: 'goal_wizard_opened',   // gameId, team, minute
+  LiveGoalRecorded: 'live_goal_recorded',
   GoalWizardCancelled: 'goal_wizard_cancelled',   // gameId, team
   OwnGoalPickerOpened: 'own_goal_picker_opened',   // gameId, team
   GoalDeletePrompted: 'goal_delete_prompted',   // gameId
@@ -570,6 +577,7 @@ export const AnalyticsEvent = {
   // ─── End of evening ───
   EndEveningPrompted: 'end_evening_prompted',   // gameId, source ('inline_button'|'menu'), elapsedSec
   EquipmentHandoffAction: 'equipment_handoff_action',   // gameId, groupId, action ('saved'|'skipped'), ballHolders, jerseysHolders
+  ClubEquipmentChanged: 'club_equipment_changed',
 
   // ─── Recap screens ───
   MatchRoundsOpened: 'match_rounds_opened',   // gameId, rounds, goals
@@ -694,6 +702,7 @@ export function logEvent(
   // call site uses an AnalyticsEvent constant, so the compiler can enforce it.
   name: AnalyticsEventName,
   params?: Record<string, string | number | boolean | undefined | null>,
+  productActor: string | null = captureProductActor(),
 ): void {
   const cleaned = cleanParams(params);
 
@@ -707,6 +716,7 @@ export function logEvent(
 
   if (__DEV__) console.log('[analytics]', name, cleaned);
   if (USE_MOCK_DATA) return;
+  if (name !== AnalyticsEvent.ScreenView) recordProductAction(name, productActor);
   try { recordOnboardingActivity(name, cleaned); } catch (caughtErrorac7ff111e1) {
     observeCaughtError(caughtErrorac7ff111e1, {"source":"src/services/analyticsService.ts","handler":"logEvent","site":"analyticsService:ac7ff111e1"}); /* telemetry must never block a tap */ }
 

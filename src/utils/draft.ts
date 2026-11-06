@@ -155,7 +155,7 @@ export interface BalanceTeamsInput {
 
 export interface BalanceTeamsOutput {
   result: DraftTeamsResult;
-  /** How many roster ids had no rating (scored as the neutral middle). */
+  /** How many roster ids had no rating (scored using NEUTRAL_RATING). */
   unratedCount: number;
   /** Per-team average rating, team index order — the number the UI shows. */
   teamAverages: number[];

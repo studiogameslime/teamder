@@ -1,0 +1,164 @@
+{
+  "date": "2026-11-04",
+  "nativeDeviceMeasurement": false,
+  "manager": {
+    "source": "tests/logic/managerDashboardPerformance.test.ts",
+    "baseline": "tests/fixtures/managerDashboard.before-performance.txt",
+    "baselineSha256": "7B50714EE38CA1A4F21DADE395C1638810800F195A6062C6971C406594965D09",
+    "measurement": "controlled-test-clock-and-request-counts",
+    "deviceMeasurement": false,
+    "roundCount": 200,
+    "latencyPerSourceMs": 100,
+    "concurrentScoreLimit": 4,
+    "before": {
+      "scoreRequestsBeforeOverview": 200,
+      "baseCompleteMs": 5300
+    },
+    "after": {
+      "scoreRequestsBeforeOverview": 0,
+      "baseCompleteMs": 300
+    },
+    "focusedTestSuites": 7,
+    "focusedTestsPassed": 419,
+    "newBehaviorTests": 17,
+    "limitations": [
+      "Not an emulator or device timing",
+      "No production network measurement",
+      "Not deployed"
+    ]
+  },
+  "ownerCard": {
+    "scenario": "Owner card with 200ms round scan, 2200ms fresh profile and 300ms personal last-round read",
+    "method": "Execute the saved before and current service and focus-callback source in memory under a controlled clock. Network/auth are substituted; the unchanged domain summary is fixed to one known attended round. Source files are not replaced.",
+    "before": {
+      "source": "saved source before changes",
+      "roundsAvailableAtMs": 2200,
+      "lastStatsRequestAtMs": 2200,
+      "lastStatsAvailableAtMs": 2500,
+      "freshProfileAvailableAtMs": 2200,
+      "calls": {
+        "profile": 1,
+        "roundScan": 1,
+        "lastStats": 1
+      }
+    },
+    "after": {
+      "source": "current source",
+      "roundsAvailableAtMs": 200,
+      "lastStatsRequestAtMs": 200,
+      "lastStatsAvailableAtMs": 500,
+      "freshProfileAvailableAtMs": 2200,
+      "calls": {
+        "profile": 1,
+        "roundScan": 1,
+        "lastStats": 1
+      }
+    },
+    "observedSavings": {
+      "roundsAvailableMs": 2000,
+      "lastStatsAvailableMs": 2000
+    },
+    "limitations": [
+      "This measures source state publication, not painted pixels or physical device performance.",
+      "Not a real Firestore latency measurement.",
+      "Fresh lifetime counters still await the same verified profile read."
+    ]
+  },
+  "season": {
+    "before": {
+      "evidence": "synthetic-delays-real-service-source",
+      "groupDelayMs": 20,
+      "coreMaxDelayMs": 60,
+      "identityDelayMs": 500,
+      "baseCallsAt80": 0,
+      "contentAt80": null,
+      "firstContentAt": 580,
+      "finalAt": 580
+    },
+    "after": {
+      "evidence": "synthetic-delays-real-service-source",
+      "groupDelayMs": 20,
+      "coreMaxDelayMs": 60,
+      "identityDelayMs": 500,
+      "baseCallsAt80": 1,
+      "contentAt80": 80,
+      "firstContentAt": 80,
+      "finalAt": 580
+    }
+  },
+  "achievement": {
+    "scenario": "opening plus five semantically unchanged profile/group object replacements",
+    "beforeDerivations": 6,
+    "afterDerivations": 1,
+    "sourceTest": "tests/logic/achievementScreenPerformance.test.ts",
+    "passedTests": 10,
+    "oldSourceFailedTests": 2
+  },
+  "sources": [
+    {
+      "source": "src/components/manager/ManagerWorkspace.tsx",
+      "beforeSha256": "13123a1bc4f731bd8bba4662c9755772181f738440c0d79bae0deff38a8b01eb",
+      "afterSha256": "d8742300cf08b01c16b38834addc6873acc4e0d231633b5e9474b62ef2e9f594"
+    },
+    {
+      "source": "src/components/profile/OwnPlayerCard.tsx",
+      "beforeSha256": "f171a57a1c1a651104571341bd05300e6644e02711735731587d1a34e6978e4a",
+      "afterSha256": "a128928434c653927ba5e39926eecebefd4b7f5267b9adf8a788fa5f1df829d5"
+    },
+    {
+      "source": "src/screens/communities/ManagerDashboardScreen.tsx",
+      "beforeSha256": "8862e87c9651b1ec29ff6461c0207674828d9113944dd7e349c7b13dd5572421",
+      "afterSha256": "7d6b34fe178f2f6d24f2d8d2120d76786785e6eb98914ab0c6a7987235567810"
+    },
+    {
+      "source": "src/screens/players/PlayerCardScreen.tsx",
+      "beforeSha256": "60ba59e1d7baf35005ee47782e380217dac393e8b8660d25619e67ace3d3a776",
+      "afterSha256": "e6ffb3b76cf917648ba0142e493d9358f40cab079304668964b8fdf9e98a8088"
+    },
+    {
+      "source": "src/screens/profile/AchievementsScreen.tsx",
+      "beforeSha256": "85aa7ce0ace5bbe6f4174671932427d7637e9f0bc80ecdefbd684f3efa457c07",
+      "afterSha256": "5fd0dac2051e9c02455d07cf0c4fc418c8b321257f2cde34f8ef1bae6384341f"
+    },
+    {
+      "source": "src/screens/profile/SeasonSummaryScreen.tsx",
+      "beforeSha256": "ff128b0e0c66667634c5067a3637ab034248a22309a841a2e7251c3fd3bb8492",
+      "afterSha256": "ad86b7b87ffb834d667fd2b50f2527a57284e4072684e225f4964ad14f9e507c"
+    },
+    {
+      "source": "src/services/managerClubResultsService.ts",
+      "beforeSha256": "de0693931c59458aa851a7ab5977d89024b3b83df2937dc08b3fe5a8e79ba96c",
+      "afterSha256": "de0693931c59458aa851a7ab5977d89024b3b83df2937dc08b3fe5a8e79ba96c"
+    },
+    {
+      "source": "src/services/managerDashboardService.ts",
+      "beforeSha256": "7b50714ee38ca1a4f21dade395c1638810800f195a6062c6971c406594965d09",
+      "afterSha256": "76a8bb33bb4203c41d5c8a7260e8125149d5cb8aca601d580fa6ede6614c11ac"
+    },
+    {
+      "source": "src/services/managerHistoryService.ts",
+      "beforeSha256": "7f172fca68a78da201aa7f7f59412e93e2991e88e2c50cc79bdb73324f7c162e",
+      "afterSha256": "7f172fca68a78da201aa7f7f59412e93e2991e88e2c50cc79bdb73324f7c162e"
+    },
+    {
+      "source": "src/services/ownPlayerCardService.ts",
+      "beforeSha256": "91a7f3a93d4d70d693e762015d8b5d16cc7da645abafc770a658f08ac7b1fe65",
+      "afterSha256": "433c6ad26ce596b8de23b9df614da966bd85b3b2f8560d2e1bdb58a9390eb315"
+    },
+    {
+      "source": "src/services/seasonSummaryService.ts",
+      "beforeSha256": "18773b6a23d256ead37ccd0796df4759d53c66ca7d30d298109ec55ffcd843fa",
+      "afterSha256": "a6065096fe6eb3c9c1c2cb2112879090a8e3d3d559e3cef39dec7b582c2d658f"
+    },
+    {
+      "source": "src/screens/communities/useManagerDashboardScores.ts",
+      "newSource": true,
+      "afterSha256": "197cf9a2f23028747088646488e175d0d1961ad7b376fe7a96a4850e21e5061c"
+    },
+    {
+      "source": "src/components/manager/ManagerRatingFilters.tsx",
+      "newSource": true,
+      "afterSha256": "d7cc0e572a2460d861a388f9ce5e5b4b17ed5ba6c2a889b1d9d82d642ba8f02c"
+    }
+  ]
+}

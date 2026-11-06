@@ -28,6 +28,7 @@ import {
 } from 'firebase/storage';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
+import type { PhotoPhase } from '@/utils/photoPhase';
 
 type ImagePickerModule = typeof import('expo-image-picker');
 type ImageManipulatorModule = typeof import('expo-image-manipulator');
@@ -98,6 +99,7 @@ export type PhotoUploadResult =
  */
 export async function pickAndUploadAvatar(
   uid: string,
+  onPhase?: (phase: PhotoPhase) => void,
 ): Promise<PhotoUploadResult> {
   if (!uid) return { ok: false, reason: 'unknown' };
   if (USE_MOCK_DATA) {
@@ -123,6 +125,7 @@ export async function pickAndUploadAvatar(
   try {
     // 1) Permission. iOS / Android both prompt the user the first
     //    time; subsequent calls return the cached decision.
+    onPhase?.('permission');
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (perm.status !== 'granted') {
       return { ok: false, reason: 'permission' };
@@ -131,6 +134,7 @@ export async function pickAndUploadAvatar(
     // 2) Pick + crop. allowsEditing=true on iOS surfaces the OS-level
     //    crop UI; on Android it brings up a system cropper. aspect
     //    forces square so the circular UI has clean source pixels.
+    onPhase?.('picking');
     const picked = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -144,6 +148,7 @@ export async function pickAndUploadAvatar(
 
     // 3) Resize + compress. Lands ≤ ~150 KB JPEG even from a 12 MP
     //    source, which keeps Storage bandwidth bills tiny.
+    onPhase?.('preparing');
     resized = await ImageManipulator.manipulateAsync(
       sourceUri,
       [{ resize: { width: TARGET_SIZE, height: TARGET_SIZE } }],
@@ -172,7 +177,9 @@ export async function pickAndUploadAvatar(
     const { storage } = getFirebase();
     const path = AVATAR_PATH(uid);
     const objectRef = storageRef(storage, path);
+    onPhase?.('uploading');
     await uploadBytes(objectRef, blob, { contentType: 'image/jpeg' });
+    onPhase?.('resolving');
     const url = await getDownloadURL(objectRef);
     return { ok: true, url };
   } catch (err) {
@@ -191,6 +198,7 @@ export async function pickAndUploadAvatar(
  */
 export async function pickAndUploadGroupCover(
   groupId: string,
+  onPhase?: (phase: PhotoPhase) => void,
 ): Promise<PhotoUploadResult> {
   if (!groupId) return { ok: false, reason: 'unknown' };
   if (USE_MOCK_DATA) {
@@ -208,12 +216,14 @@ export async function pickAndUploadGroupCover(
   // throw must become a result, not an unhandled rejection.
   let resized: { base64?: string };
   try {
+    onPhase?.('permission');
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (perm.status !== 'granted') {
       return { ok: false, reason: 'permission' };
     }
 
     // 16:9 crop matches the hero's landscape framing.
+    onPhase?.('picking');
     const picked = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -225,6 +235,7 @@ export async function pickAndUploadGroupCover(
     }
     const sourceUri = picked.assets[0].uri;
 
+    onPhase?.('preparing');
     resized = await ImageManipulator.manipulateAsync(
       sourceUri,
       [{ resize: { width: COVER_WIDTH, height: COVER_HEIGHT } }],
@@ -255,6 +266,7 @@ export async function pickAndUploadGroupCover(
     const { httpsCallable } = require('@/services/diagnosticCallable');
     const { functions } = getFirebase();
     const fn = httpsCallable(functions, 'uploadGroupCover');
+    onPhase?.('uploading');
     const res = (await fn({
       groupId,
       imageBase64,

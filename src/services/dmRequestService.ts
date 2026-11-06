@@ -48,7 +48,10 @@ export const dmRequestService = {
     return subscribeUserSession(owner, () => auth.currentUser?.uid === owner && useUserStore.getState().currentUser?.id === owner,
       active => onSnapshot(collection(db, 'users', owner, 'dmRequests'), snap => {
         if (active()) next(snap.docs.map(d => ({ ...d.data(), convId: d.id } as DmRequestEntry)).sort((a,b) => b.createdAt-a.createdAt));
-      }, observedListener(e => { if(active()) error(e); }, {"source":"src/services/dmRequestService.ts","handler":"subscribe","site":"dmRequestService.ts:snapshot:41"})), error);
+      }, e => {
+        if (!active()) return;
+        observedListener(error, {"source":"src/services/dmRequestService.ts","handler":"subscribe","site":"dmRequestService.ts:snapshot:41"})(e);
+      }), error);
   },
 };
 

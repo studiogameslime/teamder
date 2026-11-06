@@ -32,6 +32,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   type ImageSourcePropType,
 } from 'react-native';
@@ -187,20 +188,17 @@ export function UpcomingRoundCard({
   const tone = TONE[state.kind];
   const venue = [game.fieldName, game.city].filter(Boolean).join(' · ');
   const club = (clubName || game.title || '').trim();
+  const { width, fontScale } = useWindowDimensions();
+  const stackPhoto = width / Math.max(1, fontScale) < 345;
 
   return (
     <View style={styles.card}>
-      <View style={styles.top}>
+      <View style={[styles.top, stackPhoto && styles.stackedTop]}>
         {/* Meta first → visual RIGHT. The photo is written last and lands
             on the left, which is the reference's split. */}
-        <View style={styles.meta}>
+        <View style={[styles.meta, stackPhoto && styles.stackedMeta]}>
           <View style={styles.titleRow}>
-            <Text
-              style={styles.title}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.78}
-            >
+            <Text style={styles.title}>
               {he.homeNextGameTitle}
             </Text>
             <View style={[styles.calChip, { backgroundColor: `${tone.ink}14` }]}>
@@ -209,7 +207,7 @@ export function UpcomingRoundCard({
           </View>
 
           {club ? (
-            <Text style={[styles.club, { color: tone.ink }]} numberOfLines={1}>
+            <Text style={[styles.club, { color: tone.ink }]}>
               {club}
             </Text>
           ) : null}
@@ -217,7 +215,7 @@ export function UpcomingRoundCard({
           {venue ? (
             <View style={styles.infoRow}>
               <Ionicons name="location-outline" size={14} color={colors.textMuted} />
-              <Text style={styles.infoMuted} numberOfLines={1}>
+              <Text style={styles.infoMuted}>
                 {venue}
               </Text>
             </View>
@@ -225,7 +223,7 @@ export function UpcomingRoundCard({
 
           <View style={styles.infoRow}>
               <Ionicons name="calendar-outline" size={14} color={tone.ink} />
-            <Text style={styles.infoStrong} numberOfLines={1}>
+            <Text style={styles.infoStrong}>
               {formatGameDay(game.startsAt)} · {formatTime(game.startsAt)}
             </Text>
           </View>
@@ -233,7 +231,7 @@ export function UpcomingRoundCard({
           <Occupancy state={state} tone={tone} />
         </View>
 
-        <View style={styles.photo}>
+        <View style={[styles.photo, stackPhoto && styles.stackedPhoto]}>
           <ImageBackground
             source={source}
             onError={() => {
@@ -256,12 +254,7 @@ export function UpcomingRoundCard({
               LEFT, which is where every other icon-plus-label in the app
               sits. It was the other way round. */}
           <View style={[styles.badge, { backgroundColor: tone.ink }]}>
-            <Text
-              style={[styles.badgeTxt, { color: tone.onInk }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.8}
-            >
+            <Text style={[styles.badgeTxt, { color: tone.onInk }]}>
               {badgeText(state)}
             </Text>
             <Ionicons name={BADGE_ICON[state.kind]} size={11} color={tone.onInk} />
@@ -438,11 +431,11 @@ function StatusPanel({
     <HeightReveal visible={!!body}>
     {body ? <View style={[styles.panel, { backgroundColor: tone.wash }]}>
       <View style={styles.panelTexts}>
-        <Text style={[styles.panelTitle, { color: tone.ink }]} numberOfLines={2}>
+        <Text style={[styles.panelTitle, { color: tone.ink }]}>
           {body.title}
         </Text>
         {body.sub ? (
-          <Text style={styles.panelSub} numberOfLines={2}>
+          <Text style={styles.panelSub}>
             {body.sub}
           </Text>
         ) : null}
@@ -628,10 +621,10 @@ export function CompletedRoundCard({
       <View style={styles.doneBody}>
         <View style={styles.doneHead}>
           <View style={styles.doneTexts}>
-            <Text style={styles.doneTitle} numberOfLines={1}>
+            <Text style={styles.doneTitle}>
               {he.roundCompletedTitle}
             </Text>
-            <Text style={styles.doneSub} numberOfLines={1}>
+            <Text style={styles.doneSub}>
               {[when, club].filter(Boolean).join(' · ')}
             </Text>
           </View>
@@ -743,7 +736,9 @@ const styles = StyleSheet.create({
     ...CARD_SHADOW,
   },
   top: { flexDirection: 'row', gap: spacing.md, alignItems: 'stretch', minHeight: 136 },
+  stackedTop: { flexDirection: 'column' },
   meta: { flex: 1, minWidth: 0, gap: 3 },
+  stackedMeta: { flex: 0 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   calChip: {
     width: 28,
@@ -780,14 +775,14 @@ const styles = StyleSheet.create({
     width: '34%',
     minWidth: 96,
     maxWidth: 140,
+    paddingHorizontal: 6,
+    paddingVertical: 8,
     borderRadius: 16,
     overflow: 'hidden',
   },
+  stackedPhoto: { width: '100%', maxWidth: '100%', minHeight: 84, alignItems: 'flex-start' },
   badge: {
-    position: 'absolute',
-    top: 8,
-    left: 6,
-    right: 6,
+    maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -796,7 +791,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 999,
   },
-  badgeTxt: { fontSize: 10, fontWeight: '800', flexShrink: 1 },
+  badgeTxt: { fontSize: 10, fontWeight: '800', flexShrink: 1, textAlign: 'center' },
 
   occWrap: { marginTop: spacing.xs, gap: 5 },
   occText: {
@@ -866,14 +861,14 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
     marginTop: 1,
   },
-  cta: { justifyContent: 'center', height: 50, borderRadius: 14 },
+  cta: { justifyContent: 'center', minHeight: 50, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 14 },
   ctaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
   },
-  ctaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+  ctaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', flexShrink: 1, textAlign: 'center' },
   secondary: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -881,7 +876,7 @@ const styles = StyleSheet.create({
     gap: 3,
     paddingVertical: 2,
   },
-  secondaryTxt: { fontSize: 13.5, fontWeight: '800', color: colors.primary },
+  secondaryTxt: { fontSize: 13.5, fontWeight: '800', color: colors.primary, flexShrink: 1, textAlign: 'center' },
 
   // ── completed ──
   doneCard: {

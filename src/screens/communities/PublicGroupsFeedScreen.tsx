@@ -1,4 +1,6 @@
 import { observeCaughtError } from '../../utils/errorObservation';
+import { EmptyState } from '@/components/EmptyState';
+import { ReadStatusNotice } from '@/components/ReadStatusNotice';
 // Communities tab — premium card-based feed.
 //
 // Layout (top → bottom, RTL):
@@ -20,9 +22,10 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
-import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { ClubFeedSkeleton } from '@/components/loading/ClubFeedSkeleton';
 import { RequestsBell } from '@/components/RequestsBell';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useScrollToTop } from '@react-navigation/native';
@@ -79,6 +82,9 @@ type Nav = NativeStackNavigationProp<CommunitiesStackParamList, 'CommunitiesFeed
 const DISCOVERY_PAGE = 8;
 
 export function PublicGroupsFeedScreen() {
+  const { width, fontScale } = useWindowDimensions();
+  // Keep room for the full search prompt beside the two 48-point controls.
+  const searchOnOwnRow = width - 160 < 120 * fontScale;
   const nav = useNavigation<Nav>();
   const user = useUserStore((s) => s.currentUser);
   const isGuest = useIsGuest();
@@ -94,6 +100,8 @@ export function PublicGroupsFeedScreen() {
   const [text, setText] = useState('');
   const [items, setItems] = useState<GroupPublic[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const resultQuery = useRef<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
   // How many discovery cards are currently revealed (see DISCOVERY_PAGE).
   const [discoveryLimit, setDiscoveryLimit] = useState(DISCOVERY_PAGE);
@@ -154,6 +162,7 @@ export function PublicGroupsFeedScreen() {
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    setLoadFailed(false);
     const timer = setTimeout(async () => {
       try {
         const list =
@@ -161,14 +170,14 @@ export function PublicGroupsFeedScreen() {
             ? await groupService.listPublicGroups()
             : await groupService.searchPublicGroups(text);
         if (text.trim().length > 0) logEvent(AnalyticsEvent.GroupSearch, { query: text });
-        if (alive) setItems(list);
+        if (alive) { resultQuery.current = text.trim(); setItems(list); }
       } catch (err) {
     observeCaughtError(err, {"source":"src/screens/communities/PublicGroupsFeedScreen.tsx","handler":"PublicGroupsFeedScreen","site":"PublicGroupsFeedScreen:02c3a337de"});
         logError('listPublicGroups', err, {
           screen: 'PublicGroupsFeedScreen',
           query: text.trim() || undefined,
         });
-        if (alive) setItems([]);
+        if (alive) setLoadFailed(true);
       } finally {
         if (alive) setLoading(false);
       }
@@ -548,19 +557,11 @@ export function PublicGroupsFeedScreen() {
 
   // ── Render ──
 
-  if (loading && items === null) {
-    return (
-      <View style={styles.root}>
-        <CommunitiesHero onCreate={() => handleCreate('hero')} />
-        <SoccerBallLoader size={40} style={{ marginTop: spacing.xxl }} />
-      </View>
-    );
-  }
-
   // Note: hero placement (outside the ScrollView, so it stays
   // pinned) lives in the main return block below.
 
   const totalKnown = (items ?? []).length;
+  const initialLoading = items === null && !loadFailed;
 
   return (
     <View style={styles.root}>
@@ -576,7 +577,7 @@ export function PublicGroupsFeedScreen() {
             icon on the visual LEFT — under RTL row, that means
             the TextInput is FIRST (right) and the icon LAST
             (left). */}
-        <View style={styles.searchPill}>
+        <View style={[styles.searchPill, searchOnOwnRow && { flexBasis: '100%' }]}>
           <TextInput
             value={text}
             onChangeText={setText}
@@ -636,8 +637,13 @@ export function PublicGroupsFeedScreen() {
         </Pressable>
         <RequestsBell bg="#FFFFFF" style={styles.filterButton} />
       </View>
-      {totalKnown === 0 && !isSearching ? (
-        <View style={styles.emptyAll}>
+      <View style={{paddingHorizontal: 16}}><ReadStatusNotice scope={text} loading={loading} failed={loadFailed} hasData={items !== null} onRetry={() => setRefreshTick(n => n + 1)}/></View>
+      {initialLoading ? (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.body}><ClubFeedSkeleton /></View>
+        </ScrollView>
+      ) : items === null ? null : totalKnown === 0 && !isSearching ? (
+        <ScrollView contentContainerStyle={styles.emptyAll}>
           {/* Bouncing ball mascot — same energy as the football icon
               but reads as "the app is alive, just nothing here yet". */}
           <BouncingBall size={64} color="#3B82F6" />
@@ -652,7 +658,7 @@ export function PublicGroupsFeedScreen() {
             style={{ marginTop: spacing.lg, alignSelf: 'stretch' }}
             fullWidth
           />
-        </View>
+        </ScrollView>
       ) : (
         <ScrollView
           ref={scrollRef}
@@ -669,9 +675,9 @@ export function PublicGroupsFeedScreen() {
         >
           {isSearching ? (
             <View style={styles.body}>
-              {searchMatches.length === 0 ? (
-                <Text style={styles.empty}>{he.communitiesEmpty}</Text>
-              ) : (
+              {searchMatches.length === 0 ? resultQuery.current === text.trim() && !loading && !loadFailed ? (
+                <EmptyState fill={false} icon="search-outline" title="לא נמצאו מועדונים בחיפוש הזה" hint="נסו שם קצר יותר או הציגו שוב את כל המועדונים." ctaLabel="נקה חיפוש וסינון" onCtaPress={() => {setText(''); setFilters(EMPTY_GROUP_FILTERS);}}/>
+              ) : null : (
                 <View style={styles.cardsList}>{searchMatches.map(renderCard)}</View>
               )}
             </View>
@@ -715,7 +721,9 @@ export function PublicGroupsFeedScreen() {
                 </Section>
               ) : null}
               <Section title={he.communitiesSectionOpen} subtitle={he.communitiesDiscoverSubtitle}>
-                {discoveryItems.length === 0 ? (
+                {discoveryItems.length === 0 ? filterCount > 0 ? (
+                  <EmptyState fill={false} icon="options-outline" title="אין מועדונים שמתאימים לסינון" hint="אפשר להרחיב את החיפוש ולהציג מועדונים נוספים." ctaLabel="נקה סינון" onCtaPress={() => setFilters(EMPTY_GROUP_FILTERS)}/>
+                ) : (
                   <Text style={styles.sectionEmpty}>
                     {he.communitiesEmptyOpenSection}
                   </Text>
@@ -795,6 +803,8 @@ function Section({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F8FAFC' },
+  loadError: { marginHorizontal: spacing.lg, marginBottom: spacing.sm, padding: spacing.md, gap: spacing.sm, borderRadius: 14, backgroundColor: '#FFF1F1' },
+  loadErrorText: { color: '#9E3030', fontSize: 14, lineHeight: 21, textAlign: RTL_LABEL_ALIGN },
   scrollContent: {
     paddingBottom: 24,
   },
@@ -804,6 +814,7 @@ const styles = StyleSheet.create({
   // both iOS and Android.
   searchRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
@@ -822,7 +833,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 999,
     paddingHorizontal: spacing.lg,
-    height: 48,
+    minHeight: 48,
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.10,
@@ -865,7 +876,7 @@ const styles = StyleSheet.create({
     top: -4,
     end: -4,
     minWidth: 18,
-    height: 18,
+    minHeight: 18,
     borderRadius: 9,
     paddingHorizontal: 4,
     backgroundColor: '#EF4444',
@@ -890,7 +901,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   emptyAll: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,

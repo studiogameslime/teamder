@@ -1,0 +1,338 @@
+[
+  {
+    "phase": "before",
+    "pass": 0,
+    "name": "open",
+    "ms": 674
+  },
+  {
+    "phase": "before",
+    "pass": 0,
+    "name": "typed",
+    "ms": 1631
+  },
+  {
+    "phase": "before",
+    "pass": 0,
+    "name": "card",
+    "ms": 244
+  },
+  {
+    "phase": "before",
+    "pass": 0,
+    "name": "recruit",
+    "ms": 1053
+  },
+  {
+    "phase": "after",
+    "pass": 0,
+    "name": "open",
+    "ms": 235
+  },
+  {
+    "phase": "after",
+    "pass": 0,
+    "name": "typed",
+    "ms": 498
+  },
+  {
+    "phase": "after",
+    "pass": 0,
+    "name": "card",
+    "ms": 227
+  },
+  {
+    "phase": "after",
+    "pass": 0,
+    "name": "recruit",
+    "ms": 213
+  },
+  {
+    "phase": "after",
+    "pass": 1,
+    "name": "open",
+    "ms": 296
+  },
+  {
+    "phase": "after",
+    "pass": 1,
+    "name": "typed",
+    "ms": 690
+  },
+  {
+    "phase": "after",
+    "pass": 1,
+    "name": "card",
+    "ms": 144
+  },
+  {
+    "phase": "after",
+    "pass": 1,
+    "name": "recruit",
+    "ms": 232
+  },
+  {
+    "phase": "before",
+    "pass": 1,
+    "name": "open",
+    "ms": 583
+  },
+  {
+    "phase": "before",
+    "pass": 1,
+    "name": "typed",
+    "ms": 1640
+  },
+  {
+    "phase": "before",
+    "pass": 1,
+    "name": "card",
+    "ms": 331
+  },
+  {
+    "phase": "before",
+    "pass": 1,
+    "name": "recruit",
+    "ms": 979
+  },
+  {
+    "phase": "before",
+    "pass": 2,
+    "name": "open",
+    "ms": 531
+  },
+  {
+    "phase": "before",
+    "pass": 2,
+    "name": "typed",
+    "ms": 1657
+  },
+  {
+    "phase": "before",
+    "pass": 2,
+    "name": "card",
+    "ms": 359
+  },
+  {
+    "phase": "before",
+    "pass": 2,
+    "name": "recruit",
+    "ms": 1095
+  },
+  {
+    "phase": "after",
+    "pass": 2,
+    "name": "open",
+    "ms": 297
+  },
+  {
+    "phase": "after",
+    "pass": 2,
+    "name": "typed",
+    "ms": 477
+  },
+  {
+    "phase": "after",
+    "pass": 2,
+    "name": "card",
+    "ms": 157
+  },
+  {
+    "phase": "after",
+    "pass": 2,
+    "name": "recruit",
+    "ms": 388
+  },
+  {
+    "phase": "after",
+    "pass": 3,
+    "name": "open",
+    "ms": 322
+  },
+  {
+    "phase": "after",
+    "pass": 3,
+    "name": "typed",
+    "ms": 458
+  },
+  {
+    "phase": "after",
+    "pass": 3,
+    "name": "card",
+    "ms": 271
+  },
+  {
+    "phase": "after",
+    "pass": 3,
+    "name": "recruit",
+    "ms": 246
+  },
+  {
+    "phase": "before",
+    "pass": 3,
+    "name": "open",
+    "ms": 546
+  },
+  {
+    "phase": "before",
+    "pass": 3,
+    "name": "typed",
+    "ms": 1650
+  },
+  {
+    "phase": "before",
+    "pass": 3,
+    "name": "card",
+    "ms": 382
+  },
+  {
+    "phase": "before",
+    "pass": 3,
+    "name": "recruit",
+    "ms": 1052
+  },
+  {
+    "phase": "before",
+    "pass": 4,
+    "name": "open",
+    "ms": 586
+  },
+  {
+    "phase": "before",
+    "pass": 4,
+    "name": "typed",
+    "ms": 1716
+  },
+  {
+    "phase": "before",
+    "pass": 4,
+    "name": "card",
+    "ms": 258
+  },
+  {
+    "phase": "before",
+    "pass": 4,
+    "name": "recruit",
+    "ms": 1016
+  },
+  {
+    "phase": "after",
+    "pass": 4,
+    "name": "open",
+    "ms": 250
+  },
+  {
+    "phase": "after",
+    "pass": 4,
+    "name": "typed",
+    "ms": 472
+  },
+  {
+    "phase": "after",
+    "pass": 4,
+    "name": "card",
+    "ms": 230
+  },
+  {
+    "phase": "after",
+    "pass": 4,
+    "name": "recruit",
+    "ms": 324
+  },
+  {
+    "phase": "after",
+    "pass": 5,
+    "name": "open",
+    "ms": 281
+  },
+  {
+    "phase": "after",
+    "pass": 5,
+    "name": "typed",
+    "ms": 450
+  },
+  {
+    "phase": "after",
+    "pass": 5,
+    "name": "card",
+    "ms": 158
+  },
+  {
+    "phase": "after",
+    "pass": 5,
+    "name": "recruit",
+    "ms": 339
+  },
+  {
+    "phase": "before",
+    "pass": 5,
+    "name": "open",
+    "ms": 524
+  },
+  {
+    "phase": "before",
+    "pass": 5,
+    "name": "typed",
+    "ms": 1639
+  },
+  {
+    "phase": "before",
+    "pass": 5,
+    "name": "card",
+    "ms": 215
+  },
+  {
+    "phase": "before",
+    "pass": 5,
+    "name": "recruit",
+    "ms": 1015
+  },
+  {
+    "phase": "before",
+    "pass": 6,
+    "name": "open",
+    "ms": 530
+  },
+  {
+    "phase": "before",
+    "pass": 6,
+    "name": "typed",
+    "ms": 1578
+  },
+  {
+    "phase": "before",
+    "pass": 6,
+    "name": "card",
+    "ms": 428
+  },
+  {
+    "phase": "before",
+    "pass": 6,
+    "name": "recruit",
+    "ms": 960
+  },
+  {
+    "phase": "after",
+    "pass": 6,
+    "name": "open",
+    "ms": 298
+  },
+  {
+    "phase": "after",
+    "pass": 6,
+    "name": "typed",
+    "ms": 462
+  },
+  {
+    "phase": "after",
+    "pass": 6,
+    "name": "card",
+    "ms": 126
+  },
+  {
+    "phase": "after",
+    "pass": 6,
+    "name": "recruit",
+    "ms": 345
+  }
+]

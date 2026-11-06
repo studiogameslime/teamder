@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { DraggableMenuSheet } from '@/components/DraggableMenuSheet';
 import { recordDiagnostic } from '@/services/diagnosticJournal';
+import { inheritControl } from '@/services/controlActivity';
 import { MenuIcon } from '@/components/MenuIcon';
 import { BallSwitch } from '@/components/anim/BallSwitch';
 import { Ionicons } from '@expo/vector-icons';
@@ -131,7 +132,7 @@ function MenuRow({
   };
   return (
     <Pressable
-      onPress={handlePress}
+      onPress={inheritControl(item.toggle?.onChange ?? item.onPress, handlePress)}
       disabled={isToggle && item.toggle?.disabled}
       style={({ pressed }) => [
         styles.row,
@@ -175,7 +176,7 @@ function MenuRow({
           accessibilityLabel={item.label}
           value={!!item.toggle?.value}
           disabled={item.toggle?.disabled}
-          onValueChange={(v) => {recordDiagnostic('press','menu_toggle',{type:item.id,selected:v});item.toggle?.onChange(v);}}
+          onValueChange={inheritControl(item.toggle?.onChange, (v: boolean) => {recordDiagnostic('press','menu_toggle',{type:item.id,selected:v});item.toggle?.onChange(v);})}
           trackColor={{ false: colors.border, true: colors.primary }}
           thumbColor="#fff"
         />

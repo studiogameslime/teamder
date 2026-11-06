@@ -55,7 +55,7 @@ interface Props {
   teamIdx: number;
   roster: RosterMember[];
   offPitchRoster?: OffPitchMember[];
-  onOffPitchPlayerPress?: (m: OffPitchMember) => void;
+  onOffPitchPlayerPress?: (m: OffPitchMember, rect: MenuAnchor) => void;
   wins: number;
   align: 'right' | 'left';
   avatarSize?: number;
@@ -251,7 +251,7 @@ export function TeamScore({
                 <Text style={styles.offPitchDetail}>{detail}</Text>
               </View>
             </>;
-            return onOffPitchPlayerPress ? <Pressable key={m.id} style={({pressed}) => [styles.offPitchRow, pressed && styles.playerRowPressed]} accessibilityRole="button" accessibilityLabel={`${m.name}, ${detail}`} onPress={() => onOffPitchPlayerPress(m)}>{content}</Pressable>
+            return onOffPitchPlayerPress ? <MeasurablePressable key={m.id} style={styles.offPitchRow} accessibilityLabel={`${m.name}, ${detail}`} onMeasured={rect => onOffPitchPlayerPress(m, rect)}>{content}</MeasurablePressable>
               : <View key={m.id} style={styles.offPitchRow}>{content}</View>;
           })}
         </View> : null}

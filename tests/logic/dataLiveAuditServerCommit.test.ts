@@ -8,6 +8,7 @@ import { liveRoundKey, matchesLiveRound } from '../../functions/src/liveRoundCom
 import { liveSeasonStamp } from '../../functions/src/liveSeasonStamp';
 import { assertSeasonOpenForGame } from '../../functions/src/seasonLock';
 import { commitRoundInOrder } from '../../functions/src/commitProtocol';
+import {readSharedCalibration,SHARED_SCORE_ACTIVATION_AT} from '../../functions/src/sharedEveningScore';
 
 const source=fs.readFileSync('functions/src/index.ts','utf8');
 const tree=ts.createSourceFile('index.ts',source,ts.ScriptTarget.Latest,true);
@@ -66,7 +67,7 @@ function serverWorld(size=11, guests=false) {
   const commit=vm.runInNewContext(compiled,{onCall:(_:unknown,handler:any)=>handler,ENFORCE_APP_CHECK:false,db,HttpsError,
     admin:{firestore:{FieldValue:{increment:inc,delete:()=>removed}}},
     liveRoundKey,matchesLiveRound,buildRoundSides,roundParticipantSides,StatBatch,MAX_ROUND_BATCH_OPS,commitRoundInOrder,
-    liveSeasonStamp, assertSeasonOpenForGame,isReal:(id:string)=>!id.startsWith('guest:'),
+    readSharedCalibration,liveSeasonStamp, assertSeasonOpenForGame,isReal:(id:string)=>!id.startsWith('guest:'),
     console:{log(){},error(){}},Date,
   });
   const payload:any={gameId:'audit',roundId:'r',sideA,sideB,teamAIndex:0,teamBIndex:1,winnerSide:'A',goals:[],penalties:[],liveGoalIds:[],rotationUpdatedAt:1};
@@ -204,4 +205,19 @@ test('the complete commit cannot reinterpret an old stamped season and writes no
  const x=serverWorld(4);x.state.status='open';x.state.seasonId='s1';
  x.documents.get('groups/club').seasons={enabled:true,currentId:'s3',currentNo:3,count:2,startedAt:1000};
  await expect(x.save()).rejects.toThrow('closedSeasonGame');expect(x.commits).toHaveLength(0);expect(x.state.seasonId).toBe('s1');
+});
+
+test('new scoring records guest penalty outcomes without creating users or club career rows',async()=>{
+ const x=serverWorld(4,true);
+ x.state.scoreCalibration={version:'shared-v1',threshold:1.4,frozenAt:SHARED_SCORE_ACTIVATION_AT+1};
+ const kicks=[{kickerId:'guest:a0',keeperId:'guest:b0',scored:false,outcome:'miss'},
+  {kickerId:'guest:b0',keeperId:'guest:a0',scored:false,outcome:'save'},
+  {kickerId:'guest:a1',keeperId:'guest:b0',scored:true,outcome:'goal'}];
+ x.payload.penalties=kicks;x.state.liveMatch.shootout={kicks};
+ await x.save();
+ expect(x.documents.get('gamePlayerStats/audit__guest:a0')).toMatchObject({penMissed:1,penSaved:1});
+ expect(x.documents.get('gamePlayerStats/audit__guest:b0')).toMatchObject({penMissed:1,penConceded:1});
+ expect(x.documents.get('gamePlayerStats/audit__guest:b0').penSaved??0).toBe(0);
+ expect(x.documents.get('gamePlayerStats/audit__guest:a1')).toMatchObject({penScored:1});
+ expect([...x.documents.keys()].some(p=>p.startsWith('users/')||p.startsWith('communityPlayerStats/'))).toBe(false);
 });

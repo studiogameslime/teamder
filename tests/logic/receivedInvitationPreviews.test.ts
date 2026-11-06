@@ -7,7 +7,9 @@ import { StaleSessionError } from '../../src/services/staleSession';
 function fixture(gameOverrides: Record<string, any> = {}) {
   const now=Date.now();
   const game={id:'round',title:'מחזור',groupId:'club',status:'open',startsAt:now+86400000,players:['a'],waitlist:[],maxPlayers:2,fieldType:'synthetic',city:'תל אביב',format:'5v5',...gameOverrides};
-  const rows=[{id:'round-invite',type:'inviteToGame',recipientId:'me',payload:{gameId:'round',inviterId:'manager'},createdAt:now}];
+  const rows:Record<string,any>[]=[{id:'round-invite',type:'inviteToGame',recipientId:'me',payload:{gameId:'round',inviterId:'manager'},createdAt:now}];
+  const getGameById=jest.fn(async()=>game);
+  const hydratePublicUsers=jest.fn(async()=>[{id:'manager',photoUrl:'https://example.com/avatar.jpg'}]);
   const exports:any={},getPublic=jest.fn(async()=>({id:'club',name:'מועדון',coverPhotoUrl:'https://example.com/cover.jpg'}));
   const modules:Record<string,any>={
     'firebase/firestore':{},'firebase/functions':{},
@@ -17,13 +19,29 @@ function fixture(gameOverrides: Record<string, any> = {}) {
     './staleSession':{StaleSessionError},
     './notificationsService':{notificationsService:{__getMockDispatches:()=>rows}},
     '@/utils/receivedInvitations':{receivedInvitations},
-    './groupService':{groupService:{getPublic,hydratePublicUsers:async()=>[{id:'manager',photoUrl:'https://example.com/avatar.jpg'}]}},
-    './gameService':{gameService:{getGameById:async()=>game}},
+    './groupService':{groupService:{getPublic,hydratePublicUsers}},
+    './gameService':{gameService:{getGameById}},
     '@/types':{activeGuestCount:(guests:any[]=[])=>guests.filter(g=>!g.waitlisted).length},
   };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/services/receivedInvitationsService.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:(n:string)=>modules[n]});
-  return {list:()=>exports.receivedInvitationsService.list('me'),listInbox:()=>exports.receivedInvitationsService.listInbox('me'),rows,getPublic};
+  return {list:()=>exports.receivedInvitationsService.list('me'),listInbox:()=>exports.receivedInvitationsService.listInbox('me'),rows,getPublic,getGameById,hydratePublicUsers};
 }
+
+test('an unavailable invitation never fetches fresh player or target data, even for a pending player',async()=>{
+  const f=fixture({pending:['me']});
+  f.rows.push({id:'club-invite',type:'groupInvitation',recipientId:'me',payload:{groupId:'club',inviterId:'manager'},createdAt:1});
+  f.rows.forEach(row=>row.invitationStatus='unavailable');
+  expect((await f.list()).map((item:any)=>item.status)).toEqual(['unavailable','unavailable']);
+  expect(f.getGameById).not.toHaveBeenCalled();
+  expect(f.getPublic).not.toHaveBeenCalled();
+  expect(f.hydratePublicUsers).not.toHaveBeenCalled();
+});
+
+test('pending membership never reopens the action on a server-confirmed expired invitation',async()=>{
+  const f=fixture({pending:['me']});
+  f.rows[0].invitationStatus='expired';
+  expect((await f.list())[0].status).toBe('expired');
+});
 
 test('the badge and club decision can resolve while cover hydration is stalled',async()=>{
   const f=fixture();

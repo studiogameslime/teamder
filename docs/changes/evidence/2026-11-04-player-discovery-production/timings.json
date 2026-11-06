@@ -1,0 +1,655 @@
+{
+  "before-timings": [
+    {
+      "trial": 0,
+      "scenario": "open",
+      "ms": 1026,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "trial": 0,
+      "scenario": "name",
+      "ms": 1770,
+      "pages": 2,
+      "rows": 1
+    },
+    {
+      "trial": 0,
+      "scenario": "card",
+      "ms": 7163,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 1,
+      "scenario": "open",
+      "ms": 1234,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "trial": 1,
+      "scenario": "name",
+      "ms": 1930,
+      "pages": 2,
+      "rows": 1
+    },
+    {
+      "trial": 1,
+      "scenario": "card",
+      "ms": 1258,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 2,
+      "scenario": "open",
+      "ms": 966,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "trial": 2,
+      "scenario": "name",
+      "ms": 1837,
+      "pages": 2,
+      "rows": 1
+    },
+    {
+      "trial": 2,
+      "scenario": "card",
+      "ms": 1114,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 3,
+      "scenario": "open",
+      "ms": 1054,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "trial": 3,
+      "scenario": "name",
+      "ms": 1792,
+      "pages": 2,
+      "rows": 1
+    },
+    {
+      "trial": 3,
+      "scenario": "card",
+      "ms": 1146,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 4,
+      "scenario": "open",
+      "ms": 964,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "trial": 4,
+      "scenario": "name",
+      "ms": 1771,
+      "pages": 2,
+      "rows": 1
+    },
+    {
+      "trial": 4,
+      "scenario": "card",
+      "ms": 1019,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 5,
+      "scenario": "open",
+      "ms": 1099,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "trial": 5,
+      "scenario": "name",
+      "ms": 1926,
+      "pages": 2,
+      "rows": 1
+    },
+    {
+      "trial": 5,
+      "scenario": "card",
+      "ms": 1112,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 6,
+      "scenario": "open",
+      "ms": 978,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "trial": 6,
+      "scenario": "name",
+      "ms": 1696,
+      "pages": 2,
+      "rows": 1
+    },
+    {
+      "trial": 6,
+      "scenario": "card",
+      "ms": 993,
+      "pages": 1,
+      "rows": 1
+    }
+  ],
+  "after-timings": [
+    {
+      "trial": 0,
+      "scenario": "open",
+      "ms": 4958,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "trial": 0,
+      "scenario": "name",
+      "ms": 1187,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 0,
+      "scenario": "card",
+      "ms": 2790,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 0,
+      "scenario": "summary",
+      "ms": 1159,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 1,
+      "scenario": "open",
+      "ms": 1213,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "trial": 1,
+      "scenario": "name",
+      "ms": 799,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 1,
+      "scenario": "card",
+      "ms": 688,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 1,
+      "scenario": "summary",
+      "ms": 835,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 2,
+      "scenario": "open",
+      "ms": 1227,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "trial": 2,
+      "scenario": "name",
+      "ms": 793,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 2,
+      "scenario": "card",
+      "ms": 641,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 2,
+      "scenario": "summary",
+      "ms": 839,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 3,
+      "scenario": "open",
+      "ms": 1058,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "trial": 3,
+      "scenario": "name",
+      "ms": 752,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 3,
+      "scenario": "card",
+      "ms": 699,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 3,
+      "scenario": "summary",
+      "ms": 870,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 4,
+      "scenario": "open",
+      "ms": 1124,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "trial": 4,
+      "scenario": "name",
+      "ms": 746,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 4,
+      "scenario": "card",
+      "ms": 596,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 4,
+      "scenario": "summary",
+      "ms": 789,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 5,
+      "scenario": "open",
+      "ms": 1015,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "trial": 5,
+      "scenario": "name",
+      "ms": 766,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 5,
+      "scenario": "card",
+      "ms": 592,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 5,
+      "scenario": "summary",
+      "ms": 797,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 6,
+      "scenario": "open",
+      "ms": 1036,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "trial": 6,
+      "scenario": "name",
+      "ms": 827,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 6,
+      "scenario": "card",
+      "ms": 610,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "trial": 6,
+      "scenario": "summary",
+      "ms": 829,
+      "pages": 1,
+      "rows": 1
+    }
+  ],
+  "before-recruit": [
+    {
+      "trial": 0,
+      "scenario": "recruit",
+      "ms": 18167,
+      "pages": 1,
+      "rows": 37
+    },
+    {
+      "trial": 1,
+      "scenario": "recruit",
+      "ms": 11936,
+      "pages": 1,
+      "rows": 37
+    },
+    {
+      "trial": 2,
+      "scenario": "recruit",
+      "ms": 6081,
+      "pages": 1,
+      "rows": 37
+    },
+    {
+      "trial": 3,
+      "scenario": "recruit",
+      "ms": 6021,
+      "pages": 1,
+      "rows": 37
+    },
+    {
+      "trial": 4,
+      "scenario": "recruit",
+      "ms": 5999,
+      "pages": 1,
+      "rows": 37
+    },
+    {
+      "trial": 5,
+      "scenario": "recruit",
+      "ms": 5755,
+      "pages": 1,
+      "rows": 37
+    },
+    {
+      "trial": 6,
+      "scenario": "recruit",
+      "ms": 5657,
+      "pages": 1,
+      "rows": 37
+    }
+  ],
+  "after-recruit": [
+    {
+      "trial": 0,
+      "scenario": "recruit",
+      "ms": 5215,
+      "pages": 1,
+      "rows": 37
+    },
+    {
+      "trial": 1,
+      "scenario": "recruit",
+      "ms": 2526,
+      "pages": 1,
+      "rows": 37
+    },
+    {
+      "trial": 2,
+      "scenario": "recruit",
+      "ms": 2012,
+      "pages": 1,
+      "rows": 37
+    },
+    {
+      "trial": 3,
+      "scenario": "recruit",
+      "ms": 1552,
+      "pages": 1,
+      "rows": 37
+    },
+    {
+      "trial": 4,
+      "scenario": "recruit",
+      "ms": 1361,
+      "pages": 1,
+      "rows": 37
+    },
+    {
+      "trial": 5,
+      "scenario": "recruit",
+      "ms": 1384,
+      "pages": 1,
+      "rows": 37
+    },
+    {
+      "trial": 6,
+      "scenario": "recruit",
+      "ms": 1376,
+      "pages": 1,
+      "rows": 37
+    }
+  ],
+  "native-before": [
+    {
+      "trial": 0,
+      "scenario": "open",
+      "ms": 4509
+    },
+    {
+      "trial": 0,
+      "scenario": "typed",
+      "ms": 2601
+    },
+    {
+      "trial": 0,
+      "scenario": "card",
+      "ms": 4575
+    },
+    {
+      "trial": 0,
+      "scenario": "recruit",
+      "ms": 15590
+    },
+    {
+      "trial": 1,
+      "scenario": "open",
+      "ms": 1341
+    },
+    {
+      "trial": 1,
+      "scenario": "typed",
+      "ms": 2363
+    },
+    {
+      "trial": 1,
+      "scenario": "card",
+      "ms": 1607
+    },
+    {
+      "trial": 1,
+      "scenario": "recruit",
+      "ms": 6556
+    },
+    {
+      "trial": 2,
+      "scenario": "open",
+      "ms": 1565
+    },
+    {
+      "trial": 2,
+      "scenario": "typed",
+      "ms": 4517
+    },
+    {
+      "trial": 2,
+      "scenario": "card",
+      "ms": 3364
+    },
+    {
+      "trial": 2,
+      "scenario": "recruit",
+      "ms": 6256
+    },
+    {
+      "trial": 3,
+      "scenario": "open",
+      "ms": 1767
+    },
+    {
+      "trial": 3,
+      "scenario": "typed",
+      "ms": 2344
+    },
+    {
+      "trial": 3,
+      "scenario": "card",
+      "ms": 1721
+    },
+    {
+      "trial": 3,
+      "scenario": "recruit",
+      "ms": 6480
+    },
+    {
+      "trial": 4,
+      "scenario": "open",
+      "ms": 1746
+    },
+    {
+      "trial": 4,
+      "scenario": "typed",
+      "ms": 2479
+    },
+    {
+      "trial": 4,
+      "scenario": "card",
+      "ms": 2176
+    },
+    {
+      "trial": 4,
+      "scenario": "recruit",
+      "ms": 6367
+    }
+  ],
+  "native-after": [
+    {
+      "trial": 0,
+      "scenario": "open",
+      "ms": 1360
+    },
+    {
+      "trial": 0,
+      "scenario": "typed",
+      "ms": 1159
+    },
+    {
+      "trial": 0,
+      "scenario": "card",
+      "ms": 906
+    },
+    {
+      "trial": 0,
+      "scenario": "recruit",
+      "ms": 2074
+    },
+    {
+      "trial": 1,
+      "scenario": "open",
+      "ms": 1308
+    },
+    {
+      "trial": 1,
+      "scenario": "typed",
+      "ms": 1382
+    },
+    {
+      "trial": 1,
+      "scenario": "card",
+      "ms": 776
+    },
+    {
+      "trial": 1,
+      "scenario": "recruit",
+      "ms": 2339
+    },
+    {
+      "trial": 2,
+      "scenario": "open",
+      "ms": 1550
+    },
+    {
+      "trial": 2,
+      "scenario": "typed",
+      "ms": 1542
+    },
+    {
+      "trial": 2,
+      "scenario": "card",
+      "ms": 895
+    },
+    {
+      "trial": 2,
+      "scenario": "recruit",
+      "ms": 2070
+    },
+    {
+      "trial": 3,
+      "scenario": "open",
+      "ms": 1349
+    },
+    {
+      "trial": 3,
+      "scenario": "typed",
+      "ms": 1230
+    },
+    {
+      "trial": 3,
+      "scenario": "card",
+      "ms": 806
+    },
+    {
+      "trial": 3,
+      "scenario": "recruit",
+      "ms": 1825
+    },
+    {
+      "trial": 4,
+      "scenario": "open",
+      "ms": 1316
+    },
+    {
+      "trial": 4,
+      "scenario": "typed",
+      "ms": 1198
+    },
+    {
+      "trial": 4,
+      "scenario": "card",
+      "ms": 908
+    },
+    {
+      "trial": 4,
+      "scenario": "recruit",
+      "ms": 1688
+    }
+  ]
+}

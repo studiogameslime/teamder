@@ -109,10 +109,8 @@ let accountId: UserId | null = null;
 let accountGeneration = 0;
 let hydrateGeneration = 0;
 let selectionQueue: Promise<unknown> = Promise.resolve();
-function persistSelection(id: GroupId | null, isCurrent: () => boolean): Promise<void> {
-  const next = selectionQueue.then(async () => {
-    if (isCurrent()) await storage.setCurrentGroupId(id);
-  });
+function queueSelection(work: () => Promise<void>): Promise<void> {
+  const next = selectionQueue.then(work);
   selectionQueue = next.catch((caughtError87cd10789d: unknown) => {
     observeCaughtError(caughtError87cd10789d, {"source":"src/store/groupStore.ts","handler":"persistSelection","site":"groupStore:87cd10789d"});});
   return next;
@@ -134,11 +132,26 @@ async function refreshAfterJoin(
   hydrate: (userId: UserId) => Promise<void>,
   present: () => boolean,
   userId: UserId,
+  assertCurrent: () => void,
 ): Promise<void> {
+  assertCurrent();
   await hydrate(userId);
+  assertCurrent();
   if (present()) return;
   await new Promise((r) => setTimeout(r, JOIN_REFRESH_RETRY_MS));
+  assertCurrent();
   await hydrate(userId);
+  assertCurrent();
+}
+
+function guardJoinAccount(userId: UserId): () => void {
+  const generation = accountGeneration;
+  return () => {
+    const currentId = useUserStore.getState().currentUser?.id ?? accountId;
+    if (generation !== accountGeneration || (currentId && currentId !== userId)) {
+      throw new StaleSessionError(userId, currentId ?? '');
+    }
+  };
 }
 
 /** Backoff before the single post-join refresh retry. */
@@ -256,28 +269,23 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
       }),
     ]);
     if (!isCurrent()) return;
-    const groups = groupsRes.ok ? groupsRes.value : get().groups;
-    const pendingGroups = pendingRes.ok ? pendingRes.value : get().pendingGroups;
-    let currentGroupId = groupsRes.ok ? savedId : (before.currentGroupId ?? savedId);
-    if (groupsRes.ok) {
-      if (currentGroupId && !groups.find((g) => g.id === currentGroupId)) {
-        currentGroupId = null;
-        await persistSelection(null, isCurrent).catch((err) => {
-    observeCaughtError(err, {"source":"src/store/groupStore.ts","handler":"hydrate","site":"groupStore:2f68a86a91"});
-          logError('groupHydrateSetCurrentGroupId', err, { userId });
-        });
-        if (!isCurrent()) return;
-      }
-      if (!currentGroupId && groups.length > 0) {
-        currentGroupId = groups[0].id;
-        await persistSelection(currentGroupId, isCurrent).catch((err) => {
+    await queueSelection(async () => {
+      if (!isCurrent()) return;
+      const latest = get();
+      const groups = groupsRes.ok ? groupsRes.value : latest.groups;
+      const pendingGroups = pendingRes.ok ? pendingRes.value : latest.pendingGroups;
+      const selected = latest.currentGroupId ?? savedId;
+      const currentGroupId = groupsRes.ok && !groups.some(group => group.id === selected)
+        ? groups[0]?.id ?? null : selected;
+      if (groupsRes.ok && currentGroupId !== selected) {
+        await storage.setCurrentGroupId(currentGroupId).catch((err) => {
     observeCaughtError(err, {"source":"src/store/groupStore.ts","handler":"hydrate","site":"groupStore:84425d2d54"});
           logError('groupHydrateSetCurrentGroupId', err, { userId, currentGroupId });
         });
         if (!isCurrent()) return;
       }
-    }
-    set({ hydrated: true, groups, pendingGroups, currentGroupId });
+      set({ hydrated: true, groups, pendingGroups, currentGroupId });
+    });
   },
 
   getMembership: (userId) => {
@@ -304,8 +312,11 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
   setCurrentGroup: async (groupId) => {
     const generation = accountGeneration;
     const isCurrent = () => generation === accountGeneration;
-    await persistSelection(groupId, isCurrent);
-    if (isCurrent()) set({ currentGroupId: groupId });
+    await queueSelection(async () => {
+      if (!isCurrent()) return;
+      await storage.setCurrentGroupId(groupId);
+      if (isCurrent()) set({ currentGroupId: groupId });
+    });
   },
 
   createGroup: async (input) => {
@@ -318,7 +329,10 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
   },
 
   requestJoin: async (code, userId) => {
+    const assertCurrent = guardJoinAccount(userId);
+    assertCurrent();
     const { group, status } = await groupService.requestJoinByCode(code, userId);
+    assertCurrent();
     if (status === 'pending') {
       set((s) => ({
         pendingGroups: s.pendingGroups.find((g) => g.id === group.id)
@@ -337,19 +351,14 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
         get().hydrate,
         () => get().groups.some((g) => g.id === group.id),
         userId,
+        assertCurrent,
       );
     }
     return status;
   },
 
   requestJoinById: async (groupId, userId) => {
-    const account = accountGeneration;
-    const assertCurrent = () => {
-      const current = useUserStore.getState().currentUser;
-      if (account !== accountGeneration || (current && current.id !== userId)) {
-        throw new StaleSessionError(userId, current?.id ?? '');
-      }
-    };
+    const assertCurrent = guardJoinAccount(userId);
     assertCurrent();
     const { group, status } = await groupService.requestJoinById(groupId, userId);
     assertCurrent();
@@ -379,6 +388,7 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
         get().hydrate,
         () => get().groups.some((g) => g.id === group.id),
         userId,
+        assertCurrent,
       );
     }
     return status;

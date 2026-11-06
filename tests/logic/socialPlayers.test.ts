@@ -13,6 +13,15 @@ test('explicit saved empty grid and opt-out override legacy preferences',()=>{
   expect(playerAvailabilitySlots({...player.availability!,isAvailableForInvites:false})).toEqual({});
   expect(playerAvailabilitySlots(player.availability)).toEqual({3:['evening'],5:['morning']});
 });
+test('a legacy day or time alone matches the same slots displayed on the card',()=>{
+  const dayOnly:SocialPlayer={...player,availability:{preferredDays:[3],preferredTimes:[],isAvailableForInvites:true}};
+  const anyDay:SocialPlayer={...player,availability:{preferredDays:[],preferredTimes:['evening'],isAvailableForInvites:true}};
+  expect(playerSearchMatches(dayOnly,{day:3,time:'evening'})).toBe(true);
+  expect(playerSearchMatches(dayOnly,{day:2,time:'evening'})).toBe(false);
+  expect(playerAvailabilityLines(anyDay.availability)).toHaveLength(7);
+  expect(playerSearchMatches(anyDay,{day:2,time:'evening'})).toBe(true);
+  expect(playerSearchMatches(anyDay,{time:'morning'})).toBe(false);
+});
 test('search accepts partial names with diacritics and bidi marks',()=>{
   expect(normalizePlayerSearch('  ⁦אִיתַי⁩  לוי ')).toBe('איתי לוי');
   expect(playerSearchMatches(player,{text:'איתי',city:'יהודה'})).toBe(true);

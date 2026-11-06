@@ -79,10 +79,9 @@ test('a colour edit retains partial manual work, including old-format local revi
   expect(hasManualDraft(raw,manualDraftRevision(game.draftTeams))).toBe(false);
 });
 
-test.each(['finished','cancelled','rotation','stale','duplicate','unknown'])('rejected colour update is atomic: %s',async reason=>{
+test.each(['finished','cancelled','stale','duplicate','unknown'])('rejected colour update is atomic: %s',async reason=>{
   const {service,current}=harness(false);
   if(reason==='finished'||reason==='cancelled')current.status=reason;
-  if(reason==='rotation')current.rotation={playing:[0,1],waiting:[2],loans:[]} as any;
   const colors={...baseline,0:reason==='duplicate'?'blue':reason==='unknown'?'pink':'yellow'};
   const before=JSON.stringify(current);
   await expect(service.saveDraftTeamColors('g',colors,reason==='stale'?{...baseline,0:'white'}:baseline)).rejects.toThrow();
@@ -158,4 +157,19 @@ test('an early colour subscription acknowledgement preserves the chosen opening 
   stored();await selecting;
   expect(setOpeningPlan).toHaveBeenCalledTimes(1);
   expect(context.setOpeningBusy).not.toHaveBeenCalled();
+});
+
+
+test.each([false,true])('an active round can change colours while preserving its live state (mock=%s)',async mock=>{
+  const game=fixture();game.draftTeams=createManualDraft([['a'],['b'],['c']],'owner',4,undefined,baseline);
+  game.rotation={playing:[1,2],waiting:[0],loans:[],round:3,updatedAt:8} as any;
+  game.liveMatch={phase:'roundLive',scoreA:2,scoreB:1,timerRunning:true,timerStartedAt:123,goals:[{scorerId:'a'}]} as any;
+  const {service,current}=harness(mock,game),before=structuredClone(current);
+  await service.saveDraftTeamColors('g',{0:'blue',1:'red',2:'green'},baseline);
+  expect(current.liveMatch).toEqual(before.liveMatch);
+  expect(current.rotation).toEqual(before.rotation);
+  expect(current.players).toEqual(before.players);
+  expect(current.draftTeams!.teams.map((t:any)=>t.colorKey)).toEqual(['blue','red','green']);
+  expect(current.draftTeams!.originalTeams!.map((t:any)=>t.colorKey)).toEqual(['blue','red','green']);
+  await expect(service.saveDraftTeamColors('g',{...baseline,0:'yellow'},baseline)).rejects.toThrow('DRAFT_COLORS_CHANGED');
 });

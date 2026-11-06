@@ -139,9 +139,10 @@ describe('a submission the server refuses', () => {
     const call = body.indexOf('await fn(');
     // LAST occurrence: the mock branch above returns early and logs its own
     // event, so the first match is not the one on the network path.
-    const event = body.lastIndexOf('AnalyticsEvent.GameJoined');
+    const event = body.lastIndexOf('AnalyticsEvent.FillerInterestExpressed');
     expect(call).toBeGreaterThan(-1);
     expect(event).toBeGreaterThan(call);
+    expect(body).not.toContain('AnalyticsEvent.GameJoined');
     // and it is NOT inside the try that wraps the call
     expect(body.slice(call, event)).toContain('throw err;');
   });

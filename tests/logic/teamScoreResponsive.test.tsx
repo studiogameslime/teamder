@@ -157,11 +157,11 @@ test('compact filler tag retains source colour and accessible identity without a
   expect(texts.filter(text => text.props.children === 'מחוץ למגרש')).toHaveLength(1);
   expect(texts.some(text => text.props.children === '\u2068אלירן\u2069 מחליף אותו')).toBe(true);
   expect(texts.some(text => text.props.children === 'ממתין לחזרה להרכב')).toBe(true);
-  const rows = nodes(tree, 'Pressable');
-  const inactive = rows.slice(5);
+  const inactive = nodes(tree, 'MeasuredPressable');
   expect(inactive).toHaveLength(2);
   expect(inactive.flatMap(row => nodes(row, 'Icon'))).toHaveLength(0);
-  inactive[0].props.onPress();
-  expect(card).toHaveBeenCalledWith(offPitchRoster[0]);
+  const anchor={x:240,y:400,width:80,height:60};
+  inactive[0].props.onMeasured(anchor);
+  expect(card).toHaveBeenCalledWith(offPitchRoster[0],anchor);
   expect(input.onPlayerPress).not.toHaveBeenCalled();
 });

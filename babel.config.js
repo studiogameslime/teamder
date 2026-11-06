@@ -3,6 +3,8 @@ module.exports = function (api) {
   return {
     presets: ['babel-preset-expo'],
     plugins: [
+      './scripts/analytics/control-plugin.cjs',
+      './scripts/analytics/actor-plugin.cjs',
       [
         'module-resolver',
         {

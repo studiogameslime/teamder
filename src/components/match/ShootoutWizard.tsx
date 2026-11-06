@@ -205,7 +205,7 @@ export function Shootout({ visible, gameId, shootout, draftTeams, rotation, play
     const epoch = uiEpoch.current;
     writing.current = true; setBusy(true); setSaveError(false); setReselectAllowed(false); setSaveErrorMessage(null);
     try {
-      await gameService.recordShootoutKick(gameId, pending);
+      const created = await gameService.recordShootoutKick(gameId, pending);
       if (visibleRef.current && uiEpoch.current === epoch) {
         const savedKicker = attemptPeople.current?.kicker ?? rosterOf(pending.team).find(member => member.id === pending.kickerId);
         const savedKeeper = attemptPeople.current?.keeper ?? rosterOf(pending.team === 'A' ? 'B' : 'A').find(member => member.id === pending.keeperId);
@@ -217,7 +217,7 @@ export function Shootout({ visible, gameId, shootout, draftTeams, rotation, play
         setShadow({ base: signature, kicks: kicks.some(kick => kick.id === pending.id) ? kicks : [...kicks, acknowledged], nextTeam: shootout?.nextTeam || shadow?.nextTeam ? pending.team === 'A' ? 'B' : 'A' : undefined });
         attempt.current = null; attemptPeople.current = null; setKickerId(null); setSelectedKeeperId(null); setScreen('kicker');
       }
-      logEvent(AnalyticsEvent.ShootoutKickRecorded, { gameId, team: pending.team, scored: pending.scored, outcome: pending.outcome, kickIndex: pending.expectedKickCount ?? 0 });
+      if (created) logEvent(AnalyticsEvent.ShootoutKickRecorded, { gameId, team: pending.team, scored: pending.scored, outcome: pending.outcome, kickIndex: pending.expectedKickCount ?? 0 });
     } catch (error) {
     observeCaughtError(error, {"source":"src/components/match/ShootoutWizard.tsx","handler":"record","site":"ShootoutWizard:1ef2574c21"}); logError('shootoutRecordKick', error, { gameId, roundId, kickId: pending.id }); if (visibleRef.current && uiEpoch.current === epoch) {
       const code = (error as {code?:string})?.code;
@@ -279,7 +279,7 @@ export function Shootout({ visible, gameId, shootout, draftTeams, rotation, play
     {screen !== 'first' && screen !== 'undo' && !core && !summary && <View style={s.score}><Text style={s.scoreCaption}>תוצאת הפנדלים</Text><View style={s.scoreRow}>{(['A','B'] as const).map(side => <View key={side} style={s.scoreHalf}><Text style={[s.scoreName, { color: tint(side) }]}>{label(side)}</Text><Text style={s.scoreNumber}>{scoredOf(side)}</Text><Text style={s.small}>{takenOf(side) === 1 ? 'בעיטה אחת' : `${takenOf(side)} בעיטות`}</Text></View>)}</View></View>}
     {core && kicks.length > 0 && <Pressable style={s.secondary} disabled={busy || saveError || !!completed || !!attempt.current || !!setupAttempt.current} accessibilityRole="button" accessibilityLabel="החלפת הקבוצה הבועטת" onPress={() => changeScreen('turn')}><Text style={s.link}>החלפת הקבוצה הבועטת</Text></Pressable>}
     <ScrollView ref={contentScroll} style={[s.content, layout.content]} contentContainerStyle={[s.contentInner, layout.inner, compact && s.compactContent, !core && !summary && layout.centered]}>
-      {summary && draftTeams && rotation ? <ShootoutScorePanel draftTeams={draftTeams} rotation={rotation} kicks={kicks} compact showDots={screen === 'log'} caption={screen === 'finish' && leading ? `${label(leading)} מובילים בפנדלים` : undefined}/> : null}
+      {summary && draftTeams && rotation ? <ShootoutScorePanel draftTeams={draftTeams} rotation={rotation} kicks={kicks} compact showDots={screen === 'log'} emphasizedSide={screen === 'finish' && leading ? leading : undefined} caption={screen === 'finish' && leading ? `${label(leading)} מובילים בפנדלים` : undefined}/> : null}
       {screen === 'turn' ? <View style={layout.firstStage} testID="penalty-turn-stage">
         <Text style={s.question}>מי בועטים עכשיו?</Text>
         <Text style={s.small}>בחרו לפי תוצאת ההגרלה שלכם. הבעיטות והתוצאה שכבר נרשמו יישמרו.</Text>

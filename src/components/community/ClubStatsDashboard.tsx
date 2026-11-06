@@ -110,18 +110,18 @@ export type ClubStatsAward = Omit<ClubStatusLeader, 'user' | 'value'> & {
   value: number | '—';
 };
 
-export function ClubStatsAwards({ leaders, onPlayerPress, onTablePress }: { leaders: ClubStatsAward[]; onPlayerPress?: (uid: string) => void; onTablePress?: () => void }) {
+export function ClubStatsAwards({ leaders, onPlayerPress, onTablePress, compactTies = false }: { leaders: ClubStatsAward[]; onPlayerPress?: (uid: string) => void; onTablePress?: () => void; compactTies?: boolean }) {
   if (!leaders.length) return null;
   return <View style={s.awards}>
     {leaders.map((leader, index) => {
       const role = roleOf(leader.title);
       const users = leader.user ? [leader.user, ...(leader.tiedUsers ?? [])] : [];
-      const names = users.length ? users.map(user => `\u2068${user.name.trim()}\u2069`).join(' · ') : 'יופיע בסיום המחזור';
+      const names = users.length ? compactTies ? `\u2068${users[0].name.trim()}\u2069${users.length > 1 ? ` \u2066+${users.length - 1}\u2069` : ''}` : users.map(user => `\u2068${user.name.trim()}\u2069`).join(' · ') : 'יופיע בסיום המחזור';
       const canOpen = !!onPlayerPress && users.length === 1;
       return <Pressable key={leader.title} disabled={!canOpen} onPress={() => leader.user && onPlayerPress?.(leader.user.id)} accessibilityRole={canOpen ? 'button' : undefined} accessibilityLabel={`${leader.title}: ${names}, ${leader.value}${leader.suffix ?? ''} ${leader.unit}`} style={({ pressed }) => [s.award, index > 0 && s.awardDivider, pressed && { opacity: 0.7 }]}>
-        <View style={s.awardFaces}>{users.length ? users.slice(0, 3).map(user => <UserAvatar key={user.id} user={user} size={36} />) : <Ionicons name="person-circle-outline" size={36} color="#C5CEDB" />}</View>
+        <View style={s.awardFaces}>{users.length ? users.slice(0, compactTies ? 1 : 3).map(user => <UserAvatar key={user.id} user={user} size={36} />) : <Ionicons name="person-circle-outline" size={36} color="#C5CEDB" />}</View>
         <MaterialCommunityIcons name={role.name} size={24} color={role.color} />
-        <View style={s.awardCopy}><Text style={s.awardCategory} numberOfLines={2}>{leader.title}</Text><Text style={s.awardName} numberOfLines={users.length === 1 ? 1 : undefined}>{names}</Text></View>
+        <View style={s.awardCopy}><Text style={s.awardCategory} numberOfLines={2}>{leader.title}</Text><Text style={s.awardName} accessibilityLabel={users.map(user => user.name).join(', ')} numberOfLines={compactTies || users.length === 1 ? 1 : undefined}>{names}</Text></View>
         <View style={s.awardMetric}><Text style={s.awardValue}>{`\u2066${leader.value}${leader.suffix ?? ''}\u2069`}</Text><Text style={s.awardUnit}>{`\u2068${leader.unit}\u2069`}</Text></View>
       </Pressable>;
     })}

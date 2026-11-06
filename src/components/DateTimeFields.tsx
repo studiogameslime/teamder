@@ -15,6 +15,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
+  useWindowDimensions,
   StyleSheet,
   Text,
   View,
@@ -272,6 +273,23 @@ export function AppDateTimeField({
 
 // ─── Modals ────────────────────────────────────────────────────────────
 
+function PickerCard({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  const { fontScale } = useWindowDimensions();
+  return (
+    <View style={styles.backdrop}>
+      <Pressable style={StyleSheet.absoluteFill} accessible={false} onPress={onClose} />
+      <ScrollView
+        style={[styles.card, { maxWidth: 360 * Math.max(1, fontScale) }]}
+        contentContainerStyle={styles.cardContent}
+        bounces={false}
+        nestedScrollEnabled
+      >
+        {children}
+      </ScrollView>
+    </View>
+  );
+}
+
 function TimePickerModal({
   visible,
   initial,
@@ -298,11 +316,7 @@ function TimePickerModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable
-          style={styles.card}
-          onPress={(e) => e.stopPropagation()}
-        >
+      <PickerCard onClose={onClose}>
           <Text style={styles.modalTitle}>{he.dtfPickTime}</Text>
           <View style={styles.wheelRow}>
             {/* Order: minutes first, then hours. RTL flexbox renders the
@@ -349,8 +363,7 @@ function TimePickerModal({
               />
             </View>
           </View>
-        </Pressable>
-      </Pressable>
+      </PickerCard>
     </Modal>
   );
 }
@@ -382,11 +395,7 @@ export function DatePickerModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable
-          style={styles.card}
-          onPress={(e) => e.stopPropagation()}
-        >
+      <PickerCard onClose={onClose}>
           <CalendarHeader
             month={view}
             onPrev={() => setView(addMonths(view, -1))}
@@ -414,8 +423,7 @@ export function DatePickerModal({
               />
             </View>
           </View>
-        </Pressable>
-      </Pressable>
+      </PickerCard>
     </Modal>
   );
 }
@@ -450,11 +458,7 @@ function DateTimePickerModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable
-          style={styles.card}
-          onPress={(e) => e.stopPropagation()}
-        >
+      <PickerCard onClose={onClose}>
           <CalendarHeader
             month={view}
             onPrev={() => setView(addMonths(view, -1))}
@@ -507,8 +511,7 @@ function DateTimePickerModal({
               />
             </View>
           </View>
-        </Pressable>
-      </Pressable>
+      </PickerCard>
     </Modal>
   );
 }
@@ -548,6 +551,7 @@ function CalendarGrid({
   onPick: (ts: number) => void;
 }) {
   const cells = useMemo(() => buildMonthCells(month), [month]);
+  const { fontScale } = useWindowDimensions();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const pickedDate = new Date(picked);
@@ -586,11 +590,14 @@ function CalendarGrid({
                     }
                     style={[
                       styles.dayCell,
+                      { minHeight: Math.ceil(22 * fontScale) + 6 },
                       isPicked && styles.dayCellPicked,
                       isToday && !isPicked && styles.dayCellToday,
                     ]}
                   >
                     <Text
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
                       style={[
                         styles.dayText,
                         !inMonth && { color: colors.border },
@@ -622,12 +629,14 @@ function WheelColumn({
   short?: boolean;
 }) {
   const ref = useRef<ScrollView>(null);
+  const { fontScale } = useWindowDimensions();
+  const rowHeight = Math.max(ROW_H, Math.ceil(22 * fontScale) + 8);
   const idx = Math.max(0, values.indexOf(selected));
   // Center the selected row inside the wheel viewport.
-  const initialOffset = idx * ROW_H;
+  const initialOffset = idx * rowHeight;
   const visible = short ? 3 : VISIBLE_ROWS;
-  const colHeight = ROW_H * visible;
-  const padding = ROW_H * Math.floor(visible / 2);
+  const colHeight = rowHeight * visible;
+  const padding = rowHeight * Math.floor(visible / 2);
 
   // Scroll to selection on selection change.
   React.useEffect(() => {
@@ -638,16 +647,17 @@ function WheelColumn({
 
   return (
     <View style={[styles.wheelColumn, { height: colHeight }]}>
-      <View pointerEvents="none" style={styles.wheelHighlight} />
+      <View pointerEvents="none" style={[styles.wheelHighlight, { height: rowHeight, transform: [{ translateY: -rowHeight / 2 }] }]} />
       <ScrollView
         ref={ref}
         showsVerticalScrollIndicator={false}
-        snapToInterval={ROW_H}
+        snapToInterval={rowHeight}
+        nestedScrollEnabled
         decelerationRate="fast"
         contentContainerStyle={{ paddingVertical: padding }}
         onMomentumScrollEnd={(e) => {
           const y = e.nativeEvent.contentOffset.y;
-          const i = Math.round(y / ROW_H);
+          const i = Math.round(y / rowHeight);
           const v = values[Math.max(0, Math.min(values.length - 1, i))];
           onSelect(v);
         }}
@@ -656,7 +666,7 @@ function WheelColumn({
           <Pressable
             key={v}
             onPress={() => onSelect(v)}
-            style={styles.wheelRowItem}
+            style={[styles.wheelRowItem, { height: rowHeight }]}
           >
             <Text
               style={[
@@ -771,7 +781,10 @@ const styles = StyleSheet.create({
   },
   card: { ...overlaySurfaces.dialog,
     width: '100%',
-    maxWidth: 360,
+    maxHeight: '100%',
+    flexGrow: 0,
+  },
+  cardContent: {
     padding: spacing.lg,
     gap: spacing.md,
   },
@@ -782,6 +795,7 @@ const styles = StyleSheet.create({
   },
   modalFooter: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.sm,
@@ -789,6 +803,8 @@ const styles = StyleSheet.create({
   },
   modalFooterRight: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    maxWidth: '100%',
     gap: spacing.sm,
   },
 
@@ -809,10 +825,8 @@ const styles = StyleSheet.create({
   wheelHighlight: {
     position: 'absolute',
     top: '50%',
-    transform: [{ translateY: -ROW_H / 2 }],
     left: 0,
     right: 0,
-    height: ROW_H,
     backgroundColor: colors.primaryLight,
     borderTopWidth: 1,
     borderBottomWidth: 1,
@@ -820,7 +834,6 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   wheelRowItem: {
-    height: ROW_H,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -848,6 +861,8 @@ const styles = StyleSheet.create({
   },
   calHeaderText: {
     ...typography.bodyBold,
+    flexShrink: 1,
+    textAlign: 'center',
     color: colors.text,
   },
   calNav: {

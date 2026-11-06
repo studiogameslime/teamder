@@ -29,8 +29,8 @@ function screen(selectedSourceId: string | null = 'hc', sources?: any[]) {
 test.each(['ProfileStack', 'GameStack', 'CommunitiesStack', 'ChatStack'])('activity is registered in every summary host: %s', name => {
   const source = fs.readFileSync(`src/navigation/${name}.tsx`, 'utf8');
   expect(source).toMatch(/name="EveningSummary"/);
-  expect(source).toMatch(/name="MyActivity" component=\{MyActivityScreen\}/);
-  expect(source).toContain("import { MyActivityScreen } from '@/screens/profile/MyActivityScreen'");
+  expect(source).toMatch(/name="MyActivity"\s+getComponent=\{\(\) => require\('\@\/screens\/profile\/MyActivityScreen'\)\.MyActivityScreen/);
+
   if (name !== 'ChatStack') expect(source).toContain('MyActivity: undefined;');
   else expect(source).toContain('ChatStackParamList = CommunitiesStackParamList');
 });

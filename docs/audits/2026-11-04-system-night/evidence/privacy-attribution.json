@@ -1,0 +1,132 @@
+{
+  "date": "2026-11-04",
+  "rules": {
+    "tests": 361,
+    "pass": 361,
+    "fail": 0,
+    "skipped": 0
+  },
+  "serverFunctions": {
+    "tests": 45,
+    "pass": 45,
+    "fail": 0,
+    "skipped": 0
+  },
+  "attributionClient": {
+    "passed": 231,
+    "total": 231,
+    "suites": 13
+  },
+  "privacyAndSessionClient": {
+    "passed": 151,
+    "total": 151,
+    "suites": 9
+  },
+  "emulatorReadProbes": {
+    "beforeInvite": "permission-denied",
+    "invited": "read",
+    "afterBlock": "read",
+    "afterInviteRemoved": "permission-denied",
+    "usage": {
+      "usageActivity": [
+        "permission-denied",
+        "permission-denied"
+      ],
+      "usageSessions": [
+        "permission-denied",
+        "permission-denied"
+      ],
+      "usageOperations": [
+        "permission-denied",
+        "permission-denied"
+      ],
+      "usageActivityLimits": [
+        "permission-denied",
+        "permission-denied"
+      ],
+      "usageCoverage": [
+        "permission-denied",
+        "permission-denied"
+      ]
+    },
+    "attribution": {
+      "forgedFirstInviter": "allowed",
+      "replacementInviter": "permission-denied",
+      "inventedLink": "allowed",
+      "replacementLink": "allowed",
+      "stored": {
+        "invitedBy": "nonexistent-inviter",
+        "linkId": "replacement-link"
+      }
+    }
+  },
+  "before": {
+    "blockedInviteStatuses": [
+      "available",
+      "available"
+    ],
+    "unavailableAfterPreview": "pending",
+    "expiredAfterPreview": "pending",
+    "expiredServerStatuses": [
+      "pending",
+      "pending"
+    ],
+    "leakedPriorScreenAfterAccountChange": [
+      "viaSignedOut",
+      "directAccountChange"
+    ]
+  },
+  "sourceScreen": {
+    "source": "SourcesScreen.tsx",
+    "runner": "scripts/audits/night-sources.cjs",
+    "widths": [
+      320,
+      390,
+      430
+    ],
+    "cases": [
+      "prior data + double failure",
+      "links recover + report fails",
+      "successful empty",
+      "first read denied"
+    ],
+    "priorReport": {
+      "accounts": 3,
+      "signups": 2,
+      "joined": 1,
+      "percentage": "67%",
+      "linkOpens": 7
+    },
+    "nativeDevice": false,
+    "beforeSha256": "19f46038c42b9cd98ca6f4f97f0fa3cb3ac1e29a44dbcf01764a698b4723a6d6",
+    "afterSha256": "69042a4ce8eaed3646ab5f51917869bc6a184641fa96e195b592aa4459085ba7"
+  },
+  "invitationCommitRace": [
+    {
+      "type": "club",
+      "insertedBlock": true,
+      "sent": true,
+      "notices": 1
+    },
+    {
+      "type": "game",
+      "insertedBlock": true,
+      "sent": true,
+      "notices": 1
+    }
+  ],
+  "invitationCommitRaceAfter": [
+    {
+      "type": "club",
+      "insertedBlock": true,
+      "sent": "failed-precondition",
+      "notices": 0
+    },
+    {
+      "type": "game",
+      "insertedBlock": true,
+      "sent": "permission-denied",
+      "notices": 0
+    }
+  ]
+}

@@ -265,7 +265,7 @@ export function FriendsScreen() {
                       name={user?.name ?? '?'}
                       size={44}
                     />
-                    <Text style={styles.name} numberOfLines={1}>
+                    <Text style={styles.name}>
                       {user?.name ?? he.friendsUnknownUser}
                     </Text>
                   </Pressable>
@@ -313,7 +313,7 @@ export function FriendsScreen() {
                       name={user?.name ?? '?'}
                       size={44}
                     />
-                    <Text style={styles.name} numberOfLines={1}>
+                    <Text style={styles.name}>
                       {user?.name ?? he.friendsUnknownUser}
                     </Text>
                   </Pressable>
@@ -407,7 +407,7 @@ export function FriendsScreen() {
                       name={friend.name}
                       size={44}
                     />
-                    <Text style={styles.name} numberOfLines={1}>
+                    <Text style={styles.name}>
                       {friend.name}
                     </Text>
                   </Pressable>
@@ -450,6 +450,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -459,7 +460,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   rowMain: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '50%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
@@ -482,6 +484,7 @@ const styles = StyleSheet.create({
   declineBtn: { backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border },
   removeBtn: { padding: spacing.sm },
   cancelOutgoingBtn: {
+    maxWidth: '100%',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: radius.md,
@@ -546,6 +549,8 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   emptyCtaBtnText: {
+    flexShrink: 1,
+    textAlign: 'center',
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 15,

@@ -37,7 +37,7 @@ jest.mock('@/components/draft/DraftTeamCard',()=>({DraftTeamCard:'TeamCard'}));
 jest.mock('@/components/draft/DraftScalePop',()=>({GrowIn:'GrowIn',ShrinkOut:'ShrinkOut'}));
 jest.mock('@/components/anim/Breathing',()=>({Breathing:'Breathing'}));
 jest.mock('@/store/gameStore',()=>({useGameStore:(select:any)=>select({players:{},hydratePlayers:mockHydrate})}));
-jest.mock('@/store/userStore',()=>{const currentUser={id:'manager'};return{useUserStore:(select:any)=>select({currentUser})};});
+jest.mock('@/store/userStore',()=>{const currentUser={id:'manager'};return{useUserStore:Object.assign((select:any)=>select({currentUser}),{getState:()=>({currentUser})})};});
 jest.mock('@/store/groupStore',()=>{const groups:any[]=[];return{useGroupStore:(select:any)=>select({groups})};});
 jest.mock('@/services',()=>({gameService:{getGameById:jest.fn(),saveDraftTeams:jest.fn()}}));
 jest.mock('@/components/Toast',()=>({toast:{info:jest.fn(),error:jest.fn()}}));

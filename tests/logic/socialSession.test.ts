@@ -40,12 +40,12 @@ test('multi-select remains compatible with deployed search and preserves paginat
   const player={id:'p',name:'איתי',city:'אור יהודה',friend:false,availability:{availabilitySlots:{3:['evening'],5:['morning']}}};
   f.remote.mockResolvedValueOnce({data:{players:[player],cursor:'next'}} as any);
   const result=await f.service.search({days:[1,3],times:['morning','noon'],cursor:'previous'});
-  expect(f.remote).toHaveBeenCalledWith({cursor:'previous'});
+  expect(f.remote).toHaveBeenCalledWith({cursor:'previous',searchVersion:2,filtered:true});
   expect(result.players).toEqual([]);
   expect(result.cursor).toBe('next');
   f.remote.mockResolvedValueOnce({data:{players:[player],cursor:null}} as any);
   expect((await f.service.search({days:[3],times:['evening','noon']})).players).toEqual([player]);
-  expect(f.remote).toHaveBeenLastCalledWith({day:3});
+  expect(f.remote).toHaveBeenLastCalledWith({day:3,searchVersion:2,filtered:true});
 });
 
 test('server pages retain existing friends in all-player search and preserve the cursor',async()=>{
@@ -64,7 +64,7 @@ test('a named friend remains findable after empty server pages',async()=>{
  let page=await f.service.search({text:'לוי'});
  while(page.cursor) page=await f.service.search({text:'לוי',cursor:page.cursor});
  expect(page.players).toEqual([friend]);
- expect(f.remote.mock.calls).toEqual([[{text:'לוי'}],[{text:'לוי',cursor:'page-2'}],[{text:'לוי',cursor:'page-3'}]]);
+ expect(f.remote.mock.calls).toEqual([undefined,'page-2','page-3'].map(cursor=>[{text:'לוי',searchVersion:2,filtered:false,...(cursor?{cursor}:{})}]));
 });
 
 test('a server cursor which does not advance fails instead of looping forever',async()=>{

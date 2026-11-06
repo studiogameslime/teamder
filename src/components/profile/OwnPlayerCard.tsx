@@ -1,4 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
+import { OwnCardSectionSkeleton } from '@/components/loading/CentralSkeletons';
+import { LoadingNotice } from '@/components/loading/ScreenSkeletons';
 import { ActivityIndicator, ImageBackground, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -31,7 +33,7 @@ import type { SocialProfile } from '@/types/social';
 
 type Data = Awaited<ReturnType<typeof ownPlayerCardService.load>>;
 type LastStats = Awaited<ReturnType<typeof ownPlayerCardService.lastStats>>;
-type Remote<T> = { value?: T; failed?: boolean; loading?: boolean };
+type Remote<T> = { value?: T; failed?: boolean; loading?: boolean; pendingProfile?: boolean };
 export type OwnPlayerCardPreview = { data: Data; clubs: Group[]; referrals: number; lastStats: LastStats; publicProfile?: SocialProfile };
 type Icon = keyof typeof Ionicons.glyphMap;
 
@@ -87,9 +89,9 @@ function CompactUpcomingRound({ game, club, coverLoading, onOpen }: { game: Game
     </Pressable>
   </View>;
 }
-function LoadState({ remote, retry }: { remote: Remote<unknown>; retry: () => void }) {
+function LoadState({ remote, retry, kind = 'round' }: { remote: Remote<unknown>; retry: () => void; kind?: React.ComponentProps<typeof OwnCardSectionSkeleton>['kind'] }) {
   if (remote.failed) return <View style={s.state}><Text style={s.body}>לא ניתן לטעון כרגע.</Text><Link title="נסה שוב" onPress={retry}/></View>;
-  return remote.loading ? <ActivityIndicator style={s.state} color="#2563EB" accessibilityLabel="טוען נתונים"/> : null;
+  return remote.loading ? remote.value === undefined ? <OwnCardSectionSkeleton kind={kind}/> : <LoadingNotice compact label="מעדכנים את הנתונים שלך"/> : null;
 }
 
 /** Owner-only page. Other-player and guest cards continue using their existing routes. */
@@ -104,48 +106,78 @@ export function OwnPlayerCard({ user, preview }: { user: User; preview?: OwnPlay
   const [sharing, setSharing] = useState(false);
   const [reload, setReload] = useState(0);
   const generation = useRef(0);
+  const publicGeneration = useRef(0);
   const sharingRef = useRef(false);
   const cardRef = useRef<View>(null);
+  const lastStatsGameId = useRef<string | null>(preview?.data.last?.id ?? null);
   const owner = useUserStore(x => x.currentUser?.id);
-  const current = () => !!preview || owner === user.id && useUserStore.getState().currentUser?.id === user.id;
+  const ownerIsGuest = useUserStore(x => x.currentUser?.isGuest === true);
+  const current = () => {
+    if (preview) return true;
+    const account = useUserStore.getState().currentUser;
+    return owner === user.id && !ownerIsGuest && account?.id === user.id && !account.isGuest;
+  };
   const retry = () => setReload(n => n + 1);
 
   useFocusEffect(useCallback(() => {
     if (preview) return;
+    if (!current()) return;
     const turn = ++generation.current;
     let alive = true;
-    const valid = () => alive && generation.current === turn && useUserStore.getState().currentUser?.id === user.id;
-    setData({ loading: true }); setClubs({ loading: true }); setReferrals({ loading: true }); setLastStats({ loading: true });
-    // Independent sections keep an unavailable count distinct from an empty account.
-    void ownPlayerCardService.load(user.id).then(async value => {
-      if (!valid()) return;
-      setData({ value });
-      if (!value.last) { setLastStats({}); return; }
+    const valid = () => alive && generation.current === turn && current();
+    setData(previous => ({ ...previous, loading: true, failed: false }));
+    setClubs(previous => ({ ...previous, loading: true, failed: false }));
+    setReferrals(previous => ({ ...previous, loading: true, failed: false }));
+    setLastStats(previous => ({ ...previous, loading: true, failed: false }));
+    let roundsArrived = false;
+    let requestedLast: string | undefined;
+    const readLastStats = async (last: Game | null) => {
+      if (!last) { lastStatsGameId.current = null; setLastStats({}); return; }
+      if (requestedLast === last.id) return;
+      requestedLast = last.id;
+      if (lastStatsGameId.current !== last.id) setLastStats({ loading: true });
+      lastStatsGameId.current = last.id;
       try {
-        const stats = await ownPlayerCardService.lastStats(user.id, value.last.id);
+        const stats = await ownPlayerCardService.lastStats(user.id, last.id);
         if (valid()) setLastStats({ value: stats });
       } catch (error) {
         observeCaughtError(error, { source: 'src/components/profile/OwnPlayerCard.tsx', handler: 'lastStats', site: 'OwnPlayerCard:lastStats' });
-        if (valid()) setLastStats({ failed: true });
+        if (valid()) setLastStats(previous => ({ ...previous, loading: false, failed: true }));
       }
+    };
+    // Independent sections keep an unavailable count distinct from an empty account.
+    void ownPlayerCardService.load(user.id, { onRounds: value => {
+      if (!valid()) return;
+      const account = useUserStore.getState().currentUser;
+      if (!account || account.isGuest || account.id !== user.id) return;
+      roundsArrived = true;
+      void readLastStats(value.last);
+      setData(previous => ({ value: { user: previous.value?.user ?? account, ...value }, loading: true, pendingProfile: previous.value ? previous.pendingProfile : true }));
+    } }).then(value => {
+      if (!valid()) return;
+      setData({ value });
+      void readLastStats(value.last);
     }).catch(error => {
       observeCaughtError(error, { source: 'src/components/profile/OwnPlayerCard.tsx', handler: 'load', site: 'OwnPlayerCard:load' });
-      if (valid()) { setData({ failed: true }); setLastStats({}); }
+      if (valid()) {
+        setData(previous => ({ ...previous, loading: false, failed: true }));
+        if (!roundsArrived) setLastStats(previous => ({ ...previous, loading: false }));
+      }
     });
     void groupService.listForUser(user.id, { includeAdminRatings: false }).then(value => {
       if (valid()) setClubs({ value });
     }).catch(error => {
       observeCaughtError(error, { source: 'src/components/profile/OwnPlayerCard.tsx', handler: 'clubs', site: 'OwnPlayerCard:clubs' });
-      if (valid()) setClubs({ failed: true });
+      if (valid()) setClubs(previous => ({ ...previous, loading: false, failed: true }));
     });
     void userService.getInvitedUsersCount(user.id).then(value => {
       if (valid()) setReferrals({ value });
     }).catch(error => {
       observeCaughtError(error, { source: 'src/components/profile/OwnPlayerCard.tsx', handler: 'referrals', site: 'OwnPlayerCard:referrals' });
-      if (valid()) setReferrals({ failed: true });
+      if (valid()) setReferrals(previous => ({ ...previous, loading: false, failed: true }));
     });
     return () => { alive = false; generation.current++; };
-  }, [user.id, reload, preview]));
+  }, [user.id, reload, preview, owner, ownerIsGuest]));
 
   const fresh = data.value?.user ?? user;
   const go = (screen: string, params?: object) => {
@@ -167,12 +199,20 @@ export function OwnPlayerCard({ user, preview }: { user: User; preview?: OwnPlay
     if (preview || !current()) return;
     setPublicProfile({ loading: true });
     const turn = generation.current;
+    const request = ++publicGeneration.current;
+    const valid = () => current() && generation.current === turn && publicGeneration.current === request;
     try {
-      const value = await socialPlayersService.profile(user.id);
-      if (current() && generation.current === turn) setPublicProfile({ value });
+      const card = await socialPlayersService.profile(user.id, 'card');
+      if (!valid()) return;
+      setPublicProfile({ value: card, loading: !!card.detailsPending });
+      if (card.detailsPending) {
+        const value = await socialPlayersService.profile(user.id, 'summary');
+        if (valid()) setPublicProfile({ value });
+      }
     } catch (error) {
+      if (!valid()) return;
       observeCaughtError(error, { source: 'src/components/profile/OwnPlayerCard.tsx', handler: 'openPublic', site: 'OwnPlayerCard:public' });
-      if (current() && generation.current === turn) setPublicProfile({ failed: true });
+      setPublicProfile(previous => ({ value: previous.value, failed: true }));
     }
   };
   const share = async (kind: 'card' | 'invite') => {
@@ -199,11 +239,12 @@ export function OwnPlayerCard({ user, preview }: { user: User; preview?: OwnPlay
   const next = total?.next;
   const last = total?.last;
   const allNumbers = total ? [
-    { label: 'מחזורים', value: total.attendedCount }, { label: 'שערים', value: fresh.stats?.goals ?? 0 }, { label: 'בישולים', value: fresh.stats?.assists ?? 0 },
+    { label: 'מחזורים', value: total.attendedCount }, { label: 'שערים', value: data.pendingProfile ? null : fresh.stats?.goals ?? 0 }, { label: 'בישולים', value: data.pendingProfile ? null : fresh.stats?.assists ?? 0 },
   ] : [];
-  const shareNumbers = total ? publicCardStats(fresh, total.attendedCount) : null;
+  const shareNumbers = total && !data.pendingProfile && !data.loading && !data.failed
+    ? publicCardStats({ ...fresh, socialPrivacy: user.socialPrivacy }, total.attendedCount) : null;
   const publicValue = publicProfile.value;
-  const publicNumbers = publicValue?.statisticsVisibility === 'everyone' ? publicValue.statistics?.stats : null;
+  const publicNumbers = publicValue?.statisticsVisibility === 'everyone' ? publicValue.cardStats ?? publicValue.statistics?.stats : null;
   const clubName = (game: Game) => clubs.value?.find(club => club.id === game.groupId)?.name;
 
   if (!current()) return null;
@@ -213,24 +254,25 @@ export function OwnPlayerCard({ user, preview }: { user: User; preview?: OwnPlay
       <Hero user={fresh} compact/>
       <View style={s.actions}><View style={s.half}><Action title="הסטטיסטיקה שלי" icon="stats-chart-outline" onPress={() => go('Statistics')}/></View><View style={s.half}><Action title="עריכת פרופיל" icon="create-outline" outline onPress={() => go('ProfileEdit')}/></View></View>
       {total && next ? <CompactUpcomingRound game={next} club={clubs.value?.find(club => club.id === next.groupId)} coverLoading={!!clubs.loading} onOpen={() => go('MatchDetails', { gameId: next.id })}/> :
+        data.loading && !data.failed && !total ? <View style={s.nextCard}><OwnCardSectionSkeleton kind="upcoming"/></View> :
         <View style={s.card}><Title title="המחזור הקרוב שלי" icon="calendar-outline"/><LoadState remote={data} retry={retry}/>{total ? <Text style={s.body}>אין כרגע מחזור קרוב שאליו אתה רשום כשחקן.</Text> : null}</View>}
-      <View style={s.card}><Title title="המועדונים שלי" icon="people-outline"/><LoadState remote={clubs} retry={retry}/>
+      <View style={s.card}><Title title="המחזור האחרון שלי" icon="time-outline"/><LoadState remote={data} retry={retry}/>
+        {total ? last ? <><Text style={s.roundTitle}>{last.title}</Text>{clubName(last) ? <Text style={s.body}>{clubName(last)}</Text> : null}<Text style={s.body}>{new Date(last.startsAt).toLocaleDateString('he-IL')}</Text>
+          <LoadState remote={lastStats} retry={retry} kind="numbers"/>
+          {lastStats.value !== undefined || !lastStats.loading ? <Numbers items={[{ label: 'שערים', value: lastStats.value?.goals ?? null }, { label: 'בישולים', value: lastStats.value?.assists ?? null }, { label: 'משחקים', value: lastStats.value?.games ?? null }]}/> : null}
+          {!lastStats.loading && !lastStats.value?.games && lastStats.value?.games !== 0 ? <Text style={s.caption}>נתונים שלא תועדו מוצגים כמקף.</Text> : null}
+          <Link title="לסיכום המחזור שלי" onPress={() => go('MatchDetails', { gameId: last.id, initialTab: 'stats' })}/>
+        </> : <Text style={s.body}>אחרי המחזור הראשון שבו תשחק, הסיכום שלך יופיע כאן.</Text> : null}
+      </View>
+      <View style={s.card}><Title title="המועדונים שלי" icon="people-outline"/><LoadState remote={clubs} retry={retry} kind="clubs"/>
         {clubs.value?.map(club => <Pressable key={club.id} accessibilityRole="button" accessibilityLabel={`למועדון ${club.name}`} onPress={() => go(clubRouteFor(club.id), { groupId: club.id })} style={s.clubRow}>
           <ImageBackground source={club.coverPhotoUrl ? { uri: club.coverPhotoUrl } : getCoverSource(club.coverImageId) ?? require('@/assets/images/synthetic-pitch.png')} style={s.clubImage} imageStyle={{ borderRadius: 10 }}/>
           <Text style={s.rowTitle}>{club.name}</Text><Ionicons name="chevron-back" size={20} color="#2563EB"/>
         </Pressable>)}
         {clubs.value?.length === 0 ? <Text style={s.body}>עדיין לא הצטרפת למועדון.</Text> : null}
       </View>
-      <View style={s.card}><Title title="המספרים שלי" icon="stats-chart-outline"/><Text style={s.body}>בכל המועדונים · כל הזמנים</Text><LoadState remote={data} retry={retry}/>
+      <View style={s.card}><Title title="המספרים שלי" icon="stats-chart-outline"/><Text style={s.body}>בכל המועדונים · כל הזמנים</Text><LoadState remote={data} retry={retry} kind="numbers"/>
         {total ? <Numbers items={allNumbers}/> : null}<Link title="לסטטיסטיקה המלאה שלי" onPress={() => go('Statistics')}/>
-      </View>
-      <View style={s.card}><Title title="המחזור האחרון שלי" icon="time-outline"/><LoadState remote={data} retry={retry}/>
-        {total ? last ? <><Text style={s.roundTitle}>{last.title}</Text>{clubName(last) ? <Text style={s.body}>{clubName(last)}</Text> : null}<Text style={s.body}>{new Date(last.startsAt).toLocaleDateString('he-IL')}</Text>
-          <LoadState remote={lastStats} retry={retry}/>
-          {!lastStats.loading ? <Numbers items={[{ label: 'שערים', value: lastStats.value?.goals ?? null }, { label: 'בישולים', value: lastStats.value?.assists ?? null }, { label: 'משחקים', value: lastStats.value?.games ?? null }]}/> : null}
-          {!lastStats.loading && !lastStats.value?.games && lastStats.value?.games !== 0 ? <Text style={s.caption}>נתונים שלא תועדו מוצגים כמקף.</Text> : null}
-          <Link title="לסיכום המחזור שלי" onPress={() => go('MatchDetails', { gameId: last.id, initialTab: 'stats' })}/>
-        </> : <Text style={s.body}>אחרי המחזור הראשון שבו תשחק, הסיכום שלך יופיע כאן.</Text> : null}
       </View>
       <ComparisonActivitySection ownerId={user.id}/>
       <View style={s.card}><Title title="ארון התארים שלי" icon="trophy-outline"/><Text style={s.body}>ההישגים ותארי העונה שצברת, במקום אחד.</Text><Link title="לכל התארים שלי" onPress={() => go('Achievements')}/></View>
@@ -242,18 +284,18 @@ export function OwnPlayerCard({ user, preview }: { user: User; preview?: OwnPlay
         </View>
         <Action title="שיתוף הכרטיס כתמונה" icon="share-social-outline" busy={sharing} onPress={() => void share('card')}/>
       </View>
-      <View style={s.card}><Title title="הזמנת חברים" icon="person-add-outline"/><LoadState remote={referrals} retry={retry}/>
+      <View style={s.card}><Title title="הזמנת חברים" icon="person-add-outline"/><LoadState remote={referrals} retry={retry} kind="referrals"/>
         {referrals.value !== undefined ? <><Numbers items={[{ label: 'הצטרפו דרך הקישור שלך', value: referrals.value }]}/>{referrals.value > 0 ? <Link title="לחברים שהצטרפו דרכי" onPress={() => go('Referrals')}/> : null}</> : null}
         <Text style={s.body}>הזמן חברים להצטרף לאפליקציה דרך הקישור האישי שלך.</Text><Action title="שיתוף קישור ההזמנה" icon="link-outline" outline busy={sharing} onPress={() => void share('invite')}/>
       </View>
     </ScrollView>
     <SafeModal visible={showPublic} animationType="slide" onRequestClose={() => setShowPublic(false)}>
       <SafeAreaView style={s.root} edges={['top', 'bottom']}><ScreenHeader title="תצוגה מקדימה" onBack={() => setShowPublic(false)}/>
-        <ScrollView contentContainerStyle={s.content}><Text style={s.noticeText}>כך הכרטיס מוצג לשחקן שאינו חבר שלך</Text><LoadState remote={publicProfile} retry={() => void openPublic()}/>
+        <ScrollView contentContainerStyle={s.content}><Text style={s.noticeText}>כך הכרטיס מוצג לשחקן שאינו חבר שלך</Text><LoadState remote={publicProfile} retry={() => void openPublic()} kind="profile"/>
           {publicValue ? <><Hero user={{ ...publicValue.player, createdAt: 0 }}/>{publicValue.player.city ? <Text style={s.body}>{publicValue.player.city}</Text> : null}
             <PlayerAvailabilitySummary player={publicValue.player}/>
-            {publicNumbers ? <View style={s.card}><Title title="המספרים שלי" icon="stats-chart-outline"/><Numbers items={[{ label: 'מחזורים', value: publicNumbers.attendedGames }, { label: 'שערים', value: publicNumbers.goals }, { label: 'בישולים', value: publicNumbers.assists }]}/></View> : <View style={s.card}><Title title="פרטיות הסטטיסטיקה" icon="shield-checkmark-outline"/><Text style={s.body}>{publicValue.statisticsVisibility === 'onlyMe' ? 'הסטטיסטיקה גלויה רק לך.' : 'הסטטיסטיקה גלויה לחברים בלבד.'}</Text></View>}
-            <View style={s.card}><Title title="המועדונים שמוצגים בכרטיס" icon="people-outline"/>{publicValue.clubs.length ? publicValue.clubs.map(club => <Text key={club.id} style={s.publicClub}>{club.name}</Text>) : <Text style={s.body}>אין מועדונים להצגה בכרטיס.</Text>}</View>
+            {publicValue.detailsPending && !publicNumbers ? <View style={s.card}><Title title="המספרים שלי" icon="stats-chart-outline"/><Text style={s.body}>{publicProfile.failed ? 'המספרים לא נטענו. אפשר לנסות שוב.' : 'טוען את המספרים שמוצגים בכרטיס'}</Text></View> : publicNumbers ? <View style={s.card}><Title title="המספרים שלי" icon="stats-chart-outline"/><Numbers items={[{ label: 'מחזורים', value: publicNumbers.attendedGames }, { label: 'שערים', value: publicNumbers.goals }, { label: 'בישולים', value: publicNumbers.assists }]}/></View> : <View style={s.card}><Title title="פרטיות הסטטיסטיקה" icon="shield-checkmark-outline"/><Text style={s.body}>{publicValue.statisticsVisibility === 'onlyMe' ? 'הסטטיסטיקה גלויה רק לך.' : 'הסטטיסטיקה גלויה לחברים בלבד.'}</Text></View>}
+            <View style={s.card}><Title title="המועדונים שמוצגים בכרטיס" icon="people-outline"/>{publicValue.detailsPending ? <Text style={s.body}>{publicProfile.failed ? 'פרטי המועדונים לא נטענו. אפשר לנסות שוב.' : 'טוען את המועדונים שמוצגים בכרטיס'}</Text> : publicValue.clubs.length ? publicValue.clubs.map(club => <Text key={club.id} style={s.publicClub}>{club.name}</Text>) : <Text style={s.body}>אין מועדונים להצגה בכרטיס.</Text>}</View>
           </> : null}
           <Action title="להגדרות הפרטיות" icon="shield-checkmark-outline" outline onPress={() => { setShowPublic(false); go('SocialPrivacy'); }}/><Action title="חזרה לכרטיס שלי" icon="arrow-forward-outline" onPress={() => setShowPublic(false)}/>
         </ScrollView></SafeAreaView>

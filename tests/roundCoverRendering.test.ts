@@ -67,6 +67,7 @@ jest.mock('react', () => ({
 }));
 jest.mock('react-native', () => ({
   ImageBackground: 'ImageBackground', Pressable: 'Pressable', Text: 'Text', View: 'View',
+  useWindowDimensions: () => ({ width: 390, height: 844, fontScale: 1, scale: 2 }),
   StyleSheet: { create: (value: unknown) => value },
 }));
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));

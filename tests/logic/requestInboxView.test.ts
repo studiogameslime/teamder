@@ -66,7 +66,7 @@ test('the bell preserves all three request kinds including a missing user profil
 });
 test('club entry includes only the club and its rounds, excluding personal and standalone requests', () => {
   expect(requestInboxRows(data, 'a').map(r => r.key)).toEqual(['club:a:same', 'game:round-a:same']);
-  expect(requestInboxRows(data, 'b').map(r => r.key)).toEqual(['club:b:same', 'club:b:u']);
+  expect(requestInboxRows(data, 'b').map(r => r.key)).toEqual(['club:b:u', 'club:b:same']);
   expect(requestInboxRows(data, 'unknown')).toEqual([]);
 });
 test('clearing the club filter restores the complete inbox', () => {
@@ -77,8 +77,18 @@ test('name sorting preserves target identity and does not mutate the underlying 
   const before = JSON.stringify(data);
   expect(requestInboxRows(data, 'b', true).map(r => r.userId)).toEqual(['u', 'same']);
   expect(JSON.stringify(data)).toBe(before);
-  expect(requestInboxRows(data, 'b').map(r => r.userId)).toEqual(['same', 'u']);
+  expect(requestInboxRows(data, 'b').map(r => r.userId)).toEqual(['u', 'same']);
 });
 test('club requests do not invent dates from account creation or membership dates', () => {
   expect(requestInboxRows(data, 'a').every(r => r.createdAt === undefined)).toBe(true);
+});
+
+
+test('pending club and round arrays show their newest appended request first without inventing timestamps', () => {
+  const value = {friends:[],communities:[{group:{id:'club',name:'מועדון'},pending:[{id:'old'},{id:'new'}]}],
+    games:[{game:{id:'round',groupId:'club'},pending:[{id:'first'},{id:'last'}]}],total:4} as any;
+  const before=JSON.stringify(value);
+  expect(requestInboxRows(value).map(row=>row.userId)).toEqual(['new','old','last','first']);
+  expect(JSON.stringify(value)).toBe(before);
+  expect(requestInboxRows(value).every(row=>row.createdAt===undefined)).toBe(true);
 });

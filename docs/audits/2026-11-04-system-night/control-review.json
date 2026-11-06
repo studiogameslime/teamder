@@ -1,0 +1,111 @@
+{
+  "menuSites": [
+    {
+      "id": "ui_9f6e6bd69661d834b6",
+      "kind": "press",
+      "label": "לחיצה במסך פרופיל",
+      "scope": "MenuRow",
+      "handler": "handlePress"
+    },
+    {
+      "id": "ui_393abfab870b1ae2bf",
+      "kind": "change",
+      "label": "שינוי ערך במסך פרופיל",
+      "scope": "MenuRow",
+      "handler": "recordDiagnostic"
+    }
+  ],
+  "allMenuInventoryIDsCompiled": true,
+  "before": [
+    {
+      "id": "ui_2a7c220dec5512167b",
+      "kind": "press",
+      "label": "ראשון",
+      "scope": "Example",
+      "handler": "choose"
+    },
+    {
+      "id": "ui_b0c763ed08df9cb66d",
+      "kind": "press",
+      "label": "שני",
+      "scope": "Example",
+      "handler": "choose"
+    }
+  ],
+  "inserted": [
+    {
+      "id": "ui_2a7c220dec5512167b",
+      "kind": "press",
+      "label": "חדש",
+      "scope": "Example",
+      "handler": "choose"
+    },
+    {
+      "id": "ui_b0c763ed08df9cb66d",
+      "kind": "press",
+      "label": "ראשון",
+      "scope": "Example",
+      "handler": "choose"
+    },
+    {
+      "id": "ui_77ff9e9148853f5689",
+      "kind": "press",
+      "label": "שני",
+      "scope": "Example",
+      "handler": "choose"
+    }
+  ],
+  "keyboard": [
+    {
+      "id": "ui_12f8ce2da1e0c073dd",
+      "kind": "submit",
+      "label": "אישור מהמקלדת במסך מסכים",
+      "scope": "Entry",
+      "handler": "submit"
+    }
+  ],
+  "dialogs": [
+    {
+      "id": "ui_849fb3df472ddc138c",
+      "kind": "press",
+      "label": "אישור",
+      "scope": "Dialog",
+      "handler": "dialog"
+    }
+  ],
+  "sync": [
+    {
+      "name": "teamder_ui_action",
+      "params": {
+        "content_id": "ui_deep",
+        "content_type": "press"
+      }
+    }
+  ],
+  "asyncForward": [
+    {
+      "name": "teamder_ui_action",
+      "params": {
+        "content_id": "ui_outer",
+        "content_type": "press"
+      }
+    },
+    {
+      "name": "teamder_ui_action",
+      "params": {
+        "content_id": "ui_deep",
+        "content_type": "press"
+      }
+    }
+  ],
+  "submitted": [
+    {
+      "name": "teamder_ui_action",
+      "params": {
+        "content_id": "ui_keyboard",
+        "content_type": "submit"
+      }
+    }
+  ],
+  "forbiddenDataLeaked": false
+}

@@ -45,7 +45,7 @@ import { isStaleSession } from '@/services/staleSession';
 
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
-import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { PlayerCompareSkeleton } from '@/components/loading/CentralSkeletons';
 import { PlayerCompareCard } from '@/components/compare/PlayerCompareCard';
 import {
   SeasonScopeBar,
@@ -96,52 +96,88 @@ const GREEN = '#16A34A';
 type Params = RouteProp<GameStackParamList, 'PlayerCompare'>;
 type Tab = 'together' | 'h2h';
 
+const NO_PAST_SEASONS: ScopeSeason[] = [];
+type SeasonData = {
+  key: string;
+  seasons?: GroupSeasons;
+  pastSeasons: ScopeSeason[];
+  metadata: 'loading' | 'ready' | 'error';
+  archive: 'loading' | 'ready' | 'error';
+};
+
 export function PlayerCompareScreen() {
   const { groupId, otherUid } = useRoute<Params>().params;
   const nav = useNavigation<{ goBack: () => void }>();
   const viewerId = useUserStore((s) => s.currentUser?.id ?? '');
+  const viewerIsGuest = useUserStore((s) => s.currentUser?.isGuest === true);
+  const seasonContext = `${viewerId}:${viewerIsGuest}:${groupId}`;
   const shareRef = useRef<View>(null);
   const comparisonVisits = useRef(new Map<string, { id: string; pending: boolean; done: boolean }>());
 
   const [tab, setTab] = useState<Tab>('together');
   const [scope, setScope] = useState<StatsScope>({ k: 'current' });
   const [scopeOpen, setScopeOpen] = useState(false);
-  const [seasons, setSeasons] = useState<GroupSeasons | undefined>(undefined);
-  const [pastSeasons, setPastSeasons] = useState<ScopeSeason[]>([]);
-  // Whether the archive list has come back. An empty list is a real answer for
-  // a club that has closed nothing, and an unfinished fetch for one that has —
-  // and "כל העונות" cannot be summed before the difference is known.
-  const [seasonsLoaded, setSeasonsLoaded] = useState(false);
-  const [model, setModel] = useState<PairCompareModel | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [seasonData, setSeasonData] = useState<SeasonData | null>(null);
+  const matchingSeasons = seasonData?.key === seasonContext ? seasonData : null;
+  const seasons = matchingSeasons?.seasons;
+  const pastSeasons = matchingSeasons?.pastSeasons ?? NO_PAST_SEASONS;
+  const seasonsLoaded = matchingSeasons?.metadata === 'ready';
+  const metadataFailed = matchingSeasons?.metadata === 'error';
+  // Current/individual-season reads do not depend on the archive menu arriving.
+  // Stable values also prevent a second current-season read when it does arrive.
+  const requiredArchive = scope.k === 'all' ? matchingSeasons?.archive ?? 'loading' : 'ready';
+  const requiredPastSeasons = scope.k === 'all' ? pastSeasons : NO_PAST_SEASONS;
+  const comparisonContext = `${seasonContext}:${otherUid}:${scope.k}:${scope.k === 'season' ? scope.id : ''}`;
+  const [storedModel, setModel] = useState<PairCompareModel | null>(null);
+  const [storedLoading, setLoading] = useState(true);
+  const [loadedContext, setLoadedContext] = useState<string | null>(null);
+  const model = loadedContext === comparisonContext ? storedModel : null;
+  const loading = loadedContext !== comparisonContext || storedLoading;
   const [sharing, setSharing] = useState(false);
 
   // ── The club, and what slices it has ──────────────────────────────────────
   useEffect(() => {
     let alive = true;
+    setScope({ k: 'current' });
+    setSeasonData({ key: seasonContext, pastSeasons: NO_PAST_SEASONS, metadata: 'loading', archive: 'loading' });
     (async () => {
       const g = await groupService.get(groupId).catch((caughtError90d03b9cb5: unknown) => { observeCaughtError(caughtError90d03b9cb5, {"source":"src/screens/players/PlayerCompareScreen.tsx","handler":"PlayerCompareScreen","site":"PlayerCompareScreen:90d03b9cb5"}); return null; });
       if (!alive) return;
-      setSeasons(g?.seasons);
-      if (g?.seasons && !g.seasons.enabled && hasArchivedStats(g.seasons)) setScope({ k: 'all' });
+      if (!g) {
+        setSeasonData({ key: seasonContext, pastSeasons: NO_PAST_SEASONS, metadata: 'error', archive: 'error' });
+        return;
+      }
+      const needsArchive = hasArchivedStats(g.seasons);
+      if (g.seasons && !g.seasons.enabled && needsArchive) setScope({ k: 'all' });
+      setSeasonData({ key: seasonContext, seasons: g.seasons, pastSeasons: NO_PAST_SEASONS, metadata: 'ready', archive: needsArchive ? 'loading' : 'ready' });
       // Only a club that has actually closed one pays for the list.
-      if (hasArchivedStats(g?.seasons)) {
+      if (needsArchive) {
         const list = await seasonHistoryService.list(groupId, true).catch((caughtErrore20a1515eb: unknown) => { observeCaughtError(caughtErrore20a1515eb, {"source":"src/screens/players/PlayerCompareScreen.tsx","handler":"PlayerCompareScreen","site":"PlayerCompareScreen:e20a1515eb"}); return 'error' as const; });
         if (!alive) return;
-        if (list !== 'error') {
-          setPastSeasons(list.map((s) => ({ seasonId: s.seasonId, no: s.no, nonSeason:s.nonSeason })));
-        }
+        setSeasonData((previous) => previous?.key === seasonContext ? {
+          ...previous,
+          archive: list === 'error' ? 'error' : 'ready',
+          // Failure is not a newly empty archive. Keep the known list and
+          // block only scopes that need a complete archive to sum honestly.
+          pastSeasons: list === 'error' ? previous.pastSeasons : list.map((s) => ({ seasonId: s.seasonId, no: s.no, nonSeason: s.nonSeason })),
+        } : previous);
       }
-      if (alive) setSeasonsLoaded(true);
     })();
     return () => {
       alive = false;
     };
-  }, [groupId]);
+  }, [groupId, viewerId, viewerIsGuest, seasonContext]);
 
   // ── The numbers, for the slice on screen ──────────────────────────────────
   useEffect(() => {
-    if (!viewerId || !seasonsLoaded) return;
+    if (!viewerId) return;
+    if (metadataFailed || requiredArchive === 'error') {
+      setModel(null);
+      setLoadedContext(comparisonContext);
+      setLoading(false);
+      return;
+    }
+    if (!seasonsLoaded || requiredArchive !== 'ready') return;
     let alive = true;
     setLoading(true);
     (async () => {
@@ -150,7 +186,7 @@ export function PlayerCompareScreen() {
         viewerId,
         otherId: otherUid,
         scope,
-        pastSeasonIds: pastSeasons.map((s) => s.seasonId),
+        pastSeasonIds: requiredPastSeasons.map((s) => s.seasonId),
         seasons,
       });
       if (!alive) return;
@@ -162,14 +198,19 @@ export function PlayerCompareScreen() {
         return;
       }
       setModel(m);
+      setLoadedContext(comparisonContext);
       setLoading(false);
       // One successful comparison per mounted visit and club/target, not one
       // per tab/scope change. Retries reuse the server's idempotency receipt.
       const account = useUserStore.getState().currentUser;
-      if (m && account?.id === viewerId && !account.isGuest && viewerId !== otherUid) {
+      if (m && !viewerIsGuest && account?.id === viewerId && !account.isGuest && viewerId !== otherUid) {
         const key = `${viewerId}:${groupId}:${otherUid}`;
         let visit = comparisonVisits.current.get(key);
-        if (!visit) { visit = { id: randomUUID(), pending: false, done: false }; comparisonVisits.current.set(key, visit); }
+        if (!visit) {
+          visit = { id: randomUUID(), pending: false, done: false };
+          comparisonVisits.current.set(key, visit);
+          logEvent(AnalyticsEvent.PlayerComparisonViewed);
+        }
         if (!visit.pending && !visit.done) {
           const currentVisit = visit;
           currentVisit.pending = true;
@@ -180,11 +221,17 @@ export function PlayerCompareScreen() {
           }).finally(() => { currentVisit.pending = false; });
         }
       }
-    })();
+    })().catch((error) => {
+      observeCaughtError(error, { source: 'src/screens/players/PlayerCompareScreen.tsx', handler: 'loadComparison', site: 'PlayerCompareScreen:loadComparison' });
+      if (!alive) return;
+      setModel(null);
+      setLoadedContext(comparisonContext);
+      setLoading(false);
+    });
     return () => {
       alive = false;
     };
-  }, [groupId, viewerId, otherUid, scope, pastSeasons, seasons, seasonsLoaded]);
+  }, [groupId, viewerId, viewerIsGuest, otherUid, scope, requiredPastSeasons, seasons, seasonsLoaded, metadataFailed, requiredArchive, comparisonContext]);
 
   const scopeOptions = useMemo(
     () => buildScopeOptions(seasons, pastSeasons, scope),
@@ -251,21 +298,17 @@ export function PlayerCompareScreen() {
         <Segmented
           tab={tab}
           onChange={(t) => {
+            if (t === tab) return;
             setTab(t);
-            logEvent(AnalyticsEvent.PlayerCompareOpened, {
-              groupId,
-              otherUid,
+            logEvent(AnalyticsEvent.PlayerCompareTabChanged, {
               tab: t,
-              scope: scope.k,
             });
           }}
         />
 
         <ChangeMotion triggerKey={`${scope.k}:${scope.k === 'season' ? scope.id : ''}:${loading}`} duration={220} style={{ gap: BLOCK }}>
         {loading ? (
-          <View style={styles.center}>
-            <SoccerBallLoader />
-          </View>
+          <PlayerCompareSkeleton tab={tab} />
         ) : !model ? (
           <Card style={styles.emptyCard}>
             <Text style={styles.emptyText}>{he.compareUnavailable}</Text>

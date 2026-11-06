@@ -1,0 +1,442 @@
+{
+  "schemaVersion": 1,
+  "reviewer": "design_audit",
+  "reviewedAt": "2026-11-03T00:34:17.339Z",
+  "scope": "הרחבת קריאה ממוקדת לרכיבי טפסים ונתונים מעבר ל 43 הנתיבים הראשונים.19 קבצים בבעלות הסקירה ועוד RoundReviewSheet שנקרא ונמסר לראשי.",
+  "componentFilesRead": 20,
+  "additionalDedicatedSubjects": 19,
+  "sourceReadHandedToLead": 1,
+  "productionSourceEdits": [
+    "src/components/games/RegistrationConflictModal.tsx",
+    "src/components/community/CoverImagePicker.tsx",
+    "src/components/summary/SeasonClubSummary.tsx"
+  ],
+  "newProductFeatures": 0,
+  "exhaustiveStateVerification": false,
+  "records": [
+    {
+      "path": "src/components/forms/FormDesign.tsx",
+      "sha256AtReview": "9258cc0cd55c8877e79ce887af830a0533a738c163dc826091bb902d0d8a9a51",
+      "focus": "התקדמות שלבי טופס, שמירת מפתחות בקיבוץ שדות ותנועה מצומצמת.",
+      "conclusion": "המצב אינו מתאפס בקיבוץ שדות; הכדור הפעיל מוסתר מנגישות והתנועה נעצרת בפירוק. לא נמצא ממצא חדש בבדיקה התחומה.",
+      "readScope": "כל המימוש, שורות 1 עד 118",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    },
+    {
+      "path": "src/components/FormSectionHeader.tsx",
+      "sha256AtReview": "43f73810c1ad88d18bc00b2947de950fbd23d05c47ba8180fd012fc490dd0beb",
+      "focus": "יישור כותרת טופס וסדר ילדים.",
+      "conclusion": "הכותרת נכתבת ראשונה בשורה ונשענת על RTL_LABEL_ALIGN. לא נמצא פער יישור מוכח.",
+      "readScope": "כל המימוש, שורות 1 עד 52",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    },
+    {
+      "path": "src/components/community/NewClubSeasons.tsx",
+      "sha256AtReview": "2afd5bf6ef54fcb62bc83230ccf9dad931ddadf2113a9ab3c960a5606f197c11",
+      "focus": "טיוטת עונות, מתגים, תאריכים ומגבלות מספריות.",
+      "conclusion": "רכיב נשלט שאינו שומר למסד. תאריכי חודשים מחושבים בעוזרים המשותפים, וקביעת סיום אחרי חלון תיקונים מוסברת.",
+      "readScope": "כל המימוש והסגנונות, שורות 1 עד 286",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    },
+    {
+      "path": "src/components/community/SeasonsSettings.tsx",
+      "sha256AtReview": "7e01e7d23a4cdf3f5bf8b6a390f86e6b50a7233c7610b3b8d710f3ad5803d74c",
+      "focus": "טעינת היסטוריה, בחירת יעד, בקשות שינוי ושחזור פעולה.",
+      "conclusion": "יש נעילת busyRef סינכרונית, כשל קריאה נפרד, שמירת בחירה בכשל וגבולות יעד משותפים. אין שינוי בחוזה העונה.",
+      "readScope": "תנאי טעינה, טיפול בקשה והפקדים, שורות 1 עד 190",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    },
+    {
+      "path": "src/components/community/SeasonTargetControls.tsx",
+      "sha256AtReview": "2c0831456699be645bda25a54a401b0d096cf45a52b5d8b22ce833a6ae580c9e",
+      "focus": "גבולות הצעדן ומצבי בחירה והשבתה.",
+      "conclusion": "כפתורי הצעדן מכבדים מינימום ומקסימום ומידות 44. שמות הוספה והפחתה כלליים ואינם כוללים את נושא הערך. נרשם שיפור נגישות מוגבל, ללא טענת כשל native.",
+      "readScope": "כל המימוש, שורות 1 עד 42",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    },
+    {
+      "path": "src/components/community/SeasonConfirmSheet.tsx",
+      "sha256AtReview": "ed9ff887c407238a07fa102a8f89c1311e1d23d69010d038e4a54ea29062edc5",
+      "focus": "הסבר התוכנית ואפשרויות היסטוריה, נעילת דגל חיצוני.",
+      "conclusion": "הסבר הפעולה נגזר מהתוכנית. חזרת מכשיר והרקע בודקים busy, וצרכן הגדרות העונות מגן גם בהפניה סינכרונית. לא הועתק פער ההתנגשות לרכיב זה.",
+      "readScope": "כל המימוש וגבולות הפריסה, שורות 1 עד 168",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    },
+    {
+      "path": "src/components/community/CoverImagePicker.tsx",
+      "sha256AtReview": "2c9f3f9b564cd85c80111e7855dd39d44f86c7eab4fa8030221b387104269773",
+      "focus": "תמונות מובנות, העלאה והסכמה לבחירת שער.",
+      "conclusion": "מירוץ בחירה בזמן העלאה שוחזר במקור ובמארח מקומי וננעל. נוספו שמות ומצבי בחירה נגישים. שש בדיקות עברו, ללא שירות או שינוי צרכן.",
+      "readScope": "תנאי ההצגה והפעולות, שורות 1 עד 125, וצרכן התמונות ב-CommunityDetailsScreen",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false,
+      "beforeFixSourceSha256": "05527bdbdedd81624e863f5c9295f28cdacc3bcbed7e7baa094cf3fac9490178",
+      "followup": "הממצא אושר, תוקן, עבר מבחן ממוקד ונצפה במארח מקומי. מקור מוקפא לאחר האימות."
+    },
+    {
+      "path": "src/components/community/ManageEquipmentSheet.tsx",
+      "sha256AtReview": "634cdf79c045ae86c21038e8101b75edccbf4b9972bde996fb4ca6129edfede1",
+      "focus": "טיוטת מחזיקי כדור וגופיות, השבתה וסגירה בשמירה.",
+      "conclusion": "הטיוטה נזרעת מחדש בפתיחה. הסגירה מועברת ישירות לרכיב אך הצרכן CommunityPlayersScreen חוסם אותה בזמן savingEquip, ולכן אין ממצא משתמש חדש בנתיב זה.",
+      "readScope": "לוגיקה ופקדים, שורות 1 עד 135; צרכן בשורות 664 עד 674",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    },
+    {
+      "path": "src/components/games/FormatStepper.tsx",
+      "sha256AtReview": "1e4bcb6c55a56c7e0a3df2495e83367628ca230aad001096b7c6ea47339e724a",
+      "focus": "הקלדת מספר חלקי, אישור ערך, צעדים ותפוסה.",
+      "conclusion": "טיוטה ריקה אינה יוצרת NaN אצל הצרכן; הוספה והפחתה משתמשות בערך המוצג. קיימת row-reverse מכוונת לסדר סימנים פיזי, בניגוד לכלל המאגר. נדרש צילום ייעודי לפני הסקת פער חדש או שינוי סדר.",
+      "readScope": "כל המימוש והסגנונות, שורות 1 עד 284",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    },
+    {
+      "path": "src/components/games/RegistrationConflictModal.tsx",
+      "sha256AtReview": "dd4061548dca01cc971e2bba18ad4ec2ac72a554a83efb5fb65b2c8c20e9b403",
+      "focus": "דגל ביטול, אירועי סגירה ישנים וצרכן הרשימה.",
+      "conclusion": "נמצא ותוקן D09. נוספה נעילה מקומית סינכרונית והמתנה להבטחת הצרכן לצד הדגל החיצוני. שש בדיקות עברו; חזרת אנדרואיד ורקע אומתו במארח מקומי ללא שירות.",
+      "readScope": "כל תנאי הפעולה והצרכן. המקור לאחר התיקון מוקפא.",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    },
+    {
+      "path": "src/components/CommunityFilterSheet.tsx",
+      "sha256AtReview": "c64ce3f70e6998a48e11e825c825b33274b6190e59a6259ff4f8fa4f2bba7683",
+      "focus": "הפרדת סינון, הרשאת מיקום, מפת רדיוס וסינון נתונים.",
+      "conclusion": "פתיחה קוראת הרשאה בלי בקשת מערכת. המתגים נשלטים, סינון הרדיוס משתמש בקואורדינטות או חלופת עיר מוגדרת. אין כתיבת מוצר ברכיב. לא נמצא ממצא חדש בתחומים שנקראו.",
+      "readScope": "לוגיקה, תצוגה וחישוב הסינון, שורות 1 עד 459; לא נסקרו כל סגנונות המשך הקובץ",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    },
+    {
+      "path": "src/components/summary/EveningSummaryCard.tsx",
+      "sha256AtReview": "b91c156bccb0713a73e0c422fd8ceb48f6a0ccec32a191b1c72a3777378d9662",
+      "focus": "הפרדת משחקון ממחזור, תוצאות, כיסוי ורכיב שיתוף.",
+      "conclusion": "רצף תוצאות מוצג רק אם אורכו תואם את מספר המשחקים; אחרת מופיעה חלוקה ללא טענת סדר כרונולוגי. אין שליפה ברכיב. לא נמצא ממצא נתונים חדש.",
+      "readScope": "ממשק הרכיב, חישובי תצוגה וסגנונות, שורות 1 עד 179",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    },
+    {
+      "path": "src/components/summary/SeasonShareCard.tsx",
+      "sha256AtReview": "965caeb0c6a252c488e2687677e534303fb0033b99ff23b2a75e614575988593",
+      "focus": "כרטיס ייצוא, מכנים, כיסוי משחקונים ושמות.",
+      "conclusion": "רוחב הייצוא קבוע והגבלת שינוי גופן מתועדת ליצוא בלבד. משחקונים מוצגים רק כשיש כיסוי; דירוג שלילי אינו מוצג כהישג, וזכייה משותפת מצוינת.",
+      "readScope": "בחירת נתונים, מימוש הכרטיס וסגנונות, שורות 1 עד 331",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    },
+    {
+      "path": "src/components/summary/SeasonClubSummary.tsx",
+      "sha256AtReview": "f4b33a332bac59266b38f1eaf3d3dcfb881342d5553d2422b31b418fc57d9d45",
+      "focus": "תארים, תחום עונה ושיא מחזור פורה.",
+      "conclusion": "תוקנה ההפרדה בין טעינה, כשל וריק, ונשמר שיא מאושר ברענון אותו תחום. שמונה בדיקות עברו ונצפו מצבי המקור באנדרואיד, ללא שינוי חישוב או גבולות קריאה.",
+      "readScope": "מימוש הרכיבים, אפקט קריאה ותצוגת נתונים, שורות 1 עד 182",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false,
+      "beforeFixSourceSha256": "0b7e371728d919407272e8342175268ee76da8629dced626cefad7b18d88bb15",
+      "followup": "הממצא אושר, תוקן, עבר מבחן ממוקד ונצפה במארח מקומי. מקור מוקפא לאחר האימות."
+    },
+    {
+      "path": "src/components/stats/SeasonScopeBar.tsx",
+      "sha256AtReview": "07f41f51b6120e80fc4a7d399baef1ae61804fa42127e9f3e5146176a4b3c812",
+      "focus": "בחירת תחום נתונים, מצב פתוח וסימון פעיל.",
+      "conclusion": "האפשרויות מגיעות ממילון תחומים משותף ואינן טוענות נתונים. הפקד הסגור מצהיר תווית כללית בלי ערך התחום הנבחר; מומלץ לבדוק הכרזה בקורא מסך לפני תיקון.",
+      "readScope": "כל המימוש והסגנונות, שורות 1 עד 166",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    },
+    {
+      "path": "src/components/profile/StatsGrid.tsx",
+      "sha256AtReview": "931b095f6fd78e44d4fc432c79f477edc750b8807630e737273194b2de5db476",
+      "focus": "חוזה ארבעה נתונים וכרטיסים נשלטים.",
+      "conclusion": "הגבלת ארבעת הפריטים היא חוזה מפורש. אין קריאה או חישוב נתונים ברכיב, ולא הוצגה כהשמטה חדשה.",
+      "readScope": "כל המימוש, שורות 1 עד 59",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    },
+    {
+      "path": "src/components/community/CommunityStatsGrid.tsx",
+      "sha256AtReview": "1a47c913cf4dd99c5115c6f39c8e51a1634070fd73b8f0c57f8c99a7c9a0da05",
+      "focus": "ערכי נתונים מוכנים ורשת שני טורים.",
+      "conclusion": "התוויות והערכים נשלטים ומוגבלים לשורה. לא הוכחה גלישה חדשה ולכן לא שונו מידות או גודל גופן.",
+      "readScope": "כל המימוש והסגנונות, שורות 1 עד 137",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    },
+    {
+      "path": "src/components/community/ChampionshipTable.tsx",
+      "sha256AtReview": "2fb7de84e7390427e8c6768b440149872eea0fa2b3971c421b931c9a4d2dc96c",
+      "focus": "פתרון זהויות שחקנים, חישוב ציון וניווט.",
+      "conclusion": "בכשל זהות יש שם נגיש ריק אך לא נמצא צרכן פעיל לרכיב הזה: CommunityChampionship משתמש ב-CommunityStatsTable. זהו חוב תחזוקה, לא תקלה פעילה חדשה במוצר.",
+      "readScope": "כל המימוש, שורות 1 עד 155, וחיפוש צרכנים",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    },
+    {
+      "path": "src/components/match/FillerPickerModal.tsx",
+      "sha256AtReview": "c96acfbf4b6fa96e3ef98b070f57fea0086b645be9c663dc2b046b703cfeb999",
+      "focus": "המלצות, מספר נבחרים, רשימה ריקה ותוצאה שמורה.",
+      "conclusion": "ההמלצות נזרעות לפי בקשה והאישור תלוי במספר הנבחרים. יש אפשרות סגירה במאגר חסר, למרות הערה היסטורית שאומרת שאין ביטול. לא שונתה התנהגות המעבר.",
+      "readScope": "לוגיקה ופקדי רשימה ואישור, שורות 1 עד 151",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    },
+    {
+      "path": "src/components/games/RoundReviewSheet.tsx",
+      "sha256AtReview": "ece1fb3e9b44a8567f2fcf2befe4e379d6d52e90d0252a2878662343a7684fff",
+      "focus": "חוזה שדות סיכום, כתובת, הרחבה ואזור פעולות.",
+      "conclusion": "נקרא לפני חלוקת הבעלות הנוספת; חקירת ההמתנה והתיעוד הועברו לראשי ולא בוצעו כאן שוב.",
+      "readScope": "כל המימוש, שורות 1 עד 138, מסירה לבעלות הראשי",
+      "codeRead": true,
+      "notInventoryOnly": true,
+      "allStatesVerified": false
+    }
+  ],
+  "findings": [
+    {
+      "id": "D09",
+      "severity": "medium",
+      "status": "implemented_source_and_native_fixture_verified",
+      "source": "src/components/games/RegistrationConflictModal.tsx",
+      "trigger": "אירוע חזרה, רקע או סגירה בזמן ביטול הרשמה במחזור מתנגש.",
+      "impact": "החלון הסתיר את התהליך למרות פעולות מושבתות; אישור ישן יכול היה להפעיל ביטול נוסף.",
+      "evidence": [
+        "src/components/games/RegistrationConflictModal.tsx:55",
+        "src/screens/games/GamesListScreen.tsx:932",
+        "src/screens/games/GamesListScreen.tsx:978"
+      ],
+      "tests": "tests/logic/overnightRegistrationConflictModal.test.tsx",
+      "testResult": {
+        "before": {
+          "passed": 3,
+          "failed": 3
+        },
+        "after": {
+          "passed": 6,
+          "failed": 0
+        }
+      },
+      "nativeBefore": "artifacts/overnight-2026-11-02/functional-native/conflict-busy-before.png",
+      "nativeAfter": "artifacts/overnight-2026-11-02/functional-native/conflict-busy-after-back-blocked.png",
+      "nativeLimitation": "דגל המתנה קבוע במארח רכיב מקור, ללא ביטול או הצטרפות אמיתיים."
+    },
+    {
+      "id": "CX02",
+      "severity": "medium",
+      "status": "implemented_source_and_native_fixture_verified",
+      "source": "src/components/summary/SeasonClubSummary.tsx",
+      "trigger": "אין mostGoalsEvening במודל, ואז listEveningStats עדיין ממתינה או נכשלת.",
+      "impact": "המסך מציג אין נתון מתועד גם כשמצב הנתון עדיין לא ידוע או לא נקרא. אין הבחנה ברורה בין חוסר כיסוי לבין כשל.",
+      "suggestion": "להפריד מצב טעינה וכשל משיא חסר, עם ניסיון חוזר תחום והמשך שימור גבולות העונה.",
+      "limitation": "מבחן ומארח רכיבי מקור מקומיים בלבד; אין קריאת שרת, העלאה או שינוי נתונים אמיתיים.",
+      "originalEvidence": {
+        "lines": [
+          103,
+          106,
+          112,
+          114,
+          138
+        ],
+        "limitation": "אין צילום כשל או מבחן הזרקת כשל בסבב זה. שירות הדמו מספק mostGoalsEvening מראש ולכן עוקף את הקריאה."
+      },
+      "fix": "מצב קריאה מפורש, ניסיון חוזר ושימור שיא מאושר באותו תחום. גבולות וחישוב נשמרו; תשובות של תחום קודם נפסלות.",
+      "tests": "tests/logic/overnightSeasonClubRecord.test.tsx",
+      "testCounts": {
+        "beforePassed": 4,
+        "beforeFailed": 4,
+        "afterPassed": 8,
+        "afterFailed": 0
+      },
+      "testReceipts": {
+        "before": "artifacts/overnight-2026-11-02/season-record-tests-before.json",
+        "after": "artifacts/overnight-2026-11-02/season-record-tests-after.json"
+      },
+      "nativeVerification": "המפעיל פתח מצבי טעינה וכשל ולחץ על ניסיון חוזר. הכשל חזר בהבטחה המקומית; לא נמדד מונה קריאות במכשיר.",
+      "evidence": [
+        {
+          "file": "artifacts/overnight-2026-11-02/functional-native/season-record-loading-before.png",
+          "sha256": "944126a21e56d834c4098759289f11e288df6ba56e2e2dd6cfe800ed80765db7",
+          "width": 1080,
+          "height": 2400,
+          "visuallyReviewed": true
+        },
+        {
+          "file": "artifacts/overnight-2026-11-02/functional-native/season-record-error-before.png",
+          "sha256": "e154cd692182f11905b869ba73f2a4d89c45ba489446a019323d0d4a0920d80b",
+          "width": 1080,
+          "height": 2400,
+          "visuallyReviewed": true
+        },
+        {
+          "file": "artifacts/overnight-2026-11-02/functional-native/season-record-loading-after.png",
+          "sha256": "edba532079d1fb2ff4ac3ec4d0ee79b9ed8b275fba98d8d628f1cc1dda1b5e7b",
+          "width": 1080,
+          "height": 2400,
+          "visuallyReviewed": true
+        },
+        {
+          "file": "artifacts/overnight-2026-11-02/functional-native/season-record-error-after.png",
+          "sha256": "179e44069e27f6cbf19a46108d5b406ba24bc01019322d89dcd5e1839b476c4c",
+          "width": 1080,
+          "height": 2400,
+          "visuallyReviewed": true
+        }
+      ],
+      "functionalFixtureVerified": true,
+      "fullProductFlowVerified": false,
+      "screenReaderVerified": false
+    },
+    {
+      "id": "CX03",
+      "severity": "medium",
+      "status": "implemented_source_and_native_fixture_verified",
+      "source": "src/components/community/CoverImagePicker.tsx",
+      "trigger": "מיקוד בקורא מסך על אחד מתאי גלריית שערי המועדון.",
+      "impact": "הפעולה היא תמונה ללא שם נגיש מפורש וללא מצב נבחר. לא ברור למשתמש איזה שער נבחר או מה ישתנה.",
+      "suggestion": "לתת שם מובחן לכל בחירת שער, תפקיד ומצב בחירה, ולבדוק הכרזה יחידה באנדרואיד.",
+      "limitation": "מבחן ומארח רכיבי מקור מקומיים בלבד; אין קריאת שרת, העלאה או שינוי נתונים אמיתיים.",
+      "originalEvidence": {
+        "lines": [
+          86,
+          96,
+          98
+        ],
+        "limitation": "הגלריה פעילה ב-CommunityDetailsScreen; לא הופעל קורא מסך אמיתי בסבב זה."
+      },
+      "fix": "לכל תא גלריה תפקיד כפתור, שם מובחן לפי מספר, selected ו-disabled. תמונה וסימון אינם יעדי הקראה כפולים.",
+      "tests": "tests/logic/overnightCoverImagePicker.test.tsx",
+      "testCounts": {
+        "beforePassed": 0,
+        "beforeFailed": 6,
+        "afterPassed": 6,
+        "afterFailed": 0
+      },
+      "testReceipts": {
+        "before": "artifacts/overnight-2026-11-02/cover-tests-before.json",
+        "after": "artifacts/overnight-2026-11-02/cover-tests-after.json"
+      },
+      "nativeVerification": "צילום מקור מראה פקדים מושבתים בזמן בקשה. סמנטיקת הנגישות נבדקה במבחן מקור, ללא קורא מסך אנושי.",
+      "evidence": [
+        {
+          "file": "artifacts/overnight-2026-11-02/functional-native/cover-upload-before.png",
+          "sha256": "0474fd31c2c3703a121fd9d319fbd1805710ad7403cf58ad6e5f079983f955c0",
+          "width": 1080,
+          "height": 2400,
+          "visuallyReviewed": true
+        },
+        {
+          "file": "artifacts/overnight-2026-11-02/functional-native/cover-upload-before-closed-confirmed.png",
+          "sha256": "bcb9501a7724976f12dde0d5c4cfe5031351cd5796dde7c834eef6ebdeb30db9",
+          "width": 1080,
+          "height": 2400,
+          "visuallyReviewed": true
+        },
+        {
+          "file": "artifacts/overnight-2026-11-02/functional-native/cover-upload-after.png",
+          "sha256": "a9c4c096ddd525a75a4b41f0b41f5aad35b6e14ba437dbbe1f0c362aea4a6bd1",
+          "width": 1080,
+          "height": 2400,
+          "visuallyReviewed": true
+        }
+      ],
+      "functionalFixtureVerified": true,
+      "fullProductFlowVerified": false,
+      "screenReaderVerified": false
+    },
+    {
+      "id": "CX04",
+      "severity": "medium",
+      "status": "implemented_source_and_native_fixture_verified",
+      "source": "src/components/community/CoverImagePicker.tsx",
+      "relatedSources": [
+        "src/screens/communities/CommunityDetailsScreen.tsx:498",
+        "src/screens/communities/CommunityDetailsScreen.tsx:520",
+        "src/screens/communities/CommunityDetailsScreen.tsx:545"
+      ],
+      "trigger": "בוחרים שער מובנה לאחר תחילת העלאת תמונה ולפני השלמתה.",
+      "impact": "תאי הגלריה אינם מושבתים בזמן uploading, ולשני המטפלים אין בדיקת בעלות משותפת; סיום העלאה ישנה יכול להחליף בחירה חדשה יותר.",
+      "suggestion": "לשחזר עם הבטחת העלאה מקומית מעוכבת, ואז לבחור בין חסימת הגלריה בזמן בקשה לבין בעלות שמונעת דריסה מאוחרת.",
+      "limitation": "מבחן ומארח רכיבי מקור מקומיים בלבד; אין קריאת שרת, העלאה או שינוי נתונים אמיתיים.",
+      "originalEvidence": {
+        "lines": [
+          96
+        ],
+        "limitation": "לא בוצעה העלאה ולא נשמרו נתוני מועדון. ממצא מירוץ מקור, לא שחזור מכשיר."
+      },
+      "fix": "נעילה סינכרונית מקומית והדגל החיצוני חוסמים בחירה, סגירה והעלאה חוזרת עד סיום הבקשה. אין שינוי שירות או צרכן.",
+      "tests": "tests/logic/overnightCoverImagePicker.test.tsx",
+      "testCounts": {
+        "beforePassed": 0,
+        "beforeFailed": 6,
+        "afterPassed": 6,
+        "afterFailed": 0
+      },
+      "testReceipts": {
+        "before": "artifacts/overnight-2026-11-02/cover-tests-before.json",
+        "after": "artifacts/overnight-2026-11-02/cover-tests-after.json"
+      },
+      "nativeVerification": "אחרי העלאה, תא שני וחזרת אנדרואיד התקבל visible=true, selectedId=c01, uploading=true. לפני התיקון התקבל selectedId=c02 ובורר סגור.",
+      "evidence": [
+        {
+          "file": "artifacts/overnight-2026-11-02/functional-native/cover-upload-before.png",
+          "sha256": "0474fd31c2c3703a121fd9d319fbd1805710ad7403cf58ad6e5f079983f955c0",
+          "width": 1080,
+          "height": 2400,
+          "visuallyReviewed": true
+        },
+        {
+          "file": "artifacts/overnight-2026-11-02/functional-native/cover-upload-before-closed-confirmed.png",
+          "sha256": "bcb9501a7724976f12dde0d5c4cfe5031351cd5796dde7c834eef6ebdeb30db9",
+          "width": 1080,
+          "height": 2400,
+          "visuallyReviewed": true
+        },
+        {
+          "file": "artifacts/overnight-2026-11-02/functional-native/cover-upload-after.png",
+          "sha256": "a9c4c096ddd525a75a4b41f0b41f5aad35b6e14ba437dbbe1f0c362aea4a6bd1",
+          "width": 1080,
+          "height": 2400,
+          "visuallyReviewed": true
+        }
+      ],
+      "functionalFixtureVerified": true,
+      "fullProductFlowVerified": false,
+      "screenReaderVerified": false
+    }
+  ],
+  "maintenanceNotes": [
+    "תוויות הוספה והפחתה כלליות בצעדן עונה, והתחום הנבחר אינו ערך נגיש מפורש בכפתור בחירת עונה. אלה יעדי בדיקה בקורא מסך, לא תקלה חזותית שנצפתה.",
+    "FormatStepper משתמש במכוון ב-row-reverse לסדר סימנים פיזי. לא שונה סדר בלי צילום ייעודי, ונרשם הפער מול כלל המאגר.",
+    "ChampionshipTable לא נמצא בשימוש פעיל; לא סופרים את השם הריק בו ככשל מוצר חדש.",
+    "אין כאן בדיקת כל קלט, גופן מוגדל, שרת, שיתוף או מסירה, ואין שינוי מדדים או מכנים."
+  ],
+  "updatedAt": "2026-11-03T01:11:54.898Z",
+  "finalSourceFrozen": true
+}

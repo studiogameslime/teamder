@@ -1,0 +1,15 @@
+{
+  "identity": {
+    "sourceFunction": "ensureIdentityWatch",
+    "actorAtCallback": "first-account",
+    "actorAtCompletion": "second-account",
+    "productRecords": [],
+    "hasOperationOwnerCapture": true
+  },
+  "timer": {
+    "actorAtSchedule": "first-account",
+    "actorAtCompletion": "second-account",
+    "productRecords": [],
+    "hasOperationOwnerCapture": true
+  }
+}

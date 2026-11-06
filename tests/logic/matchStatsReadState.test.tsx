@@ -42,8 +42,13 @@ jest.mock('react-native-svg', () => ({ __esModule: true, default: 'Svg', Circle:
 jest.mock('@/hooks/animations/useAmbientMotion', () => ({ useAmbientMotion: () => false }));
 jest.mock('react-native-reanimated', () => ({ __esModule: true, default: { View: 'AnimatedView' }, cancelAnimation: jest.fn(), Easing: { inOut: jest.fn(), cubic: jest.fn() }, useSharedValue: () => ({ value: 0 }), useAnimatedStyle: () => ({}), withDelay: jest.fn(), withTiming: jest.fn() }));
 jest.mock('@/components/Card', () => ({ Card: 'Card' }));
+jest.mock('@/components/loading/ScreenSkeletons', () => ({
+  SkeletonRegion: ({ label, children }: any) => require('react').createElement('SkeletonRegion', null, label, children),
+  SkeletonBlock: 'SkeletonBlock',
+}));
 jest.mock('@/components/UserAvatar', () => ({ UserAvatar: 'Avatar' }));
 jest.mock('@/components/match/GameChampionship', () => ({ GameChampionship: 'Championship' }));
+jest.mock('@/components/match/RoundPenaltiesSection', () => ({ RoundPenaltiesSection: 'RoundPenaltiesSection' }));
 jest.mock('@/components/match/tabs/MatchTabShell', () => ({ TabScroll: 'TabScroll', TabSectionTitle: 'SectionTitle', TabEmpty: 'TabEmpty' }));
 jest.mock('@/components/match/rotationView', () => ({
   ...jest.requireActual('@/utils/teamIdentity'),

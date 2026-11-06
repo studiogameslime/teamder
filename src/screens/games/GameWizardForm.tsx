@@ -305,14 +305,7 @@ export function GameWizardForm({
     savingRef,
     title: he.gameEditUnsavedTitle,
     body: he.gameEditUnsavedBody,
-    onSave: async () => {
-      savingRef.current = true;
-      try {
-        await onSubmit(values);
-      } finally {
-        savingRef.current = false;
-      }
-    },
+    onSave: () => submit(),
   });
   // Soft "registration opens too close / in the past" warning — styled
   // popup instead of a native Alert. `isPast` picks the body copy.
@@ -434,7 +427,21 @@ export function GameWizardForm({
     return true;
   };
 
+  const validateSubmit = (): boolean => {
+    if (!step1Valid) {
+      setStep(1);
+      scrollToTop();
+      return false;
+    }
+    if (!validateRegistrationOpensAt() || !validateAutoTeamsAt()) {
+      setStep(3);
+      return false;
+    }
+    return true;
+  };
+
   const finalizeSubmit = async () => {
+    if (busy || savingRef.current || !validateSubmit()) return;
     setBusy(true);
     // Arm the guard's bypass BEFORE submitting: a successful onSubmit
     // navigates away (nav.replace → MatchDetails), which fires the
@@ -444,8 +451,6 @@ export function GameWizardForm({
     savingRef.current = true;
     try {
       await onSubmit(values);
-      // success → leaving the screen; keep savingRef armed so the
-      // departing navigation passes through cleanly.
     } catch (e) {
     observeCaughtError(e, {"source":"src/screens/games/GameWizardForm.tsx","handler":"finalizeSubmit","site":"GameWizardForm:b5307ffdd0"});
       savingRef.current = false; // stayed on the form → re-arm the guard
@@ -455,18 +460,19 @@ export function GameWizardForm({
       });
       appAlert(he.error, he.gameWizardSubmitFailed);
     } finally {
+      savingRef.current = false;
       setBusy(false);
     }
   };
 
   const submit = async () => {
+    if (busy || savingRef.current) return;
     logEvent(AnalyticsEvent.GameWizardStepChanged, {
       step: 3,
       direction: 'submit',
       mode: isEdit ? 'edit' : 'create',
     });
-    if (!validateRegistrationOpensAt()) return;
-    if (!validateAutoTeamsAt()) return;
+    if (!validateSubmit()) return;
     if (values.scheduledRegEnabled && values.registrationOpensAt > 0) {
       const now = Date.now();
       const delta = values.startsAt - values.registrationOpensAt;

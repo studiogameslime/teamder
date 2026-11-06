@@ -4,7 +4,15 @@ import ts from 'typescript';
 import { eveningPlayState } from '@/utils/eveningPlayed';
 import { inSeason } from '@/utils/seasonScope';
 import { roundCommitKey } from '@/services/rotationEngine';
-import { decideSpotOffer } from '../../functions/src/spotOfferDecision';
+import { decideSpotOffer, spotOfferExpired } from '../../functions/src/spotOfferDecision';
+
+test('promotion expiry agrees with the sweep at the deadline, including old offers and the default duration', () => {
+  expect(spotOfferExpired(100, 2, 120100)).toBe(false);
+  expect(spotOfferExpired(100, 2, 120101)).toBe(true);
+  expect(spotOfferExpired(100, undefined, 1200100)).toBe(false);
+  expect(spotOfferExpired(100, undefined, 1200101)).toBe(true);
+  expect(spotOfferExpired(undefined, 2, 120101)).toBe(false);
+});
 
 function load(file: string, deps: Record<string, any>) {
   const exports: any = {};
@@ -30,7 +38,7 @@ test.each(['scheduled','locked','active'])('actual offer expiry sweep handles %s
   const query:any={where:()=>query,limit:()=>query,get:async()=>({empty:false,docs:[snapshot]})};
   const db={collection:()=>query,runTransaction:async(fn:any)=>fn({get:async()=>snapshot,update})};
   const run=vm.runInNewContext(ts.transpileModule(`${node.getText(tree)}; runExpireStaleOffers`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,
-    {db,Date,MIN_OFFER_TTL_MS:120000,PROMO_OFFER_TTL_MS:1200000,console:{log(){},error(){}}});
+    {db,Date,MIN_OFFER_TTL_MS:120000,spotOfferExpired,console:{log(){},error(){}}});
   await run();
   if(status==='active')expect(update).not.toHaveBeenCalled();
   else{

@@ -2047,6 +2047,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   seasonClosedCta: {
+    flexShrink: 1,
     fontSize: 14,
     fontWeight: '800',
     color: '#FFFFFF',
@@ -2111,7 +2112,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    height: 54,
+    minHeight: 54,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
     borderRadius: 999,
     // Clips the absolutely-positioned gradient to the pill. The flat colour
     // underneath is what shows if the gradient ever fails to draw.
@@ -2125,6 +2128,8 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   inviteCtaText: {
+    flexShrink: 1,
+    textAlign: 'center',
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '800',

@@ -5,6 +5,7 @@ import { TeamShirtIllustration } from '@/components/match/TeamShirt';
 import { RTL_LABEL_ALIGN } from '@/theme';
 import { gameFormatLabel } from '@/utils/format';
 import { TEAM_PALETTE } from '@/utils/teamIdentity';
+import { RATING_NEUTRAL } from '@/utils/rating';
 import { TeamColorButton } from './TeamColorEditor';
 
 export function DraftGenerationPreview({ mode, players, teams, format, children, colorKeys, onEditColor }: {
@@ -22,7 +23,7 @@ export function DraftGenerationPreview({ mode, players, teams, format, children,
   ];
   const info: {icon: keyof typeof Ionicons.glyphMap; text: string}[] = automatic ? [
     {icon:'stats-chart-outline',text:'הדירוג הפנימי משמש לאיזון בין הקבוצות'},
-    {icon:'person-outline',text:'לשחקן ללא דירוג משתמשים בדירוג בסיס של 3 מתוך 5'},
+    {icon:'person-outline',text:`לשחקן ללא דירוג משתמשים בדירוג בסיס של ${RATING_NEUTRAL} מתוך 5`},
   ] : [
     {icon:'shuffle-outline',text:'השחקנים מוגרלים לקבוצות, ללא שימוש בדירוג'},
     {icon:'people-outline',text:'מספר השחקנים מתחלק באופן שווה ככל האפשר'},

@@ -133,4 +133,15 @@ describe('a Hebrew prefix letter before a name', () => {
     expect(plain(he.pairEntryTitle('Eliran Tzabari'))).toBe('אתה ו-Eliran Tzabari');
     expect(plain(he.pairEntryTitle('אורי'))).toBe('אתה ואורי');
   });
+
+  it.each([
+    ['אורי', 'Eliran Tzabari', 'אורי ו-Eliran Tzabari'],
+    ['Lioz Madar', 'שלומי צדוק', 'Lioz Madar ושלומי צדוק'],
+    ['Lioz Madar', 'Eliran Tzabari', 'Lioz Madar ו-Eliran Tzabari'],
+  ])('keeps the summary pair readable for %s and %s', (first, second, pair) => {
+    const summary = he.roundSummaryPairText(first, second, 3);
+    expect(plain(summary)).toBe(`${pair} — 3 שערים נוצרו ביניהם`);
+    expect(summary).toContain(`\u2068${first}\u2069`);
+    expect(summary).toContain(`\u2068${second}\u2069`);
+  });
 });

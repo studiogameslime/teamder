@@ -3,7 +3,7 @@ import { ChangeMotion } from '@/components/anim/ChangeMotion';
 // either a built-in image from our curated gallery, or upload one from
 // the device. Mirrors the player-avatar picker pattern.
 
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COVER_IMAGES } from '@/data/coverImages';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import { OperationStatus } from '@/components/ReadStatusNotice';
 
 interface Props {
   visible: boolean;
@@ -29,8 +30,9 @@ interface Props {
   hasUploadedPhoto?: boolean;
   /** Spinner while a device upload is in flight. */
   uploading?: boolean;
+  uploadLabel?: string;
   onSelectBuiltin: (id: string) => void;
-  onUploadFromDevice: () => void;
+  onUploadFromDevice: () => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -39,16 +41,36 @@ export function CoverImagePicker({
   selectedId,
   hasUploadedPhoto,
   uploading,
+  uploadLabel,
   onSelectBuiltin,
   onUploadFromDevice,
   onClose,
 }: Props) {
+  const [uploadPending, setUploadPending] = useState(false);
+  const pendingRef = useRef(false);
+  const externalUploadingRef = useRef(!!uploading);
+  externalUploadingRef.current = !!uploading;
+  const busy = !!uploading || uploadPending;
+  const isUploading = () => pendingRef.current || externalUploadingRef.current;
+  const requestClose = () => { if (!isUploading()) onClose(); };
+  const requestUpload = async () => {
+    if (isUploading()) return;
+    pendingRef.current = true;
+    setUploadPending(true);
+    try {
+      await onUploadFromDevice();
+    } finally {
+      pendingRef.current = false;
+      setUploadPending(false);
+    }
+  };
+
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" onRequestClose={requestClose}>
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <View style={styles.header}>
-          <Pressable onPress={onClose} hitSlop={10} style={styles.closeBtn}>
-            <Ionicons name="close" size={26} color={colors.text} />
+          <Pressable onPress={requestClose} disabled={busy} accessibilityRole="button" accessibilityLabel={he.close} accessibilityState={{ disabled: busy }} hitSlop={10} style={[styles.closeBtn, busy && { opacity: 0.45 }]}>
+            <Ionicons name="close" size={26} color={colors.text} accessible={false} />
           </Pressable>
           <Text style={styles.headerTitle}>{he.coverPickerTitle}</Text>
           <View style={{ width: 26 }} />
@@ -61,11 +83,14 @@ export function CoverImagePicker({
           {/* Upload from device */}
           <Pressable
             style={({ pressed }) => [styles.uploadBtn, pressed && { opacity: 0.9 }]}
-            onPress={onUploadFromDevice}
-            disabled={uploading}
+            onPress={requestUpload}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel={he.coverPickerUpload}
+            accessibilityState={{ disabled: busy, busy }}
           >
-            {uploading ? (
-              <ActivityIndicator color="#fff" />
+            {busy ? (
+              <><Text style={styles.uploadBtnText}>{uploadLabel ?? 'ממתינים לבחירת התמונה'}</Text><ActivityIndicator color="#fff" accessible={false} /></>
             ) : (
               <>
                 {/* Text FIRST, icon second. Under forceRTL the first child
@@ -74,16 +99,17 @@ export function CoverImagePicker({
                     it on the left, matching every other CTA in the app
                     (Pulse, Eliran Tzabari). */}
                 <Text style={styles.uploadBtnText}>{he.coverPickerUpload}</Text>
-                <Ionicons name="cloud-upload-outline" size={20} color="#fff" />
+                <Ionicons name="cloud-upload-outline" size={20} color="#fff" accessible={false} />
               </>
             )}
           </Pressable>
+          <OperationStatus active={busy} label={uploadLabel ?? 'ממתינים לבחירת התמונה'} scope={uploadLabel ?? 'cover'} showLabel={false} awaitingConfirmation={uploadLabel === 'שומרים את תמונת המועדון'}/>
 
           <Text style={styles.sectionLabel}>{he.coverPickerGalleryLabel}</Text>
 
           {/* Built-in gallery grid */}
           <View style={styles.grid}>
-            {COVER_IMAGES.map((c) => {
+            {COVER_IMAGES.map((c, index) => {
               const active = !hasUploadedPhoto && selectedId === c.id;
               return (
                 <Pressable
@@ -91,13 +117,19 @@ export function CoverImagePicker({
                   style={({ pressed }) => [
                     styles.cell,
                     active && styles.cellActive,
+                    busy && { opacity: 0.45 },
                     pressed && { opacity: 0.85 },
                   ]}
-                  onPress={() => onSelectBuiltin(c.id)}
+                  onPress={() => { if (!isUploading()) onSelectBuiltin(c.id); }}
+                  disabled={busy}
+                  accessible
+                  accessibilityRole="button"
+                  accessibilityLabel={`תמונת שער ${index + 1}`}
+                  accessibilityState={{ selected: active, disabled: busy }}
                 >
-                  <Image source={c.source} style={styles.thumb} resizeMode="cover" />
+                  <Image source={c.source} style={styles.thumb} resizeMode="cover" accessible={false} />
                   {active ? (
-                    <View style={styles.checkBadge}>
+                    <View style={styles.checkBadge} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
                       <ChangeMotion triggerKey={c.id} pulse enter duration={220}>
                         <Ionicons name="checkmark" size={16} color="#fff" />
                       </ChangeMotion>

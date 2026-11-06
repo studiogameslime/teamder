@@ -1,5 +1,7 @@
 import {test,before,beforeEach,after} from 'node:test';
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import express from 'express';
 import admin from 'firebase-admin';
 assert.equal(process.env.FIRESTORE_EMULATOR_HOST,'127.0.0.1:8080');
 process.env.GCLOUD_PROJECT='demo-invitations';
@@ -9,7 +11,7 @@ const call=(name,data={},uid='manager')=>api[name].run({auth:{uid,token:{firebas
 before(async()=>{api=await import('./lib/index.js');db=admin.firestore();});
 after(async()=>{await Promise.all(admin.apps.map(a=>a.delete()));});
 beforeEach(async()=>{
-  for(const name of ['users','groups','games','joinRequests','notifications','serverRateLimits'])await db.recursiveDelete(db.collection(name));
+  for(const name of ['users','groups','games','joinRequests','notifications','serverRateLimits','inviteLinks'])await db.recursiveDelete(db.collection(name));
   for(const uid of ['manager','member','target','other'])await db.doc(`users/${uid}`).set({name:uid,friends:['manager','member','target','other']});
   await db.doc('groups/club').set({name:'מועדון בדיקה',adminIds:['manager'],playerIds:['manager','member'],pendingPlayerIds:[],isOpen:false,maxMembers:4});
   await db.doc('games/round').set({groupId:'club',createdBy:'manager',status:'open',visibility:'community',startsAt:Date.now()+3600000,players:[],waitlist:[],pending:[],requiresApproval:true,maxPlayers:2});
@@ -86,4 +88,66 @@ test('inbox resolves joined, deleted and expired targets for its recipient only'
   assert.equal((await call('getReceivedInvitations',{},'target'))[0].data.invitationStatus,'joined');
   await db.doc('groups/club').delete();
   assert.equal((await call('getReceivedInvitations',{},'target'))[0].data.invitationStatus,'unavailable');
+});
+
+test('reopening old invitations after either side blocks reflects the current contact state',async()=>{
+  await call('inviteSocialPlayerToClub',{groupId:'club',userId:'target'});
+  await call('sendGameInvite',{gameId:'round',recipientId:'target'});
+  const states=async()=>Object.fromEntries((await call('getReceivedInvitations',{},'target')).map(n=>[n.data.type,n.data.invitationStatus]));
+  const expected=status=>({groupInvitation:status,inviteToGame:status});
+  assert.deepEqual(await states(),expected('available'));
+  for(const path of ['users/target/blocked/manager','users/manager/blocked/target']){
+    await db.doc(path).set({at:1});
+    assert.deepEqual(await states(),expected('unavailable'));
+    await assert.rejects(call('joinSocialClub',{groupId:'club'},'target'),/Invitation unavailable/);
+    await db.doc(path).delete();
+    assert.deepEqual(await states(),expected('available'));
+  }
+  assert.equal((await db.collection('notifications').where('recipientId','==','target').get()).size,2);
+});
+
+test('an expired invitation stays expired when a separate request for the same target is pending',async()=>{
+  await call('inviteSocialPlayerToClub',{groupId:'club',userId:'target'});
+  await call('sendGameInvite',{gameId:'round',recipientId:'target'});
+  const notices=await db.collection('notifications').where('recipientId','==','target').get();
+  const batch=db.batch();
+  for(const n of notices.docs)batch.update(n.ref,{'payload.expiresAt':Date.now()-1000});
+  batch.update(db.doc('groups/club'),{'approvedInvites.target.expiresAt':Date.now()-1000,pendingPlayerIds:['target']});
+  batch.update(db.doc('games/round'),{'approvedInvites.target.expiresAt':Date.now()-1000,pending:['target']});
+  await batch.commit();
+  const rows=await call('getReceivedInvitations',{},'target');
+  assert.deepEqual(rows.map(n=>n.data.invitationStatus),['expired','expired']);
+});
+
+for(const type of ['club','game'])test('a block committed immediately before the '+type+' invitation transaction prevents both notice and grant',async()=>{
+  const original=db.runTransaction;
+  let transactions=0;
+  db.runTransaction=async function(...args){
+    if(++transactions===(type==='club'?2:1))await db.doc('users/target/blocked/manager').set({at:Date.now()});
+    return original.apply(this,args);
+  };
+  try {
+    const result=type==='club'?call('inviteSocialPlayerToClub',{groupId:'club',userId:'target'}):call('sendGameInvite',{gameId:'round',recipientId:'target'});
+    await assert.rejects(result,type==='club'?/Player unavailable/:/Contact blocked/);
+    assert.equal((await db.collection('notifications').get()).size,0);
+    assert.equal((await db.doc(type==='club'?'groups/club':'games/round').get()).get('approvedInvites.target'),undefined);
+  }finally{db.runTransaction=original;}
+});
+
+test('a signed-out short-link read followed by authenticated repeated club acceptance preserves inviter and counts once',async()=>{
+  await db.doc('inviteLinks/night').set({type:'team',targetId:'club',invitedBy:'manager',clicks:0});
+  await call('inviteSocialPlayerToClub',{groupId:'club',userId:'target'});
+  const http=createServer(express().use(api.serveInviteCode));
+  try {
+    await new Promise(resolve=>http.listen(0,'127.0.0.1',resolve));
+    const url='http://127.0.0.1:'+http.address().port+'/i/night?resolve=1&invitedBy=forged';
+    const response=await fetch(url,{signal:AbortSignal.timeout(5000)});
+    assert.equal(response.status,200);
+    const link=await response.json();
+    assert.deepEqual(link,{type:'team',id:'club',invitedBy:'manager'});
+    assert.equal((await db.doc('inviteLinks/night').get()).get('clicks'),0);
+    for(let i=0;i<2;i++)assert.equal((await call('joinSocialClub',{groupId:link.id},'target')).status,'joined');
+    assert.equal((await db.doc('groups/club').get()).get('playerIds').filter(id=>id==='target').length,1);
+    assert.equal((await call('getReceivedInvitations',{},'target'))[0].data.invitationStatus,'joined');
+  } finally {await new Promise(resolve=>http.close(resolve));}
 });

@@ -59,7 +59,7 @@ test('capability-looking payload failures cannot be hidden as bridge absence', a
 test.each(['src/components/RequestsBell.tsx', 'src/screens/games/GamesListScreen.tsx'])('%s skips guest requests and reads signed-in inbox counts', async file => {
   const getInboxCount = jest.fn(async () => 3), setCount = jest.fn(), setRequestCount = jest.fn();
   const user = { id: 'owner', isGuest: true };
-  const context = { user, isGuest: true, alive: true, getInboxCount, setCount, setRequestCount, observeCaughtError: jest.fn() };
+  const context = { user, userId: user.id, isGuest: true, alive: true, getInboxCount, setCount, setRequestCount, observeCaughtError: jest.fn() };
   const fetch = sourceFunction(file, 'fetchCount', context, true);
   fetch(); await Promise.resolve();
   expect(getInboxCount).not.toHaveBeenCalled();
@@ -81,5 +81,5 @@ test('direct guest inbox navigation clears old data without requesting friends',
   }, true);
   await load();
   expect(getInboxRequests).not.toHaveBeenCalled();
-  expect(setData).toHaveBeenCalledWith(empty);
+  expect(setData).toHaveBeenCalledWith(null);
 });

@@ -273,7 +273,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#0F172A',
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
   underline: {
     width: 36,
@@ -285,7 +284,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
     paddingHorizontal: spacing.xs,
     marginTop: spacing.xs,
     marginBottom: spacing.sm,

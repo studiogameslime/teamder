@@ -269,17 +269,19 @@ export function AdvancedLiveMatchScreen() {
   const [teamsEditError, setTeamsEditError] = useState('');
   // 1s ticker so the still-ongoing stoppage duration counts up while paused
   // (the synced-timer hook only ticks while RUNNING).
+  const timerFocused = useIsFocused();
   const [nowTick, setNowTick] = useState(() => serverNow());
   useEffect(() => {
+    if (!timerFocused) return;
+    setNowTick(serverNow());
     const id = setInterval(() => setNowTick(serverNow()), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [timerFocused]);
 
   // Synced clock — derived from the three `liveMatch.timer*` primitives.
-  const timerFocused = useIsFocused();
   const timerFeedback = useTimerFeedback(live, timerFocused && gameId && me && game?.status !== 'finished' && game?.status !== 'cancelled'
     ? JSON.stringify([gameId, me.id, (rotation ? roundCommitKey(rotation) : live?.roundNumber ?? 0)]) : null);
-  const timerView = useSyncedTimer(timerFeedback.visibleLive);
+  const timerView = useSyncedTimer(timerFeedback.visibleLive, timerFocused);
   const timerMs = timerView.displayMs;
   const timerRunning = timerView.running;
   const timerStarted = timerView.started;
@@ -1086,7 +1088,18 @@ export function AdvancedLiveMatchScreen() {
   };
   // Shared tail for a tie resolved WITHOUT a winner — mirrors onTieWinner,
   // which does the same for a tie the admin resolved in favour of one side.
-  const resolveTie = async (mode: 'bothOut' | 'veteranOut') => {
+  const onDecideDraw = (staySide: 'A' | 'B' | null) => {
+    if (!rotation || !draftTeams || !live || live.scoreA !== live.scoreB) return;
+    const count = draftTeams.teams.length;
+    if (count === 2 && rotation.waiting.length === 0) {
+      setDecisionOpen(false);
+      void resolveTie('keepPlaying');
+    } else if (count === 3 && rotation.waiting.length === 1 && staySide) {
+      setDecisionOpen(false);
+      void resolveTie(staySide === 'A' ? 'stayA' : 'stayB');
+    }
+  };
+  const resolveTie = async (mode: import('@/types').RoundTieResolution) => {
     if (!gameId || !me || finalizingRef.current || committingRef.current) return;
     finalizingRef.current = true;
     // Same busy latch as onEndRound. A round that ends level takes the SAME
@@ -1098,7 +1111,7 @@ export function AdvancedLiveMatchScreen() {
       captureRoundForResult(!!shootoutDecision);
       const res = await gameService.prepareRoundResult(gameId, me.id, undefined, mode, false, shootoutDecision ?? undefined,
         shootoutDecision?.roundDecision ?? roundDecisionContext({...game!,id:gameId,rotation:rotation??undefined,draftTeams:draftTeams??undefined,liveMatch:live??undefined}));
-      if (!res || res.outcome === null) return;
+      if (!res || res.outcome === null) throw new Error('לא התקבל אישור לשמירת התיקו. נסו שוב.');
       logEvent(AnalyticsEvent.MatchRoundCompleted, {
         gameId,
         round: rotation?.round ?? 0,
@@ -1112,7 +1125,7 @@ export function AdvancedLiveMatchScreen() {
     observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"resolveTie","site":"AdvancedLiveMatchScreen:c2b9919202"});
       logError('liveResolveTie', err, { gameId, userId: me.id, mode });
       toast.error(roundSaveError(err, he.roundFinalizeFailed));
-      if (shootoutDecision) setDecisionOpen(true);
+      setDecisionOpen(true);
     } finally {
       finalizingRef.current = false;
       markBusy(-1);
@@ -1502,7 +1515,8 @@ export function AdvancedLiveMatchScreen() {
     observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onEndGame","site":"AdvancedLiveMatchScreen:379ef5e6e0"});
       logError('endEvening', err, { gameId });
       if (__DEV__) console.warn('[live] endEvening failed', err);
-      leaveLiveScreen();
+      endedHereRef.current = false;
+      toast.error(roundSaveError(err, 'המחזור לא הסתיים. בדקו את החיבור ונסו שוב.'));
     } finally {
       setEnding(false);
     }
@@ -2419,11 +2433,13 @@ export function AdvancedLiveMatchScreen() {
         onManual={onDecideManual}
         discardedPenaltyCount={shootoutDecision ? live?.shootout?.kicks.length : undefined}
         onPenalties={onDecidePenalties}
+        onDraw={onDecideDraw}
         // Needs TWO waiting teams — i.e. 4+ teams in the round. With 3 or
         // fewer there is nobody to replace the pair coming off.
         onBothOut={
           rotation?.waiting?.[1] != null ? onDecideBothOut : undefined
         }
+        onEndEvening={() => { setDecisionOpen(false); setEndOpen(true); }}
         onClose={() => { setDecisionOpen(false); setShootoutDecision(null); }}
       />
         ) : undefined}

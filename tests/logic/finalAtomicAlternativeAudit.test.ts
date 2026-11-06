@@ -18,6 +18,7 @@ import {StatBatch,MAX_ROUND_BATCH_OPS} from '../../functions/src/statBatch';
 import {commitRoundInOrder} from '../../functions/src/commitProtocol';
 import {liveSeasonStamp} from '../../functions/src/liveSeasonStamp';
 import {assertSeasonOpenForGame} from '../../functions/src/seasonLock';
+import {readSharedCalibration} from '../../functions/src/sharedEveningScore';
 
 const parse=(path:string)=>ts.createSourceFile(path,fs.readFileSync(path,'utf8'),ts.ScriptTarget.Latest,true);
 const serviceTree=parse('src/services/gameService.ts'),screenTree=parse('src/screens/AdvancedLiveMatchScreen.tsx'),serverTree=parse('functions/src/index.ts');
@@ -76,7 +77,7 @@ function world(mock=false,legacyServer=false,size=4) {
  class HttpsError extends Error{constructor(public code:string,message:string){super(message);}}
  const server=vm.runInNewContext(compile(`(${serverExpression})`),{onCall:(_:unknown,handler:any)=>handler,ENFORCE_APP_CHECK:false,db,HttpsError,
  admin:{firestore:{FieldValue:{increment:(n:number)=>({__increment:n}),delete:()=>({__delete:true})}}},
- liveRoundKey,matchesLiveRound,buildRoundSides,roundParticipantSides,StatBatch,MAX_ROUND_BATCH_OPS,commitRoundInOrder,liveSeasonStamp,assertSeasonOpenForGame,
+ readSharedCalibration,liveRoundKey,matchesLiveRound,buildRoundSides,roundParticipantSides,StatBatch,MAX_ROUND_BATCH_OPS,commitRoundInOrder,liveSeasonStamp,assertSeasonOpenForGame,
  isReal:(id:string)=>!id.startsWith('guest:'),console:{log(){},error(){}},Date});
  const call=async(input:any)=>{payloads.push(clone(input));const request=clone(input);if(legacyServer)delete request.alternativeDecision;
   const data=await server({auth:{uid:'manager'},data:request});if(loseAck){loseAck=false;throw Error('lost acknowledgement');}return {data};};

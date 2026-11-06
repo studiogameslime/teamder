@@ -113,6 +113,22 @@ test('blocking either way stops new sends; unblocking restores approval but not 
   await db.doc('users/bob/blocked/carol').set({at:1});await db.doc('users/bob/blocked/carol').delete();
   assert.equal((await call('carol','bob')).status,'waiting');assert.equal((await call('bob','carol')).status,'declined');
 });
+
+test('opening an old request notification and retrying its original operation do not revive a declined request',async()=>{
+  const op={operationId:'original_request'};
+  await send('alice','bob',op);
+  await call('bob','alice','decline');
+  assert.equal((await call('bob','alice')).status,'declined');
+  assert.equal((await send('alice','bob',op)).status,'waiting');
+  await db.doc('users/bob/blocked/alice').set({at:1});
+  assert.equal((await call('bob','alice')).status,'unavailable');
+  await assert.rejects(call('bob','alice','accept'),/Contact unavailable/);
+  await db.doc('users/bob/blocked/alice').delete();
+  assert.equal((await call('bob','alice')).status,'declined');
+  assert.equal((await db.collection('dmConversations/'+conv+'/messages').get()).size,1);
+  assert.equal((await data('dmRequestQuotas/alice')).count,1);
+  assert.equal((await data('dmConversations/'+conv)).messagingApproved===true,false);
+});
 test('friend continuity requires an actual message from each side before removal',async()=>{
   await mutual();await send();
   await db.runTransaction(tx=>api.preserveDmOnRemoval(tx,db.doc('users/alice'),db.doc('users/bob')));

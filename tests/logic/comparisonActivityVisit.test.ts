@@ -11,13 +11,15 @@ function visit(node: ts.Node) {
 visit(file);
 const code = ts.transpileModule(`globalThis.start = ${effect.getText(file)}`, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText;
 const flush = () => new Promise(resolve => setImmediate(resolve));
-function fixture() {
-  const account = { id: 'viewer', isGuest: false };
-  const context: any = { viewerId: 'viewer', otherUid: 'target', groupId: 'club', seasonsLoaded: true, seasons: { enabled: true }, pastSeasons: [], scope: { k: 'current' },
+function fixture(viewerId = 'viewer') {
+  const account = { id: viewerId, isGuest: false };
+  const context: any = { viewerId, otherUid: 'target', groupId: 'club', seasonsLoaded: true, seasons: { enabled: true }, pastSeasons: [], scope: { k: 'current' },
+    viewerIsGuest: false, metadataFailed: false, requiredArchive: 'ready', requiredPastSeasons: [], comparisonContext: 'viewer:club:target:current',
     comparisonVisits: { current: new Map() }, pairCompareService: { load: jest.fn().mockResolvedValue({ a: {}, b: {} }) },
     comparisonActivityService: { record: jest.fn().mockResolvedValue(undefined) }, randomUUID: jest.fn(() => 'unique-visit-00001'),
+    logEvent: jest.fn(), AnalyticsEvent: { PlayerComparisonViewed: 'player_comparison_viewed' },
     useUserStore: { getState: () => ({ currentUser: account }) }, observeCaughtError: jest.fn(), isStaleSession: () => false,
-    setModel: jest.fn(), setLoading: jest.fn(), setScope: jest.fn() };
+    setModel: jest.fn(), setLoading: jest.fn(), setLoadedContext: jest.fn(), setScope: jest.fn() };
   vm.runInNewContext(code, context);
   return { context, account, start: () => context.start() };
 }
@@ -27,6 +29,19 @@ test('loaded comparison records exactly once across refresh, scope and tab reloa
   expect(f.context.comparisonActivityService.record).toHaveBeenCalledWith({ expectedUid: 'viewer', targetId: 'target', groupId: 'club', visitId: 'unique-visit-00001', scope: { k: 'current' } });
   f.context.scope = { k: 'all' }; f.start(); await flush(); f.start(); await flush();
   expect(f.context.comparisonActivityService.record).toHaveBeenCalledTimes(1);
+  expect(f.context.logEvent.mock.calls).toEqual([['player_comparison_viewed']]);
+});
+
+test('two signed-in viewers comparing the same target each emit one successful comparison', async () => {
+  const viewers = [fixture('first-viewer'), fixture('second-viewer')];
+  for (const f of viewers) { f.start(); await flush(); f.start(); await flush(); }
+  expect(viewers.map(f => f.context.logEvent.mock.calls)).toEqual([
+    [['player_comparison_viewed']], [['player_comparison_viewed']],
+  ]);
+  expect(viewers.map(f => f.context.comparisonActivityService.record.mock.calls[0][0])).toEqual([
+    expect.objectContaining({ expectedUid:'first-viewer',targetId:'target' }),
+    expect.objectContaining({ expectedUid:'second-viewer',targetId:'target' }),
+  ]);
 });
 
 test('a failed receipt can retry the same id without blocking visible comparison data', async () => {
@@ -35,6 +50,7 @@ test('a failed receipt can retry the same id without blocking visible comparison
   expect(f.context.setModel).toHaveBeenCalled(); expect(f.context.observeCaughtError).toHaveBeenCalled();
   f.start(); await flush();
   expect(f.context.comparisonActivityService.record).toHaveBeenCalledTimes(2);
+  expect(f.context.logEvent).toHaveBeenCalledTimes(1);
   expect(f.context.comparisonActivityService.record.mock.calls[0][0].visitId).toBe(f.context.comparisonActivityService.record.mock.calls[1][0].visitId);
 });
 
@@ -46,4 +62,5 @@ test.each(['failed comparison', 'late load', 'account change', 'guest', 'self'])
   if (scenario === 'self') f.context.otherUid = 'viewer';
   const stop = f.start(); if (scenario === 'late load') stop(); await flush();
   expect(f.context.comparisonActivityService.record).not.toHaveBeenCalled();
+  expect(f.context.logEvent).not.toHaveBeenCalled();
 });

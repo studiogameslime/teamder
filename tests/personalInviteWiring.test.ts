@@ -171,7 +171,7 @@ describe('EmailAuth from the contextual sheet', () => {
       'src/navigation/GameStack.tsx',
       'src/navigation/CommunitiesStack.tsx',
     ]) {
-      expect(read(stack)).toContain("from '@/screens/auth/EmailAuthScreen'");
+      expect(read(stack)).toMatch(/name="EmailAuth"\s+getComponent=\{\(\) => require\('@\/screens\/auth\/EmailAuthScreen'\)\.EmailAuthScreen/);
     }
   });
 });

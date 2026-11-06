@@ -22,6 +22,7 @@ const listPendingForUser = jest.fn();
 const getCurrentGroupId = jest.fn();
 const setCurrentGroupId = jest.fn();
 const requestJoinById = jest.fn();
+const requestJoinByCode = jest.fn();
 const getGroup = jest.fn();
 
 jest.mock('react-native', () => ({ Appearance: {} }), { virtual: true });
@@ -30,6 +31,7 @@ jest.mock('@/services', () => ({
     listForUser: (...a: unknown[]) => listForUser(...a),
     listPendingForUser: (...a: unknown[]) => listPendingForUser(...a),
     requestJoinById: (...a: unknown[]) => requestJoinById(...a),
+    requestJoinByCode: (...a: unknown[]) => requestJoinByCode(...a),
     get: (...a: unknown[]) => getGroup(...a),
   },
 }));
@@ -144,6 +146,42 @@ describe('a failed refresh keeps what we already had', () => {
 });
 
 describe('a SUCCESSFUL refresh is still authoritative', () => {
+  it.each(['success', 'offline'])('a late %s refresh respects a newer club choice on screen and disk', async outcome => {
+    const clubs = [club('a'), club('b')];
+    let finish!: () => void;
+    let disk = 'a';
+    getCurrentGroupId.mockImplementation(async () => disk);
+    setCurrentGroupId.mockImplementation(async id => { disk = id; });
+    listForUser.mockImplementationOnce(() => new Promise((resolve, reject) => {
+      finish = () => outcome === 'success' ? resolve(clubs) : reject(new Error('offline'));
+    }));
+    useGroupStore.setState({groups: clubs, currentGroupId:'a'});
+    const refresh = useGroupStore.getState().hydrate('u1');
+    await useGroupStore.getState().setCurrentGroup('b');
+    finish();
+    await refresh;
+    expect([useGroupStore.getState().currentGroupId, disk]).toEqual(['b','b']);
+  });
+
+  it('a saved selection read failure does not overwrite an existing valid choice', async () => {
+    const clubs = [club('a'), club('b')];
+    listForUser.mockResolvedValue(clubs);
+    getCurrentGroupId.mockRejectedValueOnce(new Error('storage offline'));
+    useGroupStore.setState({groups: clubs,currentGroupId:'b'});
+    await useGroupStore.getState().hydrate('u1');
+    expect(useGroupStore.getState().currentGroupId).toBe('b');
+    expect(setCurrentGroupId).not.toHaveBeenCalled();
+  });
+
+  it('rejects a late invitation-code reply instead of restoring the signed-out account', async () => {
+    let release!: (response: unknown) => void;
+    requestJoinByCode.mockImplementationOnce(() => new Promise(resolve => { release = resolve; }));
+    const result = useGroupStore.getState().requestJoin('code','u1');
+    useGroupStore.getState().reset();
+    release({ group: club('old'), status: 'pending' });
+    await expect(result).rejects.toHaveProperty('name','StaleSessionError');
+    expect(useGroupStore.getState().pendingGroups).toEqual([]);
+  });
   it('a club the user left really does disappear', async () => {
     useGroupStore.setState({ groups: [club('a'), club('b')], currentGroupId: 'b' });
     getCurrentGroupId.mockResolvedValue('b');

@@ -1,7 +1,7 @@
 import { ContentReveal } from '@/components/anim/ContentReveal';
 import { observeCaughtError } from '../../utils/errorObservation';
-import { readLeaderHistory } from '@/services/leaderHistoryService';
-import { earliestCountLeaders, earliestWinRateLeaders, randomLeader, type LeaderHistoryRow, type LeaderMetric } from '@/utils/leaderChronology';
+import { clubLeaderDisplay } from '@/utils/clubLeaderDisplay';
+import type { LeaderMetric } from '@/utils/leaderChronology';
 import { ScrollSurface } from '@/components/ScrollSurface';
 // CommunityStatsScreen — the club's collective statistics dashboard.
 //
@@ -231,8 +231,6 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
    * running season begins where the last sealed one ended.
    */
   const [eveningStats, setEveningStats] = useState<EveningStat[]>([]);
-  const [leaderHistory, setLeaderHistory] = useState<{ key: string; rows: LeaderHistoryRow[] } | null>(null);
-  const leaderDraws = useRef(new Map<string, string>());
 
   const [archive, setArchive] = useState<FinishedSeasonTable | null>(null);
   /** Every past season, merged with the live rows. Fetched once, then cached —
@@ -684,7 +682,8 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
     const funRowCount =
       (totalGoals > 0 && totalAssists > 0 ? 1 : 0) +
       (countedRounds > 0 || scorelessRounds > 0 ? 1 : 0) +
-      (penTakenTotal > 0 ? 1 : 0) + (inPlayPenalties > 0 ? 1 : 0);
+      (penTakenTotal > 0 ? 1 : 0) + (inPlayPenalties > 0 ? 1 : 0) +
+      (totalGoals > 0 && totalRounds > 0 ? 1 : 0) + (guestGoals > 0 ? 1 : 0);
     // `players` is ranked by POINTS (goals*2+assists), so players[0] is NOT
     // necessarily the top scorer — pick the max-goals player explicitly.
     const topScorer = players.length
@@ -1023,46 +1022,22 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
     [he.communityStatsMostLoyal]: 'games', [he.communityStatsPenaltyKing]: 'penScored',
     [he.communityStatsPenaltyKeeperKing]: 'penSaved', [he.communityStatsOwnGoalKing]: 'ownGoals',
   };
-  const historyKey = JSON.stringify([groupId, recordWindow]);
-  const ties = baseLeaderItems.map(item => {
-    const metric = leaderMetrics[item.title];
-    if (!metric) return null;
-    if (item.title === he.communityStatsTopWinner && rateScope) {
-      return winIds.length > 1 && winValue != null ? { title: item.title, metric, target: winValue, ids: winIds, rate: true } : null;
-    }
-    const target = metric === 'games' ? mostLoyal?.nights ?? 0 : Math.max(...derived.players.map(p => p[metric] ?? 0));
-    const ids = derived.players.filter(p => (metric === 'games' && scope.k === 'current' ? attended[p.uid] ?? 0 : p[metric] ?? 0) === target).map(p => p.uid);
-    return ids.length > 1 ? { title: item.title, metric, target, ids, rate: false } : null;
-  }).filter((x): x is NonNullable<typeof x> => !!x);
-  const tieKey = JSON.stringify(ties);
-  useEffect(() => {
-    if (!visible || !ties.length) return;
-    let alive = true;
-    setLeaderHistory(null);
-    readLeaderHistory(groupId, recordWindow, () => alive).then(rows => {
-      if (alive) setLeaderHistory({ key: historyKey, rows });
-    }).catch(error => { if (alive) observeCaughtError(error, { source: 'src/screens/communities/CommunityStatsScreen.tsx', handler: 'leaderHistory', site: 'leaderHistory:read' }); });
-    return () => { alive = false; };
-  }, [visible, historyKey, tieKey, viewChamp]);
+  // Equal totals share the title. Never replace the visible holder after a
+  // secondary history read; sorting ids also keeps refresh/share consistent.
   const leaderItems = baseLeaderItems.map(item => {
-    const tie = ties.find(t => t.title === item.title);
-    if (!tie || leaderHistory?.key !== historyKey) return item;
-    const ids = tie.rate
-      ? earliestWinRateLeaders(tie.ids, tie.target, Math.ceil((scopedCard?.completedRounds ?? seasons?.playedRounds ?? 0) / 2), leaderHistory.rows,
-        Object.fromEntries(derived.players.map(p => [p.uid, { wins: p.wins, rounds: p.rounds, games: p.games }])))
-      : earliestCountLeaders(tie.ids, tie.metric, tie.target, leaderHistory.rows);
-    if (!ids) return item;
-    const key = JSON.stringify([historyKey, item.title, tie.target, ids]);
-    let uid = leaderDraws.current.get(key);
-    if (!uid) { uid = randomLeader(ids); if (uid) leaderDraws.current.set(key, uid); }
-    if (!uid) return item;
-    const player = derived.players.find(p => p.uid === uid);
-    if (player && (tie.metric === 'penScored' || tie.metric === 'penSaved')) {
-      const count = player[tie.metric] ?? 0;
-      const attempts = (tie.metric === 'penScored' ? player.penTaken : player.penFaced) ?? 0;
-      return { ...item, uid, tiedIds: [], value: pctOf(count, attempts), unit: `${count}/${attempts}` };
-    }
-    return { ...item, uid, tiedIds: [] };
+    const metric = leaderMetrics[item.title];
+    let ids: string[];
+    if (item.title === he.communityStatsTopWinner && rateScope) ids = winIds;
+    else if (metric === 'penScored' || metric === 'penSaved') {
+      const leader = metric === 'penScored' ? derived.penaltyKing : derived.penaltyKeeperKing;
+      ids = derived.players.filter(p => {
+        const attempts = (metric === 'penScored' ? p.penTaken : p.penFaced) ?? 0;
+        return !!leader && p[metric] === leader.count && attempts === leader.attempts;
+      }).map(p => p.uid);
+    } else ids = derived.players.filter(p => metric &&
+      (metric === 'games' && scope.k === 'current' ? attended[p.uid] ?? 0 : p[metric] ?? 0) === item.value
+    ).map(p => p.uid);
+    return { ...item, ...clubLeaderDisplay(ids, item.uid) };
   });
 
   return (
@@ -1252,7 +1227,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
           <>
             <View style={styles.overviewHeading}>
               <Text style={[styles.sectionTitleText, {flex: 1}]}>{seasons?.enabled && scope.k !== 'all' ? "העונה במבט אחד" : "המועדון במבט אחד"}</Text>
-              <ClubStatusOverview compact clubName={subtitle}
+              <ClubStatusOverview compact compactTies clubName={subtitle}
                 scope={seasons?.enabled || hasArchivedStats(seasons) ? scopeTitle : he.communityStatsScopeAllTime}
                 goals={derived.totalGoals} assists={derived.totalAssists} games={derived.totalRounds} evenings={eveningsInScope ?? 0}
                 leaders={hasScoring ? leaderItems.map(r => ({ ...r, user: resolved(r.uid), tiedUsers: r.tiedIds?.map(resolved) })) : []} />
@@ -1260,7 +1235,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
             <ClubStatsSummary goals={derived.totalGoals} assists={derived.totalAssists} games={derived.totalRounds} evenings={eveningsInScope ?? 0} animate={props.active !== false} />
             {hasScoring ? <>
               <SectionTitle icon="trophy-outline" text="תארי המועדון" />
-              <ClubStatsAwards leaders={leaderItems.map(r => ({ ...r, user: resolved(r.uid), tiedUsers: r.tiedIds?.map(resolved) }))}
+              <ClubStatsAwards compactTies leaders={leaderItems.map(r => ({ ...r, user: resolved(r.uid), tiedUsers: r.tiedIds?.map(resolved) }))}
  />
             </> : null}
           </>
@@ -1357,6 +1332,17 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
               const sampled = derived.countedRounds > 0;
               const rows = [
                 {
+                  key: 'goalsPerMini', icon: 'assist' as const, tint: clubAccent.blue, pct: null,
+                  count: Number(derived.goalsPerMini.toFixed(1)),
+                  countText: () => 'שערי שחקנים רשומים בממוצע למשחק', text: 'שערי שחקנים רשומים בממוצע למשחק',
+                  standaloneCount: true,
+                },
+                {
+                  key: 'guestGoals', icon: 'assist' as const, tint: clubAccent.purple, pct: null,
+                  count: derived.guestGoals, countText: () => 'שערים שהבקיעו אורחים', text: 'שערים שהבקיעו אורחים',
+                  standaloneCount: true,
+                },
+                {
                   key: 'assisted',
                   icon: 'assist' as const,
                   tint: clubAccent.blue,
@@ -1399,7 +1385,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                   pct={r.pct}
                   count={'count' in r ? r.count : undefined}
                   countText={'countText' in r ? r.countText : undefined}
-                  standaloneCount={r.key==='inPlayPenalties'}
+                  standaloneCount={r.key==='inPlayPenalties' || 'standaloneCount' in r && r.standaloneCount}
                   tint={r.tint}
                   text={r.text}
                   last={i === rows.length - 1}

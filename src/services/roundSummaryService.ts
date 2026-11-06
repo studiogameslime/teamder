@@ -12,6 +12,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  getDocsFromServer,
   limit as fsLimit,
   orderBy,
   onSnapshot,
@@ -21,7 +22,8 @@ import {
 
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { logError, isExpectedDenial } from '@/services/errorLog';
-import type { RoundSummary } from '@/utils/roundSummary';
+import { CLUB_MILESTONES, selectEvents, type RoundSummary } from '@/utils/roundSummary';
+import { playedEveningOrdinal } from '@/utils/eveningPlayed';
 import type { EveningStat } from '@/utils/eveningRecords';
 import { mockRoundSummary, mockEveningStats } from '@/data/mockRoundSummary';
 
@@ -65,15 +67,49 @@ function normalise(raw: unknown): RoundSummary {
   };
 }
 
+/** Sealed documents written before the counter fix did not distinguish
+ * "tenth seal" from "tenth played evening". Repair just that event for this
+ * view. Never accept an incomplete offline cache as the club's history. */
+function forDisplay(raw: unknown): RoundSummary | Promise<RoundSummary> {
+  const summary = normalise(raw);
+  if (summary.clubEveningOrdinal !== undefined) return summary;
+  const remaining = summary.events.filter(e => !(e.type === 'club_milestone' && e.metric === 'evenings'));
+  const withoutUnverified = remaining.length === summary.events.length ? summary : { ...summary, events: remaining };
+  if (!summary.gameId || !summary.groupId || !Number.isFinite(summary.at) || summary.at <= 0 ||
+      (raw as { lateConfirmation?: boolean })?.lateConfirmation) return withoutUnverified;
+  return (async () => {
+    try {
+      const history = await getDocsFromServer(query(collection(getFirebase().db, 'games'),
+        where('groupId', '==', summary.groupId), where('status', '==', 'finished'),
+        where('startsAt', '<=', summary.at), orderBy('startsAt', 'desc')));
+      const ordinal = playedEveningOrdinal(history.docs, summary.gameId, summary.at);
+      if (ordinal === null || !CLUB_MILESTONES.evenings.includes(ordinal)) return withoutUnverified;
+      return { ...summary, events: selectEvents([...remaining, {
+        type: 'club_milestone', metric: 'evenings', threshold: ordinal, total: ordinal,
+      }]) };
+    } catch (err) {
+      // Optional history must not hide the night's goals, records or table.
+      observeCaughtError(err, { source: 'src/services/roundSummaryService.ts', handler: 'forDisplay', site: 'roundSummaryService:club-evening-history' });
+      return withoutUnverified;
+    }
+  })();
+}
+
 export const roundSummaryService = {
   /** Follow a not-yet-sealed evening while its statistics tab is focused. */
   watch(gameId: string, groupId: string, onValue: (value: RoundSummary | null) => void, onError: (error: unknown) => void): () => void {
     if (USE_MOCK_DATA) return () => {};
-    return onSnapshot(query(collection(getFirebase().db, 'roundSummaries'),
+    let revision = 0;
+    const stop = onSnapshot(query(collection(getFirebase().db, 'roundSummaries'),
       where('groupId', '==', groupId), where('gameId', '==', gameId), fsLimit(1)), snapshot => {
       if (snapshot.empty && snapshot.metadata.fromCache) return;
-      onValue(snapshot.empty ? null : normalise(snapshot.docs[0].data()));
-    }, observedListener(onError, {"source":"src/services/roundSummaryService.ts","handler":"watch","site":"roundSummaryService.ts:snapshot:71"}));
+      const current = ++revision;
+      const value = snapshot.empty ? null : forDisplay(snapshot.docs[0].data());
+      if (value instanceof Promise) {
+        void value.then(summary => { if (current === revision) onValue(summary); });
+      } else onValue(value);
+    }, observedListener(error => { ++revision; onError(error); }, {"source":"src/services/roundSummaryService.ts","handler":"watch","site":"roundSummaryService.ts:snapshot:71"}));
+    return () => { ++revision; stop(); };
   },
   /**
    * The club's summary for one evening, or null when there is none.
@@ -173,11 +209,11 @@ export const roundSummaryService = {
         if (result.empty && result.metadata?.fromCache) {
           throw Object.assign(new Error('לא התקבל אישור מהשרת שהסיכום חסר'), { code: 'unavailable' });
         }
-        return result.empty ? null : normalise(result.docs[0].data());
+        return result.empty ? null : forDisplay(result.docs[0].data());
       }
       const snap = await getDoc(doc(getFirebase().db, 'roundSummaries', gameId));
       if (!snap.exists()) return null;
-      return normalise(snap.data());
+      return forDisplay(snap.data());
     } catch (err) {
     observeCaughtError(err, {"source":"src/services/roundSummaryService.ts","handler":"get","site":"roundSummaryService:27f70d6290"});
       // Missing documents are the only successful null. A denied or failed

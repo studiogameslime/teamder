@@ -28,6 +28,7 @@ function render(compile:(file:string)=>string) {
     if(name==='react-native-safe-area-context')return {useSafeAreaInsets:()=>({top:0,bottom:0,left:0,right:0})};
     if(name==='@expo/vector-icons')return {Ionicons:'Icon'};
     if(name==='./ui')return {Disclosure:'Disclosure'};
+    if(name==='./ConvertToTaskButton')return {ConvertToTaskButton:'ConvertToTaskButton'};
     if(name==='./RtlTextInput')return {RtlTextInput:'TextInput'};
     if(name==='../theme')return theme.exports;
     if(name==='../services/teamderChatService')return {MAX_TEXT:1000,THREAD_WINDOW:100,REPORTS_LIMIT:40};

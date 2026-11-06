@@ -34,12 +34,7 @@ export async function handleGameReminderAction(
       return;
     }
     if (action === 'JOIN_GAME') {
-      const res = await gameService.requestJoinGame(gameId, authUser.uid);
-      logEvent(AnalyticsEvent.GameJoined, {
-        gameId,
-        viaNotificationAction: true,
-        source: 'notification',
-      });
+      const res = await gameService.requestJoinGame(gameId, authUser.uid, 'notification');
       // The join ran in the BACKGROUND (no app launch) — post a local
       // notification so the user still gets a result (in / waitlist /
       // pending). Best-effort; never throws into the action flow.
@@ -61,10 +56,6 @@ export async function handleGameReminderAction(
       }
     } else {
       await gameService.cancelGameV2(gameId, authUser.uid);
-      logEvent(AnalyticsEvent.GameCancelled, {
-        gameId,
-        viaNotificationAction: true,
-      });
     }
   } catch (err) {
     observeCaughtError(err, {"source":"src/services/notificationActionService.ts","handler":"handleGameReminderAction","site":"notificationActionService:e7c164d478"});
@@ -216,7 +207,7 @@ export async function handleFillerOpportunityAction(
   // was to fire a real application at a real club.
   const { USE_MOCK_DATA } = await import('@/firebase/config');
   if (USE_MOCK_DATA) {
-    logEvent(AnalyticsEvent.GameJoined, {
+    logEvent(AnalyticsEvent.FillerInterestExpressed, {
       gameId,
       viaNotificationAction: origin === 'notification',
       asFillerInterest: true,
@@ -241,7 +232,8 @@ export async function handleFillerOpportunityAction(
     const { getFirebase } = await import('@/firebase/config');
     const { functions } = getFirebase();
     const fn = httpsCallable(functions, 'submitFillerInterest');
-    await fn({ gameId });
+    const receipt = await fn({ gameId, source: origin === 'notification' ? 'notification' : 'round' });
+    if (receipt.data?.alreadyPending !== false) return;
   } catch (err) {
     observeCaughtError(err, {"source":"src/services/notificationActionService.ts","handler":"handleFillerOpportunityAction","site":"notificationActionService:9f6ce474b1"});
     // Logged here because this is where the context is, then RE-THROWN so the
@@ -255,7 +247,7 @@ export async function handleFillerOpportunityAction(
   }
 
   // Only after the server said yes.
-  logEvent(AnalyticsEvent.GameJoined, {
+  logEvent(AnalyticsEvent.FillerInterestExpressed, {
     gameId,
     viaNotificationAction: origin === 'notification',
     asFillerInterest: true,

@@ -43,6 +43,15 @@ test('two concurrent deliveries and a redelivery assign the earliest tap once, e
 test('a failed transaction leaves the queue and roster untouched and succeeds on retry',async()=>{
  const w=world();const before=JSON.stringify([...w.data]);w.fail(true);await expect(w.run()).rejects.toThrow('UNAVAILABLE');expect(JSON.stringify([...w.data])).toBe(before);w.fail(false);await w.run();expect(w.data.get('games/g').players).toEqual(['early']);
 });
+test('receipt states distinguish an actual new registration from a retry of an existing seat',async()=>{
+ const w=world();await w.run();
+ const path='games/g/joinRequests/early';
+ expect(w.data.get(path)).toMatchObject({state:'assigned',bucket:'players',registrationCreated:true});
+ w.data.set(path,{...w.data.get(path),state:'queued',tappedAt:3000});
+ await w.run();
+ expect(w.data.get(path)).toMatchObject({state:'assigned',bucket:'players',registrationCreated:false});
+ expect(w.data.get('games/g').players).toEqual(['early']);
+});
 test.each(['finished','cancelled'])('a %s game rejects both queued requests rather than assigning seats',async status=>{
  const w=world();w.data.get('games/g').status=status;await w.run();expect(w.data.get('games/g').players).toEqual([]);expect(w.data.get('games/g/joinRequests/early')).toMatchObject({state:'rejected',reason:'GAME_NOT_OPEN'});
 });

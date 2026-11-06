@@ -12,27 +12,47 @@ const flush = () => new Promise<void>(done => setImmediate(done));
 
 test.each(['players', 'waitlist', 'pending'])('join success and elapsed time are recorded only after the server assigns %s', async bucket => {
   let receive!: (snapshot: unknown) => void;
-  const stop = jest.fn(), log = jest.fn();
+  const stop = jest.fn(), log = jest.fn(), finishUsage = jest.fn();
   const context: any = { module: { exports: {} }, USE_MOCK_DATA: false,
-    serverNow: Date.now, clearMyGamesCache: jest.fn(), LATE_REG_GRACE_MS: 3600000,
+    beginUsageRegistration: jest.fn(() => finishUsage),
+    serverNow: () => 1000, clearMyGamesCache: jest.fn(), LATE_REG_GRACE_MS: 3600000,
     docs: { game: () => ({}) }, getDoc: async () => ({ exists: () => true, data: () => ({ status: 'open', startsAt: Date.now() + 60000 }) }),
     gameService: { findRegistrationConflict: async () => null },
     getFirebase: () => ({ db: {}, auth: { currentUser: { uid: 'viewer' } } }),
-    doc: () => ({}), deleteDoc: async () => {}, setDoc: async () => {}, serverTimestamp: () => 0,
+    doc: () => ({}), enqueueGameJoin: async () => 'created',
     logEvent: log, AnalyticsEvent: { GameJoinRequested: 'requested', GameJoined: 'joined' },
-    onSnapshot: (_: unknown, next: typeof receive) => { receive = next; return stop; }, waitForJoinResult,
+    onSnapshot: (_: unknown, options: object, next: typeof receive) => { expect(options).toEqual({ includeMetadataChanges: true }); receive = next; return stop; }, waitForJoinResult,
   };
   vm.runInNewContext(ts.transpileModule(`module.exports = {${method}}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, Object.assign(context,{joinDiagnosticId:require('@/utils/joinDiagnosticId').joinDiagnosticId,runDiagnosticOperation:require('@/services/diagnosticJournal').runDiagnosticOperation,diagnosticEntity:require('@/services/diagnosticJournal').diagnosticEntity}));
   const result = context.module.exports.requestJoinGame('round', 'viewer', 'match_details');
   await flush();
   expect(log.mock.calls.map(call => call[0])).toEqual(['requested']);
-  receive({ exists: () => true, data: () => ({ state: 'queued' }) }); await flush();
+  expect(finishUsage).not.toHaveBeenCalled();
+  receive({ exists: () => true, metadata: { fromCache: true }, data: () => ({ state: 'assigned', bucket: 'players' }) });
+  receive({ exists: () => true, metadata: { hasPendingWrites: true }, data: () => ({ state: 'assigned', bucket: 'players' }) });
+  receive({ exists: () => true, metadata: {}, data: () => ({ state: 'queued' }) }); await flush();
   expect(log).toHaveBeenCalledTimes(1);
-  receive({ exists: () => true, data: () => ({ state: 'assigned', bucket }) });
+  receive({ exists: () => true, metadata: {}, data: () => ({ state: 'assigned', bucket, tappedAt: 1000, registrationCreated: true }) });
   await expect(result).resolves.toEqual({ bucket });
+  expect(finishUsage).toHaveBeenCalledWith(bucket);
   expect(log.mock.calls[1]).toEqual(['joined', expect.objectContaining({ gameId: 'round', source: 'match_details', bucket, requestMs: expect.any(Number), totalMs: expect.any(Number) })]);
   expect(log.mock.calls[1][1].totalMs).toBeGreaterThanOrEqual(log.mock.calls[1][1].requestMs);
   expect(stop).toHaveBeenCalledTimes(1);
+
+  const confirmedReceipt = { state: 'assigned', bucket, tappedAt: 1000, registrationCreated: true };
+  for (const [enqueueResult, receipt] of [
+    ['listen', confirmedReceipt], // A different device owns the first request.
+    ['created', { ...confirmedReceipt, registrationCreated: false }], // Already registered on the filler path.
+    ['created', { ...confirmedReceipt, tappedAt: 2000 }], // Newer queue owner.
+    ['created', { state: 'assigned', bucket }], // Legacy receipt, unknown origin.
+  ] as const) {
+    context.enqueueGameJoin = async () => enqueueResult;
+    const repeated = context.module.exports.requestJoinGame('round', 'viewer', 'match_details');
+    await flush();
+    receive({ exists: () => true, metadata: {}, data: () => receipt });
+    await expect(repeated).resolves.toEqual({ bucket });
+  }
+  expect(log.mock.calls.filter(call => call[0] === 'joined')).toHaveLength(1);
 });
 
 function parallelWorld(serverKickoff: number) {
@@ -40,18 +60,19 @@ function parallelWorld(serverKickoff: number) {
   const conflict = jest.fn().mockResolvedValue(null), stop = jest.fn();
   const gameRead = new Promise(done => { finishGame = done; });
   const context: any = { module: { exports: {} }, USE_MOCK_DATA: false,
+    beginUsageRegistration: () => () => {},
     serverNow: Date.now, clearMyGamesCache: jest.fn(), LATE_REG_GRACE_MS: 3600000,
     docs: { game: () => ({}) }, getDoc: () => gameRead,
     gameService: { findRegistrationConflict: conflict },
     getFirebase: () => ({ db: {}, auth: { currentUser: { uid: 'viewer' } } }),
-    doc: () => ({}), deleteDoc: async () => {}, setDoc: async () => {}, serverTimestamp: () => 0,
+    doc: () => ({}), enqueueGameJoin: async () => 'listen',
     logEvent: jest.fn(), AnalyticsEvent: { GameJoinRequested: 'requested', GameJoined: 'joined' },
-    onSnapshot: (_: unknown, next: typeof receive) => { receive = next; return stop; }, waitForJoinResult,
+    onSnapshot: (_: unknown, _options: object, next: typeof receive) => { receive = next; return stop; }, waitForJoinResult,
   };
   vm.runInNewContext(ts.transpileModule(`module.exports = {${method}}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, Object.assign(context,{joinDiagnosticId:require('@/utils/joinDiagnosticId').joinDiagnosticId,runDiagnosticOperation:require('@/services/diagnosticJournal').runDiagnosticOperation,diagnosticEntity:require('@/services/diagnosticJournal').diagnosticEntity}));
   return { conflict, service: context.module.exports,
     resolveGame: () => finishGame({ exists: () => true, data: () => ({ status: 'open', startsAt: serverKickoff }) }),
-    assign: () => receive({ exists: () => true, data: () => ({ state: 'assigned', bucket: 'players' }) }),
+    assign: () => receive({ exists: () => true, metadata: {}, data: () => ({ state: 'assigned', bucket: 'players' }) }),
   };
 }
 

@@ -5,7 +5,7 @@ import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // at it. Lifted out of MatchDetailsScreen so the games LIST can show the
 // same popup instead of a fly-by toast (which was easy to miss).
 
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,7 +33,7 @@ interface Props {
   communities: Pick<Group, 'id' | 'name'>[];
   cancelBusy?: boolean;
   /** Cancel the user's registration in the conflicting game. */
-  onCancelOther: (conflictGameId: string) => void;
+  onCancelOther: (conflictGameId: string) => void | Promise<void>;
   /** Open the conflicting game's details. */
   onViewOther: (conflictGameId: string) => void;
   onClose: () => void;
@@ -49,14 +49,33 @@ export function RegistrationConflictModal({
   onViewOther,
   onClose,
 }: Props) {
+  const [cancelPending, setCancelPending] = useState(false);
+  const pendingRef = useRef(false);
+  const externalBusyRef = useRef(!!cancelBusy);
+  externalBusyRef.current = !!cancelBusy;
+  const busy = !!cancelBusy || cancelPending;
+  const isCancelling = () => externalBusyRef.current || pendingRef.current;
+  const requestClose = () => { if (!isCancelling()) onClose(); };
+  const cancelOther = async (gameId: string) => {
+    if (isCancelling()) return;
+    pendingRef.current = true;
+    setCancelPending(true);
+    try {
+      await onCancelOther(gameId);
+    } finally {
+      pendingRef.current = false;
+      setCancelPending(false);
+    }
+  };
+
   return (
     <Modal
       visible={!!conflict}
       transparent
       animationType="fade"
-      onRequestClose={onClose}
+      onRequestClose={requestClose}
     >
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={styles.backdrop} onPress={requestClose} disabled={busy}>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <View style={styles.iconWrap}>
             <Ionicons
@@ -121,25 +140,25 @@ export function RegistrationConflictModal({
                         variant="primary"
                         size="lg"
                         fullWidth
-                        loading={cancelBusy}
-                        disabled={cancelBusy}
-                        onPress={() => onCancelOther(conflict.gameId)}
+                        loading={busy}
+                        disabled={busy}
+                        onPress={() => cancelOther(conflict.gameId)}
                       />
                       <Button
                         title={he.registrationConflictViewOther}
                         variant="outline"
                         size="lg"
                         fullWidth
-                        disabled={cancelBusy}
-                        onPress={() => onViewOther(conflict.gameId)}
+                        disabled={busy}
+                        onPress={() => { if (!isCancelling()) onViewOther(conflict.gameId); }}
                       />
                       <Button
                         title={he.registrationConflictClose}
                         variant="outline"
                         size="sm"
                         fullWidth
-                        disabled={cancelBusy}
-                        onPress={onClose}
+                        disabled={busy}
+                        onPress={requestClose}
                       />
                     </View>
                   </>

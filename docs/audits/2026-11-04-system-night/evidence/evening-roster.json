@@ -1,0 +1,42 @@
+{
+  "gameId": "audit",
+  "groupId": "club",
+  "maxPlayers": 13,
+  "joining": "t0-p0",
+  "leaving": "departing",
+  "guests": [
+    {
+      "id": "same-name",
+      "name": "דני"
+    }
+  ],
+  "players": [
+    "t0-p1",
+    "t0-p2",
+    "t1-p0",
+    "t1-p1",
+    "t1-p2",
+    "t2-p0",
+    "t2-p1",
+    "t2-p2",
+    "t3-p0",
+    "t3-p1",
+    "t3-p2",
+    "t0-p0"
+  ],
+  "waitlist": [],
+  "participantIds": [
+    "t0-p1",
+    "t0-p2",
+    "t1-p0",
+    "t1-p1",
+    "t1-p2",
+    "t2-p0",
+    "t2-p1",
+    "t2-p2",
+    "t3-p0",
+    "t3-p1",
+    "t3-p2",
+    "t0-p0"
+  ]
+}

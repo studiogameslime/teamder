@@ -448,8 +448,8 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
     [game, applyRoster],
   );
 
-  // Guest waitlist: promote a waitlisted guest into the active roster, or
-  // reorder guests within the waitlisted-guest sub-list. Both rewrite the
+  // Guest waitlist: move between the active roster and waitlist, or
+  // reorder guests within the waitlisted-guest sub-list. These rewrite the
   // guests[] array via adminReorderGuests (optimistic; reload on failure).
   const persistGuests = useCallback(
     (nextGuests: GameGuest[]) => {
@@ -476,6 +476,23 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
       );
     },
     [game, persistGuests],
+  );
+  const moveGuestToWaitlist = useCallback(
+    (guestId: string) => {
+      if (!game || !isAdminViewer || isTerminalGame(game)) return;
+      const guest = (game.guests ?? []).find((g) => g.id === guestId);
+      if (!guest || guest.waitlisted) return;
+      logEvent(AnalyticsEvent.RosterReordered, {
+        gameId: game.id,
+        list: 'guests',
+        action: 'demote',
+      });
+      persistGuests([
+        ...(game.guests ?? []).filter((g) => g.id !== guestId),
+        { ...guest, waitlisted: true },
+      ]);
+    },
+    [game, isAdminViewer, persistGuests],
   );
   const reorderWaitlistGuest = useCallback(
     (guestId: string, dir: 'up' | 'down') => {
@@ -746,6 +763,11 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
                     }
                     onPress={
                       canEdit ? () => setEditingGuest(g) : undefined
+                    }
+                    onDemote={
+                      isAdminViewer && !isTerminalGame(game)
+                        ? () => moveGuestToWaitlist(g.id)
+                        : undefined
                     }
                   />
                 );
@@ -1513,6 +1535,7 @@ function GuestRow({
   onMoveUp,
   onMoveDown,
   onPromote,
+  onDemote,
 }: {
   guest: GameGuest;
   showDivider: boolean;
@@ -1529,6 +1552,8 @@ function GuestRow({
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onPromote?: () => void;
+  /** Active-guest admin control; editing remains available separately. */
+  onDemote?: () => void;
 }) {
   const hasControls = !!(onMoveUp || onMoveDown || onPromote);
   const inner = (
@@ -1568,6 +1593,20 @@ function GuestRow({
       ) : (
         <View style={styles.guestTapArea}>{inner}</View>
       )}
+      {onDemote ? (
+        <Pressable
+          onPress={onDemote}
+          hitSlop={6}
+          style={({ pressed }) => [
+            styles.moveGuestToWaitlistBtn,
+            pressed && { opacity: 0.6 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={`${he.playerMenuMoveToWaitlist}: ${guest.name}`}
+        >
+          <Ionicons name="arrow-down-circle-outline" size={20} color={colors.primary} />
+        </Pressable>
+      ) : null}
       {hasControls ? (
         <View style={styles.moveControls}>
           {onPromote ? (
@@ -1733,6 +1772,16 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.primary,
     fontWeight: '800',
+  },
+  moveGuestToWaitlistBtn: {
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: colors.primary + '55',
+    backgroundColor: colors.primary + '11',
   },
   reorderCol: {
     alignItems: 'center',

@@ -4,9 +4,10 @@ import { overlaySurfaces } from '@/theme/overlays';
 // The confirm button stays disabled until the checkbox is ticked, so a
 // stray double-tap can't blow away data.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -42,22 +43,29 @@ export function ConfirmDestructiveModal({
 }: Props) {
   const [acked, setAcked] = useState(false);
   const [busy, setBusy] = useState(false);
+  const confirming = useRef(false);
 
   // Reset the checkbox each time the modal reopens so the next destructive
   // confirmation starts from a clean slate.
   useEffect(() => {
     if (visible) {
       setAcked(false);
-      setBusy(false);
+      setBusy(confirming.current);
     }
   }, [visible]);
 
+  const handleClose = () => {
+    if (!confirming.current) onClose();
+  };
+
   const handleConfirm = async () => {
-    if (!acked || busy) return;
+    if (!visible || !acked || confirming.current) return;
+    confirming.current = true;
     setBusy(true);
     try {
       await onConfirm();
     } finally {
+      confirming.current = false;
       setBusy(false);
     }
   };
@@ -69,18 +77,19 @@ export function ConfirmDestructiveModal({
       // Reanimated SpringSheet drives the entry; the native Modal
       // animation would race it.
       animationType="none"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <SpringSheet
         visible={visible}
-        onBackdropPress={busy ? undefined : onClose}
+        onBackdropPress={busy ? undefined : handleClose}
         position="center"
         fromOffsetY={60}
         panelStyle={{ paddingHorizontal: spacing.lg, alignSelf: 'stretch' }}
       >
-        <Pressable
+        <ScrollView
           style={[styles.card, football && {borderWidth:1,borderColor:'#DCE7F8'}]}
-          onPress={(e) => e.stopPropagation()}
+          contentContainerStyle={styles.cardContent}
+          bounces={false}
         >
           <View style={[styles.iconWrap, football && {alignSelf:'center',width:68,height:68,borderRadius:24}]}>
             {football ? <Image source={require('@/assets/images/match-football.png')} style={{width:48,height:48}} resizeMode="contain" accessible={false}/> : <Ionicons
@@ -94,7 +103,13 @@ export function ConfirmDestructiveModal({
           <Text style={[styles.body, football && {textAlign:'center',lineHeight:25}]}>{body}</Text>
 
           <Pressable
-            onPress={() => setAcked((v) => !v)}
+            onPress={() => {
+              if (!confirming.current) setAcked((v) => !v);
+            }}
+            accessible
+            accessibilityRole="checkbox"
+            accessibilityLabel={he.confirmDeleteAck}
+            accessibilityState={{ checked: acked, disabled: busy }}
             style={({ pressed }) => [
               styles.ackRow,
               pressed && { opacity: 0.7 },
@@ -102,6 +117,8 @@ export function ConfirmDestructiveModal({
             disabled={busy}
           >
             <View
+              accessible={false}
+              importantForAccessibility="no-hide-descendants"
               style={[
                 styles.checkbox,
                 acked && styles.checkboxChecked,
@@ -111,7 +128,7 @@ export function ConfirmDestructiveModal({
                 <Ionicons name="checkmark" size={16} color="#fff" />
               ) : null}
             </View>
-            <Text style={styles.ackText}>{he.confirmDeleteAck}</Text>
+            <Text accessible={false} style={styles.ackText}>{he.confirmDeleteAck}</Text>
           </Pressable>
 
           <View style={[styles.footer, football && {flexDirection:'column'}]}>
@@ -120,7 +137,7 @@ export function ConfirmDestructiveModal({
               variant={football ? 'secondary' : 'outline'}
               fullWidth={football}
               size={football ? 'lg' : 'sm'}
-              onPress={onClose}
+              onPress={handleClose}
               disabled={busy}
             />
             <Button
@@ -133,7 +150,7 @@ export function ConfirmDestructiveModal({
               onPress={handleConfirm}
             />
           </View>
-        </Pressable>
+        </ScrollView>
       </SpringSheet>
     </Modal>
   );
@@ -143,6 +160,12 @@ const styles = StyleSheet.create({
   // backdrop style retired — SpringSheet now owns the dimmed
   // background and the centred panel positioning.
   card: { ...overlaySurfaces.dialog,
+    width: '100%',
+    maxWidth: 440,
+    maxHeight: '92%',
+    flexGrow: 0,
+  },
+  cardContent: {
     padding: spacing.xl,
     gap: spacing.md,
   },
@@ -192,6 +215,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'flex-end',
     gap: spacing.sm,
     marginTop: spacing.sm,

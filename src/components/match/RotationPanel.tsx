@@ -79,7 +79,7 @@ interface Props {
   fillMode?: 'temporary' | 'permanent';
 }
 
-type MenuTarget = PlayerMenuTarget & { kind: 'active' | 'left' };
+type MenuTarget = PlayerMenuTarget & { kind: 'active' | 'left' | 'offPitch' };
 
 export function RotationPanel({
   draftTeams,
@@ -192,7 +192,7 @@ export function RotationPanel({
   const menuItems: PlayerMenuItem[] = (() => {
     if (!menu) return [];
     const p = menu.player;
-    const cardItem: PlayerMenuItem | null = isRegistered(p.id)
+    const cardItem: PlayerMenuItem | null = isRegistered(p.id) && onPlayerCard
       ? {
           key: 'card',
           icon: 'person-circle-outline',
@@ -216,7 +216,7 @@ export function RotationPanel({
       if (cardItem) out.push(cardItem);
     } else {
       if (cardItem) out.push(cardItem);
-      if (isAdmin && onSwapPlayers) {
+      if (isAdmin && onSwapPlayers && menu.kind !== 'offPitch') {
         out.push({
           key: 'swap',
           icon: 'swap-horizontal',
@@ -282,7 +282,7 @@ export function RotationPanel({
                 teams={draftTeams.teams}
                 roster={rosterA}
                 offPitchRoster={offPitch(aIdx)}
-                onOffPitchPlayerPress={onPlayerCard ? m => { if (isRegistered(m.id)) onPlayerCard(m.id); } : undefined}
+                onOffPitchPlayerPress={(m, rect) => { if (isAdmin || onPlayerCard && isRegistered(m.id)) openMenu(m, rect, 'offPitch'); }}
                 wins={winsOf(aIdx)}
                 align="right"
                 variant="list"
@@ -308,7 +308,7 @@ export function RotationPanel({
                 teams={draftTeams.teams}
                 roster={rosterB}
                 offPitchRoster={offPitch(bIdx)}
-                onOffPitchPlayerPress={onPlayerCard ? m => { if (isRegistered(m.id)) onPlayerCard(m.id); } : undefined}
+                onOffPitchPlayerPress={(m, rect) => { if (isAdmin || onPlayerCard && isRegistered(m.id)) openMenu(m, rect, 'offPitch'); }}
                 wins={winsOf(bIdx)}
                 align="left"
                 variant="list"

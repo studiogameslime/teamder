@@ -59,11 +59,18 @@ export function DraftBoardScreen() {
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
   const currentUser = useUserStore((s) => s.currentUser);
   const myCommunities = useGroupStore((s) => s.groups);
+  const viewerId = currentUser?.id;
+  const viewerIsGuest = currentUser?.isGuest === true;
+  const adminScope = JSON.stringify([...new Set(myCommunities
+    .filter(group => !!viewerId && group.adminIds.includes(viewerId))
+    .map(group => group.id))].sort());
+  // Captain order matters; a new array with the same IDs is the same read.
+  const captainScope = JSON.stringify(captainIds);
 
   // A regenerated draft may reuse this route, game and captains. Its saved
   // revision is still a new read context: never flash the old team's members
   // while the focus effect is waiting to run, or accept that effect's reply.
-  const ownerKey = JSON.stringify([gameId, currentUser?.id, resume, readOnly, method, captainIds, expectedDraftCreatedAt]);
+  const ownerKey = JSON.stringify([gameId, viewerId, viewerIsGuest, adminScope, resume, readOnly, method, captainIds, expectedDraftCreatedAt]);
   const currentOwner = useRef(ownerKey);
   currentOwner.current = ownerKey;
   const [requestOwner, setRequestOwner] = useState<string | null>(null);
@@ -82,6 +89,13 @@ export function DraftBoardScreen() {
 
   useFocusEffect(useCallback(() => {
     let alive = true;
+    const isCurrent = () => {
+      const account = useUserStore.getState().currentUser;
+      return alive && currentOwner.current === ownerKey && account?.id === viewerId &&
+        (account?.isGuest === true) === viewerIsGuest;
+    };
+    const loadCaptainIds = JSON.parse(captainScope) as string[];
+    const adminGroupIds = JSON.parse(adminScope) as string[];
     const controller = new AbortController();
     setRequestOwner(ownerKey);
     setLoading(true);
@@ -91,7 +105,7 @@ export function DraftBoardScreen() {
         const g = await (resume && expectedDraftCreatedAt !== undefined
           ? gameService.getGameById(gameId, { source: 'server', expectedDraftCreatedAt, signal: controller.signal })
           : gameService.getGameById(gameId));
-        if (!alive || currentOwner.current !== ownerKey) return;
+        if (!isCurrent()) return;
         if (!g || g.id !== gameId) throw new Error('GAME_NOT_FOUND');
         // Generation navigates only after the write is acknowledged. A cached
         // or late read of an older draft is not that result, even if the game,
@@ -103,11 +117,9 @@ export function DraftBoardScreen() {
         // Editing teams is manager-only; viewing (readOnly) stays open to
         // everyone. Bounce a non-manager who reaches the editable board.
         if (g) {
-          const grp = myCommunities.find((c) => c.id === g.groupId);
           const isAdmin =
-            !!currentUser &&
-            (g.createdBy === currentUser.id ||
-              (!!grp && grp.adminIds.includes(currentUser.id)));
+            !!viewerId &&
+            (g.createdBy === viewerId || adminGroupIds.includes(g.groupId));
           if (!readOnly && !isAdmin) {
             toast.info(he.draftAdminOnly);
             if (nav.canGoBack()) nav.goBack();
@@ -121,19 +133,19 @@ export function DraftBoardScreen() {
         }
         if (g && !readOnly && !resume) {
           const active = new Set(activeDraftRosterIds(g));
-          if (new Set(captainIds).size !== captainIds.length || captainIds.some((id) => !active.has(id))) {
+          if (new Set(loadCaptainIds).size !== loadCaptainIds.length || loadCaptainIds.some((id) => !active.has(id))) {
             appAlert(he.error, 'הסגל השתנה. יש לחזור לבחירת הקפטנים ולחלק מחדש.');
             if (nav.canGoBack()) nav.goBack();
             return;
           }
         }
         setGame(g);
-        setTeamColors(Object.fromEntries(draftColorTeams(g, captainIds.length).map(t => [t.index, t.colorKey])));
+        setTeamColors(Object.fromEntries(draftColorTeams(g, loadCaptainIds.length).map(t => [t.index, t.colorKey])));
         if (readOnly) {
           logEvent(AnalyticsEvent.TeamsViewed, {
             gameId,
             readOnly: true,
-            numTeams: captainIds.length,
+            numTeams: loadCaptainIds.length,
           });
         }
         const identityIds = [...new Set([...(g?.players ?? []), ...(g?.draftTeams?.teams ?? []).flatMap(team => team.playerIds)])].filter(id => !isGuestId(id));
@@ -151,19 +163,19 @@ export function DraftBoardScreen() {
           // Restore any colours chosen on the saved draft.
         }
       } catch (err) {
+        if (!isCurrent()) return;
     observeCaughtError(err, {"source":"src/screens/games/DraftBoardScreen.tsx","handler":"DraftBoardScreen","site":"DraftBoardScreen:97cca203ac"});
-        if (!alive || currentOwner.current !== ownerKey) return;
         setLoadFailed(true);
         logError('draftBoardLoad', err, { gameId });
       } finally {
-        if (alive && currentOwner.current === ownerKey) setLoading(false);
+        if (isCurrent()) setLoading(false);
       }
     })();
     return () => {
       alive = false;
       controller.abort();
     };
-  }, [gameId, hydratePlayers, readOnly, currentUser, myCommunities, nav, resume, captainIds, method, expectedDraftCreatedAt, ownerKey, retryLoad]));
+  }, [gameId, hydratePlayers, readOnly, viewerId, viewerIsGuest, adminScope, nav, resume, captainScope, method, expectedDraftCreatedAt, ownerKey, retryLoad]));
 
   // Everyone attached to the game, waitlist included — this is the NAME
   // directory, so a person already sitting on a team still resolves to their

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, View, Text, ViewStyle } from 'react-native';
 import Animated, {
   Easing,
@@ -95,22 +95,33 @@ export function Avatar({
           style={{ width: inner, height: inner, borderRadius: radius.pill, backgroundColor: '#fff' }}
         />
       ) : uri ? (
-        <Image
-          resizeMethod="resize"
-          source={{ uri }}
-          style={{ width: inner, height: inner, borderRadius: radius.pill }}
-        />
+        <AvatarPhoto key={uri} uri={uri} size={inner} initials={initials} />
       ) : (
-        <View
-          style={[
-            styles.fallback,
-            { width: inner, height: inner, borderRadius: radius.pill },
-          ]}
-        >
-          <Text style={styles.initials}>{initials}</Text>
-        </View>
+        <AvatarFallback size={inner} initials={initials} />
       )}
     </Animated.View>
+  );
+}
+
+/** Keyed by URI at the call site: a changed image starts a new attempt, and
+ * callbacks from an unmounted previous image cannot fail the current one. */
+function AvatarPhoto({ uri, size, initials }: { uri: string; size: number; initials: string }) {
+  const [failed, setFailed] = useState(false);
+  return failed ? <AvatarFallback size={size} initials={initials} /> : (
+    <Image
+      resizeMethod="resize"
+      source={{ uri }}
+      onError={() => setFailed(true)}
+      style={{ width: size, height: size, borderRadius: radius.pill }}
+    />
+  );
+}
+
+function AvatarFallback({ size, initials }: { size: number; initials: string }) {
+  return (
+    <View style={[styles.fallback, { width: size, height: size, borderRadius: radius.pill }]}>
+      <Text style={styles.initials}>{initials}</Text>
+    </View>
   );
 }
 

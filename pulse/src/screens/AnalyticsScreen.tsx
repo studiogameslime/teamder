@@ -2,10 +2,12 @@ import { observeCaughtError } from '../services/errorObservation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { RTL_LABEL_ALIGN, RTL_VALUE_ALIGN, colors, font, radius  } from '../theme';
+import { RTL_LABEL_ALIGN, colors, font, radius  } from '../theme';
 import { SectionTabs, Panel, Card, Screen } from '../components/ui';
 import { Donut } from '../components/Donut';
 import { compact } from '../format';
+import { ActionReportCard } from '../components/ActionReportCard';
+import { AccountActionCard } from '../components/AccountActionCard';
 import {
   fetchAnalyticsFull,
   type AnalyticsFull,
@@ -87,7 +89,6 @@ export function AnalyticsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [range, setRange] = useState<Range>('7d');
-  const [showAllActions, setShowAllActions] = useState(false);
 
   const load = useCallback(async (r: Range, force = false) => {
     const current = ++request.current;
@@ -148,25 +149,9 @@ export function AnalyticsScreen() {
         <Funnel label="יצרו קהילה" pct={(d?.createdCommunity ?? 0) / totalU * 100} sub={`${d?.createdCommunity ?? 0} מתוך ${totalU}`} icon="flag" color={colors.red} />
       </View>
 
-      {/* top actions */}
-      {d?.topActions.length ? (
-        <Card style={{ gap: 6 }}>
-          <Text style={[styles.section, { marginBottom: 4 }]}>פעולות מובילות באפליקציה</Text>
-          {(showAllActions ? d.topActions : d.topActions.slice(0, 8)).map((a, i, arr) => (
-            <View key={a.name + i} style={[styles.evRow, i < arr.length - 1 && styles.evDivider]}>
-              <Text style={styles.evCount}>{compact(a.value)}</Text>
-              <Text style={styles.evName}>{a.name}</Text>
-            </View>
-          ))}
-          {d.topActions.length > 8 ? (
-            <Pressable onPress={() => setShowAllActions((v) => !v)}>
-              <Text style={styles.more}>
-                {showAllActions ? 'הצג פחות ▲' : `הצג עוד (${d.topActions.length - 8}) ▼`}
-              </Text>
-            </Pressable>
-          ) : null}
-        </Card>
-      ) : null}
+      <ActionReportCard report={d.actions} onRetry={()=>{setLoading(true);void load(range,true);}} />
+      <ActionReportCard controls report={d.controls} onRetry={()=>{setLoading(true);void load(range,true);}} />
+      {section==='engagement'&&<AccountActionCard key={range} range={range} />}
 
       </Panel>
       <Panel active={section === 'sources'}>
@@ -299,9 +284,4 @@ const styles = StyleSheet.create({
   devicePct: { ...font.small, color: colors.textSoft, fontWeight: '700' },
 
   loadingText: { ...font.body, color: colors.textMuted, textAlign: 'center', marginTop: 20 },
-  more: { ...font.small, color: colors.primary, fontWeight: '700', textAlign: 'center', paddingVertical: 4 },
-  evRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
-  evDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  evCount: {  ...font.title, fontSize: 16, color: colors.text, minWidth: 40, textAlign: RTL_VALUE_ALIGN },
-  evName: {  flex: 1, ...font.body, color: colors.text, fontSize: 15, textAlign: RTL_LABEL_ALIGN },
 });

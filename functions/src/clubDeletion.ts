@@ -1,5 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import type { Firestore, DocumentReference, DocumentData } from 'firebase-admin/firestore';
+import { readSeriesActivity, recurrenceActivity, recurrenceShouldStop, seriesActivityPatch } from './recurrenceActivity';
 
 const PAGE_SIZE = 200;
 const alive = (data: DocumentData | undefined) => !!data && !data.deletedAt;
@@ -30,8 +31,14 @@ export async function createSeriesOccurrence(db: Firestore, seriesRef: DocumentR
     if (series.data()?.lastOccurrenceAt !== expectedAnchor) return false;
     // Recognise existing occurrences with either random or deterministic IDs.
     const existing = await tx.get(db.collection('games').where('seriesId', '==', seriesRef.id).where('startsAt', '==', game.startsAt).limit(1));
+    const activity = await readSeriesActivity(db, tx, seriesRef, series.data()!, now);
+    const activityPatch = seriesActivityPatch(activity, now);
+    if (recurrenceShouldStop(activity)) {
+      tx.update(seriesRef, activityPatch);
+      return false;
+    }
     if (existing.empty) tx.create(db.collection('games').doc(`${seriesRef.id}_${game.startsAt}`), game);
-    tx.update(seriesRef, { lastOccurrenceAt: game.startsAt });
+    tx.update(seriesRef, { ...activityPatch, lastOccurrenceAt: game.startsAt });
     return existing.empty;
   });
 }
@@ -48,7 +55,19 @@ export async function createLegacyOccurrence(db: Firestore, source: DocumentRefe
       return 'stopped';
     }
     if (previous.data()?.recurringNextCreatedAt) return 'exists';
-    if (!next.exists) tx.create(target, game);
+    // Once a club has moved to series, stopping its series must not expose an
+    // old unlatched clone source and silently restart the fixture via legacy.
+    const migrated = await tx.get(db.collection('gameSeries').where('groupId', '==', game.groupId).limit(1));
+    if (!migrated.empty) {
+      tx.update(source, { recurring: false, updatedAt: now });
+      return 'stopped';
+    }
+    const activity = recurrenceActivity(previous.data()?.recurrenceActivity, [{ id: previous.id, data: () => previous.data()! }], now);
+    if (recurrenceShouldStop(activity)) {
+      tx.update(source, { recurring: false, recurrenceActivity: activity, stoppedReason: 'inactive-occurrences', stoppedAt: now, updatedAt: now });
+      return 'stopped';
+    }
+    if (!next.exists) tx.create(target, { ...game, recurrenceActivity: activity });
     tx.update(source, { recurringNextCreatedAt: now, updatedAt: now });
     return next.exists ? 'exists' : 'created';
   });

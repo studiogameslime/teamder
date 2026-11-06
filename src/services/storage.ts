@@ -149,6 +149,10 @@ function notifyPendingInvite() {
   for (const listener of inviteListeners) listener();
 }
 
+// A delayed write for a previous account must complete before a new write or
+// sign-out clears the shared offline slot.
+let authSnapshotWrite: Promise<void> = Promise.resolve();
+
 export const storage = {
   /**
    * Last cold-boot duration, clamped to a sane band.
@@ -232,11 +236,19 @@ export const storage = {
   },
 
   async getAuthUserJson(): Promise<string | null> {
+    await authSnapshotWrite;
     return AsyncStorage.getItem(KEYS.AUTH_USER);
   },
-  async setAuthUserJson(json: string | null): Promise<void> {
-    if (json === null) await AsyncStorage.removeItem(KEYS.AUTH_USER);
-    else await AsyncStorage.setItem(KEYS.AUTH_USER, json);
+  async setAuthUserJson(json: string | null, isCurrent?: () => boolean): Promise<void> {
+    const write = authSnapshotWrite.then(async () => {
+      if (isCurrent && !isCurrent()) return;
+      if (json === null) await AsyncStorage.removeItem(KEYS.AUTH_USER);
+      else await AsyncStorage.setItem(KEYS.AUTH_USER, json);
+    });
+    authSnapshotWrite = write.catch((error: unknown) => {
+      observeCaughtError(error, { source: 'src/services/storage.ts', handler: 'setAuthUserJson', site: 'storage:profileWriteQueue' });
+    });
+    await write;
   },
 
   async getCurrentGroupId(): Promise<string | null> {

@@ -36,3 +36,23 @@ test('committed encrypted login wins over stale plaintext left after interrupted
   const s=setup();await s.adapter.setItem('login','new');s.plain.set('login','old');
   expect(await s.adapter.getItem('login')).toBe('new');expect(s.plain.has('login')).toBe(false);
 });
+test('obsolete plaintext cleanup cannot hide a verified encrypted login',async()=>{
+  const s=setup();await s.adapter.setItem('login','saved');s.plain.set('login','obsolete');
+  s.legacy.removeItem=async()=>{throw new Error('cleanup unavailable');};
+  expect(await s.adapter.getItem('login')).toBe('saved');
+  await expect(s.adapter.setItem('login','refreshed')).resolves.toBeUndefined();
+  expect(await s.adapter.getItem('login')).toBe('refreshed');
+});
+test('migration succeeds once the encrypted login is committed even when legacy cleanup fails',async()=>{
+  const s=setup();s.plain.set('login','saved');
+  s.legacy.removeItem=async()=>{throw new Error('cleanup unavailable');};
+  expect(await s.adapter.getItem('login')).toBe('saved');
+  expect(s.encrypted.has('firebaseAuth.login')).toBe(true);
+  expect(await s.adapter.getItem('login')).toBe('saved');
+});
+test('logout still fails if plaintext deletion fails, so an obsolete account cannot be restored later',async()=>{
+  const s=setup();await s.adapter.setItem('login','saved');s.plain.set('login','obsolete');
+  s.legacy.removeItem=async()=>{throw new Error('cleanup unavailable');};
+  await expect(s.adapter.removeItem('login')).rejects.toThrow('cleanup unavailable');
+  expect(s.encrypted.has('firebaseAuth.login')).toBe(true);
+});

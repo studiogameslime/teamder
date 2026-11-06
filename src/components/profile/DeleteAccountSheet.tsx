@@ -4,7 +4,7 @@ import { overlaySurfaces } from '@/theme/overlays';
 // button stays disabled until the user types the confirmation word (בטוח).
 // Matches the app's other bottom sheets (SpringSheet + Button).
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,7 +22,7 @@ interface Props {
    *  and passes it to `onConfirm`. */
   requirePassword?: boolean;
   onCancel: () => void;
-  onConfirm: (password?: string) => void;
+  onConfirm: (password?: string) => void | Promise<void>;
 }
 
 export function DeleteAccountSheet({
@@ -35,20 +35,45 @@ export function DeleteAccountSheet({
   const [word, setWord] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  // Block native back and events queued before the next render as soon as
+  // confirmation starts. A parent's loading flag independently keeps the lock.
+  const requestPending = useRef(false);
+  const externalLoading = useRef(!!loading);
+  externalLoading.current = !!loading;
+  const busy = !!loading || submitting;
+  const blocked = () => requestPending.current || externalLoading.current;
+  useEffect(() => {
+    if (busy) setShowPassword(false);
+  }, [busy]);
   const wordOk = word.trim() === he.profileDeleteAccountConfirmWord;
   const passwordOk = !requirePassword || password.length > 0;
   const armed = wordOk && passwordOk;
 
   const close = () => {
+    if (blocked()) return;
     setWord('');
     setPassword('');
+    setShowPassword(false);
     logEvent(AnalyticsEvent.AccountDeleteCancelled);
     onCancel();
   };
 
+  const confirm = async () => {
+    if (!visible || !armed || blocked()) return;
+    requestPending.current = true;
+    setSubmitting(true);
+    try {
+      await onConfirm(requirePassword ? password : undefined);
+    } finally {
+      requestPending.current = false;
+      setSubmitting(false);
+    }
+  };
+
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={close}>
-      <SpringSheet visible={visible} onBackdropPress={close}>
+      <SpringSheet visible={visible} onBackdropPress={busy ? undefined : close}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.handle} />
           <View style={styles.titleRow}>
@@ -60,7 +85,8 @@ export function DeleteAccountSheet({
           <Text style={styles.prompt}>{he.profileDeleteAccountTypePrompt}</Text>
           <TextInput
             value={word}
-            onChangeText={setWord}
+            onChangeText={value => { if (!blocked()) setWord(value); }}
+            editable={!busy}
             placeholder={he.profileDeleteAccountInputPlaceholder}
             placeholderTextColor={colors.textMuted}
             autoCapitalize="none"
@@ -75,17 +101,21 @@ export function DeleteAccountSheet({
               <View style={styles.passwordRow}>
                 <TextInput
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={value => { if (!blocked()) setPassword(value); }}
+                  editable={!busy}
                   placeholder={he.deleteAccountPasswordPlaceholder}
                   placeholderTextColor={colors.textMuted}
-                  secureTextEntry={!showPassword}
+                  secureTextEntry={busy || !showPassword}
                   autoCapitalize="none"
                   autoCorrect={false}
                   style={[styles.input, styles.passwordInput]}
                   textAlign="right"
                 />
                 <Pressable
-                  onPress={() => setShowPassword((v) => !v)}
+                  onPress={() => { if (!blocked()) setShowPassword((v) => !v); }}
+                  disabled={busy}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: busy }}
                   hitSlop={8}
                   style={styles.eyeBtn}
                   accessibilityLabel={showPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
@@ -105,11 +135,11 @@ export function DeleteAccountSheet({
             variant="danger"
             size="lg"
             fullWidth
-            disabled={!armed}
-            loading={loading}
-            onPress={() => onConfirm(requirePassword ? password : undefined)}
+            disabled={!armed || busy}
+            loading={busy}
+            onPress={confirm}
           />
-          <Pressable onPress={close} hitSlop={8} style={styles.cancel}>
+          <Pressable onPress={close} disabled={busy} accessibilityRole="button" accessibilityLabel={he.profileDeleteAccountCancel} accessibilityState={{ disabled: busy }} hitSlop={8} style={styles.cancel}>
             <Text style={styles.cancelText}>{he.profileDeleteAccountCancel}</Text>
           </Pressable>
         </Pressable>

@@ -1,10 +1,17 @@
+/** Legacy offers without a timestamp retain their existing behavior. */
+export function spotOfferExpired(offeredAt: number | undefined, minutes: number | undefined, now: number): boolean {
+  const duration = typeof minutes === 'number' && minutes > 0 ? minutes : 20;
+  return typeof offeredAt === 'number' && now - offeredAt > duration * 60000;
+}
+
 /** A decision can only resolve the caller's existing reservation, never join
  *  a new player. Locked or rescheduled registration preserves existing waitlist rights. */
 export function decideSpotOffer(
   game: {
     status?: string; players?: string[]; waitlist?: string[]; pending?: string[];
     guests?: { waitlisted?: boolean }[]; maxPlayers?: number;
-    pendingPromotion?: { uid?: string } | null;
+    pendingPromotion?: { uid?: string; offeredAt?: number } | null;
+    waitlistApprovalTimeoutMinutes?: number;
   },
   uid: string,
   decision: 'confirm' | 'pass',
@@ -23,6 +30,9 @@ export function decideSpotOffer(
   }
   if (game.status !== 'open' && game.status !== 'locked' && game.status !== 'scheduled') fail('GAME_NOT_OPEN');
   if (!queued.includes(uid)) fail('STALE_OFFER');
+  if (decision === 'confirm' && spotOfferExpired(game.pendingPromotion?.offeredAt, game.waitlistApprovalTimeoutMinutes, now)) {
+    fail('STALE_OFFER');
+  }
   const guests = (game.guests ?? []).filter(guest => !guest.waitlisted).length;
   const capacity = typeof game.maxPlayers === 'number' ? game.maxPlayers : 15;
   if (decision === 'confirm' && players.length + guests >= capacity) fail('GROUP_FULL');

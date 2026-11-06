@@ -1,0 +1,131 @@
+✔ creator verifies only own notices for this round; stale, unnotified and other club data stay hidden (3127.6592ms)
+✔ registration on another path retires approval without a second registration or notice (140.2902ms)
+[createNotificationOnce] wrote {
+  type: 'approved',
+  recipientId: 'guest',
+  id: 'approved:guest:game:full:approved__b498285',
+  entityId: 'full',
+  reason: 'approved'
+}
+✔ two decisions cannot overwrite each other; a full round lands on the waitlist (2894.3581ms)
+[createNotificationOnce] wrote {
+  type: 'fillerInterestReceived',
+  recipientId: 'creator',
+  id: 'fillerInterestReceived:creator:game:replay:interest-outside__b29897139',
+  entityId: 'replay',
+  reason: 'interest-outside'
+}
+✔ a delayed roster event retires old interest, but never an application resubmitted after leaving (309.2951ms)
+(node:5004) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/User/Documents/Codex/Teamder/src/services/enqueueGameJoin.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to C:\Users\User\Documents\Codex\Teamder\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ retrying a queued tap from a second device keeps its original place ahead of a later rival (4048.5505ms)
+✔ simultaneous devices and a redelivered event create one registration, and leaving permits a fresh request (5339.9745ms)
+[createNotificationOnce] wrote {
+  type: 'approved',
+  recipientId: 'mw2n2r5o-member-first-filler',
+  id: 'approved:mw2n2r5o-member-first-filler:game:mw2n2r5o-member-first:approved__b498285',
+  entityId: 'mw2n2r5o-member-first',
+  reason: 'approved'
+}
+✔ one place shared by member registration and manager approval: member-first (292.5417ms)
+[createNotificationOnce] wrote {
+  type: 'approved',
+  recipientId: 'mw2n2r5o-filler-first-filler',
+  id: 'approved:mw2n2r5o-filler-first-filler:game:mw2n2r5o-filler-first:approved__b498285',
+  entityId: 'mw2n2r5o-filler-first',
+  reason: 'approved'
+}
+✔ one place shared by member registration and manager approval: filler-first (324.6ms)
+[createNotificationOnce] wrote {
+  type: 'approved',
+  recipientId: 'mw2n2r5o-simultaneous-filler',
+  id: 'approved:mw2n2r5o-simultaneous-filler:game:mw2n2r5o-simultaneous:approved__b498285',
+  entityId: 'mw2n2r5o-simultaneous',
+  reason: 'approved'
+}
+✔ one place shared by member registration and manager approval: simultaneous (3282.1145ms)
+[createNotificationOnce] wrote {
+  type: 'approved',
+  recipientId: 'mw2n2r5o-reserved-filler',
+  id: 'approved:mw2n2r5o-reserved-filler:game:mw2n2r5o-reserved:approved__b498285',
+  entityId: 'mw2n2r5o-reserved',
+  reason: 'approved'
+}
+✔ an active guest and an outstanding promotion reserve seats across both registration paths (3585.7991ms)
+✔ a postponed opening rejects the queued request; after reopening the same player can retry (364.0768ms)
+✔ a burst of twelve members gets one last place in tap order across overlapping handlers (3577.6635ms)
+✔ a registered player and an active guest of the same name occupy independent seats (200.4344ms)
+✖ a blocked invitation no longer authorizes direct placement for a club member (206.3671ms) # Confirmed: existing member bypasses manager approval; permission change requires owner review
+✔ a blocked invitation no longer authorizes direct placement for a nonmember (237.8424ms)
+✔ withdraw versus approve leaves the filler receipt consistent with the roster: withdraw-first (324.5977ms)
+[createNotificationOnce] wrote {
+  type: 'approved',
+  recipientId: 'mw2n2r5o-approve-first-filler',
+  id: 'approved:mw2n2r5o-approve-first-filler:game:mw2n2r5o-approve-first:approved__b498285',
+  entityId: 'mw2n2r5o-approve-first',
+  reason: 'approved'
+}
+✖ withdraw versus approve leaves the filler receipt consistent with the roster: approve-first (205.2992ms) # Direct withdrawal after approval can rewrite an approved interest; changes to rules require owner review
+[createNotificationOnce] wrote {
+  type: 'fillerInterestReceived',
+  recipientId: 'creator',
+  id: 'fillerInterestReceived:creator:game:mw2n2r5o-simultaneous:interest-mw2n2r5o-simultaneous-filler__b29897139',
+  entityId: 'mw2n2r5o-simultaneous',
+  reason: 'interest-mw2n2r5o-simultaneous-filler'
+}
+✔ withdraw versus approve leaves the filler receipt consistent with the roster: simultaneous (218.6882ms) # Direct withdrawal after approval can rewrite an approved interest; changes to rules require owner review
+✔ two equal tap times and equal arrivals break the tie by player id even on event redelivery (3650.0035ms)
+✔ a former member cannot use an offer addressed to a current member (182.7093ms)
+✔ a two-minute offer cannot be accepted after its deadline while the expiry sweep is pending (108.0192ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 3
+ℹ duration_ms 27427.2322
+
+✖ failing tests:
+
+test at functions\registrationContention.emulator.test.mjs:159:3
+✖ a blocked invitation no longer authorizes direct placement for a club member (206.3671ms) # Confirmed: existing member bypasses manager approval; permission change requires owner review
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'mw2n2r5o-blocked-true-member'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///C:/Users/User/Documents/Codex/Teamder/functions/registrationContention.emulator.test.mjs:169:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async Test.run (node:internal/test_runner/test:1054:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:744:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'mw2n2r5o-blocked-true-member' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at functions\registrationContention.emulator.test.mjs:181:3
+✖ withdraw versus approve leaves the filler receipt consistent with the roster: approve-first (205.2992ms) # Direct withdrawal after approval can rewrite an approved interest; changes to rules require owner review
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///C:/Users/User/Documents/Codex/Teamder/functions/registrationContention.emulator.test.mjs:199:14)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async Test.run (node:internal/test_runner/test:1054:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:744:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

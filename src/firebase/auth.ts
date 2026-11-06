@@ -1,4 +1,5 @@
 import { observeCaughtError } from '../utils/errorObservation';
+import { assertAuthStorageRestored } from '../services/secureAuthStorage';
 // Real Google Sign-In.
 //
 // Android + iOS: native Google account picker via
@@ -504,7 +505,7 @@ export function waitForAuthRestore(): Promise<FirebaseUser | null> {
   // It must outlive any one caller, and there must be exactly one of it.
   ensureIdentityWatch();
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     // Per-call, one-shot: resolve on the first emission and detach.
     //
     // Detaching matters. This function has callers all over the app —
@@ -517,7 +518,13 @@ export function waitForAuthRestore(): Promise<FirebaseUser | null> {
     const finish = (user: FirebaseUser | null) => {
       if (settled) return;
       settled = true;
-      resolve(user);
+      try {
+        assertAuthStorageRestored(user !== null);
+        resolve(user);
+      } catch (error) {
+        observeCaughtError(error, { source: 'src/firebase/auth.ts', handler: 'finish', site: 'auth:storageRestore' });
+        reject(error);
+      }
       // Next tick: when Firebase emits synchronously, `unsub` is not assigned
       // yet at the moment the callback runs.
       setTimeout(() => unsub?.(), 0);

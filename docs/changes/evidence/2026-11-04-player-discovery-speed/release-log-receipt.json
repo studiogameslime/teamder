@@ -1,0 +1,41 @@
+{
+  "entries": [
+    {
+      "id": "discovery-speed-intent-2026-11-04",
+      "readBackVerified": true,
+      "shotId": "discovery-speed-search-bca898d845c22849",
+      "shotVerified": true,
+      "jpegSha256": "bca898d845c2284971709ae67c3f682cac9cc2961ed94c194f3efc092e4738ba"
+    },
+    {
+      "id": "discovery-speed-directory-2026-11-04",
+      "readBackVerified": true,
+      "shotId": "discovery-speed-search-bca898d845c22849",
+      "shotVerified": true,
+      "jpegSha256": "bca898d845c2284971709ae67c3f682cac9cc2961ed94c194f3efc092e4738ba"
+    },
+    {
+      "id": "discovery-speed-availability-2026-11-04",
+      "readBackVerified": true,
+      "shotId": "discovery-speed-card-40580ca0dab78d47",
+      "shotVerified": true,
+      "jpegSha256": "40580ca0dab78d478b4b274c2152eb315a14a296e87ed4f525032ee46b2024f2"
+    },
+    {
+      "id": "discovery-speed-profile-2026-11-04",
+      "readBackVerified": true,
+      "shotId": "discovery-speed-card-40580ca0dab78d47",
+      "shotVerified": true,
+      "jpegSha256": "40580ca0dab78d478b4b274c2152eb315a14a296e87ed4f525032ee46b2024f2"
+    },
+    {
+      "id": "discovery-speed-recruit-2026-11-04",
+      "readBackVerified": true,
+      "shotId": "discovery-speed-recruit-1f8d59f1737bffcf",
+      "shotVerified": true,
+      "jpegSha256": "1f8d59f1737bffcfb6e029f40f688146264058a0fbe465e440b4f14e1e8faa98"
+    }
+  ],
+  "deployed": false,
+  "version": "next"
+}

@@ -1,0 +1,1904 @@
+{
+  "generatedAt": "2026-11-02T22:23:09.239Z",
+  "method": "rendered-JSX-import-dependencies; type/dev/navigation roots excluded; Header requires actions; Button requires actual danger use; dev crash card excluded; account-delete context limited to its feature/menu",
+  "changed": [
+    "App.tsx",
+    "src/components/AutocompleteInput.tsx",
+    "src/components/Avatar.tsx",
+    "src/components/Button.tsx",
+    "src/components/ConfirmDestructiveModal.tsx",
+    "src/components/ConfirmDialog.tsx",
+    "src/components/ScreenHeader.tsx",
+    "src/components/community/CoverImagePicker.tsx",
+    "src/components/draft/DraftTeamCard.tsx",
+    "src/components/games/AreaDemandCard.tsx",
+    "src/components/games/NearbyClubsSection.tsx",
+    "src/components/games/RegistrationConflictModal.tsx",
+    "src/components/profile/DeleteAccountSheet.tsx",
+    "src/components/social/SocialPlayerProfile.tsx",
+    "src/components/summary/SeasonClubSummary.tsx",
+    "src/hooks/useUnsavedChangesGuard.ts",
+    "src/i18n/he.ts",
+    "src/screens/games/AvailablePlayersScreen.tsx",
+    "src/screens/games/GameCreateScreen.tsx",
+    "src/screens/games/GameWizardForm.tsx",
+    "src/screens/games/GamesListScreen.tsx",
+    "src/screens/groups/GroupWizardForm.tsx",
+    "src/screens/profile/AvailabilityEditScreen.tsx",
+    "src/screens/tabs/ProfileEditScreen.tsx",
+    "src/services/actionResumers.ts",
+    "src/services/gameCreation.ts",
+    "src/utils/supportBubbleVisibility.ts"
+  ],
+  "affected": [
+    {
+      "id": "entry/authentication",
+      "title": "התחברות וחלון הרשמה בהקשר הפעולה",
+      "technical": "entry/authentication.md",
+      "simple": "entry/authentication.simple.md",
+      "direct": [
+        "src/i18n/he.ts"
+      ],
+      "components": [],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/auth/ContextualAuthSheet.tsx",
+        "src/firebase/auth.ts",
+        "src/firebase/firestore.ts",
+        "src/hooks/useAuthenticatedAction.tsx",
+        "src/i18n/he.ts",
+        "src/screens/auth/EmailAuthScreen.tsx",
+        "src/screens/auth/SignInScreen.tsx",
+        "src/screens/tabs/ProfileScreen.tsx",
+        "src/services/authUpgrade.ts",
+        "src/services/gameService.ts",
+        "src/services/userService.ts",
+        "src/store/userStore.ts",
+        "src/types/index.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "entry/pending-actions",
+      "title": "פעולה ממתינה וטיוטה שחוזרת לאחר הרשמה",
+      "technical": "entry/pending-actions.md",
+      "simple": "entry/pending-actions.simple.md",
+      "direct": [
+        "src/services/actionResumers.ts"
+      ],
+      "components": [],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/firebase/firestore.ts",
+        "src/hooks/useAuthenticatedAction.tsx",
+        "src/services/actionResumers.ts",
+        "src/services/draftStore.ts",
+        "src/services/gameService.ts",
+        "src/services/pendingAction.ts",
+        "src/services/resumeFeedback.ts",
+        "src/store/entryStore.ts",
+        "src/types/index.ts",
+        "src/utils/pendingActionMachine.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "entry/profile-onboarding",
+      "title": "היכרות והשלמת פרופיל לאחר התחברות",
+      "technical": "entry/profile-onboarding.md",
+      "simple": "entry/profile-onboarding.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/AutocompleteInput.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/firebase/firestore.ts",
+        "src/screens/auth/ProfileSetupScreen.tsx",
+        "src/screens/onboarding/PostSignInOnboardingScreen.tsx",
+        "src/services/gameService.ts",
+        "src/services/userService.ts",
+        "src/store/entryStore.ts",
+        "src/store/userStore.ts",
+        "src/types/index.ts",
+        "src/utils/officialAccount.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "home/guest-home",
+      "title": "בית אורח וגילוי ראשוני",
+      "technical": "home/guest-home.md",
+      "simple": "home/guest-home.simple.md",
+      "direct": [
+        "src/services/actionResumers.ts"
+      ],
+      "components": [],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/anim/MatchCardSkeleton.tsx",
+        "src/firebase/firestore.ts",
+        "src/hooks/useAuthenticatedAction.tsx",
+        "src/screens/home/GuestHomeScreen.tsx",
+        "src/services/actionResumers.ts",
+        "src/services/draftStore.ts",
+        "src/services/gameService.ts",
+        "src/store/entryStore.ts",
+        "src/types/index.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "home/home-menu",
+      "title": "תפריט הבית וחלונות החשבון",
+      "technical": "home/home-menu.md",
+      "simple": "home/home-menu.simple.md",
+      "direct": [
+        "src/i18n/he.ts"
+      ],
+      "components": [
+        "src/components/ScreenHeader.tsx",
+        "src/components/Button.tsx"
+      ],
+      "dangerContexts": [
+        "src/components/profile/DeleteAccountSheet.tsx"
+      ],
+      "headerContexts": [
+        "src/components/profile/OwnPlayerCard.tsx",
+        "src/components/social/SocialPlayerProfile.tsx"
+      ],
+      "roots": [
+        "src/components/DraggableMenuSheet.tsx",
+        "src/components/MenuIcon.tsx",
+        "src/components/profile/DeleteAccountSheet.tsx",
+        "src/firebase/firestore.ts",
+        "src/i18n/he.ts",
+        "src/screens/players/PlayerCardScreen.tsx",
+        "src/screens/tabs/ProfileScreen.tsx",
+        "src/types/index.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "home/round-cards",
+      "title": "כרטיסי המחזור הקרוב והמחזור שהסתיים",
+      "technical": "home/round-cards.md",
+      "simple": "home/round-cards.simple.md",
+      "direct": [
+        "src/i18n/he.ts"
+      ],
+      "components": [],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/assets/images/roundCovers/manifest.json",
+        "src/components/home/HomeRoundCards.tsx",
+        "src/data/roundSurfaceCovers.ts",
+        "src/firebase/firestore.ts",
+        "src/i18n/he.ts",
+        "src/screens/tabs/ProfileScreen.tsx",
+        "src/services/gameLifecycle.ts",
+        "src/services/gameService.ts",
+        "src/types/index.ts",
+        "src/utils/eveningPlayed.ts",
+        "src/utils/homeRoundState.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "home/tips-carousel",
+      "title": "קרוסלת הידעת",
+      "technical": "home/tips-carousel.md",
+      "simple": "home/tips-carousel.simple.md",
+      "direct": [
+        "src/i18n/he.ts"
+      ],
+      "components": [],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/home/DidYouKnowCard.tsx",
+        "src/i18n/he.ts",
+        "src/screens/tabs/ProfileScreen.tsx"
+      ],
+      "extra": false
+    },
+    {
+      "id": "profile/account-lifecycle",
+      "title": "יציאה, חזרה לאורח ומחיקת חשבון",
+      "technical": "profile/account-lifecycle.md",
+      "simple": "profile/account-lifecycle.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/Button.tsx"
+      ],
+      "dangerContexts": [
+        "src/components/profile/DeleteAccountSheet.tsx"
+      ],
+      "headerContexts": [],
+      "roots": [
+        "src/components/profile/DeleteAccountSheet.tsx",
+        "src/firebase/auth.ts",
+        "src/firebase/firestore.ts",
+        "src/services/draftStore.ts",
+        "src/services/gameService.ts",
+        "src/services/groupService.ts",
+        "src/services/pendingAction.ts",
+        "src/services/seriesService.ts",
+        "src/services/storage.ts",
+        "src/services/userService.ts",
+        "src/store/userStore.ts",
+        "src/types/index.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "profile/availability-edit",
+      "title": "עריכת זמינות, מקום ורדיוס",
+      "technical": "profile/availability-edit.md",
+      "simple": "profile/availability-edit.simple.md",
+      "direct": [
+        "src/screens/profile/AvailabilityEditScreen.tsx"
+      ],
+      "components": [],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/availability/AvailabilityRadiusMap.tsx",
+        "src/components/availability/AvailabilityRadiusMapModal.tsx",
+        "src/firebase/firestore.ts",
+        "src/screens/profile/AvailabilityEditScreen.tsx",
+        "src/services/availabilitySave.ts",
+        "src/services/draftStore.ts",
+        "src/services/gameService.ts",
+        "src/services/govmapService.ts",
+        "src/types/index.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "profile/feedback",
+      "title": "דיווח תקלה והצעת שיפור",
+      "technical": "profile/feedback.md",
+      "simple": "profile/feedback.simple.md",
+      "direct": [],
+      "components": [],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/feedback/FeedbackPromptDialog.tsx",
+        "src/components/feedback/FeedbackPromptHost.tsx",
+        "src/screens/FeedbackScreen.tsx",
+        "src/services/feedbackImage.ts",
+        "src/services/feedbackPromptService.ts",
+        "src/services/groupService.ts",
+        "src/services/seriesService.ts"
+      ],
+      "extra": true
+    },
+    {
+      "id": "profile/friends",
+      "title": "חברים ובקשות חברות",
+      "technical": "profile/friends.md",
+      "simple": "profile/friends.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/Avatar.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/games/FriendsInvitePicker.tsx",
+        "src/components/loading/PageSkeletons.tsx",
+        "src/components/loading/ScreenSkeletons.tsx",
+        "src/components/profile/FriendActionButton.tsx",
+        "src/components/social/InvitationCard.tsx",
+        "src/firebase/firestore.ts",
+        "src/screens/profile/FriendsScreen.tsx",
+        "src/services/availabilityFeedService.ts",
+        "src/services/clubAdminRatings.ts",
+        "src/services/clubFriendsService.ts",
+        "src/services/friendsService.ts",
+        "src/services/gameService.ts",
+        "src/services/publicPlayerService.ts",
+        "src/services/readRetry.ts",
+        "src/types/index.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "profile/player-card",
+      "title": "כרטיס שחקן — עצמי, שחקן אחר ואורח",
+      "technical": "profile/player-card.md",
+      "simple": "profile/player-card.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/ScreenHeader.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [
+        "src/components/profile/OwnPlayerCard.tsx",
+        "src/components/social/SocialPlayerProfile.tsx"
+      ],
+      "roots": [
+        "src/components/profile/ComparisonActivitySection.tsx",
+        "src/components/profile/OwnPlayerCard.tsx",
+        "src/components/social/SocialPlayerProfile.tsx",
+        "src/data/roundCover.ts",
+        "src/firebase/firestore.ts",
+        "src/screens/players/PlayerCardScreen.tsx",
+        "src/services/achievementsService.ts",
+        "src/services/availabilityFeedService.ts",
+        "src/services/chatService.ts",
+        "src/services/clubAdminRatings.ts",
+        "src/services/clubFriendsService.ts",
+        "src/services/comparisonActivityService.ts",
+        "src/services/deepLinkService.ts",
+        "src/services/friendsService.ts",
+        "src/services/gameService.ts",
+        "src/services/groupService.ts",
+        "src/services/incomingInvite.ts",
+        "src/services/inviteLinkService.ts",
+        "src/services/ownPlayerCardService.ts",
+        "src/services/publicPlayerService.ts",
+        "src/services/readRetry.ts",
+        "src/services/seriesService.ts",
+        "src/services/userService.ts",
+        "src/types/comparisonActivity.ts",
+        "src/types/index.ts",
+        "src/utils/clubRoute.ts",
+        "src/utils/format.ts",
+        "src/utils/linkDomains.ts",
+        "src/utils/ownPlayerCard.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "profile/referrals",
+      "title": "שחקנים שהצטרפו דרכי",
+      "technical": "profile/referrals.md",
+      "simple": "profile/referrals.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/Avatar.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/firebase/firestore.ts",
+        "src/screens/profile/ReferralsListScreen.tsx",
+        "src/services/deepLinkService.ts",
+        "src/services/gameService.ts",
+        "src/services/incomingInvite.ts",
+        "src/services/inviteLinkService.ts",
+        "src/services/pendingAction.ts",
+        "src/services/storage.ts",
+        "src/services/userService.ts",
+        "src/types/index.ts",
+        "src/utils/linkDomains.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "profile/requests",
+      "title": "בקשות ואישורים מאוחדים",
+      "technical": "profile/requests.md",
+      "simple": "profile/requests.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/Avatar.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/RequestsBell.tsx",
+        "src/firebase/firestore.ts",
+        "src/screens/RequestsScreen.tsx",
+        "src/screens/groups/AdminApprovalScreen.tsx",
+        "src/services/friendsService.ts",
+        "src/services/gameService.ts",
+        "src/services/groupService.ts",
+        "src/services/readRetry.ts",
+        "src/services/receivedInvitationsService.ts",
+        "src/services/requestsService.ts",
+        "src/services/seriesService.ts",
+        "src/types/index.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "clubs/covers-and-invitations",
+      "title": "רקעי מועדון והזמנות",
+      "technical": "clubs/covers-and-invitations.md",
+      "simple": "clubs/covers-and-invitations.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/Avatar.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/joryio/InAppMessageHost.tsx",
+        "src/components/social/InvitationCard.tsx",
+        "src/data/coverImages.ts",
+        "src/services/clubInviteCampaign.ts",
+        "src/services/deepLinkService.ts",
+        "src/services/groupService.ts",
+        "src/services/incomingInvite.ts",
+        "src/services/inviteLinkService.ts",
+        "src/services/seriesService.ts",
+        "src/theme/colors.ts",
+        "src/utils/linkDomains.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "clubs/create-and-edit",
+      "title": "יצירה ועריכת מועדון",
+      "technical": "clubs/create-and-edit.md",
+      "simple": "clubs/create-and-edit.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/AutocompleteInput.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/community/NewClubSeasons.tsx",
+        "src/components/community/SeasonsSettings.tsx",
+        "src/components/forms/FormDesign.tsx",
+        "src/components/forms/FormTheme.ts",
+        "src/firebase/firestore.ts",
+        "src/screens/communities/CommunityEditScreen.tsx",
+        "src/screens/groups/CreateGroupScreen.tsx",
+        "src/screens/groups/GroupWizardForm.tsx",
+        "src/services/creationAttempt.ts",
+        "src/services/gameService.ts",
+        "src/services/groupService.ts",
+        "src/services/seasonSummaryService.ts",
+        "src/services/seriesService.ts",
+        "src/types/index.ts",
+        "src/utils/seasonReadConsistency.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "clubs/details",
+      "title": "פרטי מועדון ולשוניותיו",
+      "technical": "clubs/details.md",
+      "simple": "clubs/details.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/ConfirmDialog.tsx",
+        "src/components/ConfirmDestructiveModal.tsx",
+        "src/components/Avatar.tsx",
+        "src/components/Button.tsx"
+      ],
+      "dangerContexts": [
+        "src/components/community/IssueCardSheet.tsx",
+        "src/components/ConfirmDestructiveModal.tsx",
+        "src/screens/communities/CommunityDetailsScreen.tsx"
+      ],
+      "headerContexts": [],
+      "roots": [
+        "src/components/community/CommunityChampionship.tsx",
+        "src/components/community/CommunityNotifyToggle.tsx",
+        "src/components/community/CommunityShareInviteCta.tsx",
+        "src/components/community/CommunityStadiumHero.tsx",
+        "src/components/community/CommunityStatsGrid.tsx",
+        "src/components/community/NextGameCard.tsx",
+        "src/components/community/RichRulesText.tsx",
+        "src/components/community/SeasonsCard.tsx",
+        "src/components/community/UnverifiedEveningsCard.tsx",
+        "src/components/loading/PageSkeletons.tsx",
+        "src/components/loading/ScreenSkeletons.tsx",
+        "src/data/clubAchievements.ts",
+        "src/firebase/firestore.ts",
+        "src/screens/communities/CommunityDetailsScreen.tsx",
+        "src/services/gameService.ts",
+        "src/services/groupService.ts",
+        "src/services/seasonSummaryService.ts",
+        "src/services/seriesService.ts",
+        "src/store/groupStore.ts",
+        "src/types/index.ts",
+        "src/utils/eveningPlayed.ts",
+        "src/utils/seasonReadConsistency.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "clubs/members-and-administration",
+      "title": "סגל, תפקידים והרשאות ניהול",
+      "technical": "clubs/members-and-administration.md",
+      "simple": "clubs/members-and-administration.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/Button.tsx"
+      ],
+      "dangerContexts": [
+        "src/components/community/IssueCardSheet.tsx"
+      ],
+      "headerContexts": [],
+      "roots": [
+        "src/components/AdminRatingSheet.tsx",
+        "src/components/UserAvatar.tsx",
+        "src/firebase/firestore.ts",
+        "src/hooks/useCommunityRoster.ts",
+        "src/screens/communities/CommunityPlayersScreen.tsx",
+        "src/services/communityEventsService.ts",
+        "src/services/gameService.ts",
+        "src/services/groupService.ts",
+        "src/services/seriesService.ts",
+        "src/types/index.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "clubs/player-management",
+      "title": "כרטיסים, ציוד, דירוג וציר אירועים",
+      "technical": "clubs/player-management.md",
+      "simple": "clubs/player-management.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/Button.tsx"
+      ],
+      "dangerContexts": [
+        "src/components/community/IssueCardSheet.tsx"
+      ],
+      "headerContexts": [],
+      "roots": [
+        "src/components/AdminRatingSheet.tsx",
+        "src/components/community/IssueCardSheet.tsx",
+        "src/components/community/ManageEquipmentSheet.tsx",
+        "src/screens/players/PlayerTimelineScreen.tsx",
+        "src/services/communityEventsService.ts",
+        "src/services/groupService.ts",
+        "src/services/seriesService.ts",
+        "src/utils/cardState.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "clubs/requests-and-approvals",
+      "title": "בקשות ואישורים",
+      "technical": "clubs/requests-and-approvals.md",
+      "simple": "clubs/requests-and-approvals.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/Avatar.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/RequestsBell.tsx",
+        "src/firebase/firestore.ts",
+        "src/screens/RequestsScreen.tsx",
+        "src/screens/groups/AdminApprovalScreen.tsx",
+        "src/services/gameService.ts",
+        "src/services/groupService.ts",
+        "src/services/seriesService.ts",
+        "src/types/index.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "clubs/seasons",
+      "title": "עונות — הגדרה, סגירה, ארכיון והמשך",
+      "technical": "clubs/seasons.md",
+      "simple": "clubs/seasons.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/AutocompleteInput.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/community/NewClubSeasons.tsx",
+        "src/components/community/SeasonConfirmSheet.tsx",
+        "src/components/community/SeasonsCard.tsx",
+        "src/components/community/SeasonsSettings.tsx",
+        "src/components/games/LocationSearchSheet.tsx",
+        "src/components/summary/SeasonClubSummary.tsx",
+        "src/firebase/firestore.ts",
+        "src/screens/communities/CommunityEditScreen.tsx",
+        "src/services/eveningVerifyService.ts",
+        "src/services/gameService.ts",
+        "src/services/groupService.ts",
+        "src/services/seasonHistoryService.ts",
+        "src/services/seasonService.ts",
+        "src/services/seasonSummaryService.ts",
+        "src/services/seriesService.ts",
+        "src/types/index.ts",
+        "src/utils/seasonArchive.ts",
+        "src/utils/seasonChoices.ts",
+        "src/utils/seasonClosureStatus.ts",
+        "src/utils/seasonCoverage.ts",
+        "src/utils/seasonFinalRound.ts",
+        "src/utils/seasonLifecycle.ts",
+        "src/utils/seasonMedalTier.ts",
+        "src/utils/seasonPolicy.ts",
+        "src/utils/seasonReadConsistency.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "rounds/available-players",
+      "title": "איתור שחקנים זמינים והזמנות",
+      "technical": "rounds/available-players.md",
+      "simple": "rounds/available-players.simple.md",
+      "direct": [
+        "src/screens/games/AvailablePlayersScreen.tsx"
+      ],
+      "components": [],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/firebase/firestore.ts",
+        "src/screens/games/AvailablePlayersScreen.tsx",
+        "src/types/index.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "rounds/draft-board",
+      "title": "לוח בחירה, החלפה ופרסום קבוצות",
+      "technical": "rounds/draft-board.md",
+      "simple": "rounds/draft-board.simple.md",
+      "direct": [],
+      "components": [],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/draft/DraftTeamCard.tsx",
+        "src/firebase/firestore.ts",
+        "src/screens/games/DraftBoardScreen.tsx",
+        "src/services/gameService.ts",
+        "src/types/index.ts",
+        "src/utils/draftNavigation.ts"
+      ],
+      "extra": true
+    },
+    {
+      "id": "rounds/game-create",
+      "title": "יצירת מחזור והאשף",
+      "technical": "rounds/game-create.md",
+      "simple": "rounds/game-create.simple.md",
+      "direct": [
+        "src/screens/games/GameCreateScreen.tsx",
+        "src/services/gameCreation.ts"
+      ],
+      "components": [
+        "src/components/ConfirmDialog.tsx",
+        "src/components/Avatar.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/assets/images/roundCovers/manifest.json",
+        "src/components/forms/FormDesign.tsx",
+        "src/components/forms/FormTheme.ts",
+        "src/components/games/LocationSearchSheet.tsx",
+        "src/components/games/RoundReviewSheet.tsx",
+        "src/firebase/firestore.ts",
+        "src/screens/games/GameCreateScreen.tsx",
+        "src/screens/games/GameWizardForm.tsx",
+        "src/services/eveningVerifyService.ts",
+        "src/services/gameCreation.ts",
+        "src/services/gameService.ts",
+        "src/services/govmapService.ts",
+        "src/services/groupService.ts",
+        "src/services/seriesService.ts",
+        "src/types/index.ts",
+        "src/utils/seasonPolicy.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "rounds/game-edit",
+      "title": "עריכת מחזור וסדרה",
+      "technical": "rounds/game-edit.md",
+      "simple": "rounds/game-edit.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/ConfirmDialog.tsx",
+        "src/components/Avatar.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/forms/FormDesign.tsx",
+        "src/components/forms/FormTheme.ts",
+        "src/components/games/RoundReviewSheet.tsx",
+        "src/firebase/firestore.ts",
+        "src/screens/games/GameEditScreen.tsx",
+        "src/screens/games/GameWizardForm.tsx",
+        "src/services/gameService.ts",
+        "src/services/groupService.ts",
+        "src/services/seriesService.ts",
+        "src/types/index.ts",
+        "src/utils/seasonPolicy.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "rounds/games-list",
+      "title": "רשימת מחזורים וגילוי",
+      "technical": "rounds/games-list.md",
+      "simple": "rounds/games-list.simple.md",
+      "direct": [
+        "src/screens/games/GamesListScreen.tsx"
+      ],
+      "components": [
+        "src/components/ConfirmDestructiveModal.tsx",
+        "src/components/Button.tsx"
+      ],
+      "dangerContexts": [
+        "src/components/ConfirmDestructiveModal.tsx"
+      ],
+      "headerContexts": [],
+      "roots": [
+        "src/assets/images/roundCovers/manifest.json",
+        "src/components/anim/MatchCardSkeleton.tsx",
+        "src/components/loading/ScreenSkeletons.tsx",
+        "src/components/match/MatchListCard.tsx",
+        "src/data/roundCover.ts",
+        "src/data/roundSurfaceCovers.ts",
+        "src/firebase/firestore.ts",
+        "src/screens/games/GamesListScreen.tsx",
+        "src/services/gameService.ts",
+        "src/services/groupService.ts",
+        "src/services/seriesService.ts",
+        "src/types/index.ts",
+        "src/utils/roundFeedCovers.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "rounds/live-advanced",
+      "title": "לייב מתקדם ורוטציה",
+      "technical": "rounds/live-advanced.md",
+      "simple": "rounds/live-advanced.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/ConfirmDestructiveModal.tsx",
+        "src/components/Button.tsx"
+      ],
+      "dangerContexts": [
+        "src/components/ConfirmDestructiveModal.tsx"
+      ],
+      "headerContexts": [],
+      "roots": [
+        "src/assets/images/match-football.prompt.json",
+        "src/components/match/BalancedFillModal.tsx",
+        "src/components/match/GoalEntryModal.tsx",
+        "src/components/match/InPlayPenaltyModal.tsx",
+        "src/components/match/LiveScoreboardCard.tsx",
+        "src/components/match/LiveTeamsEditModal.tsx",
+        "src/components/match/MatchEventPicker.tsx",
+        "src/components/match/RotationPanel.tsx",
+        "src/components/match/Shootout.tsx",
+        "src/components/match/ShootoutWizard.tsx",
+        "src/components/match/SubstitutionModal.tsx",
+        "src/components/match/TeamScore.tsx",
+        "src/components/match/TeamShirt.tsx",
+        "src/components/match/penaltyOutcomeButtons.tsx",
+        "src/components/match/rotationView.ts",
+        "src/firebase/firestore.ts",
+        "src/screens/AdvancedLiveMatchScreen.tsx",
+        "src/screens/LiveMatchScreen.tsx",
+        "src/screens/games/MatchRoundsScreen.tsx",
+        "src/services/gameService.ts",
+        "src/services/useTimerFeedback.ts",
+        "src/theme/overlays.ts",
+        "src/types/index.ts",
+        "src/utils/draftNavigation.ts",
+        "src/utils/inPlayPenalty.ts",
+        "src/utils/liveSubstitution.ts",
+        "src/utils/liveTeamsEdit.ts",
+        "src/utils/openingTeams.ts",
+        "src/utils/personalActivityWindows.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "rounds/live-timer",
+      "title": "לייב רגיל וטיימר מסונכרן",
+      "technical": "rounds/live-timer.md",
+      "simple": "rounds/live-timer.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/ConfirmDestructiveModal.tsx",
+        "src/components/Button.tsx"
+      ],
+      "dangerContexts": [
+        "src/components/ConfirmDestructiveModal.tsx"
+      ],
+      "headerContexts": [],
+      "roots": [
+        "src/firebase/firestore.ts",
+        "src/screens/AdvancedLiveMatchScreen.tsx",
+        "src/screens/LiveMatchScreen.tsx",
+        "src/services/gameService.ts",
+        "src/services/serverClock.ts",
+        "src/services/useTimerFeedback.ts",
+        "src/types/index.ts",
+        "src/utils/draftNavigation.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "rounds/match-details",
+      "title": "פרטי מחזור וארבע הלשוניות",
+      "technical": "rounds/match-details.md",
+      "simple": "rounds/match-details.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/ConfirmDestructiveModal.tsx",
+        "src/components/Avatar.tsx",
+        "src/components/ScreenHeader.tsx",
+        "src/components/Button.tsx"
+      ],
+      "dangerContexts": [
+        "src/components/ConfirmDestructiveModal.tsx"
+      ],
+      "headerContexts": [
+        "src/components/profile/OwnPlayerCard.tsx"
+      ],
+      "roots": [
+        "src/assets/images/roundCovers/manifest.json",
+        "src/components/community/RichRulesText.tsx",
+        "src/components/loading/PageSkeletons.tsx",
+        "src/components/loading/ScreenSkeletons.tsx",
+        "src/components/profile/OwnPlayerCard.tsx",
+        "src/components/social/InvitationCard.tsx",
+        "src/data/roundCover.ts",
+        "src/data/roundSurfaceCovers.ts",
+        "src/firebase/firestore.ts",
+        "src/screens/games/MatchDetailsScreen.tsx",
+        "src/services/deepLinkService.ts",
+        "src/services/gameService.ts",
+        "src/services/geocodeService.ts",
+        "src/services/groupService.ts",
+        "src/services/incomingInvite.ts",
+        "src/services/inviteLinkService.ts",
+        "src/services/readRetry.ts",
+        "src/services/seriesService.ts",
+        "src/services/weatherService.ts",
+        "src/types/index.ts",
+        "src/utils/linkDomains.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "rounds/promote-orphan",
+      "title": "הפיכת מחזור חד־פעמי למועדון",
+      "technical": "rounds/promote-orphan.md",
+      "simple": "rounds/promote-orphan.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/AutocompleteInput.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/firebase/firestore.ts",
+        "src/screens/games/PromoteOrphanScreen.tsx",
+        "src/types/index.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "rounds/registration",
+      "title": "הרשמה, המתנה ואישור מקום",
+      "technical": "rounds/registration.md",
+      "simple": "rounds/registration.simple.md",
+      "direct": [
+        "src/screens/games/GamesListScreen.tsx"
+      ],
+      "components": [
+        "src/components/ConfirmDestructiveModal.tsx",
+        "src/components/Avatar.tsx",
+        "src/components/Button.tsx"
+      ],
+      "dangerContexts": [
+        "src/components/ConfirmDestructiveModal.tsx"
+      ],
+      "headerContexts": [],
+      "roots": [
+        "src/firebase/firestore.ts",
+        "src/screens/games/GamesListScreen.tsx",
+        "src/screens/games/MatchDetailsScreen.tsx",
+        "src/screens/games/MatchPlayersScreen.tsx",
+        "src/services/gameService.ts",
+        "src/types/index.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "statistics/season-summary",
+      "title": "סיכום עונה ותארים",
+      "technical": "statistics/season-summary.md",
+      "simple": "statistics/season-summary.simple.md",
+      "direct": [
+        "src/i18n/he.ts"
+      ],
+      "components": [],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/SeasonTitleEmblem.tsx",
+        "src/components/summary/SeasonClubSummary.tsx",
+        "src/components/summary/SeasonSummaryButton.tsx",
+        "src/i18n/he.ts",
+        "src/screens/communities/CommunityStatsScreen.tsx",
+        "src/screens/profile/SeasonSummaryScreen.tsx",
+        "src/screens/tabs/ProfileScreen.tsx",
+        "src/services/seasonArchiveData.ts",
+        "src/services/seasonSummaryService.ts",
+        "src/utils/mapConcurrent.ts",
+        "src/utils/seasonAwards.ts",
+        "src/utils/seasonCoverage.ts",
+        "src/utils/seasonReadConsistency.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "chat/chats-list",
+      "title": "רשימת שיחות ומונים",
+      "technical": "chat/chats-list.md",
+      "simple": "chat/chats-list.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/ScreenHeader.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [
+        "src/screens/chat/ChatsListScreen.tsx"
+      ],
+      "roots": [
+        "src/components/chat/ChatInbox.tsx",
+        "src/components/loading/PageSkeletons.tsx",
+        "src/components/loading/ScreenSkeletons.tsx",
+        "src/screens/chat/ChatsListScreen.tsx"
+      ],
+      "extra": false
+    },
+    {
+      "id": "chat/conversation-scopes",
+      "title": "הקשר שיחה, זהות והרשאות",
+      "technical": "chat/conversation-scopes.md",
+      "simple": "chat/conversation-scopes.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/ScreenHeader.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [
+        "src/components/chat/ChatView.tsx"
+      ],
+      "roots": [
+        "src/components/chat/ChatTermsModal.tsx",
+        "src/components/chat/ChatView.tsx",
+        "src/screens/chat/CommunityChatScreen.tsx",
+        "src/screens/chat/DirectChatScreen.tsx",
+        "src/screens/chat/GameChatScreen.tsx"
+      ],
+      "extra": false
+    },
+    {
+      "id": "chat/message-actions",
+      "title": "פעולות הודעה, חסימה ודיווח",
+      "technical": "chat/message-actions.md",
+      "simple": "chat/message-actions.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/ScreenHeader.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [
+        "src/components/chat/ChatView.tsx"
+      ],
+      "roots": [
+        "src/components/anim/SpringSheet.tsx",
+        "src/components/chat/ChatView.tsx",
+        "src/services/chatService.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "chat/message-interface",
+      "title": "כתיבה, קריאה ומצבי חיבור",
+      "technical": "chat/message-interface.md",
+      "simple": "chat/message-interface.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/ScreenHeader.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [
+        "src/components/chat/ChatView.tsx"
+      ],
+      "roots": [
+        "src/components/chat/ChatView.tsx",
+        "src/services/chatService.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "shared/menus-and-motion",
+      "title": "תפריטים, חלונות ותנועה משותפת",
+      "technical": "shared/menus-and-motion.md",
+      "simple": "shared/menus-and-motion.simple.md",
+      "direct": [
+        "src/components/Button.tsx"
+      ],
+      "components": [
+        "src/components/ConfirmDialog.tsx",
+        "src/components/ConfirmDestructiveModal.tsx",
+        "src/components/Avatar.tsx",
+        "src/components/AutocompleteInput.tsx",
+        "src/components/ScreenHeader.tsx",
+        "src/components/Button.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/Button.tsx",
+        "src/components/DraggableMenuSheet.tsx",
+        "src/components/ListUpdateNotice.tsx",
+        "src/components/NoticeCard.tsx",
+        "src/components/Toast.tsx",
+        "src/components/anim/ContentReveal.tsx",
+        "src/components/anim/UpdateHighlight.tsx",
+        "src/components/chat/ChatTermsModal.tsx",
+        "src/components/community/RichRulesText.tsx",
+        "src/components/match/BalancedFillModal.tsx",
+        "src/components/match/SubstitutionModal.tsx",
+        "src/hooks/useConfirmedFeedback.ts",
+        "src/hooks/useListMemory.ts",
+        "src/hooks/useListUpdates.ts",
+        "src/theme/overlays.ts",
+        "src/utils/listMemory.ts",
+        "src/utils/listUpdates.ts",
+        "src/utils/registrationFeedback.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "shared/notification-offer",
+      "title": "הצעת התראות אחרי פעולה",
+      "technical": "shared/notification-offer.md",
+      "simple": "shared/notification-offer.simple.md",
+      "direct": [
+        "src/services/actionResumers.ts"
+      ],
+      "components": [],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/notifications/NotificationOfferHost.tsx",
+        "src/services/actionCoordinator.ts",
+        "src/services/actionResumers.ts",
+        "src/services/notificationOffer.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "clubs/manager-dashboard",
+      "title": "לוח מנהל",
+      "technical": "clubs/manager-dashboard.md",
+      "simple": "clubs/manager-dashboard.simple.md",
+      "direct": [],
+      "components": [],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/games/LocationSearchSheet.tsx",
+        "src/components/manager/ManagerClubExtras.tsx",
+        "src/components/manager/ManagerEquipmentHolders.tsx",
+        "src/components/manager/ManagerHistoryPanels.tsx",
+        "src/components/manager/ManagerUi.tsx",
+        "src/components/manager/ManagerWorkspace.tsx",
+        "src/screens/communities/ManagerDashboardScreen.tsx",
+        "src/services/eveningVerifyService.ts",
+        "src/services/managerClubResultsService.ts",
+        "src/services/managerDashboardService.ts",
+        "src/services/managerHistoryService.ts",
+        "src/utils/managerDashboard.ts",
+        "src/utils/managerHistoryView.ts",
+        "src/utils/managerWorkspace.ts"
+      ],
+      "extra": true
+    },
+    {
+      "id": "profile/player-discovery",
+      "title": "חברים, גילוי שחקנים ופרטיות",
+      "technical": "profile/player-discovery.md",
+      "simple": "profile/player-discovery.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/ScreenHeader.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [
+        "src/components/social/SocialPlayerProfile.tsx"
+      ],
+      "roots": [
+        "src/components/social/PlayerDiscovery.tsx",
+        "src/components/social/SocialPlayerProfile.tsx",
+        "src/firebase/firestore.ts",
+        "src/screens/profile/SocialPrivacyScreen.tsx",
+        "src/services/availabilityFeedService.ts",
+        "src/services/clubAdminRatings.ts",
+        "src/services/clubFriendsService.ts",
+        "src/services/gameService.ts",
+        "src/services/publicPlayerService.ts",
+        "src/services/readRetry.ts",
+        "src/services/socialPlayersService.ts",
+        "src/types/index.ts",
+        "src/utils/socialPlayers.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "shared/support-chat",
+      "title": "חלונית שיחה עם צוות התמיכה",
+      "technical": "shared/support-chat.md",
+      "simple": "shared/support-chat.simple.md",
+      "direct": [],
+      "components": [],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [
+        "src/components/support/SupportChatHost.tsx",
+        "src/components/support/SupportFootballIcon.tsx"
+      ],
+      "extra": true
+    },
+    {
+      "id": "chat/message-requests",
+      "title": "בקשות לשיחה אישית בלי חברות",
+      "technical": "chat/message-requests.md",
+      "simple": "chat/message-requests.simple.md",
+      "direct": [],
+      "components": [
+        "src/components/ScreenHeader.tsx"
+      ],
+      "dangerContexts": [],
+      "headerContexts": [
+        "src/components/chat/ChatView.tsx",
+        "src/components/social/SocialPlayerProfile.tsx"
+      ],
+      "roots": [
+        "src/components/chat/ChatInbox.tsx",
+        "src/components/chat/ChatView.tsx",
+        "src/components/chat/DmPlayerSearch.tsx",
+        "src/components/chat/DmRequestBanner.tsx",
+        "src/components/chat/DmRequestsInbox.tsx",
+        "src/components/social/SocialPlayerProfile.tsx",
+        "src/firebase/firestore.ts",
+        "src/screens/chat/DirectChatScreen.tsx",
+        "src/screens/profile/SocialPrivacyScreen.tsx",
+        "src/services/dmRequestService.ts",
+        "src/services/userService.ts"
+      ],
+      "extra": false
+    },
+    {
+      "id": "rounds/match-stats",
+      "title": "סטטיסטיקה וסיכום אישי של מחזור",
+      "technical": "rounds/match-stats.md",
+      "simple": "rounds/match-stats.simple.md",
+      "direct": [
+        "src/i18n/he.ts"
+      ],
+      "components": [],
+      "dangerContexts": [],
+      "headerContexts": [],
+      "roots": [],
+      "extra": true
+    }
+  ],
+  "updatedPairs": [
+    {
+      "id": "chat/chats-list",
+      "files": [
+        "chat/chats-list.simple.md",
+        "chat/chats-list.md"
+      ],
+      "direct": [],
+      "components": [
+        "ScreenHeader"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "chat/conversation-scopes",
+      "files": [
+        "chat/conversation-scopes.simple.md",
+        "chat/conversation-scopes.md"
+      ],
+      "direct": [],
+      "components": [
+        "ScreenHeader"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "chat/message-actions",
+      "files": [
+        "chat/message-actions.simple.md",
+        "chat/message-actions.md"
+      ],
+      "direct": [],
+      "components": [
+        "ScreenHeader"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "chat/message-interface",
+      "files": [
+        "chat/message-interface.simple.md",
+        "chat/message-interface.md"
+      ],
+      "direct": [],
+      "components": [
+        "ScreenHeader"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "chat/message-requests",
+      "files": [
+        "chat/message-requests.simple.md",
+        "chat/message-requests.md"
+      ],
+      "direct": [],
+      "components": [
+        "ScreenHeader"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "clubs/covers-and-invitations",
+      "files": [
+        "clubs/covers-and-invitations.simple.md",
+        "clubs/covers-and-invitations.md"
+      ],
+      "direct": [],
+      "components": [
+        "Avatar",
+        "src/components/community/CoverImagePicker.tsx"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "clubs/create-and-edit",
+      "files": [
+        "clubs/create-and-edit.simple.md",
+        "clubs/create-and-edit.md"
+      ],
+      "direct": [
+        "src/hooks/useUnsavedChangesGuard.ts",
+        "src/screens/groups/GroupWizardForm.tsx"
+      ],
+      "components": [
+        "AutocompleteInput"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "clubs/details",
+      "files": [
+        "clubs/details.simple.md",
+        "clubs/details.md"
+      ],
+      "direct": [],
+      "components": [
+        "ConfirmDialog",
+        "ConfirmDestructiveModal",
+        "Avatar",
+        "Button"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "clubs/manager-dashboard",
+      "files": [
+        "clubs/manager-dashboard.simple.md",
+        "clubs/manager-dashboard.md"
+      ],
+      "direct": [],
+      "components": [],
+      "reason": "direct-or-explicit-policy"
+    },
+    {
+      "id": "clubs/members-and-administration",
+      "files": [
+        "clubs/members-and-administration.simple.md",
+        "clubs/members-and-administration.md"
+      ],
+      "direct": [],
+      "components": [
+        "Button"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "clubs/player-management",
+      "files": [
+        "clubs/player-management.simple.md",
+        "clubs/player-management.md"
+      ],
+      "direct": [],
+      "components": [
+        "Button"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "clubs/requests-and-approvals",
+      "files": [
+        "clubs/requests-and-approvals.simple.md",
+        "clubs/requests-and-approvals.md"
+      ],
+      "direct": [],
+      "components": [
+        "Avatar"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "clubs/seasons",
+      "files": [
+        "clubs/seasons.simple.md",
+        "clubs/seasons.md"
+      ],
+      "direct": [],
+      "components": [
+        "AutocompleteInput",
+        "src/components/summary/SeasonClubSummary.tsx"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "entry/authentication",
+      "files": [
+        "entry/authentication.simple.md",
+        "entry/authentication.md"
+      ],
+      "direct": [
+        "src/i18n/he.ts"
+      ],
+      "components": [],
+      "reason": "shared-dictionary-diff-only"
+    },
+    {
+      "id": "entry/pending-actions",
+      "files": [
+        "entry/pending-actions.simple.md",
+        "entry/pending-actions.md"
+      ],
+      "direct": [
+        "src/services/actionResumers.ts"
+      ],
+      "components": [],
+      "reason": "direct-or-explicit-policy"
+    },
+    {
+      "id": "entry/profile-onboarding",
+      "files": [
+        "entry/profile-onboarding.simple.md",
+        "entry/profile-onboarding.md"
+      ],
+      "direct": [],
+      "components": [
+        "AutocompleteInput"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "home/guest-home",
+      "files": [
+        "home/guest-home.simple.md",
+        "home/guest-home.md"
+      ],
+      "direct": [
+        "src/services/actionResumers.ts"
+      ],
+      "components": [],
+      "reason": "direct-or-explicit-policy"
+    },
+    {
+      "id": "home/home-menu",
+      "files": [
+        "home/home-menu.simple.md",
+        "home/home-menu.md"
+      ],
+      "direct": [
+        "src/i18n/he.ts"
+      ],
+      "components": [
+        "ScreenHeader",
+        "Button"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "home/round-cards",
+      "files": [
+        "home/round-cards.simple.md",
+        "home/round-cards.md"
+      ],
+      "direct": [
+        "src/i18n/he.ts"
+      ],
+      "components": [],
+      "reason": "shared-dictionary-diff-only"
+    },
+    {
+      "id": "home/tips-carousel",
+      "files": [
+        "home/tips-carousel.simple.md",
+        "home/tips-carousel.md"
+      ],
+      "direct": [
+        "src/i18n/he.ts"
+      ],
+      "components": [],
+      "reason": "shared-dictionary-diff-only"
+    },
+    {
+      "id": "profile/account-lifecycle",
+      "files": [
+        "profile/account-lifecycle.simple.md",
+        "profile/account-lifecycle.md"
+      ],
+      "direct": [
+        "src/components/profile/DeleteAccountSheet.tsx"
+      ],
+      "components": [
+        "Button"
+      ],
+      "reason": "direct-or-explicit-policy"
+    },
+    {
+      "id": "profile/availability-edit",
+      "files": [
+        "profile/availability-edit.simple.md",
+        "profile/availability-edit.md"
+      ],
+      "direct": [
+        "src/hooks/useUnsavedChangesGuard.ts",
+        "src/screens/profile/AvailabilityEditScreen.tsx"
+      ],
+      "components": [],
+      "reason": "direct-or-explicit-policy"
+    },
+    {
+      "id": "profile/feedback",
+      "files": [
+        "profile/feedback.simple.md",
+        "profile/feedback.md"
+      ],
+      "direct": [],
+      "components": [],
+      "reason": "direct-or-explicit-policy"
+    },
+    {
+      "id": "profile/friends",
+      "files": [
+        "profile/friends.simple.md",
+        "profile/friends.md"
+      ],
+      "direct": [],
+      "components": [
+        "Avatar"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "profile/notification-settings",
+      "files": [
+        "profile/notification-settings.simple.md",
+        "profile/notification-settings.md"
+      ],
+      "reason": "shared-test-diff-only",
+      "direct": [
+        "src/hooks/useUnsavedChangesGuard.ts"
+      ]
+    },
+    {
+      "id": "profile/player-card",
+      "files": [
+        "profile/player-card.simple.md",
+        "profile/player-card.md"
+      ],
+      "direct": [],
+      "components": [
+        "ScreenHeader"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "profile/player-discovery",
+      "files": [
+        "profile/player-discovery.simple.md",
+        "profile/player-discovery.md"
+      ],
+      "direct": [],
+      "components": [
+        "ScreenHeader"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "profile/profile-edit",
+      "files": [
+        "profile/profile-edit.simple.md",
+        "profile/profile-edit.md"
+      ],
+      "direct": [
+        "src/screens/tabs/ProfileEditScreen.tsx"
+      ],
+      "components": [],
+      "reason": "final-targeted-audit"
+    },
+    {
+      "id": "profile/referrals",
+      "files": [
+        "profile/referrals.simple.md",
+        "profile/referrals.md"
+      ],
+      "direct": [],
+      "components": [
+        "Avatar"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "profile/requests",
+      "files": [
+        "profile/requests.simple.md",
+        "profile/requests.md"
+      ],
+      "direct": [],
+      "components": [
+        "Avatar"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "profile/season-titles",
+      "files": [
+        "profile/season-titles.simple.md",
+        "profile/season-titles.md"
+      ],
+      "direct": [],
+      "components": [
+        "src/components/summary/SeasonClubSummary.tsx"
+      ],
+      "reason": "final-targeted-audit"
+    },
+    {
+      "id": "rounds/available-players",
+      "files": [
+        "rounds/available-players.simple.md",
+        "rounds/available-players.md"
+      ],
+      "direct": [
+        "src/screens/games/AvailablePlayersScreen.tsx"
+      ],
+      "components": [],
+      "reason": "direct-or-explicit-policy"
+    },
+    {
+      "id": "rounds/draft-board",
+      "files": [
+        "rounds/draft-board.simple.md",
+        "rounds/draft-board.md"
+      ],
+      "direct": [],
+      "components": [
+        "src/components/draft/DraftTeamCard.tsx"
+      ],
+      "reason": "direct-or-explicit-policy",
+      "contrastScope": "regular title fixed; summary already used shared readable colors"
+    },
+    {
+      "id": "rounds/game-create",
+      "files": [
+        "rounds/game-create.simple.md",
+        "rounds/game-create.md"
+      ],
+      "direct": [
+        "src/hooks/useUnsavedChangesGuard.ts",
+        "src/screens/games/GameCreateScreen.tsx",
+        "src/screens/games/GameWizardForm.tsx",
+        "src/services/gameCreation.ts"
+      ],
+      "components": [
+        "ConfirmDialog",
+        "Avatar"
+      ],
+      "reason": "direct-or-explicit-policy"
+    },
+    {
+      "id": "rounds/game-edit",
+      "files": [
+        "rounds/game-edit.simple.md",
+        "rounds/game-edit.md"
+      ],
+      "direct": [
+        "src/hooks/useUnsavedChangesGuard.ts",
+        "src/screens/games/GameWizardForm.tsx"
+      ],
+      "components": [
+        "ConfirmDialog",
+        "Avatar"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "rounds/games-list",
+      "files": [
+        "rounds/games-list.simple.md",
+        "rounds/games-list.md"
+      ],
+      "direct": [
+        "src/screens/games/GamesListScreen.tsx"
+      ],
+      "components": [
+        "Button",
+        "ConfirmDestructiveModal",
+        "src/components/games/RegistrationConflictModal.tsx"
+      ],
+      "reason": "direct-or-explicit-policy"
+    },
+    {
+      "id": "rounds/games-map",
+      "files": [
+        "rounds/games-map.simple.md",
+        "rounds/games-map.md"
+      ],
+      "reason": "explicit-support-bubble-policy"
+    },
+    {
+      "id": "rounds/live-advanced",
+      "files": [
+        "rounds/live-advanced.simple.md",
+        "rounds/live-advanced.md"
+      ],
+      "direct": [],
+      "components": [
+        "ConfirmDestructiveModal",
+        "Button"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "rounds/live-timer",
+      "files": [
+        "rounds/live-timer.simple.md",
+        "rounds/live-timer.md"
+      ],
+      "direct": [],
+      "components": [
+        "ConfirmDestructiveModal",
+        "Button"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "rounds/match-details",
+      "files": [
+        "rounds/match-details.simple.md",
+        "rounds/match-details.md"
+      ],
+      "direct": [],
+      "components": [
+        "Avatar",
+        "Button",
+        "ConfirmDestructiveModal",
+        "ScreenHeader",
+        "src/components/draft/DraftTeamCard.tsx"
+      ],
+      "reason": "indirect-rendered-component",
+      "contrastScope": "regular title fixed; summary already used shared readable colors"
+    },
+    {
+      "id": "rounds/match-stats",
+      "files": [
+        "rounds/match-stats.simple.md",
+        "rounds/match-stats.md"
+      ],
+      "direct": [
+        "src/i18n/he.ts"
+      ],
+      "components": [],
+      "reason": "direct-or-explicit-policy"
+    },
+    {
+      "id": "rounds/promote-orphan",
+      "files": [
+        "rounds/promote-orphan.simple.md",
+        "rounds/promote-orphan.md"
+      ],
+      "direct": [],
+      "components": [
+        "AutocompleteInput"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "rounds/registration",
+      "files": [
+        "rounds/registration.simple.md",
+        "rounds/registration.md"
+      ],
+      "direct": [
+        "src/screens/games/GamesListScreen.tsx",
+        "tests/rules/scheduled-withdrawal.test.mjs"
+      ],
+      "components": [
+        "Avatar",
+        "Button",
+        "ConfirmDestructiveModal",
+        "src/components/games/RegistrationConflictModal.tsx"
+      ],
+      "reason": "indirect-rendered-component"
+    },
+    {
+      "id": "shared/menus-and-motion",
+      "files": [
+        "shared/menus-and-motion.simple.md",
+        "shared/menus-and-motion.md"
+      ],
+      "direct": [
+        "src/components/Button.tsx"
+      ],
+      "components": [
+        "ConfirmDialog",
+        "ConfirmDestructiveModal",
+        "Avatar",
+        "AutocompleteInput",
+        "ScreenHeader",
+        "Button"
+      ],
+      "reason": "direct-or-explicit-policy"
+    },
+    {
+      "id": "shared/notification-offer",
+      "files": [
+        "shared/notification-offer.simple.md",
+        "shared/notification-offer.md"
+      ],
+      "direct": [
+        "src/services/actionResumers.ts"
+      ],
+      "components": [],
+      "reason": "direct-or-explicit-policy"
+    },
+    {
+      "id": "shared/support-chat",
+      "files": [
+        "shared/support-chat.simple.md",
+        "shared/support-chat.md"
+      ],
+      "direct": [],
+      "components": [],
+      "reason": "direct-or-explicit-policy"
+    },
+    {
+      "id": "statistics/chemistry-and-records",
+      "files": [
+        "statistics/chemistry-and-records.simple.md",
+        "statistics/chemistry-and-records.md"
+      ],
+      "direct": [],
+      "components": [
+        "src/components/summary/SeasonClubSummary.tsx"
+      ],
+      "reason": "final-targeted-audit"
+    },
+    {
+      "id": "statistics/scopes-and-data",
+      "files": [
+        "statistics/scopes-and-data.simple.md",
+        "statistics/scopes-and-data.md"
+      ],
+      "direct": [],
+      "components": [
+        "src/components/summary/SeasonClubSummary.tsx"
+      ],
+      "reason": "final-targeted-audit"
+    },
+    {
+      "id": "statistics/season-summary",
+      "files": [
+        "statistics/season-summary.simple.md",
+        "statistics/season-summary.md"
+      ],
+      "direct": [
+        "src/i18n/he.ts"
+      ],
+      "components": [
+        "src/components/summary/SeasonClubSummary.tsx"
+      ],
+      "reason": "shared-dictionary-diff-only"
+    }
+  ],
+  "documentationOnly": true,
+  "deleteAccountUpdate": {
+    "source": "src/components/profile/DeleteAccountSheet.tsx",
+    "test": "tests/logic/overnightDeleteAccountSheet.test.tsx",
+    "verifiedFocusedTests": 7,
+    "deviceBefore": "source-component-host-only",
+    "deviceAfter": "pending-main-agent"
+  },
+  "finalTargetedSourceMapping": {
+    "clubs/create-and-edit": [
+      "src/screens/groups/GroupWizardForm.tsx",
+      "src/hooks/useUnsavedChangesGuard.ts"
+    ],
+    "rounds/game-create": [
+      "src/screens/games/GameWizardForm.tsx",
+      "src/hooks/useUnsavedChangesGuard.ts",
+      "src/services/gameCreation.ts",
+      "src/screens/games/GameCreateScreen.tsx"
+    ],
+    "rounds/game-edit": [
+      "src/screens/games/GameWizardForm.tsx",
+      "src/hooks/useUnsavedChangesGuard.ts"
+    ],
+    "profile/profile-edit": [
+      "src/screens/tabs/ProfileEditScreen.tsx"
+    ],
+    "profile/availability-edit": [
+      "src/hooks/useUnsavedChangesGuard.ts",
+      "src/screens/profile/AvailabilityEditScreen.tsx"
+    ],
+    "profile/notification-settings": [
+      "src/hooks/useUnsavedChangesGuard.ts"
+    ],
+    "rounds/registration": [
+      "src/components/games/RegistrationConflictModal.tsx",
+      "tests/rules/scheduled-withdrawal.test.mjs"
+    ],
+    "rounds/games-list": [
+      "src/components/games/RegistrationConflictModal.tsx",
+      "src/screens/games/GamesListScreen.tsx"
+    ],
+    "clubs/covers-and-invitations": [
+      "src/components/community/CoverImagePicker.tsx"
+    ],
+    "statistics/season-summary": [
+      "src/components/summary/SeasonClubSummary.tsx"
+    ],
+    "profile/season-titles": [
+      "src/components/summary/SeasonClubSummary.tsx"
+    ],
+    "clubs/seasons": [
+      "src/components/summary/SeasonClubSummary.tsx"
+    ],
+    "statistics/chemistry-and-records": [
+      "src/components/summary/SeasonClubSummary.tsx"
+    ],
+    "statistics/scopes-and-data": [
+      "src/components/summary/SeasonClubSummary.tsx"
+    ],
+    "rounds/draft-board": [
+      "src/components/draft/DraftTeamCard.tsx"
+    ],
+    "rounds/match-details": [
+      "src/components/draft/DraftTeamCard.tsx"
+    ]
+  },
+  "updatedAt": "2026-11-03T02:24:25.669588+00:00",
+  "finalMethod": "initial JSX dependency map plus reviewed targeted source fixes; full pairs tracked from actual local diff"
+}

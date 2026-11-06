@@ -1,18 +1,54 @@
-import fs from 'fs';
-import ts from 'typescript';
-import vm from 'vm';
-const file=ts.createSourceFile('PlayerDiscovery.tsx',fs.readFileSync('src/components/social/PlayerDiscovery.tsx','utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
-let continuation='';
-const walk=(node:ts.Node)=>{if(ts.isCallExpression(node)&&node.expression.getText(file)==='useEffect'&&node.arguments[0]?.getText(file).includes('void more()'))continuation=node.arguments[0].getText(file);ts.forEachChild(node,walk);};walk(file);
-test('empty examined pages keep searching a name until a later page, without waiting for a manual tap',()=>{
- const more=jest.fn(),state={preview:undefined,cursor:'after-first-40',busy:false,failed:false,list:[],more};
- const run=vm.runInNewContext(ts.transpileModule(`(${continuation})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,state);
- run();expect(more).toHaveBeenCalledTimes(1);
- state.cursor='after-next-40';run();expect(more).toHaveBeenCalledTimes(2);
- state.list=[{id:'israel'}] as any;run();expect(more).toHaveBeenCalledTimes(2);
+import { player, playerSearchFixture } from '../helpers/playerSearchFixture';
+
+test('a name search advances through empty examined pages until it finds a player', async () => {
+  const f = playerSearchFixture();
+  f.start();
+  f.requests[0].resolve({ players: [], cursor: 'first' });
+  await Promise.resolve();
+  f.requests[1].resolve({ players: [], cursor: 'second' });
+  await Promise.resolve();
+  f.requests[2].resolve({ players: [player('found')], cursor: 'third' });
+  await Promise.resolve();
+  expect(f.search.mock.calls.map(([request]) => request.cursor)).toEqual([undefined, 'first', 'second']);
+  expect(f.render()).toMatchObject({ players: [player('found')], cursor: 'third', busy: false });
 });
-test.each([{cursor:null},{busy:true},{failed:true},{preview:[]},{list:[{id:'found'}]}])('pagination stops for %p',patch=>{
- const more=jest.fn(),state={preview:undefined,cursor:'next',busy:false,failed:false,list:[],more,...patch};
- const run=vm.runInNewContext(ts.transpileModule(`(${continuation})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,state);
- run();expect(more).not.toHaveBeenCalled();
+
+test('exhausting the last empty page prevents further automatic or manual requests', async () => {
+  const f = playerSearchFixture();
+  f.start();
+  f.requests[0].resolve({ players: [], cursor: null });
+  await Promise.resolve();
+  f.render().more();
+  expect(f.search).toHaveBeenCalledTimes(1);
+  expect(f.render()).toMatchObject({ confirmed: true, players: [], cursor: null, busy: false });
+});
+
+test('manual pagination waits for an active read and retries a failed empty scan at its cursor', async () => {
+  const f = playerSearchFixture();
+  f.start();
+  f.requests[0].resolve({ players: [], cursor: 'second' });
+  await Promise.resolve();
+  f.render().more();
+  expect(f.search).toHaveBeenCalledTimes(2);
+  f.requests[1].reject(Error('offline'));
+  await Promise.resolve();
+  expect(f.render().failed).toBe(true);
+  expect(f.search).toHaveBeenCalledTimes(2);
+  f.render().retry();
+  f.render().more();
+  expect(f.search.mock.calls.map(([request]) => request.cursor)).toEqual([undefined, 'second', 'second']);
+  f.requests[2].resolve({ players: [player('found')], cursor: null });
+  await Promise.resolve();
+  expect(f.render()).toMatchObject({ players: [player('found')], failed: false, cursor: null });
+});
+
+test.each(['inactive', 'unfocused', 'guest', 'preview'])('%s discovery does not fetch or paginate', mode => {
+  const f = playerSearchFixture();
+  f.session.focused = mode !== 'unfocused';
+  f.session.currentUser.isGuest = mode === 'guest';
+  const active = mode !== 'inactive', preview = mode === 'preview' ? [player('demo')] : undefined;
+  f.start(active, preview);
+  f.render(active, preview).more();
+  expect(f.search).not.toHaveBeenCalled();
+  if (preview) expect(f.render(active, preview).players).toEqual(preview);
 });

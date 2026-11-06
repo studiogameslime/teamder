@@ -9,6 +9,17 @@ const db=(uid,claims={})=>env.authenticatedContext(uid,claims).firestore();
 const seed=fn=>env.withSecurityRulesDisabled(ctx=>fn(ctx.firestore()));
 const user=(fs,id)=>doc(fs,'users',id);
 const conv='alice__bob';
+test('the private name directory and its coverage marker are inaccessible to clients',async()=>{
+  const paths=['socialSearchNamesV2/alice','socialSearchBucketsV2/ff/matches/alice','serverRateLimits/socialNameCoverageV2'];
+  await seed(async fs=>{for(const path of paths)await setDoc(doc(fs,path),{terms:['אליס'],ready:true});});
+  for(const client of [db('alice'),db('bob'),env.unauthenticatedContext().firestore()]){
+    for(const path of paths){
+      await assertFails(getDoc(doc(client,path)));
+      await assertFails(setDoc(doc(client,path),{terms:['שינוי']}));
+      await assertFails(getDocs(collection(client,path.slice(0,path.lastIndexOf('/')))));
+    }
+  }
+});
 const send=(fs,id=conv)=>setDoc(doc(fs,'dmConversations',id,'messages','new'),{senderId:'alice',text:'שלום',createdAt:serverTimestamp()});
 before(async()=>{env=await initializeTestEnvironment({projectId:'demo-soccer',firestore:{host:'127.0.0.1',port:8080,rules:readFileSync(new URL('../../firestore.rules',import.meta.url),'utf8')}});});
 after(async()=>env?.cleanup());

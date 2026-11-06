@@ -22,6 +22,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Pressable,
   ScrollView,
+  useWindowDimensions,
   StyleSheet,
   Switch,
   Text,
@@ -99,6 +100,7 @@ export function GameFilterSheet({
   mapCenter,
 }: Props) {
   const [bigMapOpen, setBigMapOpen] = useState(false);
+  const { fontScale } = useWindowDimensions();
   // Whether the app ALREADY holds foreground location permission. When it
   // does we drop the "אפשר גישה למיקום" framing (there's nothing to grant)
   // and show a plain enable control instead. Read non-prompting on open.
@@ -247,7 +249,7 @@ export function GameFilterSheet({
               {/* Top row: radius map on the LEFT, the prompt / active
                   state on the RIGHT (forceRTL `row` → first child right). */}
               <View style={styles.nearbyRow}>
-                <View style={styles.nearbyContent}>
+                <View style={[styles.nearbyContent, { flexBasis: 150 * fontScale }]}>
                   {filters.nearby ? (
                     <>
                       <View style={styles.nearbyActiveTop}>
@@ -472,11 +474,12 @@ function QuickToggle({
   value: boolean;
   onChange: (v: boolean) => void;
 }) {
+  const { fontScale } = useWindowDimensions();
   return (
     <Pressable
       onPress={() => onChange(!value)}
       accessibilityRole="switch" accessibilityLabel={label} accessibilityState={{ checked: value }}
-      style={[styles.quickCard, value && styles.quickCardActive]}
+      style={[styles.quickCard, { flexBasis: 148 * fontScale }, value && styles.quickCardActive]}
     >
       <View style={styles.quickTop}>
         <Ionicons
@@ -484,7 +487,7 @@ function QuickToggle({
           size={18}
           color={value ? colors.primary : colors.textMuted}
         />
-        <Text style={styles.quickLabel} numberOfLines={2}>
+        <Text style={styles.quickLabel}>
           {label}
         </Text>
       </View>
@@ -544,6 +547,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.h3,
+    flexShrink: 1,
     color: colors.text,
     fontWeight: '800',
     textAlign: 'center',
@@ -570,6 +574,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...typography.body,
+    flexShrink: 1,
     color: colors.text,
     fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
@@ -577,15 +582,20 @@ const styles = StyleSheet.create({
   // ── Segmented rows (when + format) ──────────────────────────────
   segmentRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
   },
   segment: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    height: 52,
+    minHeight: 52,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs,
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -597,6 +607,8 @@ const styles = StyleSheet.create({
   },
   segmentText: {
     ...typography.body,
+    flexShrink: 1,
+    textAlign: 'center',
     color: colors.text,
     fontWeight: '700',
   },
@@ -609,7 +621,7 @@ const styles = StyleSheet.create({
   },
   dayChip: {
     flex: 1,
-    height: 44,
+    minHeight: 44,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -632,10 +644,11 @@ const styles = StyleSheet.create({
   // Top row of the nearby card: content (right) + map (left).
   nearbyRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: spacing.md,
   },
-  nearbyContent: { flex: 1, gap: 6 },
+  nearbyContent: { flexGrow: 1, flexShrink: 1, gap: 6 },
   nearbyPinWrap: {
     width: 64,
     height: 64,
@@ -667,7 +680,8 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: spacing.sm,
     paddingHorizontal: spacing.lg,
-    height: 46,
+    minHeight: 46,
+    paddingVertical: spacing.xs,
     borderRadius: radius.pill,
     borderWidth: 1.5,
     borderColor: colors.primary,
@@ -675,11 +689,14 @@ const styles = StyleSheet.create({
   },
   nearbyAllowText: {
     ...typography.body,
+    flexShrink: 1,
+    textAlign: 'center',
     color: colors.primary,
     fontWeight: '800',
   },
   nearbyActiveTitle: {
     ...typography.body,
+    flexShrink: 1,
     color: colors.text,
     fontWeight: '700',
     textAlign: RTL_LABEL_ALIGN,
@@ -702,12 +719,15 @@ const styles = StyleSheet.create({
   // ── Quick toggles ────────────────────────────────────────────────
   quickRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
   },
   // `row` under forceRTL → first child (the icon+label cluster) on the
   // visual RIGHT, the Switch on the visual LEFT.
   quickCard: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

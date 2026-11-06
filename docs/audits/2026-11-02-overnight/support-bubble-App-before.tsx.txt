@@ -1,0 +1,1160 @@
+import { observeCaughtError } from './src/utils/errorObservation';
+import { userService } from '@/services/userService';
+import { recordAppVersionPresence } from '@/services/appVersionPresence';
+import { resolveIncomingInvite, startInviteRecovery } from '@/services/incomingInvite';
+import { finishEntryBootstrap } from '@/services/entryBootstrap';
+import 'react-native-gesture-handler';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  AppState,
+  I18nManager,
+  LogBox,
+  StatusBar,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import * as ExpoSplash from 'expo-splash-screen';
+
+// Hold the OS-level splash up until our custom animation has actually
+// taken over the screen. This avoids the brief flash of plain bg
+// between the native splash dismissing and Reanimated's first frame.
+void joryio.init();
+
+ExpoSplash.preventAutoHideAsync().catch((caughtError9d5d605b53: unknown) => {
+    observeCaughtError(caughtError9d5d605b53, {"source":"App.tsx","handler":"module","site":"App:9d5d605b53"});
+  // Already hidden / not available — non-fatal.
+});
+
+// Suppress LogBox red overlays for known-noisy errors that the app
+// already swallows internally. expo-notifications throws in Expo Go /
+// dev clients without the native module linked; the JS layer catches
+// it and returns null, but Metro's global error handler still surfaces
+// it as an "Uncaught Error" red box during dev. Listing the message
+// pattern here keeps the dev session clean without affecting prod.
+LogBox.ignoreLogs([
+  "Cannot find native module 'ExpoPushTokenManager'",
+  'Cannot find native module',
+  // AdMob warns on every "no fill" response. The BannerAd component
+  // already handles this with setFailed(true) → renders null. The
+  // warning stays in console.log for debugging; this just keeps the
+  // dev-mode LogBox overlay clean.
+  '[ads] banner load failed',
+  'googleMobileAds/error-code-internal-error',
+  'googleMobileAds/error-code-no-fill',
+]);
+
+// Screenshot capture: fully silence LogBox (incl. the "open debugger to view
+// warnings" toast) so marketing screenshots carry zero dev chrome. Gated by
+// the same EXPO_PUBLIC_SCREENSHOT_MODE flag that hides the mock banner + ads.
+if ((process.env.EXPO_PUBLIC_SCREENSHOT_MODE ?? '').trim() === '1') {
+  LogBox.ignoreAllLogs(true);
+}
+
+// A single notification-action tap can be DELIVERED more than once:
+//   • On a cold start, `addNotificationResponseReceivedListener` AND
+//     `getLastNotificationResponseAsync` both surface the same response.
+//   • `getLastNotificationResponseAsync` re-delivers the same "last
+//     response" again every time the response effect remounts.
+// Each delivery re-ran the side-effect (confirm spot / join / cancel) and
+// posted another local confirmation, so users saw "אישרת הגעה — נכנסת
+// למשחק" 2–3 times for one tap (report: "ליעוז קיבל 3 פעמים"). The final
+// state is correct (the writes are idempotent) — only the confirmation
+// push is spammed. Dedupe by source-notification id + action so a given
+// action tap runs its side-effect exactly once per JS context. Module
+// scope (not component state) so it survives effect remounts.
+const handledActionTaps = new Set<string>();
+
+// Foreground notification behavior. Without this, a push that arrives
+// while the user has the app open is delivered silently to the JS
+// side and never shows as a banner. Lazy-required + try/catch so we
+// don't crash in environments where the native module isn't linked
+// (Expo Go / dev clients before rebuild).
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const Notifications = require('expo-notifications');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { isActiveChatNotification } = require('@/services/activeChat');
+  Notifications.setNotificationHandler({
+    handleNotification: async (notification: {
+      request?: { content?: { data?: unknown } };
+    }) => {
+      // A Joryio push that reaches us at all has ARRIVED — report it before any
+      // of the branches below, each of which returns on its own. FCM answers a
+      // send with "accepted" and never says what reached the handset, so this
+      // receipt is the only positive delivery signal push can produce. See
+      // services/joryio.reportPushDelivered for what it can and cannot see.
+      {
+        const d = (notification?.request?.content?.data ?? {}) as Record<string, unknown>;
+        if (typeof d.trackingId === 'string' && d.trackingId) {
+          joryio.reportPushDelivered(d.trackingId);
+        }
+      }
+      // Suppress the heads-up banner for the chat the user is ALREADY viewing —
+      // otherwise two people chatting live each get a banner per message (the
+      // server re-arms its one-push gate every time the open chat resets its
+      // unread to 0). Other notifications behave as before.
+      if (isActiveChatNotification(notification?.request?.content?.data)) {
+        return {
+          shouldShowBanner: false,
+          shouldShowList: false,
+          shouldShowAlert: false,
+          shouldPlaySound: false,
+          shouldSetBadge: false,
+        };
+      }
+      // Joryio's SILENT sync nudge. The backend fires one after queueing an
+      // in-app message so the SDK pulls it immediately instead of waiting for
+      // the next foreground. It is data-only and carries no title or body.
+      //
+      // Their SDK handles this in its own FirebaseMessagingService — which
+      // nothing registers: on Android only one service holds the
+      // `MESSAGING_EVENT` slot, and in this app that is
+      // TeamderMessagingService (it forwards everything to
+      // expo-notifications). So the nudge landed here instead, where it did
+      // nothing except risk being drawn as an empty notification. Do the two
+      // things their handler would have done: sync, and show nothing.
+      const jryData = (notification?.request?.content?.data ?? {}) as Record<string, unknown>;
+      if (jryData.joryio === 'true' && typeof jryData.jry_sync === 'string' && jryData.jry_sync) {
+        if (jryData.jry_sync === 'campaigns' || jryData.jry_sync === 'in_app') {
+          joryio.syncInAppCampaigns();
+        }
+        return {
+          shouldShowBanner: false,
+          shouldShowList: false,
+          shouldShowAlert: false,
+          shouldPlaySound: false,
+          shouldSetBadge: false,
+        };
+      }
+      // expo-notifications split `shouldShowAlert` into the more
+      // granular `shouldShowBanner` (head-up alert) +
+      // `shouldShowList` (notification center) in newer SDKs. We set
+      // both true to mirror the old `shouldShowAlert: true` behaviour
+      // — and keep the legacy field too so older SDKs still honour it.
+      return {
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      };
+    },
+  });
+  // Register the GAME_REMINDER category — when a `gameReminder`
+  // push arrives with `categoryIdentifier: 'GAME_REMINDER'` in its
+  // payload, iOS / Android render these two action buttons under
+  // the notification body. Tapping a button fires the response
+  // listener with `actionIdentifier === 'JOIN_GAME' | 'CANCEL_GAME'`.
+  // `opensAppToForeground: true` runs the action in background
+  // without launching the app — the broadcast fires the response
+  // listener directly while JS is alive (foreground / recent
+  // background). On a fully-killed app the broadcast still reaches
+  // the native `NotificationsService` receiver and the response is
+  // queued; it's then dispatched via `getLastNotificationResponseAsync`
+  // on the next app launch. The handler below dismisses the
+  // notification explicitly so the user doesn't see a stale card
+  // after the RSVP has been recorded.
+  // NOTE: the `gameRsvpNudge` push no longer carries action buttons — it's a
+  // plain tap-to-open reminder now (the GAME_REMINDER category was removed per
+  // product decision). JOIN_GAME still exists for the new-game announcement
+  // below; CANCEL_GAME is retired.
+  // "אני מגיע" → JOIN_GAME. `opensAppToForeground: false` (user request): the
+  // join runs in the BACKGROUND without launching the app, and the handler
+  // posts a local confirmation so the user still sees the result. requestJoinGame
+  // is idempotent (already-registered → instant no-op) so a reminder "confirm"
+  // tap is instant and safe. Tradeoff: on a FULLY-KILLED app the OS defers the
+  // response to the next launch (expo-notifications has no headless task here) —
+  // harmless for a reminder (the user is already in), and the deferred join still
+  // runs when they next open the app.
+  Notifications.setNotificationCategoryAsync('NEW_GAME_RSVP', [
+    {
+      identifier: 'JOIN_GAME',
+      buttonTitle: 'אני מגיע',
+      // Was a BACKGROUND action (opensAppToForeground:false) — but on Android a
+      // background action button is DROPPED when the app is fully killed (no
+      // headless JS task; getLastNotificationResponseAsync never sees it), so
+      // "אני מגיע" silently did nothing (user report). Open the app so the
+      // response is always delivered → the handler joins + lands on the game.
+      options: { opensAppToForeground: true },
+    },
+  ]).catch((caughtError3522a007e5: unknown) => {
+    observeCaughtError(caughtError3522a007e5, {"source":"App.tsx","handler":"module","site":"App:3522a007e5"});});
+  // Waitlist promotion offer: someone cancelled, head of waitlist
+  // gets a chance to claim the spot. CONFIRM_SPOT moves them into
+  // players[]; PASS_SPOT removes them from waitlist entirely (so
+  // the next person in line can be offered).
+  Notifications.setNotificationCategoryAsync('SPOT_OFFER', [
+    {
+      identifier: 'CONFIRM_SPOT',
+      // Background action (no app launch) → confirms the spot instantly; the
+      // handler posts a local confirmation so the user still gets feedback.
+      buttonTitle: 'מאשר/ת',
+      options: { opensAppToForeground: false },
+    },
+    {
+      identifier: 'PASS_SPOT',
+      buttonTitle: 'ויתור',
+      options: { opensAppToForeground: false, isDestructive: true },
+    },
+  ]).catch((caughtError16870efe4d: unknown) => {
+    observeCaughtError(caughtError16870efe4d, {"source":"App.tsx","handler":"module","site":"App:16870efe4d"});});
+  // NOTE: the cross-community filler opportunity push (`fillerOpportunity`)
+  // deliberately has NO action-button category — tapping the push opens the
+  // game screen where the candidate expresses interest. The old "לא הפעם"
+  // button was a silent no-op and "מעוניין" was redundant with tap-to-open.
+} catch (caughtError1b1d1c5033) {
+    observeCaughtError(caughtError1b1d1c5033, {"source":"App.tsx","handler":"module","site":"App:1b1d1c5033"});
+  // expo-notifications native module not available — no-op.
+}
+import { NavigationContainer } from '@react-navigation/native';
+import { SupportChatHost } from '@/components/support/SupportChatHost';
+import { crumbNav, crumbTap, crumbGestureEnd } from '@/services/breadcrumbs';
+import { bindDiagnosticOwner, recordDiagnostic } from '@/services/diagnosticJournal';
+import { startDiagnosticRuntime } from '@/services/diagnosticRuntime';
+import { startDiagnosticStorage, persistDiagnosticJournal, clearDiagnosticStorage } from '@/services/diagnosticStorage';
+import { restorePendingErrors, clearPendingErrors } from '@/services/errorLog';
+import * as Linking from 'expo-linking';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
+import { SystemSafeArea } from '@/components/SystemSafeArea';
+
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import {
+  installGlobalErrorHandlers,
+  logRenderError,
+} from '@/services/errorLog';
+import { RootNavigator } from '@/navigation/RootNavigator';
+import { CampaignGate } from '@/components/CampaignGate';
+import {
+  navigationRef,
+  navigateAppDestination,
+} from '@/navigation/navigationRef';
+import { parseAppLink, type AppDestination } from '@/utils/appLinks';
+import { recordRole } from '@/services/roleService';
+import { useAndroidBack } from '@/navigation/useAndroidBack';
+import { he } from '@/i18n/he';
+import { useScreenAwake } from '@/hooks/useScreenAwake';
+import { useUserStore } from '@/store/userStore';
+import { setEntrySource, entryGuestAfterHydration, type EntrySource } from '@/services/entrySource';
+import { useEntryStore } from '@/store/entryStore';
+import { decideEntry } from '@/navigation/entryGate';
+import { useGroupStore } from '@/store/groupStore';
+import {
+  stashPendingInvite,
+} from '@/services/deepLinkService';
+// Imported for its side effects: registers what each pending action kind does
+// when it resumes. At boot rather than inside a screen — a resumer registered
+// by a screen that has not mounted is a resumer that does not exist, and the
+// coordinator's first resume pass can run before any screen appears.
+import '@/services/actionResumers';
+import { consumeInstallReferrerIfFresh } from '@/services/installReferrerService';
+import { consumeClipboardInviteIfFresh } from '@/services/clipboardInviteService';
+import { storage } from '@/services/storage';
+import { MockModeBanner } from '@/components/MockModeBanner';
+import { SplashScreen } from '@/screens/SplashScreen';
+import { ToastHost } from '@/components/Toast';
+import { AppDialogHost } from '@/components/AppDialog';
+import { ScreenshotReportSheet } from '@/components/ScreenshotReportSheet';
+import { BannerHost } from '@/components/Banner';
+import { adsService, AdDebugOverlay } from '@/services/adsService';
+import { MaintenanceGate, AnnouncementBanner } from '@/components/RemoteGates';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import {
+  checkForUpdate,
+  setUpdateGateOpen,
+} from '@/services/updateService';
+import { applyStoreUpdate, useUpdatePromptStore } from '@/store/updatePromptStore';
+import { reconcileStoreUpdate } from '@/services/updateAttributionService';
+import { useWatchSync } from '@/services/watchSyncService';
+import { usePersonalActivitySync } from '@/services/personalActivityService';
+import { UpdateModal } from '@/components/UpdateModal';
+import { WhatsNewGate } from '@/components/WhatsNewGate';
+import { NotificationOfferHost } from '@/components/notifications/NotificationOfferHost';
+import { colors, isDarkTheme } from '@/theme';
+import { DefaultTheme, DarkTheme, type Theme } from '@react-navigation/native';
+import { joryio } from '@/services/joryio';
+import { InAppMessageHost } from '@/components/joryio/InAppMessageHost';
+import { FeedbackPromptHost } from '@/components/feedback/FeedbackPromptHost';
+import { useSupportChat } from '@/services/supportChat';
+
+// ── Force RTL on first launch ───────────────────────────────────────────────
+// Hebrew is RTL. Setting this once at startup mirrors the entire layout.
+// In production you'd typically force RTL at the native side too (see README).
+I18nManager.allowRTL(true);
+if (!I18nManager.isRTL) {
+  I18nManager.forceRTL(true);
+  // NOTE: a forced RTL switch normally requires a JS reload to take effect.
+  // Expo Go users: shake → Reload after first launch.
+}
+
+// ── Global text-alignment defaults (RTL-bulletproof) ────────────────────────
+// On Android (and on iOS dev clients that didn't fully restart after the
+// forceRTL call) RN sometimes leaves <Text> with default left alignment
+// even though the layout is mirrored. We set defaultProps so EVERY Text
+// and TextInput in the tree starts with `textAlign:'right'` and an
+// explicit RTL writingDirection. Components that genuinely want a
+// different alignment (e.g., button labels) can still override per
+// instance via their own style.
+//
+// Note: defaultProps on RN core components is the supported escape hatch
+// for global typography overrides; we deliberately accept the deprecation
+// noise it produces in newer RN dev builds because the alternative
+// (wrapping every Text in a custom component) would touch dozens of
+// screens and is much more invasive than this single hook.
+{
+  type WithDefaultProps = {
+    defaultProps?: {
+      style?: unknown;
+      allowFontScaling?: boolean;
+    };
+  };
+  const RTL_TEXT_DEFAULTS = {
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  } as const;
+  const baseText = (Text as unknown as WithDefaultProps).defaultProps ?? {};
+  (Text as unknown as WithDefaultProps).defaultProps = {
+    ...baseText,
+    style: [RTL_TEXT_DEFAULTS, (baseText as { style?: unknown }).style],
+  };
+  const baseInput = (TextInput as unknown as WithDefaultProps).defaultProps ?? {};
+  (TextInput as unknown as WithDefaultProps).defaultProps = {
+    ...baseInput,
+    style: [RTL_TEXT_DEFAULTS, (baseInput as { style?: unknown }).style],
+  };
+}
+
+// Install global crash + unhandled-rejection catch-alls as early as
+// possible (module load), so failures before/around mount are captured.
+installGlobalErrorHandlers();
+startDiagnosticStorage();
+
+export default function App() {
+  // The kickoff splash plays once per app launch. We render it OVER the
+  // navigator (not in place of it) so RootNavigator can mount + hydrate
+  // stores in parallel — the splash fades out at the end and the user
+  // lands on a ready UI without an extra spinner step.
+  const [splashDone, setSplashDone] = useState(false);
+  // Does this launch belong to somebody who has never been asked what they
+  // came for? Same pure decision the navigator's gate uses, so the splash and
+  // the gate can never disagree about who is new.
+  const entryOrganicCompleted = useEntryStore((s) => s.organicCompleted);
+  const splashIsGuest = useUserStore((s) => s.currentUser?.isGuest === true);
+  const needsWelcome =
+    decideEntry({
+      isGuest: splashIsGuest,
+      organicCompleted: entryOrganicCompleted,
+    }) === 'entry';
+
+  // Load the Ionicons font at runtime. Expo SDK 53 removed
+  // @expo/vector-icons autolinking — without this hook the font
+  // family `ionicons` isn't registered with the RN font registry,
+  // every `<Ionicons />` glyph renders as a blank box. We don't
+  // gate the UI on `fontsLoaded`: a one-frame fallback to empty
+  // glyphs is preferable to a blocked render, and the loader
+  // resolves within ~50 ms on real devices.
+  // Ionicons.ttf is shipped as `android/app/src/main/assets/fonts/ionicons.ttf`
+  // (lowercase, matching the fontFamily `@expo/vector-icons` registers via
+  // `createIconSet(glyphMap, 'ionicons', font)`). Android RN auto-registers
+  // any TTF in that folder under its filename, so no JS-side `useFonts`
+  // dance is needed — and `useFonts` would actually fail on SDK 53 because
+  // expo-asset's `downloadAsync` requires the legacy `AppDirectoriesModule`
+  // interface, which expo-file-system 18.x dropped.
+  const currentScreenRef = useRef<string | null>(null);
+
+  // App-update prompt. Single source of truth: a plain enum kept
+  // here at the App root.
+  const availableUpdate = useUpdatePromptStore(s => s.update);
+  const updateKind = availableUpdate?.kind ?? 'none';
+  // Publish the gate's visibility so a screen does not stack its own modal on
+  // top of it. See the note on `setUpdateGateOpen`.
+  useEffect(() => {
+    setUpdateGateOpen(updateKind === 'force');
+    return () => setUpdateGateOpen(false);
+  }, [updateKind]);
+  // Guard so the post-splash check fires exactly once even if the
+  // splash effect re-runs.
+  const updateCheckedRef = useRef(false);
+
+  // Live "navigator is mounted and ready to navigate" flag. Flipped
+  // by NavigationContainer's `onReady`. Campaign destinations wait here;
+  // invitation targets are persisted and consumed by RootNavigator alone.
+  const [navReady, setNavReady] = useState(false);
+  const [activeRouteName, setActiveRouteName] = useState('');
+
+  // Android hardware back. Without this every press fell through to the
+  // platform default, which leaves the app the moment a tab's stack has
+  // nothing to pop — reproduced as "standing on מחזורים, back closed the app".
+  useAndroidBack(navigationRef as unknown as Parameters<typeof useAndroidBack>[0], he.backAgainToExit);
+
+  // Keep the display on while the app is in the foreground: the phone spends
+  // the evening propped on a bag showing the timer and the teams, and a screen
+  // that sleeps every thirty seconds defeats the point.
+  useScreenAwake();
+  // Campaign destinations remain independent of invitation navigation.
+  const [pendingDest, setPendingDest] = useState<AppDestination | null>(null);
+  // Auth signals — already maintained by the user store. We watch
+  // them here for campaign navigation and retrying fresh-account attribution.
+  const currentUserId = useUserStore((s) => s.currentUser?.id ?? null);
+  const diagnosticAuthHydrated = useUserStore((s) => s.hydrated);
+  useEffect(()=>startDiagnosticRuntime(),[]);
+  useEffect(() => {
+    if(!diagnosticAuthHydrated)return;
+    if(bindDiagnosticOwner(currentUserId)){clearPendingErrors();void clearDiagnosticStorage();}
+    if(currentUserId)void restorePendingErrors(currentUserId);
+    else void clearDiagnosticStorage();
+  },[currentUserId,diagnosticAuthHydrated]);
+  const profileComplete = useUserStore((s) => s.isProfileComplete());
+  const onboardingComplete = useUserStore((s) => s.hasCompletedOnboarding());
+  // A guest is NOT somebody "מה חדש" is written for. `buildGuestUser` stamps
+  // `onboardingCompleted: true` so an anonymous session skips the post-sign-in
+  // profile screen — which had the side effect of opening the What's New gate
+  // for them too, and the modal landed on top of the guest Home the first time
+  // anybody ever saw it. The sheet lists what changed since a version this
+  // person has never run; there is nothing in it for them, and it costs the
+  // first impression the Home exists to make.
+  const viewerIsGuest = useUserStore((s) => s.currentUser?.isGuest === true);
+  // Two one-time interruptions must not stack. The notification offer stands
+  // down while "מה חדש" owns the screen; its announcement stays queued and is
+  // delivered the moment the host registers again, so nothing is lost —
+  // caught on the emulator with both sheets on screen at once.
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+  const [feedbackPromptOpen, setFeedbackPromptOpen] = useState(false);
+  const [campaignOpen, setCampaignOpen] = useState(false);
+  const [inAppOpen, setInAppOpen] = useState(false);
+  const [notificationOfferOpen, setNotificationOfferOpen] = useState(false);
+  const supportChatOpen = useSupportChat(s => s.visible);
+  // Hydration signals from the stores. When both flip true the splash
+  // is allowed to fade out — that way the user never sees the small
+  // "still loading" spinner that RootNavigator used to render under
+  // the splash. A single big-ball state covers the whole boot.
+  const userHydrated = useUserStore((s) => s.hydrated);
+  const groupHydrated = useGroupStore((s) => s.hydrated);
+
+
+  // Keep the paired Wear OS watch in sync with the user's current game
+  // state (live stopwatch / next game / not-registered). Android-only,
+  // best-effort — no-ops everywhere else.
+  useWatchSync(currentUserId);
+  usePersonalActivitySync(currentUserId);
+
+  useEffect(() => {
+    // NOTE: ExpoSplash.hideAsync() is intentionally NOT called here.
+    // It's now called from inside SplashScreen on its first effect, so
+    // the native splash dismisses only AFTER the React layer has painted
+    // its first frame. Hiding here would create a brief black flash
+    // between native dismiss and React first paint.
+    // Place for one-time bootstraps: analytics init, FCM token registration, etc.
+  }, []);
+
+  // Invite-link plumbing. Three potential sources on COLD start, in
+  // strict priority order:
+  //   1. `Linking.getInitialURL()` — app launched FROM a deep link.
+  //   2. Existing stash in storage — set by a previous launch that
+  //      didn't get consumed (auth incomplete, navigation race).
+  //   3. Play Install Referrer — the user installed via the store and
+  //      this is their first launch.
+  //
+  // For WARM/background URLs (app already mounted), we take a
+  // different path: try to navigate IMMEDIATELY and bypass the
+  // stash + RootNavigator consumer entirely. The consumer there
+  // uses a one-shot `consumedRef` so it never re-fires after the
+  // first cold-start consumption — which used to silently swallow
+  // every subsequent deep link until the user fully restarted the
+  // app. The `forWarm` branch below is the fix.
+  //
+  // De-duplication: tapping the same URL twice within DUP_WINDOW
+  // triggers navigation only once. Without this, iOS sometimes
+  // delivers the same URL via getInitialURL AND the listener on
+  // the same launch, double-navigating into the target.
+  // Fires EXACTLY once per cold start, whatever happened. `entry_source` is a
+  // closed vocabulary so the funnel can be sliced on it; `is_guest` says who
+  // arrived, which is the number the whole guest refactor is judged on.
+  const entryReportedRef = useRef(false);
+  const entryEventLoggedRef = useRef(false);
+  const [entryEvent, setEntryEvent] = useState<Record<string, string | boolean | undefined> | null>(null);
+  const reportEntrySource = (
+    how: 'deep_link' | 'deferred' | 'organic',
+    pending: { type: 'session' | 'team' | 'app'; id?: string; invitedBy?: string; source?: string; campaign?: string; linkId?: string } | null,
+  ) => {
+    if (entryReportedRef.current) return;
+    entryReportedRef.current = true;
+    const source =
+      how === 'organic'
+        ? 'organic'
+        : pending?.type === 'session'
+          ? 'game_link'
+          : pending?.type === 'team'
+            ? 'club_link'
+            : pending?.type === 'app'
+              ? 'personal_invite'
+              : 'unknown';
+    // Publish before reporting, so any screen that renders after this can
+    // say where the launch came from instead of assuming. See
+    // `src/services/entrySource.ts` — GuestHome used to hardcode `organic`.
+    const details = {
+      entry_source: source,
+      resolved_by: how,
+      target_type: pending?.type ?? 'none',
+      // The id of a PUBLIC game or club — not personal data, and the thing
+      // that makes a funnel row joinable to a real target. Never the inviter's
+      // uid, which would be somebody's identity.
+      target_id: pending?.id,
+      has_inviter: !!pending?.invitedBy,
+      entry_channel: pending?.source,
+      entry_campaign: pending?.campaign,
+      entry_link_id: pending?.linkId,
+    };
+    // Pulse resolves the inviter's display name server-side. Keep this
+    // identifier out of the generic analytics event below.
+    setEntrySource(source as EntrySource, { ...details, inviter_uid: pending?.invitedBy });
+    setEntryEvent(details);
+  };
+
+  useEffect(() => {
+    if (!entryEvent || entryEventLoggedRef.current) return;
+    const guest = entryGuestAfterHydration(userHydrated, useUserStore.getState().currentUser);
+    if (guest === null) return;
+    entryEventLoggedRef.current = true;
+    logEvent(AnalyticsEvent.EntrySourceResolved, { ...entryEvent, is_guest: guest });
+  }, [entryEvent, userHydrated, currentUserId, viewerIsGuest]);
+
+  // How an invite maps onto a PendingAction kind. One place, so the analytics
+  // and the consumer cannot drift on what a link "is".
+  const kindOfInvite = (p: { type: 'session' | 'team' | 'app' }) =>
+    p.type === 'session' ? 'open_game' : p.type === 'team' ? 'open_club' : 'open_invite';
+
+  useEffect(() => {
+    const DUP_WINDOW_MS = 3000;
+    let lastUrl: string | null = null;
+    let lastUrlAt = 0;
+
+    const isDuplicate = (url: string): boolean => {
+      const now = Date.now();
+      const dup = url === lastUrl && now - lastUrlAt < DUP_WINDOW_MS;
+      lastUrl = url;
+      lastUrlAt = now;
+      return dup;
+    };
+
+    // Cold-start handler — stash and let RootNavigator consume after
+    // auth is ready. This is the legacy path; behavior unchanged.
+    let warmInviteReceived = false;
+    let inviteResolutionVersion = 0;
+    const handleCold = async (url: string | null) => {
+      if (!url) return;
+      if (isDuplicate(url)) return;
+      // Campaign links first. They share the scheme with invites but mean
+      // something else, and parseInviteUrl answers null for every one of them
+      // — which is how a CTA pointing at a screen used to do nothing at all.
+      const campaign = parseAppLink(url);
+      if (campaign) {
+        if (campaign.role) void recordRole(campaign.role);
+        adsService.noteIntentfulOpen();
+        setPendingDest(campaign.dest);
+        return;
+      }
+      if (warmInviteReceived) return;
+      const version = ++inviteResolutionVersion;
+      const parsed = await resolveIncomingInvite(url);
+      if (version !== inviteResolutionVersion || !parsed) return;
+      // Opened via an invite link → suppress the next app-open ad.
+      adsService.noteIntentfulOpen();
+      logEvent(AnalyticsEvent.InviteLinkOpened, {
+        type: parsed.type,
+        has_inviter: !!parsed.invitedBy,
+      });
+      try {
+        // Still the legacy stash: `stashPendingInvite` is what the deferred
+        // services and the warm handler all funnel through, and it is where
+        // the don't-overwrite guard lives. The consumer reads it through
+        // `readPendingAction`, which derives from this key — so the new shape
+        // is the source of truth without the old one having to move yet.
+        await stashPendingInvite(parsed);
+        await storage.markInviteAttributionResolved(url);
+        await userService.completeDeferredInviteAttribution();
+        logEvent(AnalyticsEvent.PendingActionSaved, {
+          kind: kindOfInvite(parsed),
+          origin: 'deep_link',
+          has_draft: false,
+        });
+      } catch (err) {
+    observeCaughtError(err, {"source":"App.tsx","handler":"handleCold","site":"App:dbdb66ccad"});
+        if (__DEV__) console.warn('[invite] stash failed', err);
+      }
+    };
+
+    // Warm URLs share the same persistent ingress as cold URLs. The root's
+    // storage subscriber retries navigation after readiness and identity gates.
+    const handleWarm = async (url: string) => {
+      if (!url) return;
+      if (isDuplicate(url)) return;
+      warmInviteReceived = true;
+      const version = ++inviteResolutionVersion;
+      const campaign = parseAppLink(url);
+      if (campaign) {
+        if (campaign.role) void recordRole(campaign.role);
+        adsService.noteIntentfulOpen();
+        // Straight there when we can; the consumer below covers the frame
+        // where the navigator has not mounted yet.
+        if (!navigateAppDestination(campaign.dest)) setPendingDest(campaign.dest);
+        return;
+      }
+      const parsed = await resolveIncomingInvite(url);
+      if (version !== inviteResolutionVersion || !parsed) return;
+      // Opened via an invite link → suppress the next app-open ad.
+      adsService.noteIntentfulOpen();
+
+      // A later deliberate tap can open a new invite; a subsequent entry choice
+      // can still suppress it before the sole consumer becomes ready.
+      useEntryStore.setState({ suppressAutoConsume: false });
+      await stashPendingInvite(parsed);
+        await storage.markInviteAttributionResolved(url);
+        await userService.completeDeferredInviteAttribution();
+
+    };
+
+    (async () => {
+      // 1. Initial URL.
+      const initialUrl = await Linking.getInitialURL();
+      if (__DEV__) console.info('[invite] getInitialURL →', initialUrl);
+      await handleCold(initialUrl);
+
+      // 2. Already-stashed invite? If so, skip the referrer call —
+      //    we have a target, no need to re-derive one from the past.
+      //    This is ALSO the don't-overwrite guard: neither deferred source
+      //    may clobber a target a real link just produced.
+      const existing = await storage.getPendingInvite();
+      if (__DEV__) console.info('[invite] existing pending →', existing);
+      if (existing) {
+        // A pending invite is still needed for later navigation/attribution,
+        // but it is not evidence that THIS launch came from a link. A stale
+        // valid invite can survive on the device for signup, so reporting it
+        // here made a plain icon tap look like the old campaign every time.
+        reportEntrySource(initialUrl ? 'deep_link' : 'organic', initialUrl ? existing : null);
+        return;
+      }
+
+      // 3. Last resort (Android): Play Install Referrer. No-op on
+      //    iOS / Expo Go / sideload. The service has its own internal
+      //    set-once guard as a second line of defence.
+      try {
+        await consumeInstallReferrerIfFresh();
+        if (__DEV__) {
+          const after = await storage.getPendingInvite();
+          console.info('[invite] after install-referrer →', after);
+        }
+      } catch (err) {
+    observeCaughtError(err, {"source":"App.tsx","handler":"App","site":"App:1ffa079f54"});
+        if (__DEV__) console.warn('[invite] install-referrer threw', err);
+      }
+
+      // 4. Last resort (iOS): deferred deep link via the clipboard.
+      //    Apple has no install-referrer API, so the landing page copies
+      //    the invite URL to the clipboard on the "install" tap and we
+      //    recover it here on first launch. No-op on Android and after a
+      //    deep link already stashed an invite (checked at step 2 above
+      //    and again inside the service).
+      try {
+        await consumeClipboardInviteIfFresh();
+        if (__DEV__) {
+          const after = await storage.getPendingInvite();
+          console.info('[invite] after clipboard →', after);
+        }
+      } catch (err) {
+    observeCaughtError(err, {"source":"App.tsx","handler":"App","site":"App:bf6dc80944"});
+        if (__DEV__) console.warn('[invite] clipboard invite threw', err);
+      }
+
+      // Every source has now been asked. Report what this launch turned out
+      // to be — INCLUDING `organic`, which is the whole value: without a
+      // positive event for "came from nothing" the organic share has to be
+      // inferred from the absence of other events, and absence is not a
+      // number you can trust.
+      const resolved = await storage.getPendingInvite();
+      reportEntrySource(resolved ? 'deferred' : 'organic', resolved);
+    })().catch((err) => {
+    observeCaughtError(err, {"source":"App.tsx","handler":"App","site":"App:005f0af332"});
+      if (__DEV__) console.warn('[invite] bootstrap failed', err);
+    }).finally(finishEntryBootstrap);
+
+    const stopRecovery = startInviteRecovery(() => userService.completeDeferredInviteAttribution());
+    const sub = Linking.addEventListener('url', (e) => {
+      void handleWarm(e.url).catch((err) => {
+    observeCaughtError(err, {"source":"App.tsx","handler":"App","site":"App:3cc26ee3dc"});
+        if (__DEV__) console.warn('[invite] warm ingress failed', err);
+      });
+    });
+    return () => { sub.remove(); stopRecovery(); };
+  }, []);
+
+  // Pending-destination consumer. Deliberately does NOT wait on auth: the
+  // role picker shows on a first run, and the tab it opens is reachable
+  // before a profile is complete. Gating it the way an invite is gated would
+  // swallow the answer at exactly the moment it is given.
+  useEffect(() => {
+    if (!pendingDest) return;
+    if (!navReady) return;
+    if (navigateAppDestination(pendingDest)) setPendingDest(null);
+  }, [pendingDest, navReady]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    void userService.completeDeferredInviteAttribution().catch((err) => {
+    observeCaughtError(err, {"source":"App.tsx","handler":"App","site":"App:1625451152"});
+      if (__DEV__) console.warn('[invite] late attribution retry failed', err);
+    });
+  }, [currentUserId, onboardingComplete]);
+
+  const applyUpdateResult = applyStoreUpdate;
+
+  // Wait for account hydration so a different signed-in account cannot claim
+  // another account's update. A new native binary is observed after restart.
+  useEffect(() => {
+    if (splashDone && userHydrated) void reconcileStoreUpdate(currentUserId ?? null);
+  }, [splashDone, userHydrated, currentUserId]);
+
+  useEffect(() => {
+    if (!splashDone || !userHydrated || !currentUserId) return;
+    if (AppState.currentState === 'active') void recordAppVersionPresence(currentUserId);
+    const subscription = AppState.addEventListener('change', next => {
+      if (next === 'active') void recordAppVersionPresence(currentUserId);
+    });
+    return () => subscription.remove();
+  }, [splashDone, userHydrated, currentUserId]);
+
+  // Run the version check only after the splash animation has
+  // finished. Guarded by `updateCheckedRef` so we never fire twice.
+  // Target-specific optional snooze is restored by applyStoreUpdate.
+  useEffect(() => {
+    if (!splashDone || updateCheckedRef.current) return;
+    updateCheckedRef.current = true;
+    void checkForUpdate().then(applyUpdateResult);
+  }, [splashDone, applyUpdateResult]);
+
+  // Re-check when the app returns from background → active. Catches
+  // the "user updated from the store and came back" case so the
+  // modal disappears on its own. Force results re-appear regardless
+  // of any prior optional dismissal.
+  //
+  // The same listener doubles as our app-lifecycle analytics signal:
+  // every active/background transition fires one AppForegrounded /
+  // AppBackgrounded event. `type: 'warm'` because cold starts are
+  // logged separately at boot. Useful for measuring session length
+  // and "abandons after N minutes" funnels.
+  useEffect(() => {
+    let lastState: string = AppState.currentState;
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active' && lastState !== 'active') {
+        logEvent(AnalyticsEvent.AppForegrounded, { type: 'warm' });
+      } else if (next === 'background' && lastState === 'active') {
+        logEvent(AnalyticsEvent.AppBackgrounded);
+      }
+      lastState = next;
+      if(next!=='active')void persistDiagnosticJournal();
+      if (next !== 'active' || !updateCheckedRef.current) return;
+      checkForUpdate().then(applyUpdateResult);
+    });
+    return () => sub.remove();
+  }, [applyUpdateResult]);
+
+  // ─── Push-notification tap → screen navigation ──────────────────────
+  // Two paths to cover:
+  //   1. App is running (background or foreground): the user taps a
+  //      push from the OS shade → addNotificationResponseReceivedListener
+  //      fires synchronously.
+  //   2. App was killed: the OS launches us cold; the response is
+  //      retrievable via getLastNotificationResponseAsync. We may fire
+  //      before the navigator is ready, so retry briefly until isReady.
+  useEffect(() => {
+    let Notifications: typeof import('expo-notifications') | null = null;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      Notifications = require('expo-notifications');
+    } catch (caughtError1412ec2c03) {
+    observeCaughtError(caughtError1412ec2c03, {"source":"App.tsx","handler":"App","site":"App:1412ec2c03"});
+      return; // native module not linked (Expo Go) — no-op
+    }
+    if (!Notifications) return;
+    // Capture once for use inside the closure below — TS can't carry
+    // the null-narrow from the early-return through async callbacks.
+    const Notif = Notifications;
+
+    const dismissNotificationSafely = async (
+      notifId: string | undefined,
+    ): Promise<void> => {
+      if (!notifId) return;
+      try {
+        await Notif.dismissNotificationAsync(notifId);
+      } catch (caughtError154a0e0518) {
+    observeCaughtError(caughtError154a0e0518, {"source":"App.tsx","handler":"dismissNotificationSafely","site":"App:154a0e0518"});
+        // Best-effort — older expo-notifications versions / iOS
+        // foreground-not-shown cases throw. The OS will dismiss the
+        // notification itself when the user taps it anyway.
+      }
+    };
+
+    const handleResponse = async (response: {
+      actionIdentifier?: string;
+      notification: {
+        request: { identifier?: string; content: { data?: Record<string, unknown> } };
+      };
+    }) => {
+      const data = response.notification.request.content.data ?? {};
+      // A Joryio campaign push carries `trackingId` and none of OUR `type`s, so
+      // it must be reported BEFORE the `!type` bail-out below — otherwise every
+      // marketing push reads as delivered-and-never-opened. Reported first for
+      // the same reason: the navigation branches below return early on their own
+      // and would strand the click.
+      const trackingId =
+        typeof data.trackingId === 'string' ? data.trackingId : '';
+      if (trackingId) {
+        // A tap proves the push arrived, and it is the ONLY arrival we witness
+        // when Android drew it in the tray while we were backgrounded. Deduped
+        // by trackingId server-side, so double-reporting a foreground push we
+        // already receipted costs nothing.
+        joryio.reportPushDelivered(trackingId);
+        joryio.trackPushClick(trackingId);
+        void logEvent(AnalyticsEvent.NotificationOpened, { source: 'joryio' });
+        // Tapping a marketing push is as intentful as tapping our own.
+        adsService.noteIntentfulOpen();
+      }
+      const type = typeof data.type === 'string' ? data.type : '';
+      if (!type) return;
+      // Opened by tapping a push → suppress the next app-open ad.
+      adsService.noteIntentfulOpen();
+      // Admin broadcast (Pulse campaign) tapped → report the open so the
+      // campaign report shows received-vs-opened. Fire-and-forget.
+      if (type === 'adminBroadcast' && typeof data.campaignId === 'string') {
+        const { trackCampaignEvent } = await import('@/services/campaignService');
+        void trackCampaignEvent(data.campaignId, 'open');
+      }
+      // Identifier of the source notification — needed to dismiss it
+      // explicitly after an action button runs. Without an explicit
+      // dismiss the notification card lingers in the tray even though
+      // its action ("אני בא" / "לא בא" / etc.) has already taken
+      // effect, which confuses users into tapping it again.
+      const notifId = response.notification.request.identifier;
+      // Action button taps from the notification (e.g. "אני בא" /
+      // "לא בא") arrive with `actionIdentifier` set to the button id
+      // we registered. Plain notification taps (the user tapped the
+      // body itself) carry `actionIdentifier === 'expo.modules.notifications.actions.DEFAULT'`
+      // — fall through to the navigation flow for those.
+      const action = response.actionIdentifier ?? '';
+      // Guard action-button taps against duplicate delivery (see
+      // `handledActionTaps` above). Only the buttons with side-effects are
+      // deduped; a plain body tap (DEFAULT) falls through to navigation,
+      // which is idempotent and safe to re-run. Keyed by the source
+      // notification id + action so the SAME tap replayed via a second
+      // delivery / remount is collapsed, while a genuinely new tap on a
+      // fresh notification still gets through.
+      const SIDE_EFFECT_ACTIONS = [
+        'JOIN_GAME',
+        'CANCEL_GAME',
+        'CONFIRM_SPOT',
+        'PASS_SPOT',
+        'DISMISS_NEW_GAME',
+      ];
+      if (SIDE_EFFECT_ACTIONS.includes(action)) {
+        const tapKey = `${notifId ?? ''}|${action}|${
+          typeof data.gameId === 'string' ? data.gameId : ''
+        }`;
+        if (handledActionTaps.has(tapKey)) return;
+        handledActionTaps.add(tapKey);
+      }
+      // For JOIN/CANCEL and SPOT actions: run the side-effect, dismiss
+      // the notification, then FALL THROUGH to the navigation block
+      // below so the app lands on MatchDetails for the affected game.
+      // Without that fall-through the user taps "אני בא", the app
+      // launches because of `opensAppToForeground: true`, and they're
+      // dropped on the home screen with no visible confirmation of
+      // what just happened.
+      if (action === 'JOIN_GAME' || action === 'CANCEL_GAME') {
+        const gameId = typeof data.gameId === 'string' ? data.gameId : '';
+        if (!gameId) return;
+        const { handleGameReminderAction } = await import(
+          '@/services/notificationActionService'
+        );
+        await handleGameReminderAction(action, gameId);
+        await dismissNotificationSafely(notifId);
+        // "אני מגיע" now opens the app (opensAppToForeground:true) — after the
+        // join, FALL THROUGH to navigation so the user lands on the game and
+        // sees they're registered, instead of being dropped on home.
+      } else if (action === 'CONFIRM_SPOT' || action === 'PASS_SPOT') {
+        const gameId = typeof data.gameId === 'string' ? data.gameId : '';
+        if (!gameId) return;
+        const { handleSpotOfferAction } = await import(
+          '@/services/notificationActionService'
+        );
+        await handleSpotOfferAction(action, gameId);
+        await dismissNotificationSafely(notifId);
+        // Background action (opensAppToForeground:false) — the handler posts a
+        // local confirmation; don't drag the app to MatchDetails behind the
+        // user's back, so DON'T fall through to navigation.
+        return;
+      }
+      if (action === 'DISMISS_NEW_GAME') {
+        // "לא מגיע" on a new-game announcement → just clear the card, no
+        // side-effect (the user has no registration to cancel).
+        await dismissNotificationSafely(notifId);
+        return;
+      }
+      // (The `fillerOpportunity` push no longer carries action buttons — a
+      // plain tap falls through to navigation, opening the game screen where
+      // the candidate expresses interest. The in-app "מעוניין" button still
+      // calls handleFillerOpportunityAction directly.)
+      // Wait for the navigator to be ready. A COLD start runs through
+      // the splash (+ a possible app-open ad) + Firebase auth restore
+      // before the navigator mounts — easily 10-20s. The old 3s cap gave
+      // up long before then, so a push tapped while the app was killed
+      // silently landed on the home screen instead of its target. Poll
+      // up to ~30s; it resolves the instant nav is ready, so a fast warm
+      // tap is unaffected, and a genuinely-broken nav still bails out.
+      for (let i = 0; i < 300; i++) {
+        if (navigationRef.isReady()) {
+          const { navigateForPush } = await import('@/navigation/navigationRef');
+          navigateForPush(type, data);
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 100));
+      }
+    };
+
+    const sub = Notifications.addNotificationResponseReceivedListener(handleResponse);
+
+    // Cold-start tap: the listener above only fires for live taps;
+    // launching from a tap delivers via getLastNotificationResponseAsync.
+    Notifications.getLastNotificationResponseAsync().then((resp) => {
+      if (resp) handleResponse(resp);
+    });
+
+    return () => sub.remove();
+  }, []);
+
+  // After the animation finishes, try to show the App Open ad. If the
+  // SDK already pre-loaded one (initializeAds() runs on app boot), the
+  // call resolves when the ad is closed; if nothing is ready it returns
+  // immediately. Either way we then drop the splash and reveal the app.
+  const handleSplashFinish = async () => {
+    // Reveal the app no matter what. Two guards so a slow/stuck app-open ad
+    // can never freeze startup (the Google "unresponsive app" rejection):
+    //   1. Skip the ad entirely until the user is signed in — a fresh
+    //      install (incl. the Play reviewer) goes straight to the app, never
+    //      sitting on the splash behind an ad.
+    //   2. Even for signed-in users, race the ad against a hard timeout so a
+    //      hung show() can't block setSplashDone.
+    if (useUserStore.getState().currentUser) {
+      // Flips only when the hard timeout wins the race, so the analytics
+      // call below can tell "ad flow finished" from "we gave up on it".
+      let timedOut = false;
+      try {
+        await Promise.race([
+          adsService.showAppOpenAdIfAvailable(),
+          new Promise<void>((resolve) =>
+            setTimeout(() => {
+              timedOut = true;
+              resolve();
+            }, 3500),
+          ),
+        ]);
+      } catch (caughtErrorc0d416f739) {
+    observeCaughtError(caughtErrorc0d416f739, {"source":"App.tsx","handler":"handleSplashFinish","site":"App:c0d416f739"});
+        // never block reveal on an ad failure
+      }
+      // NOT an impression. This fires on every signed-in cold start, after the
+      // splash waited on showAppOpenAdIfAvailable() — which returns early on
+      // any of ~8 gates (kill switch, cooldown, daily cap, new-user grace, …).
+      // The real impression is logged inside adsService, after show() resolves.
+      logEvent(AnalyticsEvent.AppOpenAdGateChecked, { timedOut });
+    }
+    setSplashDone(true);
+  };
+
+  // Build a React Navigation theme so headers / cards / focus tints
+  // pick up the active palette without per-screen refactors.
+  const navTheme: Theme = {
+    ...(isDarkTheme ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDarkTheme ? DarkTheme : DefaultTheme).colors,
+      background: colors.bg,
+      card: colors.surface,
+      text: colors.text,
+      border: colors.border,
+      primary: colors.primary,
+      notification: colors.danger,
+    },
+  };
+
+  return (
+    // ErrorBoundary wraps everything below so an uncaught render-time
+    // error inside the navigator, the splash, the toasts, or any
+    // mounted screen falls through to a single Hebrew RTL fallback UI
+    // instead of leaving the user with a frozen white screen. The
+    // boundary lives OUTSIDE NavigationContainer on purpose — a crash
+    // inside the navigator itself still surfaces here.
+    <ErrorBoundary onError={logRenderError}>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <StatusBar
+        barStyle={isDarkTheme ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.bg}
+      />
+      <SystemSafeArea>
+      <NavigationContainer
+        theme={navTheme}
+        ref={navigationRef}
+        onReady={() => {
+          // Release any campaign destination waiting for the navigator.
+          setNavReady(true);
+          // Seed the initial route so the first screen_view fires before
+          // any subsequent state change (otherwise it'd only fire on the
+          // *second* navigation).
+          const r = navigationRef.isReady()
+            ? navigationRef.getCurrentRoute()
+            : null;
+          if (r) {
+            setActiveRouteName(r.name);
+            currentScreenRef.current = r.name;
+            crumbNav(r.name,r.params);
+            logEvent(AnalyticsEvent.ScreenView, { screen: r.name });
+          }
+        }}
+        onStateChange={() => {
+          if (!navigationRef.isReady()) return;
+          const route = navigationRef.getCurrentRoute();
+          const next = route?.name;
+          if (next) setActiveRouteName(next);
+          if(route)crumbNav(route.name,route.params);
+          if (next && next !== currentScreenRef.current) {
+            currentScreenRef.current = next;
+            logEvent(AnalyticsEvent.ScreenView, { screen: next });
+          }
+        }}
+      >
+        {/* Stack the navigator under a dev-only banner. The banner renders
+            nothing in real mode, so production layouts are untouched.
+            RTL is pinned via two paths:
+              1. I18nManager.forceRTL above — flips flex direction
+              2. Text.defaultProps above — applies textAlign:'right' +
+                 writingDirection:'rtl' to every Text in the tree
+            That combination is bulletproof across iOS + Android. */}
+        <View
+          style={{ flex: 1, backgroundColor: colors.bg }}
+          onLayout={e=>recordDiagnostic('act','viewport',{width:e.nativeEvent.layout.width,height:e.nativeEvent.layout.height})}
+          // Every touch in the app passes through here on its way down.
+          //
+          // `onStartShouldSetResponderCapture` is the ONE hook that sees a
+          // touch before any descendant claims it, and returning false leaves
+          // the responder negotiation exactly as it was — nothing about the
+          // app's behaviour changes, we simply get to watch. That is what
+          // makes a DEAD tap visible: a press that no button takes produces no
+          // analytics event, no navigation and no error, so until now it left
+          // no trace anywhere. Now it leaves a `tap` with nothing after it.
+          onStartShouldSetResponderCapture={(e) => {
+            crumbTap(e.nativeEvent.pageX, e.nativeEvent.pageY,e.nativeEvent.target);
+            return false;
+          }}
+          onTouchEnd={e=>crumbGestureEnd(e.nativeEvent.pageX,e.nativeEvent.pageY)}
+        >
+          <MockModeBanner />
+          <AnnouncementBanner />
+          <View style={{ flex: 1, backgroundColor: colors.bg }}>
+            <RootNavigator />
+          </View>
+        </View>
+        {/* Mounted at the navigator level so toasts overlay every screen
+            but stay below RN's modal dialogs. */}
+        <ToastHost />
+        <AppDialogHost />
+        <BannerHost />
+        {/* Global: a device screenshot slides up a pre-filled bug report. */}
+        <ScreenshotReportSheet />
+        <SupportChatHost active={splashDone && updateKind !== 'force' && !whatsNewOpen} hideBubble={activeRouteName === 'LiveMatch'} />
+        {/* Joryio in-app campaigns. INSIDE the navigator so a message's
+            deep-link button resolves against the same routing as any other
+            link; above it there is no navigation to hand the URL to. */}
+        <InAppMessageHost active={!feedbackPromptOpen} onVisibilityChange={setInAppOpen} />
+      </NavigationContainer>
+
+      {/* Splash sits ABOVE everything. RootNavigator keeps mounting +
+          hydrating behind it. We pass `ready` so the splash stays up
+          until the minimum hold elapsed AND we know where to route —
+          guaranteeing the user only ever sees the big-ball loader,
+          never the small spinner that RootNavigator used to show as a
+          "still loading" fallback.
+
+          "Know where to route" differs by auth state:
+            • signed OUT — once the user store is hydrated we already
+              know to show SignIn / Onboarding. Group state is never
+              hydrated while signed out (hydrateGroup only runs once a
+              currentUser exists, see RootNavigator), so waiting on
+              groupHydrated here would pin the splash FOREVER for every
+              signed-out / fresh-install user. Hence the `!currentUserId`
+              short-circuit.
+            • signed IN — wait for groupHydrated too so membership state
+              is real before MainTabs paints. */}
+      {!splashDone ? (
+        <SplashScreen
+          // The entry flag joins the readiness condition because the splash
+          // now has to know WHICH ending it is playing before it stops
+          // holding — dismissing first and discovering afterwards that this
+          // person needed a welcome would flash the tabs at them.
+          ready={
+            userHydrated &&
+            entryOrganicCompleted !== null &&
+            (!currentUserId || groupHydrated)
+          }
+          awaitStart={needsWelcome}
+          onFinish={handleSplashFinish}
+        />
+      ) : null}
+
+      <AdDebugOverlay />
+
+      {splashDone && availableUpdate?.kind === 'force' ? (
+        <UpdateModal type="force" update={availableUpdate} />
+      ) : null}
+
+      {/* Remote-Config blocking overlay — covers everything when
+          maintenance_mode is turned on in the Firebase console. */}
+      <MaintenanceGate />
+
+      {/* In-app popup campaigns (authored in Pulse). Only after splash +
+          when signed in and no blocking update modal is up. */}
+      <CampaignGate active={splashDone && updateKind !== 'force' && !!currentUserId && !feedbackPromptOpen} onVisibilityChange={setCampaignOpen} />
+      <FeedbackPromptHost
+        onVisibilityChange={setFeedbackPromptOpen}
+        active={splashDone && updateKind !== 'force' && !!currentUserId && !viewerIsGuest && profileComplete && onboardingComplete && activeRouteName === 'Profile' && !whatsNewOpen && !campaignOpen && !inAppOpen && !notificationOfferOpen && !supportChatOpen}
+      />
+
+      {/* One-time "מה חדש" highlights after a version update. Only once splash
+          is done, signed in + onboarded, and no update modal is competing. */}
+      {/* The contextual notification offer. Active on the same terms as the
+          other global gates — past splash, no update modal, a real session —
+          and it presents only when a completed action announces a context it
+          recognises. Never at startup. */}
+      <NotificationOfferHost
+        onVisibilityChange={setNotificationOfferOpen}
+        active={
+          splashDone &&
+          updateKind !== 'force' &&
+          !!currentUserId &&
+          !viewerIsGuest &&
+          !whatsNewOpen && !feedbackPromptOpen
+        }
+      />
+      <WhatsNewGate
+        onVisibilityChange={setWhatsNewOpen}
+        active={
+          splashDone &&
+          updateKind !== 'force' &&
+          !!currentUserId &&
+          onboardingComplete &&
+          !feedbackPromptOpen &&
+          !viewerIsGuest
+        }
+      />
+      </SystemSafeArea>
+    </SafeAreaProvider>
+    </ErrorBoundary>
+  );
+}

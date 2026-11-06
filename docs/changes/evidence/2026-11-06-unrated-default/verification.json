@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-06",
+  "passedTestSuites": 645,
+  "totalTestSuites": 647,
+  "passedTests": 7196,
+  "totalTests": 7204,
+  "fullSuitePassed": false,
+  "fullSuiteFailures": [
+    "tests/logic/availablePlayersPulseCapacity.test.tsx",
+    "tests/logic/iosLegacySdkGuard.test.ts"
+  ],
+  "environmentRecoveredSeparately": [
+    "tests/logic/iosLegacySdkGuard.test.ts"
+  ],
+  "unrelatedFailures": [],
+  "clientTypecheck": true,
+  "serverTypecheck": true,
+  "browserChecks": 6,
+  "nativeVerified": false,
+  "deployed": false,
+  "concurrentSourcesRetested": [
+    "tests/logic/availablePlayersPulseCapacity.test.tsx",
+    "tests/logic/matchStatsReadState.test.tsx"
+  ],
+  "followupTestsPassed": 50,
+  "allFailedCasesRecheckedAndPassed": true,
+  "fullSuiteRerunAfterConcurrentTestChange": false
+}

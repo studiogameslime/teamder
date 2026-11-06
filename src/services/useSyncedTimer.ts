@@ -39,6 +39,7 @@ interface SyncedTimerView {
 
 export function useSyncedTimer(
   liveMatch: LiveMatchState | null | undefined,
+  active = true,
 ): SyncedTimerView {
   const running = !!liveMatch?.timerRunning;
   const lastStartedAt = liveMatch?.timerLastStartedAt ?? null;
@@ -62,8 +63,8 @@ export function useSyncedTimer(
   // match is on screen. De-duped + cached inside the service, so mounting
   // several timer consumers triggers at most one network sync.
   useEffect(() => {
-    if (liveMatch) void syncServerClock();
-  }, [liveMatch]);
+    if (liveMatch && active) void syncServerClock();
+  }, [liveMatch, active]);
 
   // Re-sync the server clock periodically WHILE a match is on screen. A single
   // measurement at mount drifts over a long match (one device's wall clock can
@@ -72,28 +73,28 @@ export function useSyncedTimer(
   // Cleared as soon as the live match ends / screen unmounts.
   const hasLiveMatch = !!liveMatch;
   useEffect(() => {
-    if (!hasLiveMatch) return;
+    if (!hasLiveMatch || !active) return;
     const id = setInterval(() => void syncServerClock(), 2 * 60 * 1000);
     return () => clearInterval(id);
-  }, [hasLiveMatch]);
+  }, [hasLiveMatch, active]);
 
   // Snap to the latest server state on every change. This catches
   // pause / reset / external admin mutations immediately, not on the
   // next tick.
   useEffect(() => {
-    setDisplayMs(compute.current());
-  }, [running, lastStartedAt, accumulated]);
+    if (active) setDisplayMs(compute.current());
+  }, [running, lastStartedAt, accumulated, active]);
 
   // Local tick while running. We don't use Reanimated here because
   // the displayed value lives inside <Text/> content, which can only
   // be driven by React state on the JS thread.
   useEffect(() => {
-    if (!running) return;
+    if (!running || !active) return;
     const id = setInterval(() => {
       setDisplayMs(compute.current());
     }, TICK_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [running]);
+  }, [running, active]);
 
   return {
     displayMs,

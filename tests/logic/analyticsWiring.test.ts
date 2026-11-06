@@ -64,7 +64,6 @@ const KNOWN_UNWIRED = new Set<string>([
   'CommunitySearchPerformed',
   'ErrorBoundaryTriggered',
   'ErrorToastShown',
-  'FillerInterestExpressed',
   'FillerInvitationAccepted',
   'GameLocked',
   'GamesTabSwitched',

@@ -1,0 +1,16 @@
+[copy-template] copied public\c\index.html → functions\templates\community.html
+[copy-template] copied public\invite.html → functions\templates\invite.html
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in C:/Users/User/Documents/Codex/Teamder/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+PASS tests/logic/startupDeferredScreens.test.ts
+PASS tests/logic/inviteNavigationExpanded.test.ts
+PASS tests/logic/preReleaseRoundIntegrity.test.ts
+PASS tests/logic/myActivityNavigation.test.tsx
+PASS tests/logic/draftNavigation.test.ts
+
+Test Suites: 5 passed, 5 total
+Tests:       90 passed, 90 total
+Snapshots:   0 total
+Time:        7.436 s
+Ran all test suites within paths "tests/logic/startupDeferredScreens.test.ts", "tests/logic/myActivityNavigation.test.tsx", "tests/logic/inviteNavigationExpanded.test.ts", "tests/logic/draftNavigation.test.ts", "tests/logic/preReleaseRoundIntegrity.test.ts".

@@ -23,12 +23,8 @@ export function playerDiscoveryMatches(player: SocialPlayer, opts: PlayerSearch)
   return playerSearchMatches(player, opts);
 }
 export function playerAvailabilityLines(a?: Pick<UserAvailability, 'preferredDays' | 'preferredTimes' | 'availabilitySlots' | 'isAvailableForInvites'>): string[] {
-  if (!a || a.isAvailableForInvites === false) return [];
-  if (a.availabilitySlots) return Object.entries(a.availabilitySlots).flatMap(([day, slots]) => {
-    const times = (slots ?? []).filter(t => TIMES[t]);
-    return DAYS[Number(day)] && times.length ? [`${DAYS[Number(day)]} · ${times.map(t => TIMES[t]).join(', ')}`] : [];
-  });
-  return (a.preferredDays ?? []).filter(d => DAYS[d]).map(d => `${DAYS[d]}${a.preferredTimes?.length ? ' · ' + a.preferredTimes.map(t => TIMES[t]).filter(Boolean).join(', ') : ''}`);
+  return Object.entries(playerAvailabilitySlots(a)).flatMap(([day,slots]) =>
+    slots.length ? [DAYS[Number(day)] + ' · ' + slots.map(t=>TIMES[t]).join(', ')] : []);
 }
 export function playerSearchMatches(player: SocialPlayer, opts: PlayerSearch): boolean {
   if (opts.text && !normalizePlayerSearch(player.name).includes(normalizePlayerSearch(opts.text))) return false;
@@ -41,19 +37,10 @@ export function playerSearchMatches(player: SocialPlayer, opts: PlayerSearch): b
     return (days?.length ? days : [opts.day]).some(day =>
       (times?.length ? times : [opts.time]).some(time => playerSearchMatches(player, { ...single, day, time })));
   }
-  if (opts.day !== undefined) {
-    const a = player.availability;
-    if (!a || a.isAvailableForInvites === false) return false;
-    const slots = a.availabilitySlots;
-    const times = slots ? slots[opts.day as 0] : a.preferredDays?.includes(opts.day as 0) ? a.preferredTimes : undefined;
-    if (slots ? !times?.length : !a.preferredDays?.includes(opts.day as 0)) return false;
-    if (opts.time && !times?.includes(opts.time as 'evening')) return false;
-  }
-  if (opts.day === undefined && opts.time) {
-    const a = player.availability;
-    if (!a || a.isAvailableForInvites === false) return false;
-    const times = a.availabilitySlots ? Object.values(a.availabilitySlots).flat() : a.preferredDays?.length ? a.preferredTimes : [];
-    if (!times?.includes(opts.time as 'evening')) return false;
+  if (opts.day !== undefined || opts.time) {
+    const grid=playerAvailabilitySlots(player.availability);
+    const windows=opts.day === undefined ? Object.values(grid).flat() : grid[opts.day] ?? [];
+    return opts.time ? windows.includes(opts.time) : windows.length>0;
   }
   return true;
 }

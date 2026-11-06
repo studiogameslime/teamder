@@ -1,15 +1,17 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { SocialPairSummary } from '@/types/social';
 import { RTL_LABEL_ALIGN } from '@/theme';
 
 export function PairStory({ summary, name }: { summary: SocialPairSummary; name: string }) {
+  const {fontScale}=useWindowDimensions();
+  const metricStyle=[s.metric,{flexBasis:72*Math.max(1,fontScale)}];
 
   const block = (title: string, icon: keyof typeof Ionicons.glyphMap, data: SocialPairSummary['sameTeam'], against = false) => <View style={s.block}>
     <View style={s.heading}><Ionicons name={icon} size={20} color="#2563EB"/><Text style={s.title}>{title}</Text></View>
     {data ? <><Text style={s.total}>{data.games} <Text style={s.caption}>משחקים {against ? 'אחד מול השני' : 'באותה קבוצה'}</Text></Text>
-      <View style={s.row}>{[[data.wins,against?'ניצחונות שלך':'ניצחונות','#15803D'],[data.losses,against?'ניצחונות שלו':'הפסדים','#DC4545'],[data.ties,'תיקו','#526785']].map(([n,label,color])=><View key={String(label)} style={s.metric}><Text style={[s.value,{color:String(color)}]}>{n}</Text><Text style={s.label}>{label}</Text></View>)}</View>
+      <View style={s.row}>{[[data.wins,against?'ניצחונות שלך':'ניצחונות','#15803D'],[data.losses,against?'ניצחונות שלו':'הפסדים','#DC4545'],[data.ties,'תיקו','#526785']].map(([n,label,color])=><View key={String(label)} style={metricStyle}><Text style={[s.value,{color:String(color)}]}>{n}</Text><Text style={s.label}>{label}</Text></View>)}</View>
     </> : <Text style={s.copy}>אין עדיין תוצאות מתועדות לחלק הזה.</Text>}
   </View>;
   const noPlay = summary.sharedRounds === 0 && !summary.sameTeam?.games && !summary.against?.games;
@@ -21,7 +23,7 @@ export function PairStory({ summary, name }: { summary: SocialPairSummary; name:
     {block('ראש בראש','flash-outline',summary.against,true)}
     <View style={[s.block,{backgroundColor:'#F5F2FF'}]}>
       <View style={s.heading}><Ionicons name="git-branch-outline" size={20} color="#7650B7"/><Text style={s.title}>מבשלים אחד לשני</Text></View>
-      {summary.assists ? <><View style={s.row}><View style={s.metric}><Text style={[s.value,{color:'#7650B7'}]}>{summary.assists.toOther}</Text><Text style={s.label}>בישולים שלך אליו</Text></View><View style={s.metric}><Text style={[s.value,{color:'#7650B7'}]}>{summary.assists.fromOther}</Text><Text style={s.label}>בישולים שלו אליך</Text></View></View>
+      {summary.assists ? <><View style={s.row}><View style={metricStyle}><Text style={[s.value,{color:'#7650B7'}]}>{summary.assists.toOther}</Text><Text style={s.label}>בישולים שלך אליו</Text></View><View style={metricStyle}><Text style={[s.value,{color:'#7650B7'}]}>{summary.assists.fromOther}</Text><Text style={s.label}>בישולים שלו אליך</Text></View></View>
         {noAssists ? <Text style={s.copy}>{noPlay ? 'הסיפור שלכם עוד לא התחיל. קובעים מחזור ועולים יחד למגרש?' : 'הבישול הראשון ביניכם עוד מחכה. מי ימסור את המסירה לגול?'}</Text> : null}
       </> : <Text style={s.copy}>עדיין אין נתוני בישולים הדדיים מתועדים.</Text>}
     </View>
@@ -29,4 +31,4 @@ export function PairStory({ summary, name }: { summary: SocialPairSummary; name:
     <Text style={s.note}>תוצאות ובישולים לפי משחקים מתועדים · מכל המועדונים והעונות</Text>
   </View>;
 }
-const s=StyleSheet.create({card:{backgroundColor:'#FFF',borderRadius:15,padding:14,gap:10,borderWidth:1,borderColor:'#E5EDF6'},heading:{flexDirection:'row',alignItems:'center',gap:8},title:{flex:1,fontSize:15,fontWeight:'800',color:'#142653',textAlign:RTL_LABEL_ALIGN},copy:{fontSize:12,lineHeight:19,color:'#667796',textAlign:RTL_LABEL_ALIGN,flexShrink:1},block:{padding:12,borderRadius:12,backgroundColor:'#F0F6FF',gap:8},total:{fontSize:26,fontWeight:'800',color:'#2563EB',textAlign:RTL_LABEL_ALIGN},caption:{fontSize:12,fontWeight:'500',color:'#526785'},row:{flexDirection:'row',gap:8},metric:{flex:1,alignItems:'center',gap:4},value:{fontSize:23,fontWeight:'800'},label:{fontSize:11,lineHeight:16,color:'#526785',textAlign:'center'},note:{fontSize:10,lineHeight:16,color:'#8290A5',textAlign:RTL_LABEL_ALIGN}});
+const s=StyleSheet.create({card:{backgroundColor:'#FFF',borderRadius:15,padding:14,gap:10,borderWidth:1,borderColor:'#E5EDF6'},heading:{flexDirection:'row',alignItems:'center',gap:8},title:{flex:1,fontSize:15,fontWeight:'800',color:'#142653',textAlign:RTL_LABEL_ALIGN},copy:{fontSize:12,lineHeight:19,color:'#667796',textAlign:RTL_LABEL_ALIGN,flexShrink:1},block:{padding:12,borderRadius:12,backgroundColor:'#F0F6FF',gap:8},total:{fontSize:26,fontWeight:'800',color:'#2563EB',textAlign:RTL_LABEL_ALIGN},caption:{fontSize:12,fontWeight:'500',color:'#526785'},row:{flexDirection:'row',flexWrap:'wrap',gap:8},metric:{flexGrow:1,flexShrink:1,alignItems:'stretch',gap:4},value:{fontSize:23,fontWeight:'800',textAlign:'center'},label:{fontSize:11,lineHeight:16,color:'#526785',textAlign:'center'},note:{fontSize:10,lineHeight:16,color:'#8290A5',textAlign:RTL_LABEL_ALIGN}});

@@ -12,7 +12,7 @@ function visit(node:ts.Node){
 const flush=()=>new Promise<void>(done=>setImmediate(done));
 function setup(){
  const state:any={loading:false,failed:false,game:{id:'round',old:true},count:2};
- const scope:any={module:{exports:{}},params:{},gameId:'round',loadRevision:{current:0},gameService:{getGameById:jest.fn()},currentUser:{id:'admin'},myCommunities:[],MIN_TEAMS:2,MAX_TEAMS:5,
+ const scope:any={module:{exports:{}},params:{},gameId:'round',loadRevision:{current:0},gameService:{getGameById:jest.fn()},currentUser:{id:'admin'},adminScope:'[]',myCommunities:[],MIN_TEAMS:2,MAX_TEAMS:5,
  setLoadingGame:(v:boolean)=>state.loading=v,setLoadFailed:(v:boolean)=>state.failed=v,setGame:(v:any)=>state.game=v,setAutoNumTeams:(v:number)=>state.count=v,hydratePlayers:jest.fn(),toast:{info:jest.fn()},he:{draftAdminOnly:'admin only'},nav:{canGoBack:()=>true,goBack:jest.fn()},logError:jest.fn()};
  vm.runInNewContext(ts.transpileModule(`module.exports=${loader}`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,scope);
  const blocked=()=>vm.runInNewContext(gate,{loadingGame:state.loading,loadFailed:state.failed,openingExisting:false,game:state.game,gameId:'round'});

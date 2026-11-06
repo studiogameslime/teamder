@@ -10,11 +10,12 @@ const cases=[
 ];
 function fixture(path:string) {
  const file=ts.createSourceFile(path,fs.readFileSync(path,'utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
- let effect:ts.CallExpression|undefined,reload:ts.VariableDeclaration|undefined,owner:ts.VariableDeclaration|undefined;
+ let effect:ts.CallExpression|undefined,reload:ts.VariableDeclaration|undefined,owner:ts.VariableDeclaration|undefined,loadScope:ts.VariableDeclaration|undefined;
  const roster=path.includes('useCommunityRoster');
  function visit(node:ts.Node) {
   if(roster&&ts.isVariableDeclaration(node)&&node.name.getText(file)==='reload')reload=node;
   if(roster&&ts.isVariableDeclaration(node)&&node.name.getText(file)==='owner')owner=node;
+  if(path.includes('AddMembersScreen')&&ts.isVariableDeclaration(node)&&node.name.getText(file)==='loadScope')loadScope=node;
   if(ts.isCallExpression(node)&&node.expression.getText(file)===(roster?'useFocusEffect':'useEffect')&&
     node.getText(file).includes(roster?'reload()':'gameService.getGameById'))effect=node;
   ts.forEachChild(node,visit);
@@ -26,12 +27,13 @@ function fixture(path:string) {
  const same=(a:unknown[]|undefined,b:unknown[])=>!!a&&a.length===b.length&&a.every((v,i)=>Object.is(v,b[i]));
  const context:any={gameId:'g',groupId:'g',me:{id:'owner',isGuest:false},myCommunities:[],nav:{},reserve:false,
   gameService:{getGameById:read},groupService:{get:read},setLoading:jest.fn(),setRequest:jest.fn(),
+  setDataScope:jest.fn(),setGame:jest.fn(),setMembers:jest.fn(),setSelected:jest.fn(),setAvailableIds:jest.fn(),currentLoadScope:{current:''},
   generation:{current:0},currentOwner:{current:''},focused:{current:false},
   useEffect:(callback:()=>any,deps:unknown[])=>{if(!same(previous,deps)){cleanup?.();previous=deps;cleanup=callback();}},
   useCallback:(callback:any,deps:unknown[])=>{const index=callbackIndex++;if(!same(memoized[index]?.deps,deps))memoized[index]={deps,callback};return memoized[index].callback;},
   useFocusEffect:(callback:any)=>{if(callback!==focusCallback){cleanup?.();focusCallback=callback;cleanup=callback();}}};
  const run=(code:string)=>vm.runInNewContext(ts.transpileModule(code,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
- const render=()=>{callbackIndex=0;if(owner){context.viewer=context.me;context.owner=run(`(${owner.initializer!.getText(file)})`);context.currentOwner.current=context.owner;}if(reload)context.reload=run(`(${reload.initializer!.getText(file)})`);run(effect!.getText(file));};
+ const render=()=>{callbackIndex=0;if(loadScope){context.loadScope=run(`(${loadScope.initializer!.getText(file)})`);context.currentLoadScope.current=context.loadScope;}if(owner){context.viewer=context.me;context.owner=run(`(${owner.initializer!.getText(file)})`);context.currentOwner.current=context.owner;}if(reload)context.reload=run(`(${reload.initializer!.getText(file)})`);run(effect!.getText(file));};
  render();return {context,read,render,roster};
 }
 

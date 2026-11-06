@@ -1,4 +1,5 @@
 import { ContentReveal } from '@/components/anim/ContentReveal';
+import { ReadStatusNotice } from '@/components/ReadStatusNotice';
 import { observeCaughtError } from '../../utils/errorObservation';
 import { socialPlayersService } from '@/services/socialPlayersService';
 // StatisticsScreen — a dedicated page that gathers the player's numbers and
@@ -113,13 +114,10 @@ export function StatisticsScreen() {
     // Goals are incremented SERVER-side (commitRoundStats), so the local store
     // copy lags. Fetch the fresh user doc for an accurate goal count + goals/
     // evening rather than trusting the (possibly stale) cached stats.
-    userService
-      .getUserById(uid)
-      .then((fresh) => {
-        if (!alive) return null;
+    const totals = userService.getUserById(uid).then((fresh) => {
         // Penalty-shootout stats (server-maintained) — captured for the tiles.
         const st = fresh?.stats;
-        setPen(
+        if (alive) setPen(
           st
             ? {
                 penTaken: st.penTaken ?? 0,
@@ -133,9 +131,17 @@ export function StatisticsScreen() {
               }
             : null,
         );
-        return playerStatsService.compute(uid, {
+        return {
           goals: fresh?.stats?.goals ?? localUser?.stats?.goals ?? 0,
           assists: fresh?.stats?.assists ?? localUser?.stats?.assists ?? 0,
+        };
+      });
+    // Fetch the fresh totals alongside the independent registration/pair reads.
+    // compute waits for these totals before publishing an accurate base summary.
+    playerStatsService.compute(uid, {
+          goals: localUser?.stats?.goals ?? 0,
+          assists: localUser?.stats?.assists ?? 0,
+          totals,
           isCurrent: () => alive,
           onBase: (base) => {
             if (!alive) return;
@@ -146,7 +152,6 @@ export function StatisticsScreen() {
           onHighlights: (highlights) => {
             if (alive) setStats(base => base ? { ...base, highlights } : base);
           },
-        });
       })
       .then((s) => {
         if (!alive || !s) return;
@@ -211,15 +216,14 @@ export function StatisticsScreen() {
         <StatisticsBrand />
       </View>
       {(!ownsStats || loading && !stats) && !qaPreview ? (
-        <ScrollSurface contentContainerStyle={styles.content}><PersonalStatisticsSkeleton /></ScrollSurface>
-      ) : restricted ? <View style={styles.center}><Ionicons name="shield-checkmark-outline" size={40} color="#2563EB"/><Text style={{color:colors.textMuted,textAlign:'center'}}>הסטטיסטיקה אינה זמינה לך לפי הגדרות הפרטיות של השחקן.</Text></View> : failed && !hasData && !qaPreview ? (
+        <ScrollSurface contentContainerStyle={styles.content}><ReadStatusNotice scope={ownerKey} loading={loading} failed={false} hasData={false} onRetry={() => setReloadTick(t => t + 1)}/><PersonalStatisticsSkeleton /></ScrollSurface>
+      ) : restricted ? <View style={styles.center}><Ionicons name="shield-checkmark-outline" size={40} color="#2563EB"/><Text style={{color:colors.textMuted,textAlign:'center'}}>הסטטיסטיקה אינה זמינה לך לפי הגדרות הפרטיות של השחקן.</Text></View> : failed && !viewStats && !qaPreview ? (
         <View style={styles.center}>
-          <Text style={{ color: colors.textMuted }}>לא ניתן לטעון את הסטטיסטיקה כרגע.</Text>
-          <Button title={he.retry} variant="outline" onPress={() => setReloadTick((t) => t + 1)} />
+          <ReadStatusNotice scope={ownerKey} loading={loading} failed hasData={false} onRetry={() => setReloadTick(t => t + 1)}/>
         </View>
       ) : (
         <ScrollSurface contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          {failed && !qaPreview ? <View><Text style={{ color: colors.textMuted }}>לא ניתן לרענן את הסטטיסטיקה כרגע. הנתונים הקודמים מוצגים.</Text><Button title={he.retry} variant="outline" onPress={() => setReloadTick((t) => t + 1)} /></View> : null}
+          {!qaPreview ? <ReadStatusNotice scope={ownerKey} loading={loading || highlightsLoading} failed={failed} hasData={!!viewStats} onRetry={() => setReloadTick(t => t + 1)}/> : null}
           {hasData && viewStats ? <>
             {!qaPreview && viewStats.highlights?.incomplete && !highlightsLoading ? <View><Text style={{color:colors.textMuted}}>חלק מנתוני המחזורים לא נטענו. הנתונים הזמינים מוצגים.</Text><Button title={he.retry} variant="outline" onPress={() => setReloadTick(t=>t+1)} /></View> : null}
             <View ref={shareRef} collapsable={false} style={styles.shareCard}>

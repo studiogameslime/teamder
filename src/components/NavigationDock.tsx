@@ -4,24 +4,22 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from '
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 
-export const DockIndexContext = createContext({ index: 0, count: 4 });
+export const DockCenterContext = createContext(0.125);
 
 export function DockHighlight() {
-  const { index, count } = useContext(DockIndexContext);
+  const center = useContext(DockCenterContext);
   const [width, setWidth] = useState(0);
   const reduced = useReducedMotion();
   const x = useSharedValue(0);
   const ready = useSharedValue(false);
   useEffect(() => {
-    if (!width || !count) return;
-    const cell = width / count;
-    const position = I18nManager.isRTL ? count - 1 - index : index;
-    const target = position * cell + (cell - 42) / 2;
+    if (!width) return;
+    const target = (I18nManager.isRTL ? 1 - center : center) * width - 21;
     x.value = reduced || !ready.value ? target : withTiming(target, {
       duration: 280, easing: Easing.inOut(Easing.cubic),
     });
     ready.value = true;
-  }, [width, count, index, reduced, ready, x]);
+  }, [width, center, reduced, ready, x]);
   const motion = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   return <View pointerEvents="none" style={styles.background} onLayout={e => setWidth(e.nativeEvent.layout.width)}>
     {width > 0 ? <Animated.View style={[styles.highlight, motion]} /> : null}

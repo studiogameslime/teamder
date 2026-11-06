@@ -1,0 +1,85 @@
+{
+  "reviewer": "design_audit",
+  "sourceFrozen": true,
+  "updatedPairs": [
+    {
+      "id": "rounds/registration",
+      "technical": "docs/features/rounds/registration.md",
+      "simple": "docs/features/rounds/registration.simple.md",
+      "source": "src/components/games/RegistrationConflictModal.tsx",
+      "direct": true
+    },
+    {
+      "id": "rounds/games-list",
+      "technical": "docs/features/rounds/games-list.md",
+      "simple": "docs/features/rounds/games-list.simple.md",
+      "source": "src/components/games/RegistrationConflictModal.tsx",
+      "direct": true
+    },
+    {
+      "id": "clubs/covers-and-invitations",
+      "technical": "docs/features/clubs/covers-and-invitations.md",
+      "simple": "docs/features/clubs/covers-and-invitations.simple.md",
+      "source": "src/components/community/CoverImagePicker.tsx",
+      "direct": true
+    },
+    {
+      "id": "statistics/season-summary",
+      "technical": "docs/features/statistics/season-summary.md",
+      "simple": "docs/features/statistics/season-summary.simple.md",
+      "source": "src/components/summary/SeasonClubSummary.tsx",
+      "direct": true
+    },
+    {
+      "id": "profile/season-titles",
+      "technical": "docs/features/profile/season-titles.md",
+      "simple": "docs/features/profile/season-titles.simple.md",
+      "source": "src/components/summary/SeasonClubSummary.tsx",
+      "direct": false
+    },
+    {
+      "id": "clubs/seasons",
+      "technical": "docs/features/clubs/seasons.md",
+      "simple": "docs/features/clubs/seasons.simple.md",
+      "source": "src/components/summary/SeasonClubSummary.tsx",
+      "direct": false
+    },
+    {
+      "id": "statistics/chemistry-and-records",
+      "technical": "docs/features/statistics/chemistry-and-records.md",
+      "simple": "docs/features/statistics/chemistry-and-records.simple.md",
+      "source": "src/components/summary/SeasonClubSummary.tsx",
+      "direct": false
+    },
+    {
+      "id": "statistics/scopes-and-data",
+      "technical": "docs/features/statistics/scopes-and-data.md",
+      "simple": "docs/features/statistics/scopes-and-data.simple.md",
+      "source": "src/components/summary/SeasonClubSummary.tsx",
+      "direct": false
+    }
+  ],
+  "audits": [
+    "docs/audits/2026-11-02-overnight/component-review-receipt.json",
+    "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+    "docs/audits/2026-11-02-overnight/overlay-design-review.json",
+    "docs/audits/2026-11-02-overnight/native-final-design.json",
+    "docs/audits/2026-11-02-overnight/design.md"
+  ],
+  "afterProofs": [
+    "artifacts/overnight-2026-11-02/functional-native/conflict-busy-after-back-blocked.png",
+    "artifacts/overnight-2026-11-02/functional-native/cover-upload-after.png",
+    "artifacts/overnight-2026-11-02/functional-native/season-record-loading-after.png",
+    "artifacts/overnight-2026-11-02/functional-native/season-record-error-after.png"
+  ],
+  "tests": {
+    "registration": 6,
+    "cover": 6,
+    "seasonRecord": 8
+  },
+  "limit": "מארחי רכיבי מקור ומבחנים ממוקדים בלבד. בדיקה כוללת, טיפוסים, מניפסט, יומן ופריסה אינם טענת מסירה של סוכן זה.",
+  "finalStatusRefreshReceipt": "artifacts/overnight-2026-11-02/design-refresh-receipt.json",
+  "refreshedFinalFeatureCount": 6,
+  "statusFailuresAtFinalRefresh": 13,
+  "statusFailureExplanation": "תשעת המקורות הקודמים וארבעת מסמכי הראיות של סוכן הכיווניות שהמתינו לרענון שלו."
+}

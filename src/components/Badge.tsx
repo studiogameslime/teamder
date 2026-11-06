@@ -94,9 +94,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: radius.pill,
     alignSelf: 'flex-start',
+    maxWidth: '100%',
+    flexShrink: 1,
   },
   text: {
     ...typography.label,
+    flexShrink: 1,
+    textAlign: 'center',
     fontWeight: '700',
   },
 });

@@ -1,0 +1,21 @@
+{
+  "at": "2026-11-05T08:55:49.840Z",
+  "uid": "wcIbvrW1hOffWu0YnWeYWsuZvFv1",
+  "visitId": "e844d4ef-77e9-4d3c-af85-ce51d640e182",
+  "events": 4,
+  "screenEntries": 3,
+  "duplicateDeliveryDidNotIncreaseCounts": true,
+  "clubLabelResolved": true,
+  "coverage": true,
+  "throughDeployedPulseProxy": true,
+  "existingAdminAuthenticated": true,
+  "qaDeniedAdminRead": true,
+  "sourceModules": [
+    "src/services/usageActivityQueue.ts",
+    "pulse/src/services/usageActivity.ts",
+    "pulse/src/services/adminTransport.ts",
+    "pulse/src/services/firestoreRest.ts"
+  ],
+  "businessWrites": false,
+  "reads": 3
+}

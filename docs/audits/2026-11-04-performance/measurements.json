@@ -1,0 +1,94 @@
+{
+  "date": "2026-11-04",
+  "nativeDeviceMeasurement": false,
+  "boot": {
+    "registrations": 154,
+    "uniqueScreenModulesDeferred": 54,
+    "returningHoldMs": {
+      "before": 1400,
+      "after": 240,
+      "saved": 1160
+    },
+    "staticLocalImportGraph": {
+      "before": 658,
+      "after": 227,
+      "method": "Local static value imports only; excludes lazy requires, native and external packages. Structural evidence, not elapsed time."
+    }
+  },
+  "controlledLoading": {
+    "method": "production hooks with controlled delay and fake clock; no network/device latency measurement",
+    "input": {
+      "groupMs": 100,
+      "memberMs": 200,
+      "statsMs": 900,
+      "cardsMs": 1200
+    },
+    "roster": [
+      {
+        "phase": "before",
+        "firstContentMs": 1300,
+        "completeMs": 1300,
+        "sourceSha256": "2c7be628d91f39fab70fcdfbb74170649a1e3c0875d9be061f160f936d9e63b2"
+      },
+      {
+        "phase": "after",
+        "firstContentMs": 300,
+        "completeMs": 1300,
+        "sourceSha256": "5df41aa6a549f50c4cd98e7cd310e0b4c6912fbefb1528263483ed7befb199f8"
+      }
+    ],
+    "hiddenTimer": [
+      {
+        "phase": "before",
+        "hiddenMs": 60000,
+        "displayUpdates": 240,
+        "syncCalls": 1
+      },
+      {
+        "phase": "after",
+        "hiddenMs": 60000,
+        "displayUpdates": 0,
+        "syncCalls": 0
+      }
+    ]
+  },
+  "comparison": {
+    "scenario": "Controlled current-season comparison while archive list is slow",
+    "source": "src/screens/players/PlayerCompareScreen.tsx",
+    "test": "tests/logic/playerCompareParallelArchive.test.ts",
+    "testName": "controlled latency: current is visible at 500 ms while the 2200 ms archive is still pending",
+    "clock": "Jest fake timers; source hooks executed with a controlled scheduler and service boundaries",
+    "metadataArrivedAtMs": 200,
+    "comparisonDurationMs": 300,
+    "observedCurrentVisibleAtMs": 500,
+    "archiveArrivedAtMs": 2200,
+    "comparisonReadsAfterArchiveArrived": 1,
+    "scope": "current",
+    "passedFocusedTests": 42,
+    "focusedSuites": 5,
+    "limitations": [
+      "Not a native screen rendering measurement.",
+      "Not Firestore/network latency or a physical-device startup measurement.",
+      "No before source files were replaced or modified to perform the measurement."
+    ]
+  },
+  "repeatRefreshScenario": {
+    "unrelatedObjectReplacements": 5,
+    "gamesFeedServiceCalls": {
+      "before": 24,
+      "after": 4
+    },
+    "addMembersGameCalls": {
+      "before": 6,
+      "after": 1
+    },
+    "draftBoardGameCalls": {
+      "before": 6,
+      "after": 1
+    },
+    "tests": [
+      "tests/logic/gamesFeedPerformance.test.ts",
+      "tests/logic/draftRecruitmentPerformance.test.ts"
+    ]
+  }
+}

@@ -7,6 +7,10 @@ const cp = require('child_process');
 const crypto = require('crypto');
 const root = path.resolve(__dirname, '..');
 const boundaries = {
+  'src/services/controlActivity.ts': 'Analytics delivery failures only enter the bounded local diagnostic journal. Sending a remote error for each gesture would cause reporting recursion.',
+  'src/services/productActor.ts': 'Product measurement is an optional analytics sink. Failures when reading or recording the actor are local diagnostics, never another remote event.',
+  'src/services/usageActivityQueue.ts': 'Usage delivery and local persistence report only bounded local diagnostics; reporting delivery failures remotely could recursively report the reporter itself.',
+  'src/services/usageActivity.ts': 'Usage lifecycle/recorder failures are isolated from navigation and business actions, with local-only diagnostics and no recursive remote error collection.',
   'src/services/diagnosticRuntime.ts': 'Diagnostic environment probes must not recursively report unavailable native modules.',
   'src/services/diagnosticCallable.ts': 'Transport rethrows the original error; callers report it with its exact operation span.',
   'src/services/crashlyticsTestService.ts': 'Explicit diagnostic test: reporter failure is returned to the user and must not report recursively.',

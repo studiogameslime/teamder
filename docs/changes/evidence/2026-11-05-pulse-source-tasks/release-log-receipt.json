@@ -1,0 +1,23 @@
+{
+  "at": "2026-11-05T08:20:43.184759+00:00",
+  "localOnly": true,
+  "deployed": false,
+  "entries": [
+    {
+      "id": "pulse-source-tasks-feedback-2026-11-05",
+      "readBackVerified": true,
+      "version": "next",
+      "shotId": "aG7WZh19HzWOAxesqouA",
+      "shotReadBackVerified": true,
+      "jpegSha256": "a0bf0f54a9e14afa4d6bc137d04c7b893742087eed369c56404ff8e5c75dd2e9"
+    },
+    {
+      "id": "pulse-source-tasks-support-2026-11-05",
+      "readBackVerified": true,
+      "version": "next",
+      "shotId": "6pOr5T32aiRz2Nv7jbgT",
+      "shotReadBackVerified": true,
+      "jpegSha256": "2f495a97eeb3840944aa19784156697959a9bf04101002920791970f2df61aaa"
+    }
+  ]
+}

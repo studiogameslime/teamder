@@ -1,4 +1,5 @@
 import { ContentReveal } from '@/components/anim/ContentReveal';
+import { ReadStatusNotice, OperationStatus } from '@/components/ReadStatusNotice';
 import { useRememberedScroll, useRememberedValue } from '@/hooks/useListMemory';
 import { useConfirmedFeedback } from '@/hooks/useConfirmedFeedback';
 import { registrationFeedback } from '@/utils/registrationFeedback';
@@ -100,9 +101,19 @@ export function GamesListScreen() {
   const nav = useNavigation<Nav>();
   const route = useRoute<RouteProp<GameStackParamList, 'GamesList'>>();
   const user = useUserStore((s) => s.currentUser);
+  const userId = user?.id;
   const confirmedFeedback = useConfirmedFeedback(`games-list:${user?.id}`, user?.id);
   const myCommunities = useGroupStore((s) => s.groups);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
+  // Only identity and club membership change these four queries. Profile
+  // refreshes and renamed/reordered clubs must not start another full read.
+  const feedScope = JSON.stringify([
+    userId ?? null,
+    user?.isGuest === true,
+    [...new Set(myCommunities.map((group) => group.id))].sort(),
+  ]);
+  const currentFeedScope = useRef(feedScope);
+  currentFeedScope.current = feedScope;
 
   // "Mark your available days" nudge — shown once (then snoozed 3 days) to a
   // logged-in user who hasn't set any preferredDays, so the app can suggest
@@ -136,11 +147,20 @@ export function GamesListScreen() {
   const isGuest = useIsGuest();
   const authAction = useAuthenticatedAction();
 
-  const [myGames, setMyGames] = useState<Game[]>([]);
-  const [communityGames, setCommunityGames] = useState<Game[]>([]);
-  const [openGames, setOpenGames] = useState<Game[]>([]);
+  const [rawMyGames, setMyGames] = useState<Game[]>([]);
+  const [rawCommunityGames, setCommunityGames] = useState<Game[]>([]);
+  const [rawOpenGames, setOpenGames] = useState<Game[]>([]);
   // Scheduled ("בקרוב") games in my communities — registration not yet open.
-  const [scheduledUpcoming, setScheduledUpcoming] = useState<Game[]>([]);
+  const [rawScheduledUpcoming, setScheduledUpcoming] = useState<Game[]>([]);
+  const [feedOwner, setFeedOwner] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const feedRequest = useRef(0);
+  const hasFeed = !!user && feedOwner === user.id;
+  const myGames = hasFeed ? rawMyGames : [];
+  const communityGames = hasFeed ? rawCommunityGames : [];
+  const openGames = hasFeed ? rawOpenGames : [];
+  const scheduledUpcoming = hasFeed ? rawScheduledUpcoming : [];
+  useEffect(() => () => { feedRequest.current += 1; }, []);
   const [loading, setLoading] = useState(true);
   // Tracks pull-to-refresh ONLY. The native RefreshControl spinner
   // and our SoccerBallLoader used to share `loading`, which made
@@ -157,14 +177,14 @@ export function GamesListScreen() {
   useEffect(() => {
     let alive = true;
     const fetchCount = () => {
-      if (!user || isGuest) { setRequestCount(0); return; }
-      getInboxCount(user.id).then(value => { if (alive) setRequestCount(value); }).catch((caughtError19d2b52fd4: unknown) => {
+      if (!userId || isGuest) { setRequestCount(0); return; }
+      getInboxCount(userId).then(value => { if (alive) setRequestCount(value); }).catch((caughtError19d2b52fd4: unknown) => {
     observeCaughtError(caughtError19d2b52fd4, {"source":"src/screens/games/GamesListScreen.tsx","handler":"fetchCount","site":"GamesListScreen:19d2b52fd4"});});
     };
     fetchCount();
     const unsubscribe = nav.addListener('focus', fetchCount);
     return () => { alive = false; unsubscribe(); };
-  }, [nav, user, isGuest]);
+  }, [nav, userId, isGuest]);
   // Soft-confirm for cancellations past the cancel-deadline window.
   // Holds the target game so onConfirm knows what to cancel.
   const [lateCancelGame, setLateCancelGame] = useState<Game | null>(null);
@@ -234,14 +254,21 @@ export function GamesListScreen() {
 
   const reload = useCallback(
     async (opts: { pullToRefresh?: boolean } = {}) => {
-      if (!user) return;
+      const [ownerId, guest, myCommunityIds] = JSON.parse(feedScope) as [string | null, boolean, string[]];
+      if (!ownerId) return;
+      const request = ++feedRequest.current;
+      const isCurrent = () => {
+        const account = useUserStore.getState().currentUser;
+        return request === feedRequest.current && currentFeedScope.current === feedScope &&
+          account?.id === ownerId && (account.isGuest === true) === guest;
+      };
+      setLoadFailed(false);
       if (opts.pullToRefresh) {
         setRefreshing(true);
       } else {
         setLoading(true);
       }
       try {
-        const myCommunityIds = myCommunities.map((g) => g.id);
         const [a, b, c, d] = await Promise.all([
           // getMyLiveOrUpcomingGames (not getMyGames): the latter is
           // `status==='open'` only, so a game that went 'active' (live),
@@ -252,11 +279,13 @@ export function GamesListScreen() {
           // render layer already allows them (isVisibleInMyGames = non-
           // terminal), and the open-only community/open sections below can't
           // duplicate the non-open games this adds.
-          gameService.getMyLiveOrUpcomingGames(user.id),
-          gameService.getCommunityGames(user.id, myCommunityIds),
-          gameService.getOpenGames(user.id, myCommunityIds),
-          gameService.getMyUpcomingScheduledGames(user.id, myCommunityIds),
+          gameService.getMyLiveOrUpcomingGames(ownerId),
+          gameService.getCommunityGames(ownerId, myCommunityIds),
+          gameService.getOpenGames(ownerId, myCommunityIds),
+          gameService.getMyUpcomingScheduledGames(ownerId, myCommunityIds),
         ]);
+        if (!isCurrent()) return;
+        setFeedOwner(ownerId);
         setMyGames(a);
         setCommunityGames(b);
         setOpenGames(c);
@@ -273,25 +302,30 @@ export function GamesListScreen() {
         if (uids.length > 0) hydratePlayers(uids);
         return { mine: a, community: b, open: c };
       } catch (err) {
+        if (!isCurrent()) return;
+        setLoadFailed(true);
     observeCaughtError(err, {"source":"src/screens/games/GamesListScreen.tsx","handler":"GamesListScreen","site":"GamesListScreen:5e63241921"});
         logError('reloadGamesList', err, {
           screen: 'GamesListScreen',
-          userId: user.id,
+          userId: ownerId,
           pullToRefresh: !!opts.pullToRefresh,
         });
         if (__DEV__) console.warn('[gamesList] reload failed', err);
         return undefined;
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (isCurrent()) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
-    [user, myCommunities, hydratePlayers],
+    [feedScope, hydratePlayers],
   );
 
   useFocusEffect(
     useCallback(() => {
       reload();
+      return () => { feedRequest.current += 1; };
     }, [reload]),
   );
   // Initial focus already loads the list. A mount effect here duplicated all
@@ -780,7 +814,9 @@ export function GamesListScreen() {
       >
 
         <View style={styles.body}>
-          {loading && isEmpty ? (
+          <ReadStatusNotice scope={user?.id ?? 'guest'} loading={loading || refreshing} failed={loadFailed} hasData={hasFeed} onRetry={() => void reload({pullToRefresh: true})}/>
+          <OperationStatus scope={busyGameId ?? ''} active={!!busyGameId} label="ממתינים לאישור הפעולה" awaitingConfirmation/>
+          {loadFailed && !hasFeed ? null : !hasFeed ? (
             // Skeleton placeholder cards — shape-accurate so the
             // layout doesn't shove when the real cards land.
             <MatchCardSkeleton count={3} />
@@ -1302,7 +1338,7 @@ const styles = StyleSheet.create({
     top: -4,
     end: -4,
     minWidth: 18,
-    height: 18,
+    minHeight: 18,
     borderRadius: 9,
     paddingHorizontal: 4,
     backgroundColor: '#EF4444',
@@ -1351,13 +1387,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#0F172A',
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
   noOpenBody: {
     fontSize: 13,
     color: '#64748B',
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
   discovery: { marginTop: spacing.lg, gap: spacing.lg },
   cardsList: {

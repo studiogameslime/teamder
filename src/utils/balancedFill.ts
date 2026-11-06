@@ -10,7 +10,7 @@ export const fillAverage = (ids: string[], ratings: Record<string, number>) =>
 
 export function fillComparisonText(sides: [string[], string[]], ratings: Record<string, number>): string {
   if (sides.flat().some(id => !Number.isFinite(ratings[id]) || ratings[id] <= 0)) {
-    return 'לחלק מהשחקנים אין דירוג. ההשוואה משתמשת עבורם בדירוג בסיס של 3 מתוך 5.';
+    return `לחלק מהשחקנים אין דירוג. ההשוואה משתמשת עבורם בדירוג בסיס של ${NEUTRAL_RATING} מתוך 5.`;
   }
   return Math.abs(fillAverage(sides[0], ratings) - fillAverage(sides[1], ratings)) <= 0.2
     ? 'ההרכבים שנבחרו קרובים בדירוג.' : 'קיים פער דירוג בין ההרכבים. אפשר לשנות את המשלימים.';

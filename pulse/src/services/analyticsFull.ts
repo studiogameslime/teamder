@@ -12,6 +12,9 @@ import type { NameCount } from '../types';
 import { googleOAuthToken } from './auth';
 import { listAll, queryByCreatedAt } from './firestoreRest';
 import { isTestAccount } from './firebase';
+import controlLabels from '../data/controlActions.json';
+import eventActionLabels from '../data/eventActionLabels.json';
+import { noActions, readActionReport, type ActionReport } from './actionReports';
 
 export interface AnalyticsFull {
   // KPIs (current period + % change vs the previous equal-length period)
@@ -27,7 +30,8 @@ export interface AnalyticsFull {
   registeredGame: number;
   createdCommunity: number;
   // breakdowns
-  topActions: NameCount[]; // top GA events (mapped to Hebrew where known)
+  actions: ActionReport;
+  controls: ActionReport;
   acquisition: NameCount[]; // first-user channel
   devices: NameCount[]; // by OS (Android / iOS)
   // push (Firestore notifications)
@@ -57,17 +61,21 @@ const delta = (cur: number, prev: number): number | null =>
 
 // Hebrew labels for known app events.
 // Hebrew labels for the app's real GA events (verified against the property).
-const EVENT_LABEL: Record<string, string> = {
-  game_viewed: 'צפו במשחק',
-  group_viewed: 'צפו בקהילה',
-  game_joined: 'הצטרפו למשחק',
-  game_created: 'יצרו משחק',
-  group_created: 'יצרו קהילה',
-  recurring_game_created: 'יצרו משחק קבוע',
-  game_cancelled: 'ביטלו משחק',
-  game_edited: 'ערכו משחק',
-  game_finished: 'סיימו משחק',
-  match_round_completed: 'סיימו סבב',
+export const EVENT_LABEL: Record<string, string> = {
+  ...eventActionLabels,
+  live_goal_recorded: 'הזינו שער במשחק חי',
+  player_comparison_viewed: 'צפו בהשוואת שחקנים',
+  player_compare_tab_changed: 'החליפו לשונית בהשוואת שחקנים',
+  game_viewed: 'צפו במחזור',
+  group_viewed: 'צפו במועדון',
+  game_joined: 'נרשמו למחזור',
+  game_created: 'יצרו מחזור',
+  group_created: 'יצרו מועדון',
+  recurring_game_created: 'יצרו מחזור קבוע',
+  game_cancelled: 'ביטלו מחזור',
+  game_edited: 'ערכו מחזור',
+  game_finished: 'סיימו מחזור',
+  match_round_completed: 'סיימו משחקון',
   live_match_opened: 'פתחו משחק חי',
   sign_in_success: 'התחברו',
   onboarding_completed: 'השלימו הצטרפות',
@@ -118,6 +126,7 @@ const EVENT_LABEL: Record<string, string> = {
 };
 // Automatic / lifecycle events that aren't meaningful "user actions".
 const SKIP_EVENTS = new Set([
+  'teamder_ui_action',
   'first_open', 'user_engagement', 'app_remove', 'session_start',
   'os_update', 'app_update', 'app_clear_data', 'app_exception',
   'screen_view', 'app_foregrounded', 'app_backgrounded',
@@ -142,16 +151,20 @@ interface RangeSpec {
   endMs: number;
 }
 function rangeSpec(key: RangeKey): RangeSpec {
-  const DAY = 86_400_000;
   const now = Date.now();
   const sot = new Date(new Date().setHours(0, 0, 0, 0)).getTime();
+  const dayStartBefore = (days: number) => {
+    const day = new Date(sot);
+    day.setDate(day.getDate()-days);
+    return day.getTime();
+  };
   switch (key) {
     case 'today':
       return { cur: { startDate: 'today', endDate: 'today' }, prev: { startDate: 'yesterday', endDate: 'yesterday' }, startMs: sot, endMs: now };
     case 'yesterday':
-      return { cur: { startDate: 'yesterday', endDate: 'yesterday' }, prev: { startDate: '2daysAgo', endDate: '2daysAgo' }, startMs: sot - DAY, endMs: sot };
+      return { cur: { startDate: 'yesterday', endDate: 'yesterday' }, prev: { startDate: '2daysAgo', endDate: '2daysAgo' }, startMs: dayStartBefore(1), endMs: sot-1 };
     case '7d':
-      return { cur: { startDate: '7daysAgo', endDate: 'today' }, prev: { startDate: '14daysAgo', endDate: '8daysAgo' }, startMs: now - 7 * DAY, endMs: now };
+      return { cur: { startDate: '6daysAgo', endDate: 'today' }, prev: { startDate: '13daysAgo', endDate: '7daysAgo' }, startMs: dayStartBefore(6), endMs: now };
     case 'all':
     default:
       return { cur: { startDate: '2020-01-01', endDate: 'today' }, prev: null, startMs: 0, endMs: now };
@@ -174,15 +187,23 @@ async function fetchAnalyticsFullUncached(rangeKey: RangeKey, opts: { force?: bo
     avgEngagementSec: 0, avgEngagementDelta: null,
     totalUsers: 0, inCommunity: 0, notInCommunity: 0,
     createdGame: 0, registeredGame: 0, createdCommunity: 0,
-    topActions: [], acquisition: [], devices: [], pushSent: 0, pushOpened: 0,
+    actions: noActions('unavailable'), controls: noActions('unavailable'), acquisition: [], devices: [], pushSent: 0, pushOpened: 0,
     friendsSent: 0, friendsAccepted: 0,
   };
 
   // ── GA4 (best-effort) ────────────────────────────────────────────
   if (has.analytics()) {
+    // A failed overview query must not hide a successful actions report, or vice versa.
+    empty.actions = noActions('error');
+    empty.controls = noActions('error');
+    let actionReads: Promise<[ActionReport, ActionReport]> | undefined;
     try {
       const token = await googleOAuthToken();
-
+      const run = (body: object) => ga(token, body);
+      actionReads = Promise.all([
+        readActionReport(run,spec.cur,'events',EVENT_LABEL,SKIP_EVENTS),
+        readActionReport(run,spec.cur,'controls',controlLabels,SKIP_EVENTS),
+      ]);
       const totals = await ga(token, {
         dateRanges: spec.prev ? [spec.cur, spec.prev] : [spec.cur],
         metrics: [
@@ -246,22 +267,11 @@ async function fetchAnalyticsFullUncached(rangeKey: RangeKey, opts: { force?: bo
         return { name: CHANNEL_LABEL[raw] ?? raw, value: num(row.metricValues?.[0]?.value) };
       });
 
-      // events — return ALL meaningful ones (the screen shows top N + "show more")
-      const ev = await ga(token, {
-        dateRanges: [spec.cur],
-        dimensions: [{ name: 'eventName' }],
-        metrics: [{ name: 'eventCount' }],
-        orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
-        limit: 100,
-      }).catch((caughtError162ab3b9e4: unknown) => { observeCaughtError(caughtError162ab3b9e4, {"source":"pulse/src/services/analyticsFull.ts","handler":"fetchAnalyticsFullUncached","site":"analyticsFull:162ab3b9e4"}); return ({ rows: [] }); });
-      empty.topActions = (ev.rows ?? [])
-        .map((row: any) => ({ raw: row.dimensionValues?.[0]?.value ?? '', value: num(row.metricValues?.[0]?.value) }))
-        .filter((e: any) => !SKIP_EVENTS.has(e.raw))
-        .map((e: any) => ({ name: EVENT_LABEL[e.raw] ?? e.raw, value: e.value }));
     } catch (caughtErrora0c965ebb7) {
     observeCaughtError(caughtErrora0c965ebb7, {"source":"pulse/src/services/analyticsFull.ts","handler":"fetchAnalyticsFullUncached","site":"analyticsFull:a0c965ebb7"});
       /* GA unavailable — keep zeros */
     }
+    if (actionReads) [empty.actions, empty.controls] = await actionReads;
   }
 
   // ── Firestore funnels (best-effort) ──────────────────────────────

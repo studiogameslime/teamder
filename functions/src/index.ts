@@ -5,6 +5,7 @@ import { ExpectedCallableError } from './expectedCallableError';
 import { observeCaughtError, observeSettledErrors, reportServerError } from './serverErrorLog';
 
 import { ENFORCE_APP_CHECK } from './appCheckPolicy';
+import { retireJoinedFillerRequests } from './fillerRosterReview';
 import { reconcileJoinAfterWindow } from './joinReconcileDispatch';
 import { applyScheduledColors } from './draftColors';
 import { creationReceiptId, fingerprintCreation } from './creationReceipt';
@@ -18,15 +19,19 @@ export { recordPlayerComparison, getMyComparisonActivity } from './comparisonAct
 import { roundJoinAccess, validManagerInvitation, roundAcceptsInvitations, INVITATION_TTL_MS } from './invitationPolicy';
 import { assertSocialContact, sendClubInvitation } from './socialPlayers';
 export { getReceivedInvitations, joinSocialClub } from './socialPlayers';
+export { onSocialSearchNameWritten } from './socialDirectory';
 export { getPlayerIdentities, getMyPlayerReferrals, findAvailableSocialPlayers, checkSocialMessaging, sendSocialFriendRequest, searchSocialPlayers, getSocialPlayerProfile, setSocialPrivacy, inviteSocialPlayerToClub } from './socialPlayers';
 import { publicInviterFields, publicGameFields, publicCover, previewId } from './invitePreviewFields';
 export { recordOnboardingActivity, onOnboardingActivity } from './onboardingActivity';
+export { recordUsageActivity, onUsageJoinReceipt, materializeUsageOperation, cleanupUsageActivity } from './usageActivity';
+import { deleteUsageForUser } from './usageActivity';
 export { sendSupportMessage } from './supportMessage';
 import { clubReminderEligibility } from './clubRegistrationReminder';
 export { recordClientError } from './clientDiagnostics';
 export { syncCrashlyticsToPulse } from './crashlyticsBridge';
 import { requireRecentAuth } from './recentAuth';
 import { stopOrphanSeries, createSeriesOccurrence, createLegacyOccurrence } from './clubDeletion';
+import { deleteEmptyGameWithRecurrence, RECURRENCE_GRACE_MS } from './recurrenceActivity';
 // Cloud Functions consumer for the /notifications outbound queue + a
 // scheduled reminder job for upcoming games.
 //
@@ -60,8 +65,10 @@ import { onSchedule } from './observedFunctions';
 import { StatBatch, MAX_ROUND_BATCH_OPS } from './statBatch';
 import { commitRoundInOrder } from './commitProtocol';
 import { liveRoundKey, matchesLiveRound } from './liveRoundCommit';
-import { decideSpotOffer } from './spotOfferDecision';
+import { decideSpotOffer, spotOfferExpired } from './spotOfferDecision';
 import { eveningScoreServer } from './eveningScoreCore';
+import { sharedEveningScore, sharedInputFromStats, sharedAwardMinimum, readSharedCalibration, SHARED_SCORE_ACTIVATION_AT } from './sharedEveningScore';
+import { prepareSharedScoreCalibration, freezeSharedScoreCalibration } from './sharedScoreCalibration';
 import { prepareRetroScores } from './retroScores';
 import { readGameEveningScores, EveningScoresAccessError } from './gameEveningScores';
 import { occupancyOf, inFillerQuietHours, hasFillerRegistrationConflict, canOfferFiller } from './fillerRules';
@@ -97,6 +104,7 @@ import {
   isOrganizedEveningAwaitingDecision,
   playEvidence,
   didEveningHappen,
+  playedEveningOrdinal,
   type PlayableEvening,
 } from './eveningPlayed';
 import { onCall, HttpsError, onRequest } from './observedFunctions';
@@ -2864,7 +2872,7 @@ async function reconcileGameJoins(gameId: string): Promise<void> {
         delete cancellations[r.uid];
         cancellationsChanged = true;
       }
-      tx.update(r.ref, { state: 'assigned', bucket, assignedAt: now });
+      tx.update(r.ref, { state: 'assigned', bucket, assignedAt: now, registrationCreated: !alreadySeated });
     }
 
     const participantIds = Array.from(
@@ -3085,7 +3093,7 @@ async function runFlipScheduledGames(): Promise<void> {
 // `recurringNextCreatedAt` so we never clone the same instance twice — the
 // clone (also recurring) will, in turn, spawn the following week's game
 // ~3h after ITS kickoff. No series doc, no management UI — just the toggle.
-const RECURRING_CLONE_DELAY_MS = 3 * 60 * 60 * 1000; // 3h after kickoff
+const RECURRING_CLONE_DELAY_MS = RECURRENCE_GRACE_MS;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Israel-local UTC offset (ms) at a given instant. +2h winter / +3h summer. */
@@ -3194,8 +3202,8 @@ function addOneWeekSameWallTime(epoch: number): number {
  * deleting 2.9 produced 9.9).
  *
  * Here the settings live in `gameSeries`, so an occurrence is disposable. We
- * never look at the previous match — delete every one of them and the next
- * week is still built from the series. It also means no giant reset list: the
+ * build from the series template, while checking recent occurrence activity
+ * before creating another week. It also means no giant reset list: the
  * doc is composed from the template, so there is no stale roster, latch or
  * live-state to strip.
  */
@@ -3440,24 +3448,8 @@ async function runCloneRecurringGames(): Promise<void> {
     if (g.status === 'cancelled') continue; // a cancelled week doesn't recur
     if (now < g.startsAt + RECURRING_CLONE_DELAY_MS) continue; // wait 3h post-kickoff
 
-    // Stop the perpetual-empty-clone chain for abandoned communities. We're now
-    // ≥3h past kickoff; a live weekly fixture always has people on the roster by
-    // this point. If NOBODY registered (no players, no guests), the community
-    // that set up this recurring game is effectively dead — spawning next week
-    // just creates another empty instance that runCleanupStaleGames deletes,
-    // which then clones AGAIN (clones reset the latch), looping forever. Skip
-    // the clone so the weekly chain dies with the roster. A community that comes
-    // back to life re-enables recurring on its next real game.
-    const rosterCount =
-      (Array.isArray(g.players) ? g.players.length : 0) +
-      (Array.isArray(g.guests) ? g.guests.length : 0);
-    if (rosterCount === 0) {
-      console.log('[cloneRecurringGames] skip empty (dead fixture)', {
-        gameId: doc.id,
-        groupId: g.groupId,
-      });
-      continue;
-    }
+    // The guarded writer stops after THREE consecutive inactive occurrences,
+    // carrying the decision history into each legacy clone atomically.
 
     // Advance kickoff by one week preserving Israel wall time (DST-safe), then
     // shift every dependent window by the SAME delta so each keeps its exact
@@ -3737,7 +3729,6 @@ async function runFlipPublicGames(): Promise<void> {
 // head is offered (or the offer is cleared when no one's left / the game is
 // full). The existing onGameRosterChanged trigger sends the spotOffered push on
 // the uid change, so we don't dispatch it here.
-const PROMO_OFFER_TTL_MS = 20 * 60 * 1000; // default 20 min to respond to an offer
 // Smallest offer window a game may configure — used as the QUERY floor so the
 // sweep catches every potentially-due offer; the exact per-game window is
 // applied inside the transaction.
@@ -3779,19 +3770,12 @@ async function runExpireStaleOffers(): Promise<void> {
         };
         if (!['open', 'locked', 'scheduled'].includes(d.status ?? '')) return;
         const offer = d.pendingPromotion;
-        // This game's configured confirm window (default 20m).
-        const gameTtlMs =
-          typeof d.waitlistApprovalTimeoutMinutes === 'number' &&
-          d.waitlistApprovalTimeoutMinutes > 0
-            ? d.waitlistApprovalTimeoutMinutes * 60 * 1000
-            : PROMO_OFFER_TTL_MS;
         // Re-check inside the txn — the offer may have been accepted/advanced
         // (or refreshed) since the query read, and must be past THIS game's
         // window (not just the query floor) to expire.
         if (
           !offer?.uid ||
-          typeof offer.offeredAt !== 'number' ||
-          offer.offeredAt >= nowMs - gameTtlMs
+          !spotOfferExpired(offer.offeredAt, d.waitlistApprovalTimeoutMinutes, nowMs)
         ) {
           return;
         }
@@ -3929,13 +3913,6 @@ async function runCleanupStaleGames(): Promise<void> {
     const guestCount = (g.guests ?? []).length;
     const isZombie = playerCount === 0 && guestCount === 0;
 
-    // "Did this game actually get played?" Single source of truth:
-    // `liveMatch.startedAt` is stamped the first time the admin
-    // taps the timer's play button (after the teams-full gate). As
-    // a safety net for games written before that field existed, we
-    // also accept any phase value that implies the round actually
-    // ran. Without either signal the game was created and forgotten
-    // — it shouldn't count toward stats, trust, or history.
     // Only HARD-DELETE a truly-empty (zombie) game. A game with a real roster
     // must NOT be deleted just because the in-app live timer was never tapped —
     // many groups organize in the app but play offline, and deleting their
@@ -3946,20 +3923,15 @@ async function runCleanupStaleGames(): Promise<void> {
     const shouldDelete = isZombie;
 
     if (shouldDelete) {
-      // Nuke the game and any /rounds it owns. We use a chunked delete
-      // because a single batch caps at 500 ops — round counts here are
-      // tiny (≤ ~10), but the pattern is safe regardless.
+      // Re-read before deletion and retain the recurrence decision atomically.
+      // The shared eveningPlayed evidence also protects an empty played game.
       ops.push(
         (async () => {
           const rounds = await db
             .collection('rounds')
             .where('gameId', '==', gameDoc.id)
             .get();
-          const batch = db.batch();
-          rounds.docs.forEach((r) => batch.delete(r.ref));
-          batch.delete(gameDoc.ref);
-          await batch.commit();
-          deleted++;
+          if (await deleteEmptyGameWithRecurrence(db, gameDoc.ref, rounds.docs.map(r => r.ref), Date.now())) deleted++;
         })()
       );
     } else {
@@ -5262,9 +5234,14 @@ async function sealRoundSummary(args: {
     observeCaughtError(err, {"source":"functions/src/index.ts","handler":"sealRoundSummary","site":"index:98e9b829cf"});
     console.warn('[season] progress mirror skipped', groupId, err);
   }
-  // Club totals are LIFETIME here, same as the player rows above: a milestone
-  // is a milestone, and the sealed seasons hold what the live document no
-  // longer does. `evenings` already comes from a counter that never resets.
+  // The seal counter is a record-comparison window, not the club's lifetime:
+  // older played games may never have had a summary. Count up to THIS kickoff
+  // across seasons. A failed read must retry the seal, not freeze a false zero.
+  const clubEveningOrdinal = lateConfirmation ? null : playedEveningOrdinal(
+    (await db.collection('games').where('groupId', '==', groupId)
+      .where('status', '==', 'finished').where('startsAt', '<=', args.at)
+      .orderBy('startsAt', 'desc').get()).docs, gameId, args.at,
+  );
   const clubTotals: ClubTotals = (() => {
     const past = archivedClubTotals.get(groupId) ?? {
       goals: 0, assists: 0, rounds: 0, cleanSheets: 0, shootoutRounds: 0,
@@ -5275,7 +5252,7 @@ async function sealRoundSummary(args: {
       rounds: num(cs.rounds) + past.rounds,
       cleanSheets: clubCleanSheets + past.cleanSheets,
       shootoutRounds: num(cs.shootoutRounds) + past.shootoutRounds,
-      evenings: eveningsSealed + 1,
+      evenings: clubEveningOrdinal ?? 0,
     };
   })();
 
@@ -5314,7 +5291,7 @@ async function sealRoundSummary(args: {
       : {}),
     now: Date.now(),
   };
-  const summary = buildRoundSummary(correctionBasis);
+  const summary = { ...buildRoundSummary(correctionBasis), clubEveningOrdinal };
 
   // Summary, baseline, season mirror and player bests are ONE create-latched
   // batch. A failure leaves none of them written; a retry can finish safely.
@@ -5462,6 +5439,7 @@ export const onGameRosterChanged = onDocumentWritten(
           waitlist?: string[];
           pendingPromotion?: { uid?: string; offeredAt?: number } | null;
           registrationOpensAt?: number;
+          acceptsFillers?: boolean;
           publicOpenAt?: number;
           title?: string;
           groupId?: string;
@@ -5488,6 +5466,7 @@ export const onGameRosterChanged = onDocumentWritten(
           waitlist?: string[];
           pendingPromotion?: { uid?: string; offeredAt?: number } | null;
           liveMatch?: { phase?: string } | null;
+          acceptsFillers?: boolean;
           registrationOpensAt?: number;
           publicOpenAt?: number;
           // Read by enqueueGameMoments to queue the precise auto-teams task.
@@ -5589,6 +5568,10 @@ export const onGameRosterChanged = onDocumentWritten(
       return;
     }
 
+    // Retire old outside applications when an ordinary registration wins.
+    // A delayed/replayed event must not retire a newer application made
+    // after a player left. Only enable this read on actual roster additions.
+    if (before && event.data?.after.updateTime) await retireJoinedFillerRequests(db, event.data.after.ref, before, after, event.data.after.updateTime);
     await withGameProcessingGuard(db, event.params.gameId, async () => {
     if (after.groupId && (before?.status !== after.status || (before as Record<string, unknown> | undefined)?.playVerified !== (after as Record<string, unknown>).playVerified)) {
       try { await seasonManager().refresh(after.groupId); }
@@ -5804,8 +5787,14 @@ export const onGameRosterChanged = onDocumentWritten(
     const afterActiveGuests = ((after.guests ?? []) as { waitlisted?: boolean }[]).filter(
       (g) => !g?.waitlisted,
     ).length;
-    const guestSeatFreed = afterActiveGuests < beforeActiveGuests;
     const afterGuestIds = new Set(((after.guests ?? []) as { id?: string }[]).map(guest => guest?.id));
+    // Moving an existing guest to the waitlist is a deliberate admin action,
+    // just like players -> waitlist. Only an actual active-guest removal may
+    // backfill the seat; otherwise the trigger immediately undoes that move.
+    const guestSeatFreed = afterActiveGuests < beforeActiveGuests &&
+      ((before?.guests ?? []) as { id?: string; waitlisted?: boolean }[]).some(
+        guest => typeof guest?.id === 'string' && !guest.waitlisted && !afterGuestIds.has(guest.id),
+      );
     const removedGuestRosterIds = new Set(((before?.guests ?? []) as { id?: string }[])
       .filter(guest => typeof guest?.id === 'string' && !afterGuestIds.has(guest.id))
       .map(guest => `guest:${guest.id}`));
@@ -5965,6 +5954,13 @@ export const onGameRosterChanged = onDocumentWritten(
           );
         }
       }
+    }
+
+    // Freeze once at kickoff, including older clients using the direct active
+    // transition. The original event time prevents delayed pre-cutover starts
+    // from opting into a new model.
+    if(after.status==='active' && before?.status!=='active' && after.groupId) {
+      await freezeSharedScoreCalibration(db,event.params.gameId,Date.parse(event.time),{starting:true});
     }
 
     // ── Count a full GAME per participant when the game FINISHES ───────────
@@ -6207,9 +6203,13 @@ export const onGameRosterChanged = onDocumentWritten(
           // src/utils/eveningScore.ts can be held to it by a contract test
           // (tests/logic/eveningScoreParity) instead of by a comment.
           const eveningScore = eveningScoreServer;
-          const attendees = after.players.filter(
-            (u) => arrivals[u] !== 'no_show',
-          );
+          const scoreGame = after as unknown as Record<string, any>;
+          if(scoreGame.scoreCalibration && !readSharedCalibration(scoreGame.scoreCalibration))throw Error('SCORE_CALIBRATION_INVALID');
+          const sharedCalibration = readSharedCalibration(scoreGame.scoreCalibration) ??
+            (Math.max(scoreGame.liveMatch?.startedAt??0,scoreGame.seasonStartedAt??0)>=SHARED_SCORE_ACTIVATION_AT
+              ? await freezeSharedScoreCalibration(db,event.params.gameId,Date.now(),{allowFinished:true}) : null);
+          const attendees = [...new Set([...after.players.filter((u) => arrivals[u] !== 'no_show'),
+            ...(sharedCalibration ? ((after.guests??[]) as {id?:string}[]).filter(g=>typeof g.id==='string').map(g=>`guest:${g.id}`) : [])])];
           // Cumulative community rows (points already include this evening).
           const psSnap = await db
             .collection('communityPlayerStats')
@@ -6259,6 +6259,7 @@ export const onGameRosterChanged = onDocumentWritten(
               assists: number;
               wins: number;
               rounds: number;
+              sharedInput: ReturnType<typeof sharedInputFromStats>;
               pen: { scored: number; saved: number; missed: number; conceded: number };
             }
           > = {};
@@ -6271,6 +6272,7 @@ export const onGameRosterChanged = onDocumentWritten(
               assists: num(d.assists),
               wins: num(d.wins),
               rounds: num(d.rounds),
+              sharedInput: sharedInputFromStats(d),
               // Same document, written by commitRoundStats — see the note on
               // eveningScore above.
               pen: {
@@ -6493,12 +6495,12 @@ export const onGameRosterChanged = onDocumentWritten(
           // Scored over THIS evening's attendees only: the question is about
           // tonight, and a club-wide comparison would drag in players who
           // weren't even here.
-          const scoreOf = new Map<string, number>();
+          const scoreOf = new Map<string, number | null>();
           for (const uid of attendees) {
             const e = evStat[uid];
             scoreOf.set(
               uid,
-              eveningScore(
+              sharedCalibration ? sharedEveningScore(e.sharedInput,sharedCalibration.threshold) : eveningScore(
                 e.goals,
                 e.assists,
                 e.wins,
@@ -6509,7 +6511,7 @@ export const onGameRosterChanged = onDocumentWritten(
               ),
             );
           }
-          const scoreRanked = [...attendees].sort(
+          const scoreRanked = [...attendees].filter(uid=>scoreOf.get(uid)!==null).sort(
             (a, b) => (scoreOf.get(b) ?? 0) - (scoreOf.get(a) ?? 0) || a.localeCompare(b),
           );
 
@@ -6546,18 +6548,14 @@ export const onGameRosterChanged = onDocumentWritten(
             const seasonGroup = await groupOnce();
             assertSeasonOpenForGame(seasonGroup.data(), after as unknown as Record<string, unknown>, { settlement: true });
           }
-          standingBatch.create(standingsLatch, { at: Date.now(), hadPointsTable, summaryRefreshVersion:1, scoreCalibration:{goalsFor10,assistsFor10} });
+          const scoreCalibration = sharedCalibration ?? {goalsFor10,assistsFor10};
+          const awardMinimum = sharedAwardMinimum(Math.max(0,...attendees.map(uid=>evStat[uid].rounds)));
+          const awardScore = sharedCalibration ? scoreRanked.filter(uid=>evStat[uid].rounds>=awardMinimum).map(uid=>scoreOf.get(uid)!)[0] : null;
+          standingBatch.create(standingsLatch, { at: Date.now(), hadPointsTable, summaryRefreshVersion:1, scoreCalibration });
           for (const uid of attendees) {
             const e = evStat[uid];
-            const score = eveningScore(
-              e.goals,
-              e.assists,
-              e.wins,
-              e.rounds,
-              goalsFor10,
-              assistsFor10,
-              e.pen,
-            );
+            const score = scoreOf.get(uid) ?? null;
+            const rated = score !== null && e.rounds > 0;
             // Only compare against an evening that came BEFORE this one.
             //
             // `lastEveningScore` is "the last score written", and on a late
@@ -6581,9 +6579,10 @@ export const onGameRosterChanged = onDocumentWritten(
                 userId: uid,
                 groupId: gid,
                 score,
-                scoreBasis:{goalsFor10,assistsFor10,previousScore:prev,previousAt:prevRow?.lastScoreAt??null,counted:e.rounds>0},
+                scoreBasis:{...scoreCalibration,previousScore:prev,previousAt:prevRow?.lastScoreAt??null,counted:rated&&!uid.startsWith('guest:')},
+                ...(sharedCalibration ? {scoreAwardEligible:rated && e.rounds>=awardMinimum,scoreAwardWinner:rated && e.rounds>=awardMinimum && score===awardScore} : {}),
                 scoreDelta:
-                  prev == null ? null : Math.round((score - prev) * 10) / 10,
+                  prev == null || score === null ? null : Math.round((score - prev) * 10) / 10,
                 rank: rankNow > 0 ? rankNow : null,
                 rankTotal: total > 0 ? total : null,
                 // + = climbed N places since before this evening. Null when
@@ -6609,7 +6608,7 @@ export const onGameRosterChanged = onDocumentWritten(
                     ? rankBefore - rankNow
                     : null,
                 metrics: metricsFor(uid),
-                scoreRank: scoreRanked.indexOf(uid) + 1,
+                scoreRank: sharedCalibration ? (!rated ? null : scoreRanked.findIndex(id=>scoreOf.get(id)===score)+1) : scoreRanked.indexOf(uid)+1,
                 scoreTotal: scoreRanked.length,
                 at: eveningAt,
               },
@@ -6628,6 +6627,7 @@ export const onGameRosterChanged = onDocumentWritten(
             // Both are season-scoped (they are in PLAYER_SEASON_FIELDS), so a
             // new season starts the average from nothing rather than dragging
             // a career of scores into it.
+            if(uid.startsWith('guest:'))continue;
             standingBatch.set(
               db.collection('communityPlayerStats').doc(`${gid}__${uid}`),
               {
@@ -6641,7 +6641,7 @@ export const onGameRosterChanged = onDocumentWritten(
                 // Both survive a rollover (neither is in PLAYER_SEASON_FIELDS)
                 // for the same reason: the delta is "against your last night",
                 // not "against your last night this season".
-                ...(prevIsOlder
+                ...(prevIsOlder && (!sharedCalibration || rated)
                   ? { lastEveningScore: score, lastEveningAt: eveningAt }
                   : {}),
                 // ⚠️ Only a REAL rating is folded into the season mean.
@@ -6673,7 +6673,7 @@ export const onGameRosterChanged = onDocumentWritten(
                 // per evening from `games/{id}/roundHistory`, whose `teamA`
                 // and `teamB` arrays say who played each mini-game. That is a
                 // migration, and it is not run from here.
-                ...(e.rounds > 0
+                ...(rated
                   ? {
                       eveningScoreSum: admin.firestore.FieldValue.increment(score),
                       eveningScoreCount: admin.firestore.FieldValue.increment(1),
@@ -6685,7 +6685,7 @@ export const onGameRosterChanged = onDocumentWritten(
           }
           // Fold this evening's kings into the community benchmark (atomic
           // increments, so concurrent finishes in the same group don't clobber).
-          standingBatch.set(
+          if(!sharedCalibration)standingBatch.set(
             csRef,
             {
               kingGoalsSum:
@@ -6711,12 +6711,12 @@ export const onGameRosterChanged = onDocumentWritten(
           }
           // On recovery, use the ORIGINAL immutable score/rank/delta rows,
           // not values recalculated from a table that already includes them.
-          const sealedStandings = await Promise.all(attendees.map(async userId => {
+          const sealedStandings = (await Promise.all(attendees.map(async userId => {
             const row = await db.collection('eveningStandings').doc(`${event.params.gameId}__${userId}`).get();
             const value = row.data()!;
             return { userId, score: value.score as number, rank: value.rank as number | null,
               rankTotal: value.rankTotal as number | null, rankDelta: value.rankDelta as number | null };
-          }));
+          }))).filter(row=>!sharedCalibration || (typeof row.score==='number'&&Number.isFinite(row.score)));
 
           // ── Club chemistry: fold the evening into the pair rollup ───────
           // Separate try and separate batches from everything above: this is
@@ -7053,9 +7053,9 @@ export const onGameRosterChanged = onDocumentWritten(
           );
           await b.commit();
         } catch (err) {
-    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:20a83f91b9"});
           const code = (err as { code?: number | string }).code;
           if (code === 6 || code === 'already-exists') continue;
+          observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:20a83f91b9"});
           console.warn(
             '[onGameRosterChanged] gamesJoined bump failed',
             uid,
@@ -7399,7 +7399,7 @@ function shuffleInPlace<T>(arr: T[]): void {
  * rating_priority_v3 — distribute registered players into N teams so the
  * AVERAGE rating per team is as close to equal as possible.
  *
- * - Unrated players are scored at the neutral 3.
+ * - Unrated players are scored using NEUTRAL_RATING (2.5).
  * - Team sizes are fixed up front, as even as possible under the `perTeam`
  *   cap, with the remainder handed to a random subset of teams.
  * - Greedy pass: strongest first, into whichever team sits furthest below its
@@ -7773,7 +7773,7 @@ async function generateForGame(
       // Compose the roster: real users keep their uid; guests are
       // encoded as `guest:<id>` so the roster id space is disjoint.
       // Their rating is `estimatedRating` when set, otherwise the
-      // neutral 3 (handled by balanceTeamsV1's unrated branch).
+      // default 2.5 (handled by balanceTeamsV1's unrated branch).
       const guestRoster: string[] = freshGuests.map(
         (gu) => `${GUEST_ID_PREFIX}${gu.id}`,
       );
@@ -7887,12 +7887,12 @@ function buildDraftTeamsFromBalance(
   createdBy: string,
 ): DraftTeamDoc[] {
   const ZONES = ['teamA', 'teamB', 'teamC', 'teamD', 'teamE', 'teamF', 'teamG'];
-  // Unrated → neutral 3 (the 1–5 midpoint). The old default 5.5 sat ABOVE the
+  // Unrated → NEUTRAL_RATING (2.5). The old default 5.5 sat ABOVE the
   // 1–5 max, so on the new scale every unrated player out-sorted every rated
   // one and wrongly became captain (B17). Rated values are normalised off any
   // leftover 1–10 data (B06/B07).
   const ratingOf = (id: string) =>
-    typeof ratings[id] === 'number' && ratings[id] > 0 ? normalizeRating(ratings[id]) : 3;
+    typeof ratings[id] === 'number' && ratings[id] > 0 ? normalizeRating(ratings[id]) : NEUTRAL_RATING;
   const teams: DraftTeamDoc[] = [];
   for (let i = 0; i < numberOfTeams; i++) {
     const zone = ZONES[i];
@@ -8595,6 +8595,7 @@ export const deleteMyAccount = onCall(
         .collection('private')
         .doc('push')
         .delete();
+      await deleteUsageForUser(db, uid);
     } catch (err) {
     observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:f523124f8a"});
       console.error('[deleteMyAccount] user doc anonymise failed', uid, err);
@@ -8685,14 +8686,13 @@ export const sendGameInvite = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, asy
   if (![recipientId, gameId].every(x => typeof x === 'string' && x.length > 0 && x.length <= 128 && !x.includes('/')) || recipientId === senderUid) {
     throw new HttpsError('invalid-argument', 'Invalid invitation');
   }
-  await assertSocialContact(senderUid, recipientId);
   const gameRef = db.collection('games').doc(gameId);
   const noticeRef = db.collection('notifications').doc();
   const rateRef = db.collection('serverRateLimits').doc(`${senderUid}_inviteToGame`);
   const result = await db.runTransaction(async tx => {
     const [gameSnap, senderSnap, recipientSnap, rateSnap] = await Promise.all([
       tx.get(gameRef), tx.get(db.collection('users').doc(senderUid)),
-      tx.get(db.collection('users').doc(recipientId)), tx.get(rateRef),
+      tx.get(db.collection('users').doc(recipientId)), tx.get(rateRef), assertSocialContact(senderUid, recipientId, tx),
     ]);
     const game = gameSnap.data();
     const sender = senderSnap.data(), recipient = recipientSnap.data();
@@ -12189,31 +12189,17 @@ async function runSendShortageWarnings(): Promise<void> {
   );
 }
 
-export const onFillerInterestCreated = onDocumentCreated(
-  'games/{gameId}/fillerInterests/{uid}',
-  async (event) => {
-    const data = event.data?.data() as
-      | { status?: string; userId?: string }
-      | undefined;
-    if (!data) return;
-    if (data.status !== 'pending') return;
-
-    const gameId = event.params.gameId;
-    const candidateUid = event.params.uid;
-
-    const gameSnap = await db.collection('games').doc(gameId).get();
-    if (!gameSnap.exists) return;
-    const game = gameSnap.data() as {
-      createdBy?: string;
-      title?: string;
-      groupId?: string;
-    };
-    const adminUid = game.createdBy;
-    if (!adminUid) return;
+async function notifyPendingFiller(gameId: string, candidateUid: string) {
+    const ref = db.collection('games').doc(gameId);
+    const [round, interest] = await db.getAll(ref, ref.collection('fillerInterests').doc(candidateUid));
+    const game = round.data();
+    if (!game?.createdBy || interest.get('status') !== 'pending' || game.status !== 'open' ||
+      game.acceptsFillers !== true || !(game.startsAt > Date.now()) ||
+      [game.players, game.waitlist, game.pending].some(ids => ids?.includes(candidateUid))) return;
 
     await createNotificationOnce({
       type: 'fillerInterestReceived',
-      recipientId: adminUid,
+      recipientId: game.createdBy,
       payload: {
         gameId,
         groupId: game.groupId,
@@ -12222,8 +12208,37 @@ export const onFillerInterestCreated = onDocumentCreated(
         requesterId: candidateUid,
       },
     });
-  },
+}
+export const onFillerInterestCreated = onDocumentCreated(
+  'games/{gameId}/fillerInterests/{uid}',
+  event => event.data?.get('status') === 'pending' ? notifyPendingFiller(event.params.gameId, event.params.uid) : undefined,
 );
+
+// Return only requests addressed to this round's creator. New requests have
+// the recipient on the application itself; older ones rely on a personal
+// notice. Neither path requires a client LIST grant or delivered device push.
+export const getMyRoundFillerNotices = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, async request => {
+  const uid = requireFullAccount(request.auth);
+  const gameId = request.data?.gameId;
+  if (typeof gameId !== 'string' || !gameId || gameId.includes('/')) throw new HttpsError('invalid-argument', 'invalid round');
+  const ref = db.collection('games').doc(gameId);
+  const game = (await ref.get()).data();
+  if (!game || game.createdBy !== uid) throw new HttpsError('permission-denied', 'creator only');
+  if (game.status !== 'open' || !game.acceptsFillers || game.startsAt <= Date.now()) return { ids: [] };
+  const collection = ref.collection('fillerInterests');
+  const [assigned, notices] = await Promise.all([
+    collection.where('reviewRecipientId', '==', uid).get(),
+    db.collection('notifications').where('recipientId', '==', uid)
+      .where('type', '==', 'fillerInterestReceived').where('payload.gameId', '==', gameId).get(),
+  ]);
+  const roster = new Set([...(game.players ?? []), ...(game.waitlist ?? []), ...(game.pending ?? [])]);
+  const assignedIds = new Set(assigned.docs.map(d => d.id));
+  const ids = [...new Set(notices.docs.map(d => d.get('payload.candidateUid')).filter((id): id is string =>
+    typeof id === 'string' && !!id && !id.includes('/') && !roster.has(id) && !assignedIds.has(id)))];
+  const legacy = ids.length ? await db.getAll(...ids.map(id => collection.doc(id))) : [];
+  return { ids: [...assigned.docs, ...legacy].filter(d => d.get('status') === 'pending' && !roster.has(d.id))
+    .sort((a, b) => (Number(b.get('createdAt')) || 0) - (Number(a.get('createdAt')) || 0)).map(d => d.id) };
+});
 
 // ─── Filler approval flow — callables ──────────────────────────────────
 //
@@ -12445,110 +12460,114 @@ export const submitFillerInterest = onCall(
     // apply to it. Nothing below this line changes — the eligibility and
     // business validation are exactly what they were.
     const uid = requireFullAccount(request.auth);
-    const data = (request.data ?? {}) as { gameId?: string };
+    const data = (request.data ?? {}) as { gameId?: string; source?: string };
     const gameId = typeof data.gameId === 'string' ? data.gameId : '';
     if (!gameId) {
       throw new HttpsError('invalid-argument', 'gameId required');
     }
 
-    // Validate game state. The candidate may have taken minutes /
-    // hours to tap the push — meanwhile the game might have filled
-    // up, been cancelled, or the admin disabled fillers.
-    const gameSnap = await db.collection('games').doc(gameId).get();
-    if (!gameSnap.exists) {
-      throw new HttpsError('not-found', 'game not found');
-    }
-    const game = gameSnap.data() as {
-      status?: string;
-      acceptsFillers?: boolean;
-      players?: string[];
-      waitlist?: string[];
-      pending?: string[];
-      groupId?: string;
-      maxPlayers?: number;
-      startsAt?: number;
-    };
-    if (game.acceptsFillers !== true) {
-      throw new HttpsError(
-        'failed-precondition',
-        'game is not accepting fillers',
-      );
-    }
-    if (game.status !== 'open') {
-      throw new HttpsError(
-        'failed-precondition',
-        'game is no longer open',
-      );
-    }
-    if (
-      typeof game.startsAt === 'number' &&
-      game.startsAt < Date.now()
-    ) {
-      throw new HttpsError(
-        'failed-precondition',
-        'game already started',
-      );
-    }
-    // Reject if the candidate is already a community member or
-    // already in the game roster — they should use the regular join
-    // flow, not the filler path.
-    if (game.groupId) {
-      const grpSnap = await db
-        .collection('groups')
-        .doc(game.groupId)
-        .get();
-      if (grpSnap.exists) {
-        const grp = grpSnap.data() as {
-          playerIds?: string[];
-          adminIds?: string[];
-        };
-        if (
-          (grp.playerIds ?? []).includes(uid) ||
-          (grp.adminIds ?? []).includes(uid)
-        ) {
-          throw new HttpsError(
-            'failed-precondition',
-            'community members should join the regular way',
-          );
+    const result = await db.runTransaction(async tx => {
+      // Validate game state. The candidate may have taken minutes /
+      // hours to tap the push — meanwhile the game might have filled
+      // up, been cancelled, or the admin disabled fillers.
+      const gameSnap = await tx.get(db.collection('games').doc(gameId));
+      if (!gameSnap.exists) {
+        throw new HttpsError('not-found', 'game not found');
+      }
+      const game = gameSnap.data() as {
+        status?: string;
+        acceptsFillers?: boolean;
+        players?: string[];
+        waitlist?: string[];
+        pending?: string[];
+        groupId?: string;
+        maxPlayers?: number;
+        startsAt?: number;
+        createdBy?: string;
+        title?: string;
+      };
+      if (game.acceptsFillers !== true) {
+        throw new HttpsError(
+          'failed-precondition',
+          'game is not accepting fillers',
+        );
+      }
+      if (game.status !== 'open') {
+        throw new HttpsError(
+          'failed-precondition',
+          'game is no longer open',
+        );
+      }
+      if (
+        typeof game.startsAt === 'number' &&
+        game.startsAt < Date.now()
+      ) {
+        throw new HttpsError(
+          'failed-precondition',
+          'game already started',
+        );
+      }
+      // Reject if the candidate is already a community member or
+      // already in the game roster — they should use the regular join
+      // flow, not the filler path.
+      if (game.groupId) {
+        const grpSnap = await tx.get(db.collection('groups').doc(game.groupId));
+        if (grpSnap.exists) {
+          const grp = grpSnap.data() as {
+            playerIds?: string[];
+            adminIds?: string[];
+          };
+          if (
+            (grp.playerIds ?? []).includes(uid) ||
+            (grp.adminIds ?? []).includes(uid)
+          ) {
+            throw new HttpsError(
+              'failed-precondition',
+              'community members should join the regular way',
+            );
+          }
         }
       }
-    }
-    const inGame =
-      (game.players ?? []).includes(uid) ||
-      (game.waitlist ?? []).includes(uid) ||
-      (game.pending ?? []).includes(uid);
-    if (inGame) {
-      throw new HttpsError('already-exists', 'already in this game');
-    }
+      const inGame =
+        (game.players ?? []).includes(uid) ||
+        (game.waitlist ?? []).includes(uid) ||
+        (game.pending ?? []).includes(uid);
+      if (inGame) {
+        throw new HttpsError('already-exists', 'already in this game');
+      }
 
-    // Idempotent write: if the candidate already submitted an
-    // interest (and didn't withdraw it), don't dispatch a duplicate
-    // admin push. We still update `updatedAt` so the admin sees
-    // freshness.
-    const interestRef = db
-      .collection('games')
-      .doc(gameId)
-      .collection('fillerInterests')
-      .doc(uid);
-    const existing = await interestRef.get();
-    if (
-      existing.exists &&
-      (existing.data() as { status?: string }).status === 'pending'
-    ) {
-      await interestRef.set(
-        { updatedAt: Date.now() },
-        { merge: true },
-      );
-      return { ok: true, alreadyPending: true };
-    }
+      // Preserve the original source and time on a duplicate tap.
+      const interestRef = db
+        .collection('games')
+        .doc(gameId)
+        .collection('fillerInterests')
+        .doc(uid);
+      const existing = await tx.get(interestRef);
+      if (
+        existing.exists &&
+        (existing.data() as { status?: string }).status === 'pending'
+      ) {
+        return { alreadyPending: true, reopened: false };
+      }
 
-    await interestRef.set({
-      userId: uid,
-      status: 'pending',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      tx.set(interestRef, {
+        userId: uid,
+        status: 'pending',
+        ...(game.createdBy ? { reviewRecipientId: game.createdBy } : {}),
+        ...(data.source === 'round' || data.source === 'notification' ? { source: data.source } : {}),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      return { alreadyPending: false, reopened: existing.exists };
     });
-    return { ok: true };
+    // A reopened application is an update, so the creation trigger won't run.
+    if (result.reopened) {
+      try { await notifyPendingFiller(gameId, uid); }
+      catch (err) {
+        observeCaughtError(err, {source:'functions/src/index.ts',handler:'submitFillerInterest',site:'filler:reopened-notice'});
+      }
+    }
+    return { ok: true, alreadyPending: result.alreadyPending };
   },
 );
 
@@ -12579,8 +12598,7 @@ export const approveFiller = onCall(
     // maxPlayers, and the interest doc + game doc stay in sync.
     // Captured out of the transaction so the push below tells the truth
     // (was hardcoded to 'players' even when the approve landed on waitlist).
-    let landedInPlayers = false;
-    await db.runTransaction(async (tx) => {
+    const bucket = await db.runTransaction(async (tx) => {
       const gameRef = db.collection('games').doc(gameId);
       const interestRef = gameRef
         .collection('fillerInterests')
@@ -12599,6 +12617,8 @@ export const approveFiller = onCall(
         pending?: string[];
         participantIds?: string[];
         maxPlayers?: number;
+        startsAt?: number;
+        acceptsFillers?: boolean;
       };
 
       // Authorization: caller must be the game's creator OR an
@@ -12625,7 +12645,7 @@ export const approveFiller = onCall(
         );
       }
 
-      if (game.status !== 'open') {
+      if (game.status !== 'open' || game.acceptsFillers !== true || (game.startsAt ?? 0) <= Date.now()) {
         throw new HttpsError(
           'failed-precondition',
           'game is no longer open',
@@ -12635,23 +12655,12 @@ export const approveFiller = onCall(
       const players = game.players ?? [];
       const waitlist = game.waitlist ?? [];
       const maxPlayers = game.maxPlayers ?? 0;
-      // Idempotency: if the candidate is already in players, just
-      // make sure the interest is marked approved and exit.
-      if (players.includes(candidateUid)) {
-        tx.set(
-          interestRef,
-          { status: 'approved', updatedAt: Date.now() },
-          { merge: true },
-        );
-        return;
+      if ((await tx.get(interestRef)).get('status') !== 'pending') {
+        throw new HttpsError('failed-precondition', 'request already handled');
       }
-      if (waitlist.includes(candidateUid)) {
-        tx.set(
-          interestRef,
-          { status: 'approved', updatedAt: Date.now() },
-          { merge: true },
-        );
-        return;
+      if (players.includes(candidateUid) || waitlist.includes(candidateUid) || game.pending?.includes(candidateUid)) {
+        tx.update(interestRef, { status: 'superseded', updatedAt: Date.now() });
+        return null;
       }
 
       // Decide bucket: players if there's room, otherwise waitlist.
@@ -12669,7 +12678,6 @@ export const approveFiller = onCall(
       const offerHeld = gameCap.pendingPromotion?.uid ? 1 : 0;
       const occupancy = players.length + activeGuests + offerHeld;
       const goesToPlayers = maxPlayers > 0 && occupancy < maxPlayers;
-      landedInPlayers = goesToPlayers;
       const newPlayers = goesToPlayers
         ? [...players, candidateUid]
         : players;
@@ -12704,7 +12712,9 @@ export const approveFiller = onCall(
         },
         { merge: true },
       );
+      return goesToPlayers ? 'players' : 'waitlist';
     });
+    if (!bucket) return { ok: true, alreadyHandled: true };
 
     // Push the candidate so they know they're in. Fire-and-forget
     // outside the transaction.
@@ -12718,7 +12728,7 @@ export const approveFiller = onCall(
           // a different body for waitlist vs players — use the ACTUAL bucket
           // the transaction assigned (was hardcoded 'players', so a filler
           // approved onto a full game's waitlist got a false "you're in").
-          bucket: landedInPlayers ? 'players' : 'waitlist',
+          bucket,
         },
         createdByUid: callerUid,
       });
@@ -12727,7 +12737,7 @@ export const approveFiller = onCall(
       console.warn('[approveFiller] notif dispatch failed', err);
     }
 
-    return { ok: true };
+    return { ok: true, bucket };
   },
 );
 
@@ -12753,51 +12763,27 @@ export const declineFiller = onCall(
       );
     }
 
-    // Auth check: same as approveFiller.
-    const gameSnap = await db.collection('games').doc(gameId).get();
-    if (!gameSnap.exists) {
-      throw new HttpsError('not-found', 'game not found');
-    }
-    const game = gameSnap.data() as {
-      groupId?: string;
-      createdBy?: string;
-    };
-    let isAuthorized = game.createdBy === callerUid;
-    if (!isAuthorized && game.groupId) {
-      const grpSnap = await db
-        .collection('groups')
-        .doc(game.groupId)
-        .get();
-      if (grpSnap.exists) {
-        const grp = grpSnap.data() as { adminIds?: string[] };
-        if ((grp.adminIds ?? []).includes(callerUid)) {
-          isAuthorized = true;
-        }
+    const ref = db.collection('games').doc(gameId);
+    const interestRef = ref.collection('fillerInterests').doc(candidateUid);
+    const declined = await db.runTransaction(async tx => {
+      const game = (await tx.get(ref)).data();
+      if (!game) throw new HttpsError('not-found', 'game not found');
+      if (game.createdBy !== callerUid && (!game.groupId ||
+        !(await tx.get(db.collection('groups').doc(game.groupId))).get('adminIds')?.includes(callerUid))) {
+        throw new HttpsError('permission-denied', 'caller is not the game admin');
       }
-    }
-    if (!isAuthorized) {
-      throw new HttpsError(
-        'permission-denied',
-        'caller is not the game admin',
-      );
-    }
-
-    await db
-      .collection('games')
-      .doc(gameId)
-      .collection('fillerInterests')
-      .doc(candidateUid)
-      .set(
-        {
-          status: 'rejected',
-          rejectedAt: Date.now(),
-          rejectedBy: callerUid,
-          updatedAt: Date.now(),
-        },
-        { merge: true },
-      );
+      if ((await tx.get(interestRef)).get('status') !== 'pending') {
+        throw new HttpsError('failed-precondition', 'request already handled');
+      }
+      if ([game.players, game.waitlist, game.pending].some(ids => ids?.includes(candidateUid))) {
+        tx.update(interestRef, { status: 'superseded', updatedAt: Date.now() });
+        return false;
+      }
+      tx.update(interestRef, { status: 'rejected', rejectedAt: Date.now(), rejectedBy: callerUid, updatedAt: Date.now() });
+      return true;
+    });
     // No push to the candidate — quiet rejection.
-    return { ok: true };
+    return { ok: true, declined };
   },
 );
 
@@ -14127,7 +14113,7 @@ export const commitRoundStats = onCall(
       rotationUpdatedAt?: number | null;
       liveLineupFingerprint?: string;
       alternativeDecision?: {fingerprint:string};
-      tieResolution?: 'bothOut' | 'veteranOut';
+      tieResolution?: 'bothOut' | 'veteranOut' | 'stayA' | 'stayB' | 'keepPlaying';
       sideA?: string[];
       sideB?: string[];
       // Bib-colour indices of the two sides (0=red,1=blue,2=green,…). Stored on
@@ -14163,7 +14149,7 @@ export const commitRoundStats = onCall(
     }
     if (alternativeDecision!==undefined && (typeof alternativeDecision?.fingerprint!=='string' || !alternativeDecision.fingerprint ||
       !Array.isArray(liveGoalIds) || typeof liveLineupFingerprint!=='string' || !Array.isArray(penalties) || penalties.length!==0 ||
-      roundId===undefined || roundId===null || (winnerSide==='tie' && tieResolution!=='bothOut' && tieResolution!=='veteranOut') ||
+      roundId===undefined || roundId===null || (winnerSide==='tie' && !['bothOut','veteranOut','stayA','stayB','keepPlaying'].includes(tieResolution ?? '')) ||
       (winnerSide!=='tie' && tieResolution!==undefined))) {
       throw new HttpsError('invalid-argument','invalid alternative decision');
     }
@@ -14247,6 +14233,19 @@ export const commitRoundStats = onCall(
     }
     if (liveGoalIds !== undefined && !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, inPlayPenaltySnapshot, lineupFingerprint: liveLineupFingerprint,alternativeDecision })) {
       throw new HttpsError('failed-precondition', 'המשחק השתנה. יש לנסות שוב עם התוצאה המעודכנת.');
+    }
+
+    if (tieResolution === 'stayA' || tieResolution === 'stayB' || tieResolution === 'keepPlaying') {
+      const live = game.liveMatch as {scoreA?:number;scoreB?:number;shootout?:unknown} | undefined;
+      const rotation = game.rotation as {waiting?:number[]} | undefined;
+      const teams = (game.draftTeams as {teams?:unknown[]} | undefined)?.teams;
+      const validTeams = tieResolution === 'keepPlaying'
+        ? teams?.length === 2 && rotation?.waiting?.length === 0
+        : teams?.length === 3 && rotation?.waiting?.length === 1;
+      if (winnerSide !== 'tie' || !live || live.scoreA !== live.scoreB || !validTeams ||
+          (live.shootout && !alternativeDecision) || (penalties?.length ?? 0) > 0) {
+        throw new HttpsError('failed-precondition','התוצאה או סדר הקבוצות השתנו. יש לבחור שוב מי נשארים.');
+      }
     }
 
     let inPlayPenalties: InPlayPenalty[] = [];
@@ -14398,7 +14397,7 @@ export const commitRoundStats = onCall(
         db.collection('games').doc(gameId).collection('committedRounds').doc(String(roundId)),
         { committedAt: now, by: uid, winnerSide,
           ...(alternativeDecision ? {alternativeDecisionFingerprint:alternativeDecision.fingerprint} : {}),
-          ...(winnerSide === 'tie' && (tieResolution === 'bothOut' || tieResolution === 'veteranOut') ? { tieResolution } : {}) },
+          ...(winnerSide === 'tie' && ['bothOut','veteranOut','stayA','stayB','keepPlaying'].includes(tieResolution ?? '') ? { tieResolution } : {}) },
       );
     }
 
@@ -14641,59 +14640,62 @@ export const commitRoundStats = onCall(
     const pens = Array.isArray(liveGoalIds) ? (penalties ?? []) : (penalties ?? []).slice(0, 16);
     const kickerPen: Record<string, { taken: number; scored: number; missed: number }> = {};
     const keeperPen: Record<string, { faced: number; saved: number; conceded: number }> = {};
+    const sharedPenaltyModel=readSharedCalibration((game as Record<string,unknown>).scoreCalibration)!==null;
+    const scorePenaltyPlayer=(id:string)=>isReal(id)||(sharedPenaltyModel&&guestRoster.has(id));
+    const penaltyOnField=(id:string)=>onField.has(id)||(sharedPenaltyModel&&guestRoster.has(id)&&(fullA.includes(id)||fullB.includes(id)));
     for (const p of pens) {
       const scored = !!p.scored;
       const k = p.kickerId;
-      if (k && isReal(k) && onField.has(k)) {
+      if (k && scorePenaltyPlayer(k) && penaltyOnField(k)) {
         const s = (kickerPen[k] ??= { taken: 0, scored: 0, missed: 0 });
         s.taken += 1;
         if (scored) s.scored += 1;
         else s.missed += 1;
       }
       const gk = p.keeperId;
-      if (gk && isReal(gk) && onField.has(gk)) {
+      if (gk && scorePenaltyPlayer(gk) && penaltyOnField(gk)) {
         const s = (keeperPen[gk] ??= { faced: 0, saved: 0, conceded: 0 });
         s.faced += 1;
         if (scored) s.conceded += 1;
-        else if (p.outcome !== 'miss') s.saved += 1;
+        else if (sharedPenaltyModel ? p.outcome === 'save' : p.outcome !== 'miss') s.saved += 1;
       }
     }
     // Regulation attempts feed the SAME combined counters as shootouts.
     // Their goals were already credited by the normal goal loop above.
     for (const p of inPlayPenalties) {
       const scored = p.outcome === 'goal';
-      if (isReal(p.kickerId) && onField.has(p.kickerId)) {
+      if (scorePenaltyPlayer(p.kickerId) && penaltyOnField(p.kickerId)) {
         const s = (kickerPen[p.kickerId] ??= {taken:0,scored:0,missed:0});
         s.taken++; if (scored) s.scored++; else s.missed++;
         const fields = {penInPlayTaken:1,penInPlayScored:scored ? 1 : 0};
-        sb.bump(uRef(p.kickerId), {}, {'stats.penInPlayTaken':1,'stats.penInPlayScored':fields.penInPlayScored});
-        if (groupId) sb.bump(cpsRef(p.kickerId), {groupId,userId:p.kickerId,updatedAt:now}, fields);
+        if(isReal(p.kickerId))sb.bump(uRef(p.kickerId), {}, {'stats.penInPlayTaken':1,'stats.penInPlayScored':fields.penInPlayScored});
+        if (groupId && isReal(p.kickerId)) sb.bump(cpsRef(p.kickerId), {groupId,userId:p.kickerId,updatedAt:now}, fields);
         sb.bump(gpsRef(p.kickerId), {gameId,userId:p.kickerId,updatedAt:now}, fields);
       }
-      if (p.keeperId && isReal(p.keeperId) && onField.has(p.keeperId)) {
+      if (p.keeperId && scorePenaltyPlayer(p.keeperId) && penaltyOnField(p.keeperId)) {
         const s = (keeperPen[p.keeperId] ??= {faced:0,saved:0,conceded:0});
         s.faced++; if (scored) s.conceded++; else if (p.outcome === 'save') s.saved++;
       }
     }
     for (const [kicker, s] of Object.entries(kickerPen)) {
       const fields = { penTaken: s.taken, penScored: s.scored, penMissed: s.missed };
-      sb.bump(uRef(kicker), {}, {
+      if(isReal(kicker))sb.bump(uRef(kicker), {}, {
         'stats.penTaken': s.taken,
         'stats.penScored': s.scored,
         'stats.penMissed': s.missed,
       });
-      if (groupId)
+      if (groupId && isReal(kicker))
         sb.bump(cpsRef(kicker), { groupId, userId: kicker, updatedAt: now }, fields);
       sb.bump(gpsRef(kicker), { gameId, userId: kicker, updatedAt: now }, fields);
     }
     for (const [keeper, s] of Object.entries(keeperPen)) {
       const fields = { penFaced: s.faced, penSaved: s.saved, penConceded: s.conceded };
-      sb.bump(uRef(keeper), {}, {
+      if(isReal(keeper))sb.bump(uRef(keeper), {}, {
         'stats.penFaced': s.faced,
         'stats.penSaved': s.saved,
         'stats.penConceded': s.conceded,
       });
-      if (groupId)
+      if (groupId && isReal(keeper))
         sb.bump(cpsRef(keeper), { groupId, userId: keeper, updatedAt: now }, fields);
       sb.bump(gpsRef(keeper), { gameId, userId: keeper, updatedAt: now }, fields);
     }
@@ -15175,7 +15177,7 @@ export const commitRoundStats = onCall(
 
     return { ok: true, scorers: Object.keys(byScorer).length, protocol: 2, winnerSide,
       ...(alternativeDecision ? {alternativeDecisionFingerprint:alternativeDecision.fingerprint} : {}),
-      tieResolution: winnerSide === 'tie' && (tieResolution === 'bothOut' || tieResolution === 'veteranOut') ? tieResolution : null };
+      tieResolution: winnerSide === 'tie' && ['bothOut','veteranOut','stayA','stayB','keepPlaying'].includes(tieResolution ?? '') ? tieResolution : null };
   },
 );
 
@@ -15466,10 +15468,11 @@ export const addRetroGoal = onCall(
     const currentClub=await tx.get(db.collection('groups').doc(groupId));
     assertSeasonOpenForGame(currentClub.data(),game);
     const applyScores=await prepareRetroScores(tx,db,gameId as string,groupId,game,{scorerId,assisterId:assister,step:1});
+    const clubGoalCounter = isReal(scorerId) ? 'goals' : 'guestGoals';
     // Idempotency marker + audit (create → collides on retry/double-tap).
     tx.create(
       db.collection('games').doc(gameId as string).collection('retroGoals').doc(retroGoalId),
-      { scorerId, assisterId: assister, addedBy: uid, at: now },
+      { scorerId, assisterId: assister, ...(clubGoalCounter === 'guestGoals' ? { clubGoalCounter } : {}), addedBy: uid, at: now },
     );
     // Goal → the SAME four stores commitRoundStats writes (no rounds/wins/pairs).
     if (isReal(scorerId)) {
@@ -15487,7 +15490,7 @@ export const addRetroGoal = onCall(
     );
     tx.set(
       db.collection('communityStats').doc(groupId),
-      { groupId, goals: inc(1), updatedAt: now },
+      { groupId, [clubGoalCounter]: inc(1), updatedAt: now },
       { merge: true },
     );
     if (assister) {
@@ -15538,10 +15541,12 @@ export const removeRetroGoal = onCall(
       assertSeasonOpenForGame(currentClub.data(), game);
       const m = await tx.get(markerRef);
       if (!m.exists) return; // already removed / never existed → no-op
-      const d = m.data() as { scorerId?: string; assisterId?: string | null };
+      const d = m.data() as { scorerId?: string; assisterId?: string | null; clubGoalCounter?: string };
       const scorerId = d.scorerId;
       const assister = d.assisterId ?? null;
       if(!scorerId)throw new HttpsError('failed-precondition','score-marker:missing');
+      // Older guest corrections credited the ranked total. Undo the same counter the add used.
+      const clubGoalCounter = d.clubGoalCounter === 'guestGoals' ? 'guestGoals' : 'goals';
       const applyScores=await prepareRetroScores(tx,db,gameId as string,groupId,game,{scorerId,assisterId:assister,step:-1});
       tx.delete(markerRef);
       if (scorerId && isReal(scorerId)) {
@@ -15560,7 +15565,7 @@ export const removeRetroGoal = onCall(
         );
         tx.set(
           db.collection('communityStats').doc(groupId),
-          { goals: inc(-1), updatedAt: now },
+          { [clubGoalCounter]: inc(-1), updatedAt: now },
           { merge: true },
         );
       }
@@ -15881,7 +15886,8 @@ async function closeSeasonIfRoundsTargetMet(groupId: string, _sealedGameId: stri
 
 
 
-function seasonManager(): SeasonManager { return new SeasonManager({ db, announce: announceSeasonClosed, report: reportServerError }); }
+function seasonManager(): SeasonManager { return new SeasonManager({ db, announce: announceSeasonClosed, report: reportServerError,
+  scoreCalibration:(tx,game,gameId,now)=>prepareSharedScoreCalibration(tx,db,game,gameId,now,{starting:true}) }); }
 async function runSeasonRollovers(): Promise<void> { await seasonManager().sweep(); }
 export const startSeasonEvening = onCall({ enforceAppCheck: ENFORCE_APP_CHECK, timeoutSeconds: 300 }, async request => seasonManager().startEvening(String(request.data?.gameId ?? ''), request.auth?.uid ?? ''));
 export const resumeClubSeason = onCall({ enforceAppCheck: ENFORCE_APP_CHECK, timeoutSeconds: 300, memory: '512MiB' }, async request => seasonManager().resume(String(request.data?.groupId ?? ''), request.auth?.uid ?? ''));
@@ -16066,5 +16072,7 @@ export { onSupportClubCreated, onSupportOutreachConfigChanged, cronSupportOutrea
 
 // Requires deployment before clients can finalize a regulation-penalty round.
 export const commitRoundStatsWithInPlayPenalties = commitRoundStats;
+// New clients use this entry point only for the explicit two/three-team draw.
+export const commitRoundStatsWithDrawRotation = commitRoundStats;
 export { onGamePersonalActivityChanged, savePersonalActivity, getMyPersonalActivity, onPersonalActivityOwnerDeleted } from './personalActivity';
 export { getMyActivityState, setMyActivitySource, saveMyActivityRecords, onMyActivityOwnerDeleted } from './myActivity';

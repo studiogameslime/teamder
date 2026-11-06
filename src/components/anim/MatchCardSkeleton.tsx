@@ -4,14 +4,12 @@
 // users see the layout settle into the same vertical rhythm the cards
 // will land in.
 //
-// Dimensions match MatchListCard roughly (~140 px tall, full-width
-// rounded card). Tune sparingly: a skeleton that's the wrong height
-// shoves layout when the real data arrives.
+// MatchListCard has a split 126-point top, occupancy track and action footer.
 
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SkeletonRegion, SkeletonBlock } from '@/components/loading/ScreenSkeletons';
-import { radius, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
 interface Props {
   /** How many skeleton cards to render. Default 3. */
@@ -24,15 +22,20 @@ export function MatchCardSkeleton({ count = 3 }: Props) {
     <View style={{ gap: spacing.md }}>
       {Array.from({ length: count }, (_, i) => (
         <View key={i} style={styles.card}>
-          <View style={styles.headerRow}>
-            <SkeletonBlock style={styles.titleBlock} />
-            <SkeletonBlock style={styles.statusPill} />
+          <View style={styles.top}>
+            <View style={styles.details}>
+              <SkeletonBlock style={{ width: '82%', height: 19 }} />
+              <SkeletonBlock style={{ width: '92%', height: 19 }} />
+              <SkeletonBlock style={{ width: '84%', height: 15 }} />
+              <SkeletonBlock style={{ width: '69%', height: 15, marginTop: 2 }} />
+            </View>
+            <SkeletonBlock style={styles.photo} />
           </View>
-          <View style={styles.metaRow}>
-            <SkeletonBlock style={styles.metaBlock} />
-            <SkeletonBlock style={styles.metaBlock} />
+          <SkeletonBlock style={styles.progress} />
+          <View style={styles.bottom}>
+            <View style={styles.tags}><SkeletonBlock style={styles.tag} /><SkeletonBlock style={styles.tag} /></View>
+            <SkeletonBlock style={styles.action} />
           </View>
-          <SkeletonBlock style={styles.ctaBlock} />
         </View>
       ))}
     </View>
@@ -43,40 +46,17 @@ export function MatchCardSkeleton({ count = 3 }: Props) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.sm,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#E8EDF5',
+    overflow: 'hidden',
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  titleBlock: {
-    height: 18,
-    width: '55%',
-    borderRadius: 6,
-  },
-  statusPill: {
-    height: 22,
-    width: 70,
-    borderRadius: 999,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  metaBlock: {
-    height: 14,
-    flex: 1,
-    borderRadius: 6,
-  },
-  ctaBlock: {
-    height: 38,
-    width: '100%',
-    borderRadius: 999,
-    marginTop: spacing.xs,
-  },
+  top: { flexDirection: 'row', alignItems: 'stretch', minHeight: 126 },
+  details: { flex: 1, padding: 12, gap: 4 },
+  photo: { width: '35%', height: 'auto', borderRadius: 18, marginBottom: 8, backgroundColor: '#DCE6F5' },
+  progress: { height: 5, marginHorizontal: 12, marginTop: 2, borderRadius: 3 },
+  bottom: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 6 },
+  tags: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
+  tag: { width: 48, maxWidth: '42%', height: 20, borderRadius: 10 },
+  action: { width: '39%', maxWidth: '49%', height: 36, borderRadius: 10 },
 });

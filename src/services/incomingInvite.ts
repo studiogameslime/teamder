@@ -35,7 +35,9 @@ export async function resolveIncomingInvite(
     const before = revision;
     await writes;
     const unresolved = await AsyncStorage.getItem(KEY);
-    if (resolving || before !== revision || unresolved || await storage.getPendingInvite()) return null;
+    if (resolving || before !== revision || unresolved) return null;
+    const pending = await storage.getPendingInvite();
+    if (pending || resolving || before !== revision) return null;
   }
   const attempt = ++revision;
   resolving++;

@@ -11,7 +11,7 @@ test.each([true,false])('profile reads statistics concurrently only after privac
  let finishClubs!:(v:any)=>void;const clubs=new Promise(r=>{finishClubs=r;});
  const records={kept:true},statistics={stats:{goals:42}};
  const context:any={module:{exports:{}},onCall:(_opts:any,fn:any)=>fn,ENFORCE_APP_CHECK:false,
-  session:async()=>({uid:'me',user:{},db:{doc:(path:string)=>({get:async()=>path.startsWith('users/')?{exists:true,data:()=>({name:'איתי'})}:{data:()=>null}}),collection:()=>({where:()=>({get:async()=>({docs:[]})})})}}),
+  session:async()=>({uid:'me',user:{},db:{getAll:async()=>[{exists:true,data:()=>({name:'איתי'})},{exists:false},{exists:false}],doc:()=>({get:async()=>({data:()=>null})}),collection:()=>({where:()=>({get:async()=>({docs:[]})})})}}),
   blocked:async()=>false,validId:(id:string)=>id,clubsFor:()=>clubs,statisticsAllowed:()=>allowed,
   readStatisticsRows:jest.fn(async()=>records),readStatistics:jest.fn(async()=>statistics),
   socialIdentity:(id:string,u:any)=>({id,name:u.name}),socialPrivacy:()=>({statistics:'friends'}),socialPairSummary:()=>null,

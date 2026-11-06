@@ -19,6 +19,7 @@ jest.mock('@react-navigation/native',()=>({useRoute:()=>({params:{}}),useFocusEf
 jest.mock('@expo/vector-icons',()=>({Ionicons:'Icon'}));
 jest.mock('@/components/ScreenHeader',()=>({ScreenHeader:'Header'}));
 jest.mock('@/components/SoccerBallLoader',()=>({SoccerBallLoader:'Loader'}));
+jest.mock('@/components/loading/ScreenSkeletons',()=>({SkeletonRegion:({label,children}:any)=>require('react').createElement('SkeletonRegion',null,label,children),SkeletonBlock:'SkeletonBlock'}));
 jest.mock('@/components/ScrollSurface',()=>({ScrollSurface:'Scroll'}));
 jest.mock('@/components/match/tabs/MatchTabShell',()=>({TabScroll:'TabScroll'}));
 jest.mock('@/components/UserAvatar',()=>({UserAvatar:'Avatar'}));
@@ -82,7 +83,7 @@ test('changing game hides the old round before effects and ignores its late resp
   render();mockFocus!();effects();await flush();render();
   const old=deferred();getRounds.mockReturnValueOnce(old.promise);mockFocus!();render();effects();
   getGame.mockResolvedValueOnce(game('two'));getRounds.mockResolvedValueOnce([round('new-game')]);
-  const switching=render('two');expect(cards(switching)).toHaveLength(0);expect(nodes(switching).some(n=>n.type==='Loader')).toBe(true);
+  const switching=render('two');expect(cards(switching)).toHaveLength(0);expect(nodes(switching).some(n=>typeof n.type==='function'&&n.type.name==='MiniGamesSkeleton')).toBe(true);
   effects();await flush();expect(cards(render('two'))[0].props.round.roundId).toBe('new-game');
   old.resolve([round('late-old')]);await flush();expect(cards(render('two'))[0].props.round.roundId).toBe('new-game');
 });

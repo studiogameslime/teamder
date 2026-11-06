@@ -1,0 +1,6 @@
+{
+  "name": "projects/soccer-app-52b6b/locations/us-central1/jobs/firebase-schedule-cleanupUsageActivity-us-central1",
+  "schedule": "0 0 * * *",
+  "state": "ENABLED",
+  "timeZone": "Asia/Jerusalem"
+}

@@ -1,0 +1,451 @@
+{
+  "phase": "before",
+  "size": 400,
+  "summary": [
+    {
+      "name": "open",
+      "median": 77,
+      "min": 58,
+      "max": 84,
+      "pages": 1
+    },
+    {
+      "name": "earlyName",
+      "median": 69,
+      "min": 48,
+      "max": 83,
+      "pages": 1
+    },
+    {
+      "name": "lateName",
+      "median": 510,
+      "min": 459,
+      "max": 524,
+      "pages": 10
+    },
+    {
+      "name": "absent",
+      "median": 568,
+      "min": 517,
+      "max": 588,
+      "pages": 11
+    },
+    {
+      "name": "friendsOnly",
+      "median": 528,
+      "min": 465,
+      "max": 561,
+      "pages": 10
+    },
+    {
+      "name": "card",
+      "median": 85,
+      "min": 69,
+      "max": 119,
+      "pages": 1
+    },
+    {
+      "name": "recruit",
+      "median": 699,
+      "min": 630,
+      "max": 750,
+      "pages": 1
+    }
+  ],
+  "records": [
+    {
+      "name": "open",
+      "pass": 0,
+      "ms": 84,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "name": "earlyName",
+      "pass": 0,
+      "ms": 73,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "name": "lateName",
+      "pass": 0,
+      "ms": 491,
+      "pages": 10,
+      "rows": 1
+    },
+    {
+      "name": "absent",
+      "pass": 0,
+      "ms": 586,
+      "pages": 11,
+      "rows": 0
+    },
+    {
+      "name": "friendsOnly",
+      "pass": 0,
+      "ms": 465,
+      "pages": 10,
+      "rows": 1
+    },
+    {
+      "name": "card",
+      "pass": 0,
+      "ms": 84,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "name": "recruit",
+      "pass": 0,
+      "ms": 698,
+      "pages": 1,
+      "rows": 50
+    },
+    {
+      "name": "earlyName",
+      "pass": 1,
+      "ms": 55,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "name": "lateName",
+      "pass": 1,
+      "ms": 459,
+      "pages": 10,
+      "rows": 1
+    },
+    {
+      "name": "absent",
+      "pass": 1,
+      "ms": 535,
+      "pages": 11,
+      "rows": 0
+    },
+    {
+      "name": "friendsOnly",
+      "pass": 1,
+      "ms": 528,
+      "pages": 10,
+      "rows": 1
+    },
+    {
+      "name": "card",
+      "pass": 1,
+      "ms": 85,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "name": "recruit",
+      "pass": 1,
+      "ms": 699,
+      "pages": 1,
+      "rows": 50
+    },
+    {
+      "name": "open",
+      "pass": 1,
+      "ms": 58,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "name": "lateName",
+      "pass": 2,
+      "ms": 510,
+      "pages": 10,
+      "rows": 1
+    },
+    {
+      "name": "absent",
+      "pass": 2,
+      "ms": 533,
+      "pages": 11,
+      "rows": 0
+    },
+    {
+      "name": "friendsOnly",
+      "pass": 2,
+      "ms": 547,
+      "pages": 10,
+      "rows": 1
+    },
+    {
+      "name": "card",
+      "pass": 2,
+      "ms": 119,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "name": "recruit",
+      "pass": 2,
+      "ms": 749,
+      "pages": 1,
+      "rows": 50
+    },
+    {
+      "name": "open",
+      "pass": 2,
+      "ms": 65,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "name": "earlyName",
+      "pass": 2,
+      "ms": 83,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "name": "absent",
+      "pass": 3,
+      "ms": 585,
+      "pages": 11,
+      "rows": 0
+    },
+    {
+      "name": "friendsOnly",
+      "pass": 3,
+      "ms": 547,
+      "pages": 10,
+      "rows": 1
+    },
+    {
+      "name": "card",
+      "pass": 3,
+      "ms": 83,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "name": "recruit",
+      "pass": 3,
+      "ms": 750,
+      "pages": 1,
+      "rows": 50
+    },
+    {
+      "name": "open",
+      "pass": 3,
+      "ms": 82,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "name": "earlyName",
+      "pass": 3,
+      "ms": 70,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "name": "lateName",
+      "pass": 3,
+      "ms": 515,
+      "pages": 10,
+      "rows": 1
+    },
+    {
+      "name": "friendsOnly",
+      "pass": 4,
+      "ms": 561,
+      "pages": 10,
+      "rows": 1
+    },
+    {
+      "name": "card",
+      "pass": 4,
+      "ms": 69,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "name": "recruit",
+      "pass": 4,
+      "ms": 733,
+      "pages": 1,
+      "rows": 50
+    },
+    {
+      "name": "open",
+      "pass": 4,
+      "ms": 65,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "name": "earlyName",
+      "pass": 4,
+      "ms": 57,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "name": "lateName",
+      "pass": 4,
+      "ms": 524,
+      "pages": 10,
+      "rows": 1
+    },
+    {
+      "name": "absent",
+      "pass": 4,
+      "ms": 588,
+      "pages": 11,
+      "rows": 0
+    },
+    {
+      "name": "card",
+      "pass": 5,
+      "ms": 93,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "name": "recruit",
+      "pass": 5,
+      "ms": 672,
+      "pages": 1,
+      "rows": 50
+    },
+    {
+      "name": "open",
+      "pass": 5,
+      "ms": 77,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "name": "earlyName",
+      "pass": 5,
+      "ms": 69,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "name": "lateName",
+      "pass": 5,
+      "ms": 501,
+      "pages": 10,
+      "rows": 1
+    },
+    {
+      "name": "absent",
+      "pass": 5,
+      "ms": 517,
+      "pages": 11,
+      "rows": 0
+    },
+    {
+      "name": "friendsOnly",
+      "pass": 5,
+      "ms": 498,
+      "pages": 10,
+      "rows": 1
+    },
+    {
+      "name": "recruit",
+      "pass": 6,
+      "ms": 630,
+      "pages": 1,
+      "rows": 50
+    },
+    {
+      "name": "open",
+      "pass": 6,
+      "ms": 81,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "name": "earlyName",
+      "pass": 6,
+      "ms": 48,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "name": "lateName",
+      "pass": 6,
+      "ms": 522,
+      "pages": 10,
+      "rows": 1
+    },
+    {
+      "name": "absent",
+      "pass": 6,
+      "ms": 568,
+      "pages": 11,
+      "rows": 0
+    },
+    {
+      "name": "friendsOnly",
+      "pass": 6,
+      "ms": 515,
+      "pages": 10,
+      "rows": 1
+    },
+    {
+      "name": "card",
+      "pass": 6,
+      "ms": 87,
+      "pages": 1,
+      "rows": 1
+    }
+  ],
+  "first": [
+    {
+      "name": "open",
+      "pass": -1,
+      "ms": 106,
+      "pages": 1,
+      "rows": 39
+    },
+    {
+      "name": "earlyName",
+      "pass": -1,
+      "ms": 88,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "name": "lateName",
+      "pass": -1,
+      "ms": 431,
+      "pages": 10,
+      "rows": 1
+    },
+    {
+      "name": "absent",
+      "pass": -1,
+      "ms": 536,
+      "pages": 11,
+      "rows": 0
+    },
+    {
+      "name": "friendsOnly",
+      "pass": -1,
+      "ms": 480,
+      "pages": 10,
+      "rows": 1
+    },
+    {
+      "name": "card",
+      "pass": -1,
+      "ms": 102,
+      "pages": 1,
+      "rows": 1
+    },
+    {
+      "name": "recruit",
+      "pass": -1,
+      "ms": 779,
+      "pages": 1,
+      "rows": 50
+    }
+  ]
+}

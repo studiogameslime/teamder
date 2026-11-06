@@ -314,7 +314,7 @@ registerResumer('create_game', async (action: PendingAction): Promise<ActionResu
   }
 
   try {
-    const { gameId } = await createGameFromValues({
+    const { gameId, invitations } = await createGameFromValues({
       values: restored.values as unknown as GameFormValues,
       uid: me.id,
       groupId,
@@ -322,6 +322,16 @@ registerResumer('create_game', async (action: PendingAction): Promise<ActionResu
       draftId: draft.id,
     });
     navigateAfterCreate({ type: 'game', id: gameId });
+    if (invitations?.failed && isCurrentUser(me.id)) {
+      // This feedback is optional and must never turn a saved game into a
+      // retryable creation failure. Load its presentation only when needed.
+      try {
+        const { toast } = require('@/components/Toast') as typeof import('@/components/Toast');
+        toast.info('המחזור נוצר, אבל לא כל ההזמנות נשלחו. אפשר להזמין שוב מתוך פרטי המחזור.', 6500);
+      } catch (error) {
+        observeCaughtError(error, { source: 'src/services/actionResumers.ts', handler: 'resumeCreateGameInvitationNotice', site: 'actionResumers:invitation-notice' });
+      }
+    }
     return { outcome: 'created', terminal: true };
   } catch (err) {
     observeCaughtError(err, {"source":"src/services/actionResumers.ts","handler":"module","site":"actionResumers:faa61d2ccb"});

@@ -138,13 +138,15 @@ export function AutocompleteInput({
 
   return (
     <View style={[styles.field, style]}>
-      <Text style={[styles.label, designed && { textAlign: RTL_LABEL_ALIGN, fontSize: 14 }]}>
+      <Text accessible={false} importantForAccessibility="no" style={[styles.label, designed && { textAlign: RTL_LABEL_ALIGN, fontSize: 14 }]}>
         {label}
         {required ? <Text style={styles.requiredStar}>{' *'}</Text> : null}
       </Text>
       <View style={styles.inputWrap}>
-        {designed && !loading ? <Ionicons pointerEvents="none" name="location-outline" size={19} color="#64748B" style={{ position: "absolute", end: 12, top: 14, zIndex: 1 }} /> : null}
+        {designed && !loading ? <Ionicons accessible={false} pointerEvents="none" name="location-outline" size={19} color="#64748B" style={{ position: "absolute", end: 12, top: 14, zIndex: 1 }} /> : null}
         <TextInput
+          accessibilityLabel={required ? `${label}, שדה חובה` : label}
+          accessibilityState={{ disabled: !!disabled, busy: loading }}
           value={value}
           onChangeText={handleChange}
           onFocus={() => setOpen(true)}
@@ -162,6 +164,10 @@ export function AutocompleteInput({
         />
         {loading ? (
           <ActivityIndicator
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel={`טוען הצעות עבור ${label}`}
+            accessibilityLiveRegion="polite"
             style={styles.loader}
             size="small"
             color={colors.primary}
@@ -173,13 +179,16 @@ export function AutocompleteInput({
           {suggestions.slice(0, 8).map((s) => (
             <Pressable
               key={s}
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel={s}
               onPress={() => handleSelect(s)}
               style={({ pressed }) => [
                 styles.option,
                 pressed && { backgroundColor: colors.surfaceMuted },
               ]}
             >
-              <Text style={styles.optionText} numberOfLines={1}>
+              <Text accessible={false} style={styles.optionText}>
                 {s}
               </Text>
             </Pressable>

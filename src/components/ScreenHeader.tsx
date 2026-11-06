@@ -66,11 +66,11 @@ export function ScreenHeader({
         )}
       </View>
       <View style={styles.center}>
-        <Text style={styles.title} numberOfLines={1}>
+        <Text style={styles.title}>
           {title}
         </Text>
         {subtitle && (
-          <Text style={styles.subtitle} numberOfLines={1}>
+          <Text style={styles.subtitle}>
             {subtitle}
           </Text>
         )}
@@ -81,6 +81,8 @@ export function ScreenHeader({
             key={`${a.icon}-${i}`}
             onPress={a.onPress}
             hitSlop={10}
+            accessible
+            accessibilityRole="button"
             accessibilityLabel={a.label}
             style={({ pressed }) => [
               styles.actionBtn,
@@ -88,12 +90,13 @@ export function ScreenHeader({
             ]}
           >
             <Ionicons
+              accessible={false}
               name={a.icon}
               size={22}
               color={a.tint ?? colors.text}
             />
             {a.badge && a.badge > 0 ? (
-              <View style={styles.badge}>
+              <View accessible={false} importantForAccessibility="no-hide-descendants" style={styles.badge}>
                 <Text style={styles.badgeText}>{a.badge > 99 ? '99+' : a.badge}</Text>
               </View>
             ) : null}
@@ -136,7 +139,7 @@ const styles = StyleSheet.create({
     top: -2,
     right: -4,
     minWidth: 16,
-    height: 16,
+    minHeight: 16,
     borderRadius: 8,
     paddingHorizontal: 3,
     backgroundColor: colors.danger,
@@ -150,6 +153,7 @@ const styles = StyleSheet.create({
   },
   center: {
     flex: 1,
+    minWidth: 0,
     alignItems: 'flex-start',
     paddingHorizontal: spacing.sm,
   },

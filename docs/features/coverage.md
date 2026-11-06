@@ -1,5 +1,9 @@
 # כיסוי מסכי המקור
 
+6.11.2026: `RoundPenaltiesSection` ו-`RoundPenaltiesCard` נוספו בתוך לשונית הסטטיסטיקה הקיימת של המחזור, ללא מסך או מסלול חדש. פירוט שחקן נפתח בתוך הכרטיס. [התנהגות, חישובים וראיות בדפדפן](rounds/match-stats.md#פנדלים-במחזור-6112026).
+
+3.11.2026: ביקורת הלילה שינתה רכיבים ומסכים קיימים בלבד. מארחי הצילום והמתאמים נשמרים מקומית בתוך `artifacts/overnight-2026-11-02` ואינם מסלולי מוצר חדשים. [מלאי הקוד והמצבים](../audits/2026-11-02-overnight/inventory.json) ו[ראיות ומגבלות](../changes/2026-11-03-overnight-mission.md).
+
 2.11.2026: `src/dev/ExperienceAuditPreview.tsx` נוסף כמארח בדיקה מוגבל לפיתוח, מסלולי בדיקה ונתוני הדגמה יחד. אין מסך או מסלול מוצר חדש. [בדיקה ומגבלות](../changes/2026-11-02-experience-review.md).
 
 2.11.2026: נוספו רכיבי המשכיות ומשוב במסכים קיימים בלבד. אין מסך או נתיב חדש. [היקף וראיות](../changes/2026-11-02-experience-polish.md).
@@ -390,3 +394,11 @@
 
 `src/screens/profile/MyActivityScreen.tsx` נשאר רשום בארבע מחסניות הניווט לצורך מצב שמור, אך מציג הודעת אי זמינות כשהמתג כבוי. הכניסה מהבית וכרטיסי הפעילות בסיכום המחזור מוסתרים. לא נוסף או הוסר קובץ מסך. זהו שינוי מקומי שטרם הופץ.
 30.10.2026: נוסף `pulse/src/screens/ProPlanningScreen.tsx`, במסלול עוד, תכנון פרו, עם רישום `ProPlanning` ב-`pulse/src/navigation/RootTabs.tsx`. משויך ל-[ניהול הפולס](shared/pulse-management.md). תכנון מקומי בלבד, ללא שינוי בהתנהגות האפליקציה.
+
+4.11.2026: נבדקו 62 קובצי המסך של האפליקציה ב[מיפוי הטעינה](../audits/2026-11-04-performance/screen-census.json). לא נוסף או הוסר מסך או מסלול; 154 רישומי מסך עברו לטעינת מודול לפי צורך תוך שמירת שמותיהם. `src/components/loading/DraftSetupSkeleton.tsx` הוא רכיב טעינה פנימי של [הגדרת הכוחות](rounds/draft-setup.md), ללא מסלול חדש. זהו מיפוי קוד ובדיקות מקומיות, ללא הרצת כל המסכים במכשיר. [מימוש, בדיקות ומגבלות](../changes/2026-11-04-screen-performance.md).
+
+4.11.2026: המשך שיפור הטעינה בלוח המנהל ובכרטיסי הפירוט אינו מוסיף או מסיר מסך או מסלול. `src/screens/communities/useManagerDashboardScores.ts` הוא קרס פנימי ו-`src/components/manager/ManagerRatingFilters.tsx` הוא רכיב מסננים של [לוח המנהל](clubs/manager-dashboard.md). הפרדת קריאות בכרטיס האישי ובסיכום העונה מתועדת בזוגות הקיימים. [המדידות והראיות](../changes/2026-11-04-detail-performance.md).
+
+4.11.2026: `pulse/src/components/UserUsageTimeline.tsx` נוסף בתוך `pulse/src/screens/UserDetailScreen.tsx`, במסלול אנשים, משתמש, היסטוריה. משויך ל-[ציר הפעילות](shared/usage-activity.md) ולניהול הפולס. קרס לשוניות פנימי פועל במחזור, במועדון ובלוח המנהל. אין מסך או נתיב חדש; תצוגת המקור נבדקה במתאם דפדפן בלבד, והאיסוף כבוי כברירת מחדל.
+
+5.11.2026: נוספה לשונית הצעות בתוך `pulse/src/screens/DevInboxScreen.tsx` והרכיב `pulse/src/components/ConvertToTaskButton.tsx` נוסף בפניות ובתמיכה. הנתיב הקיים `Tasks` תומך בפתיחת משימה לפי מזהה, והפרטים מוצגים ב-`WorkRow` הקיים. אין קובץ מסך חדש או הסרת מסך. שיוך ל-[לוח המשימות](shared/pulse-work-inbox.md), [ניהול הפולס](shared/pulse-management.md) ו-[תמיכה](shared/pulse-support.md). הצילומים ממתאם דפדפן בלבד.

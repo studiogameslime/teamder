@@ -1,0 +1,10 @@
+{
+  "source": "firestore emulator on loopback",
+  "syntheticProject": "demo-night-acts-mw2ntyyn",
+  "insertedBefore": 203,
+  "insertedAfterSnapshot": 1,
+  "pages": 2,
+  "accounts": 1,
+  "events": 203,
+  "verified": true
+}

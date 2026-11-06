@@ -26,3 +26,5 @@
 | תיבת משימות ובאגים שלא נפתרו בפולס | [הסבר פשוט](pulse-work-inbox.simple.md) | [מסמך טכני](pulse-work-inbox.md) |
 
 | ארגון וניהול בפולס | [הסבר פשוט](pulse-management.simple.md) | [מסמך טכני](pulse-management.md) |
+
+| ביקורים ופעילות משתמשים בפולס | [הסבר פשוט](usage-activity.simple.md) | [מסמך טכני](usage-activity.md) |

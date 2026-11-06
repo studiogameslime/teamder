@@ -18,8 +18,9 @@ after(async()=>env?.cleanup());
 beforeEach(async()=>{
   await env.clearFirestore();
   await env.withSecurityRulesDisabled(async ctx=>{
-    await setDoc(doc(ctx.firestore(),'groups','club'),{creatorId:'admin',adminIds:['admin'],playerIds:['admin','a','b','c','d','x'],isOpen:false});
-    await setDoc(doc(ctx.firestore(),'games','round'),{createdBy:'admin',groupId:'club',status:'scheduled',visibility:'community',startsAt:Date.now()+86400000,registrationOpensAt:Date.now()+3600000,
+    const db=ctx.firestore();
+    await setDoc(doc(db,'groups','club'),{creatorId:'admin',adminIds:['admin'],playerIds:['admin','a','b','c','d','x'],isOpen:false});
+    await setDoc(doc(db,'games','round'),{createdBy:'admin',groupId:'club',status:'scheduled',visibility:'community',startsAt:Date.now()+86400000,registrationOpensAt:Date.now()+3600000,
       players:['a'],waitlist:['b','c'],pending:['d'],participantIds:['a','b','c','d'],maxPlayers:10,pendingPromotion:{uid:'b',offeredAt:Date.now()},cancellations:{},joinedAt:{a:100,b:100,c:100,d:100}});
   });
 });

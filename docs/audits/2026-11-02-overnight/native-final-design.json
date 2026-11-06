@@ -1,0 +1,1388 @@
+{
+  "schemaVersion": 1,
+  "reviewedAtUtc": "2026-11-02 22:48:13 UTC",
+  "scope": "35 תוויות המפעיל, מיצירת מועדון עד היסטוריית משחקי המחזור, כולל",
+  "environment": {
+    "platform": "android",
+    "rtl": true,
+    "mock": true,
+    "width": 1080,
+    "height": 2400
+  },
+  "method": "כל אחת מ-35 התמונות נפתחה ב-view_image בגודל original. נבדקו תוכן, כיווניות גלויה, חפיפות והבדל מצילומים קודמים, ללא פעולת מכשיר. סדר הרשומות נגזר מטבלת תוויות המפעיל ולא מסדר הלכידה בקובץ native-final.json.",
+  "summary": {
+    "visualScreenshotReviews": 35,
+    "secondaryScreensWithoutHelpBubble": 33,
+    "primaryScreensWithKnownHelpOverlap": 2,
+    "loadedMapsReviewed": 2,
+    "knownDemoHeaderClippingScreens": 2,
+    "explicitEmptyStatesReviewed": 2,
+    "newSignificantVisualIssues": 0,
+    "resolvedEvidenceGaps": [
+      "NV03",
+      "NV04"
+    ],
+    "remainingTargetVariantGaps": [
+      "NV05",
+      "NV06"
+    ],
+    "functionalVerifiedScreens": 0,
+    "regressionCompleteScreens": 0
+  },
+  "issueLegend": {
+    "NV01-root": "בועת העזרה עדיין חופפת לתוכן כרטיסים בשני המסכים הראשיים. החפיפות בצילומי המסכים המשניים אינן נראות עוד.",
+    "NV02": "כותרת תצוגת דמו ארוכה בחלוקה הידנית צמודה לקצה ונחתכת חלקית. אין הוכחה לחיתוך כותרת הייצור.",
+    "NV03": "פער ראיה קודם של מועדונים ללא כרטיסים נפתר בצילומי התוכן המאוחרים.",
+    "NV04": "פער ראיה קודם של לוח מנהל בטעינה נפתר בצילום סקירה טעון.",
+    "NV05": "AddMembers מציג הוספה למחזור, ללא הוכחת מצב הוספת חברים למועדון.",
+    "NV06": "ManagerClubInsights מציג את תחילת לשונית הסקירה, ללא אזור תובנות מובחן בחלק המצולם."
+  },
+  "auditToolLimitation": "treeFresh=false ב-DraftBoard אינו מסומן כתקלה במוצר. הצילום מציג את מסך הבחירה ותוכנו קריא; כלי העץ לא אומת מכאן.",
+  "motionLimitation": "צילום יחיד אינו מוכיח תנועה, רצף פעימה, קצב פריימים או תגובה ללחיצה. במסכים המלאים נצפו טקסטי תפוסה, מצב המתנה ופקד שליחה מושבת בלבד.",
+  "screens": [
+    {
+      "launcherIndex": 0,
+      "name": "CommunitiesCreate",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "שלב פרטים ריק ביצירת מועדון",
+      "observations": [
+        "מוצגים פרטים ומתקדם מימין לשמאל, שדות שם ותיאור, עיר ותחילת פרטי קשר.",
+        "המשך מושבת עם הודעת השלמה של שם ועיר. בועת העזרה שהסתירה את קצהו איננה."
+      ],
+      "comparison": "נסגרה חפיפת NV01 במצב זה.",
+      "evidence": {
+        "index": 0,
+        "name": "CommunitiesCreate",
+        "file": "artifacts/overnight-2026-11-02/native-final/CommunitiesCreate.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 172561,
+        "sha256": "b21e865b2c724d3fba68e5e5b313c787e40a171611f05ae10159578ac0f87353",
+        "expectedRoute": "CommunitiesCreate",
+        "actualRoute": "CommunitiesCreate",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו הקלדה, עיר, מקלדת, שלב מתקדם או יצירה.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 1,
+      "name": "GameCreate",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "יצירת מחזור למועדון, שלב פרטים",
+      "observations": [
+        "מוצגים יעד חמישי כדורגל, תאריך05.11.2026 ושעה20:00, מיקום חובה ובחירת משטח.",
+        "המשך מושבת כי המיקום ריק. הפעולה התחתונה גלויה ללא בועה."
+      ],
+      "comparison": "נסגרה חפיפת NV01 במצב זה.",
+      "evidence": {
+        "index": 1,
+        "name": "GameCreate",
+        "file": "artifacts/overnight-2026-11-02/native-final/GameCreate.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 186857,
+        "sha256": "558563b636de1f45b7620d2db164796d708eb38df94f0fb458349a53009b9486",
+        "expectedRoute": "GameCreate",
+        "actualRoute": "GameCreate",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו בחירות, שלבים נוספים, שמירה או יצירה.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 2,
+      "name": "GameCreateQuick",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "פרטי מחזור חד פעמי",
+      "observations": [
+        "הסבר המחזור החד פעמי, שם אופציונלי ותאריך ושעה נראים בבירור.",
+        "מיקום חובה ריק והמשך מושבת ללא חפיפת עזרה."
+      ],
+      "comparison": "נסגרה חפיפת NV01 במצב זה.",
+      "evidence": {
+        "index": 2,
+        "name": "GameCreateQuick",
+        "file": "artifacts/overnight-2026-11-02/native-final/GameCreateQuick.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 189887,
+        "sha256": "5f448382a340833caa205ed635cb2f3589ab2bf9dd9ad5730027c7d2758262b6",
+        "expectedRoute": "GameCreate",
+        "actualRoute": "GameCreate",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "תחתית אפשרויות המשטח מחוץ לחלק הגלוי; אין בדיקת יצירה.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 3,
+      "name": "DraftSetup",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "בחירת שיטת חלוקת כוחות",
+      "observations": [
+        "מוצגים9 רשומים,2 קבוצות ו-5 על5, עריכת כוחות קיימים ובחירת קפטנים.",
+        "כוחות אוטומטיים מושבתים עם הסבר על דירוג פנימי. ההמשך מושבת לפני בחירה."
+      ],
+      "comparison": "אין חפיפה בכפתור ההמשך והסברו.",
+      "evidence": {
+        "index": 3,
+        "name": "DraftSetup",
+        "file": "artifacts/overnight-2026-11-02/native-final/DraftSetup.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 167054,
+        "sha256": "8e2f67ccbca4044ba0d82a2b9415d72ee321c9b17bad25bd396a2ed6f6564c2a",
+        "expectedRoute": "DraftSetup",
+        "actualRoute": "DraftSetup",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "שיטות לא הופעלו ולא נבדקה חלוקה.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 4,
+      "name": "ManualAllocationThree",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית עם ממצא קיים",
+      "state": "חלוקה ידנית בהדגמה לשלוש קבוצות",
+      "observations": [
+        "שלושה שחקנים טרם שובצו; האדומים מציגים6 מתוך7 וכרטיסי שחקן קריאים.",
+        "שמירת טיוטה וההסבר על טיוטה חלקית גלויים במלואם ללא בועה."
+      ],
+      "comparison": "נסגרה חפיפת NV01; מגבלת כותרת הדמו נשארה.",
+      "evidence": {
+        "index": 4,
+        "name": "ManualAllocationThree",
+        "file": "artifacts/overnight-2026-11-02/native-final/ManualAllocationThree.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 225773,
+        "sha256": "fdfac18757c5046acd7b4ded615fdf3d20c93710f19b244459dd690df0acd95c",
+        "expectedRoute": "DraftSetup",
+        "actualRoute": "DraftSetup",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [
+        "NV02"
+      ],
+      "evidenceGaps": [],
+      "limitations": [
+        "שתי קבוצות נוספות והגרירה לא נבדקו.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 5,
+      "name": "ManualAllocationFour",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית עם ממצא קיים",
+      "state": "חלוקה ידנית בהדגמה לארבע קבוצות",
+      "observations": [
+        "מוצגים25 שלא שובצו, שישה כרטיסים וקישור להצגת כולם.",
+        "האדומים ריקים עם0 מתוך7; כפתור שמירת הטיוטה התחתון פנוי מבועה."
+      ],
+      "comparison": "נסגרה חפיפת NV01; כותרת ההדגמה הארוכה עדיין צמודה לקצה ונחתכת בחלקה.",
+      "evidence": {
+        "index": 5,
+        "name": "ManualAllocationFour",
+        "file": "artifacts/overnight-2026-11-02/native-final/ManualAllocationFour.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 201554,
+        "sha256": "8f9520cd75d5cc5e6eabbbd1946ccf67c649af1585a54e5f85211287e694a14a",
+        "expectedRoute": "DraftSetup",
+        "actualRoute": "DraftSetup",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [
+        "NV02"
+      ],
+      "evidenceGaps": [],
+      "limitations": [
+        "יתר הקבוצות, בחירה מרובה ושמירה לא נבדקו.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 6,
+      "name": "DraftBoard",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "בחירת שחקנים לקפטנים",
+      "observations": [
+        "שלב3 מתוך3, רצף בחירות, האדומים והכחולים עם קפטן ורשימת זמינים.",
+        "תמונות השחקנים בשורות התחתונות נראות כעת ללא הבועה שכיסתה אותן."
+      ],
+      "comparison": "התוכן החזותי תקין במצב המצולם ו-NV01 נסגר.",
+      "evidence": {
+        "index": 6,
+        "name": "DraftBoard",
+        "file": "artifacts/overnight-2026-11-02/native-final/DraftBoard.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 310321,
+        "sha256": "fdaac5d58b6a5c85511349693f3e60320414ff15743a6a3deb32d41cc1adc7db",
+        "expectedRoute": "DraftBoard",
+        "actualRoute": "DraftBoard",
+        "treeFresh": false
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "treeFresh=false הוא מגבלת כלי האודיט; אין מהצילום ראיה לכשל מוצר. לא נבחר שחקן.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 7,
+      "name": "SavedDraftBoard",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "חלוקה קיימת של עשרה שחקנים",
+      "observations": [
+        "מוצגים10 שחקנים ושתי קבוצות של חמישה, עם שמות ותמונות.",
+        "לפרטי המחזור ועריכת הכוחות מוצגים במלואם ללא חפיפת בועה."
+      ],
+      "comparison": "נסגרה חפיפת NV01 בפעולת העריכה.",
+      "evidence": {
+        "index": 7,
+        "name": "SavedDraftBoard",
+        "file": "artifacts/overnight-2026-11-02/native-final/SavedDraftBoard.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 269245,
+        "sha256": "0190cc790c68d378a0fe78a034056bdcf4f1c7a7d1eb5147886b335cbc55a647",
+        "expectedRoute": "DraftBoard",
+        "actualRoute": "DraftBoard",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו עריכה, פרסום, מעבר או שמות ארוכים.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 8,
+      "name": "RoundAddMembers",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "בחירת שחקנים למחזור מלא",
+      "observations": [
+        "ליגת השכונה מציגה10 מתוך10, אפס מקומות פנויים ואפס נבחרו.",
+        "חיפוש, תיבות סימון, הסבר המתנה ופעולה מושבתת נראים ללא חפיפת עזרה."
+      ],
+      "comparison": "נסגרה חפיפת NV01 בתחתית.",
+      "evidence": {
+        "index": 8,
+        "name": "RoundAddMembers",
+        "file": "artifacts/overnight-2026-11-02/native-final/RoundAddMembers.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 251025,
+        "sha256": "2d36fb7206860a8ad0c43bcbf2b05e55832486087cda612e71f263d82a2a4c27",
+        "expectedRoute": "AddMembers",
+        "actualRoute": "AddMembers",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבחרו או נרשמו שחקנים ולא נבדקה כתיבת המתנה.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 9,
+      "name": "CommunitiesFeed",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית עם ממצא קיים",
+      "state": "רשימת מועדונים עם חברות וגילוי",
+      "observations": [
+        "מוצג כרטיס חמישי כדורגל עם23 שחקנים ומצב חבר במועדון.",
+        "מוצגים כרטיסי גילוי, ובהם שלישי ספורטק עם32 שחקנים, ופעולות הצטרפות וצפייה."
+      ],
+      "comparison": "פער התוכן NV03 נפתר; חפיפת הבועה נשארת במסך הראשי.",
+      "evidence": {
+        "index": 9,
+        "name": "CommunitiesFeed",
+        "file": "artifacts/overnight-2026-11-02/native-final/CommunitiesFeed.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 1300526,
+        "sha256": "2eb70a7a39f90664886414423ff185c8f17ed93a37ed46cc6f48cad60b5367db",
+        "expectedRoute": "CommunitiesFeed",
+        "actualRoute": "CommunitiesFeed",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": true,
+        "overlapsContent": true,
+        "secondaryScreen": false
+      },
+      "remainingVisualIssues": [
+        "NV01-root"
+      ],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו חיפוש, סינון, פעמון או הצטרפות.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 10,
+      "name": "CommunityDetails",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "מידע על מועדון",
+      "observations": [
+        "שם ותמונה, תל אביב,23 שחקנים ולשוניות מידע, שחקנים וסטטיסטיקות נראים.",
+        "נתוני910 גולים,42 מחזורים ו-328 משחקים, ובורר הטבלה וכותרותיה מוצגים ללא בועה."
+      ],
+      "comparison": "נסגרה חפיפת NV01 באזור הטבלה.",
+      "evidence": {
+        "index": 10,
+        "name": "CommunityDetails",
+        "file": "artifacts/overnight-2026-11-02/native-final/CommunityDetails.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 1120668,
+        "sha256": "afc0694c16d599eea41f42840b9c97fe06e864400f13764c9cb58cd60561fabc",
+        "expectedRoute": "CommunityDetails",
+        "actualRoute": "CommunityDetails",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "מספרים נצפו ללא אימות חישוב; אין בדיקת לשוניות, שיחה, תמונה או תפריט.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 11,
+      "name": "CommunityDetailsPublic",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "מידע ציבורי עם לשוניות נעולות",
+      "observations": [
+        "שישי בוקר חיפה,24 שחקנים ולשוניות סגל וסטטיסטיקה נעולות מוצגים בבירור.",
+        "כרטיס המחזור הקרוב מציג07:30,10/12,6 על6 וסינטטי ללא חפיפת עזרה במדדים."
+      ],
+      "comparison": "נסגרה חפיפת NV01 במדדי הכרטיס.",
+      "evidence": {
+        "index": 11,
+        "name": "CommunityDetailsPublic",
+        "file": "artifacts/overnight-2026-11-02/native-final/CommunityDetailsPublic.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 1289575,
+        "sha256": "940be274f26522dee733f8fddf4cabcc4d44f29a3b867165f9fb6cecdf33f822",
+        "expectedRoute": "CommunityDetailsPublic",
+        "actualRoute": "CommunityDetailsPublic",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו הצטרפות, הסבר נעילה, הרשמה או מיקום.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 12,
+      "name": "CommunityEdit",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "שלב פרטים בהגדרות מועדון",
+      "observations": [
+        "שם ותיאור מאוכלסים, עיר וטלפון מוצגים בכיווניות קריאה.",
+        "כפתור המשך פעיל מוצג במלואו ללא בועה."
+      ],
+      "comparison": "נסגרה חפיפת NV01 בכפתור הפעיל.",
+      "evidence": {
+        "index": 12,
+        "name": "CommunityEdit",
+        "file": "artifacts/overnight-2026-11-02/native-final/CommunityEdit.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 173994,
+        "sha256": "efac9bb9e3e85aeed4fd6e8927c17c7e506223b6fc61051edbf68c90f4972e60",
+        "expectedRoute": "CommunityEdit",
+        "actualRoute": "CommunityEdit",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו עריכה, מקלדת, שלב מתקדם או שמירה.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 13,
+      "name": "CommunityPlayers",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "סגל מועדון במצב הכל",
+      "observations": [
+        "הכל23, מנהלים1 ושחקנים22 מוצגים, עם שורות ותפריטים מופרדים.",
+        "תווית מנהל וכרטיסי אזהרה נראים; גם האווטארים בשורות התחתונות פנויים מהבועה."
+      ],
+      "comparison": "נסגרה חפיפת NV01 על תמונות הסגל.",
+      "evidence": {
+        "index": 13,
+        "name": "CommunityPlayers",
+        "file": "artifacts/overnight-2026-11-02/native-final/CommunityPlayers.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 263916,
+        "sha256": "e63d458bc59de34187314ba19e4d47a4c05194d3f296741e07a3e6b80888b7da",
+        "expectedRoute": "CommunityPlayers",
+        "actualRoute": "CommunityPlayers",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו חיפוש, סינון, תפריט, שינוי תפקיד או כרטיס.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 14,
+      "name": "ManagerDashboard",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "לוח מנהל, סקירה טעונה",
+      "observations": [
+        "מוצגים חמישה נושאי טיפול והפרדה בין בקשות לציוד.",
+        "מחזור קרוב עם6 מתוך20,14 פנויים ואחד בהמתנה מוצג ללא מחוון טעינה או פס הורדה."
+      ],
+      "comparison": "פער הטעינה NV04 נפתר וחזות הסקירה נשארה יציבה.",
+      "evidence": {
+        "index": 14,
+        "name": "ManagerDashboard",
+        "file": "artifacts/overnight-2026-11-02/native-final/ManagerDashboard.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 479257,
+        "sha256": "60b7a76bb159a025cd6fe8d950d60fe038996e53323a51e295013a747d85dfef",
+        "expectedRoute": "ManagerDashboard",
+        "actualRoute": "ManagerDashboard",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו פעולות ניהול או הרחבת נושאים.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 15,
+      "name": "ManagerRatings",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "לוח מנהל, מסנן העלאה",
+      "observations": [
+        "לשונית דירוגים ותקופת3 חודשים מוצגות עם מסנני הכל9, העלאה4 והורדה3.",
+        "העלאה פעיל; כרטיס רועי מזרחי מציג גרף ירוק, דירוג מנהל4 מתוך5 וממוצע7.7 מתוך10."
+      ],
+      "comparison": "בדיקה חזותית ראשונה של תרחיש זה ברשימה זו.",
+      "evidence": {
+        "index": 15,
+        "name": "ManagerRatings",
+        "file": "artifacts/overnight-2026-11-02/native-final/ManagerRatings.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 529999,
+        "sha256": "83e5bb873237cf07467f5f60bf0e8f4e046085f60cc3bb421570da93ec3f10f1",
+        "expectedRoute": "ManagerDashboard",
+        "actualRoute": "ManagerDashboard",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו מעבר תקופה, חיפוש, הצגת נתונים או עריכת דירוג.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 16,
+      "name": "ManagerAllRatings",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "לוח מנהל, מסנן הכל",
+      "observations": [
+        "הכל9 פעיל בעוד מסנני ההעלאה וההורדה אינם פעילים.",
+        "כרטיס רועי מזרחי, הגרף והפעולות נותרים קריאים וללא חפיפה."
+      ],
+      "comparison": "המסנן הפעיל מובחן לעומת צילום ההעלאה.",
+      "evidence": {
+        "index": 16,
+        "name": "ManagerAllRatings",
+        "file": "artifacts/overnight-2026-11-02/native-final/ManagerAllRatings.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 530575,
+        "sha256": "cce3c80f02a884d3fdbfa3e092b80b1c5f46b6fbc4419d8a153c477a849669b8",
+        "expectedRoute": "ManagerDashboard",
+        "actualRoute": "ManagerDashboard",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "אין הוכחת לחיצה על המסנן או סקירת כל תשעת הכרטיסים.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 17,
+      "name": "ManagerRatingsDown",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "לוח מנהל, מסנן הורדה",
+      "observations": [
+        "הורדה3 מודגש בגוון אזהרה ונראה כרטיס איתי לוי.",
+        "גרף חום מציג סדרת ציונים יורדת וממוצע7.4 מתוך10 לצד מגמת ירידה."
+      ],
+      "comparison": "הבדל המצב לעומת מסנן העלאה נראה גם בצבע וגם בטקסט.",
+      "evidence": {
+        "index": 17,
+        "name": "ManagerRatingsDown",
+        "file": "artifacts/overnight-2026-11-02/native-final/ManagerRatingsDown.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 532319,
+        "sha256": "3d051527e857f8fa2a389fb92ceec0aacab7f89a6af215a62f5b4bf75cb87fb4",
+        "expectedRoute": "ManagerDashboard",
+        "actualRoute": "ManagerDashboard",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו שינוי דירוג, פרטי כרטיס או המשך הרשימה.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 18,
+      "name": "ManagerEquipment",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "לוח מנהל, ציוד",
+      "observations": [
+        "מוצגים מחזיק הכדור דניאל כהן שטרם נרשם ומחזיק הגופיות יואב סבן שרשום.",
+        "מופיעה הבהרה בין החזקה נוכחית להיסטוריה, ו-13 לקיחות כדור מול9 גופיות בתקופה."
+      ],
+      "comparison": "תוכן ציוד טעון וקריא ללא בועת עזרה.",
+      "evidence": {
+        "index": 18,
+        "name": "ManagerEquipment",
+        "file": "artifacts/overnight-2026-11-02/native-final/ManagerEquipment.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 512317,
+        "sha256": "52fc7f8232544b7e21635546831b26a5ae3d8f0673749854104e6f14170626d2",
+        "expectedRoute": "ManagerDashboard",
+        "actualRoute": "ManagerDashboard",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו העברה, רישום, החלפת תקופה או היסטוריה מלאה.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 19,
+      "name": "ManagerClubInsights",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית עם מגבלת תרחיש",
+      "state": "סקירת הניהול תחת תווית תובנות",
+      "observations": [
+        "הצילום מציג לשונית סקירה, חמישה נושאי טיפול וכרטיס מחזור קרוב.",
+        "לא נראה בחלק המצולם אזור תובנות נפרד מהסקירה הרגילה."
+      ],
+      "comparison": "מצב טעון, אך התווית אינה מוכיחה תרחיש תובנות מובחן.",
+      "evidence": {
+        "index": 19,
+        "name": "ManagerClubInsights",
+        "file": "artifacts/overnight-2026-11-02/native-final/ManagerClubInsights.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 479320,
+        "sha256": "3ba866e22d378d828ee8bb8c6e60807eb90014c653ae4c94fe16dca062684f35",
+        "expectedRoute": "ManagerDashboard",
+        "actualRoute": "ManagerDashboard",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [
+        "NV06"
+      ],
+      "limitations": [
+        "נדרש אימות היעד או גלילה אם נדרש כיסוי אזור תובנות. אין הוכחת תקלה במוצר.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 20,
+      "name": "CommunityStats",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "סטטיסטיקת מועדון בעונה2",
+      "observations": [
+        "מוצגים בורר עונה, סיכום עונה אישי והעונה במבט אחד.",
+        "12 מחזורים ו-210 משחקים נבדלים ביחידה, ובמגרש מוצגים268 שערים ו-124 בישולים; תארי המועדון נראים בהמשך."
+      ],
+      "comparison": "תוכן סטטיסטיקה טעון ללא בועת עזרה.",
+      "evidence": {
+        "index": 20,
+        "name": "CommunityStats",
+        "file": "artifacts/overnight-2026-11-02/native-final/CommunityStats.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 247401,
+        "sha256": "6bbc2294b033b6c2553a736a0ae1daa157eed62d1332f94a8a0af1af04bc6285",
+        "expectedRoute": "CommunityStats",
+        "actualRoute": "CommunityStats",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "המספרים לא חושבו מול מסד; לא נבדקו החלפת עונה, שיתוף או המשך גלילה.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 21,
+      "name": "CommunityHistory",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "היסטוריית מחזורים, הכל",
+      "observations": [
+        "שלושה כרטיסים מציגים תאריכים ומצבי שיחקתי ולא שיחקתי.",
+        "פרטי משחקים, שחקנים, שערים ובישולים מובחנים עם אפס וסימן חסר במצבים שונים."
+      ],
+      "comparison": "תוכן יציב כפי שנראה בצילום המאוחר הקודם.",
+      "evidence": {
+        "index": 21,
+        "name": "CommunityHistory",
+        "file": "artifacts/overnight-2026-11-02/native-final/CommunityHistory.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 181836,
+        "sha256": "b5c73b1146beb33f775fd8def4bbfb356ba0394e040fb2fcc9bfd566ae1b7f16",
+        "expectedRoute": "CommunityHistory",
+        "actualRoute": "CommunityHistory",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו המסנן, פתיחת מחזור, גלילה או נכונות הנתונים.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 22,
+      "name": "CommunitiesMap",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "מפת מועדונים טעונה",
+      "observations": [
+        "נראים חיפוש, מיקום, סינון, פקדי תקריב ומקרא חברות.",
+        "מפת הבסיס נטענה עם סמנים חלולים ואשכול3 במרכז."
+      ],
+      "comparison": "אין מסך טעינה או חפיפת עזרה; תוכן המפה יציב בצילום.",
+      "evidence": {
+        "index": 22,
+        "name": "CommunitiesMap",
+        "file": "artifacts/overnight-2026-11-02/native-final/CommunitiesMap.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 1234008,
+        "sha256": "266ce27ce5f68993343ffb61420e2416361031b68dc80d43866be2c365bc4774",
+        "expectedRoute": "CommunitiesMap",
+        "actualRoute": "CommunitiesMap",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו מחוות, חיפוש, בחירת סמן, הרשאת מיקום או קואורדינטות.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 23,
+      "name": "AddMembers",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית עם מגבלת תרחיש",
+      "state": "הוספת שחקנים למחזור תחת תווית AddMembers",
+      "observations": [
+        "נראים ליגת השכונה,10 מתוך10, חיפוש וסימונים ריקים.",
+        "הסבר ההמתנה ופעולת הבחירה המושבתת נראים בשלמותם ללא בועה."
+      ],
+      "comparison": "תוכן טעון, אך מצב המועדון לא הוכח.",
+      "evidence": {
+        "index": 23,
+        "name": "AddMembers",
+        "file": "artifacts/overnight-2026-11-02/native-final/AddMembers.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 251581,
+        "sha256": "8fdf67df75b61013387e64c2e320b84b3c3489832908bbb13e784a35c1a341fd",
+        "expectedRoute": "AddMembers",
+        "actualRoute": "AddMembers",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [
+        "NV05"
+      ],
+      "limitations": [
+        "צילום זה אינו הוכחה להוספת חברים למועדון אם זה היעד הנדרש.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 24,
+      "name": "AdminApproval",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "בקשות הצטרפות מקובצות",
+      "observations": [
+        "מוצגים חמישה ממתינים, בורר מועדון וסדר הרשימה.",
+        "בקשות למועדון ולמחזור מחולקות לקבוצות, עם אישור, דחייה, פרופיל ואשר הכל."
+      ],
+      "comparison": "תוכן ניהול בקשות קריא, ללא בועה שמסתירה פעולות.",
+      "evidence": {
+        "index": 24,
+        "name": "AdminApproval",
+        "file": "artifacts/overnight-2026-11-02/native-final/AdminApproval.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 300209,
+        "sha256": "f12f3da30c37e04394d5c0dae4e3156ef124e5e5d228cd176f058a49ede95956",
+        "expectedRoute": "AdminApproval",
+        "actualRoute": "AdminApproval",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא הופעלו אישור, דחייה, אישור גורף או שינוי מסנן.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 25,
+      "name": "AvailablePlayers",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "מחזור מלא ללא מועמדים מוצגים",
+      "observations": [
+        "כרטיס המחזור מסומן ההרכב מלא והצטרפות להמתנה; המסננים מציגים אפס.",
+        "מופיע מצב ריק מפורש וחלק הזמנה ידנית שמסביר שמזמינים לרשימת ההמתנה; שלח לכולם בפעימות מושבת."
+      ],
+      "comparison": "מצב מלא וריק מובחנים חזותית; אין פעימת שליחה פעילה בצילום.",
+      "evidence": {
+        "index": 25,
+        "name": "AvailablePlayers",
+        "file": "artifacts/overnight-2026-11-02/native-final/AvailablePlayers.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 161119,
+        "sha256": "a77c5dd7ac4e995ee15d35ab94a51574481adf9137702bdaab51d06fc4eed7f6",
+        "expectedRoute": "AvailablePlayers",
+        "actualRoute": "AvailablePlayers",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נלחצה פעולה ולא נמדדו הצלחה, קצב שליחה או משוב בתנועה.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 26,
+      "name": "AvailablePlayersPreview",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "מחזור מלא עם מועמדי הדגמה",
+      "observations": [
+        "מוצגים שלושה מועמדים עם שם, עיר ואווטאר.",
+        "לדוד ולאריאל פעולת שלח הזמנה; לניר הזמנה נשלחה במצב מושבת. חיווי המחזור המלא נשאר."
+      ],
+      "comparison": "מצבי הזמנה נבדלים בטקסט ובזמינות הפקד, ללא בועה.",
+      "evidence": {
+        "index": 26,
+        "name": "AvailablePlayersPreview",
+        "file": "artifacts/overnight-2026-11-02/native-final/AvailablePlayersPreview.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 250239,
+        "sha256": "eb0d57b217c67da8265744aad3e2bbbeab21dbbbfe84e5dfe3253048c5be770a",
+        "expectedRoute": "AvailablePlayers",
+        "actualRoute": "AvailablePlayers",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "אלה מועמדי תצוגה מקומיים; לא נבדקו התאמת מסננים או שליחה.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 27,
+      "name": "PromoteOrphan",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "הפיכת מחזור חד פעמי למועדון",
+      "observations": [
+        "מוצג הסבר ממשיכים יחד וטופס שם מועדון, תיאור קצר ומתג מועדון פתוח.",
+        "אזור פרטים נוספים סגור מציג עיר, טלפון וחוקים להשלמה בהמשך."
+      ],
+      "comparison": "טופס מקור טעון, ללא בועת עזרה.",
+      "evidence": {
+        "index": 27,
+        "name": "PromoteOrphan",
+        "file": "artifacts/overnight-2026-11-02/native-final/PromoteOrphan.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 210969,
+        "sha256": "33a2f830bcb2750197de271876fcc7be539d821ed0276513323ef297b0294150",
+        "expectedRoute": "PromoteOrphan",
+        "actualRoute": "PromoteOrphan",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו הרחבה, הקלדה, מתג, יצירת מועדון או העברת משתתפים.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 28,
+      "name": "GamesList",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית עם ממצא קיים",
+      "state": "רשימת מחזורים מלאה",
+      "observations": [
+        "שני כרטיסים גלויים מציגים אתה רשום,10 מתוך10, המחזור מלא ופס תפוסה מלא.",
+        "מסנני הכל, המועדונים שלי ובאזור שלי, פעמון ותפריט סינון מוצגים.",
+        "בועת העזרה נשארת במסך הראשי ומכסה חלק מהכרטיס השלישי."
+      ],
+      "comparison": "חיווי התפוסה נראה במלואו; NV01 נשאר במסך הראשי.",
+      "evidence": {
+        "index": 28,
+        "name": "GamesList",
+        "file": "artifacts/overnight-2026-11-02/native-final/GamesList.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 1193961,
+        "sha256": "c356011b4625e18e398720ede23331bda347b86fcdafaa44a6c4a166d4c4c2af",
+        "expectedRoute": "GamesList",
+        "actualRoute": "GamesList",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": true,
+        "overlapsContent": true,
+        "secondaryScreen": false
+      },
+      "remainingVisualIssues": [
+        "NV01-root"
+      ],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו הרשמה, ביטול, סינון או מעבר לפרטי המחזור.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 29,
+      "name": "GamesMap",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "מפת מחזורים טעונה",
+      "observations": [
+        "מוצגים חיפוש, מיקום, סינון ובחירת כל המחזורים, היום, מחר ומותאם.",
+        "מפת תל אביב נטענה עם סמן כדורגל ומקרא היום, מחר ואחר."
+      ],
+      "comparison": "תוכן מפה יציב ללא בועת עזרה.",
+      "evidence": {
+        "index": 29,
+        "name": "GamesMap",
+        "file": "artifacts/overnight-2026-11-02/native-final/GamesMap.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 596277,
+        "sha256": "47b13622de88c6dc7a3e33a80a31fb78654991db9e21cfcd0d8e0ae162dc2d94",
+        "expectedRoute": "GamesMap",
+        "actualRoute": "GamesMap",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו תאריך מותאם, מחוות, פקדי מיקום או פתיחת סמן.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 30,
+      "name": "MatchDetails",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "פרטי מחזור חי, מידע",
+      "observations": [
+        "ליגת השכונה מסומנת נרשמת למחזור והמחזור התחיל, עם10 מתוך10.",
+        "לשוניות מידע, שחקנים, משחקים וסטטיסטיקות, ניווט למגרש וניהול כוחות נראות.",
+        "הכפתור עבור ללייב בתחתית גלוי במלואו ללא בועה."
+      ],
+      "comparison": "פעולה תחתונה ומידע מחזור פנויים מחפיפה.",
+      "evidence": {
+        "index": 30,
+        "name": "MatchDetails",
+        "file": "artifacts/overnight-2026-11-02/native-final/MatchDetails.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 1014007,
+        "sha256": "8c6b1e5835c42dda4e532964c6db947b1e5bab4711a70e9e62531586d4dab291",
+        "expectedRoute": "MatchDetails",
+        "actualRoute": "MatchDetails",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו מעבר ללייב, ניווט, תפריט, הודעה או לשוניות.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 31,
+      "name": "FinishedMatchStats",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "פרטי מחזור שהסתיים, סטטיסטיקות",
+      "observations": [
+        "מוצגים המחזור הסתיים, סיכום מחזור אישי ומספרי המחזור.",
+        "נראים10 משחקים,2 הכרעות בפנדלים,31 שערים ו-18 בישולים, ותחילת כוכבי המחזור."
+      ],
+      "comparison": "תוכן טעון ללא בועת עזרה או מצב ביניים.",
+      "evidence": {
+        "index": 31,
+        "name": "FinishedMatchStats",
+        "file": "artifacts/overnight-2026-11-02/native-final/FinishedMatchStats.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 986596,
+        "sha256": "d214e925e54b65fd8d6427ff5f4ea7a3c916eb9dd5c44f2d48564c0987a4fe76",
+        "expectedRoute": "MatchDetails",
+        "actualRoute": "MatchDetails",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "אין בדיקת חישובים, סיכום אישי, שיתוף או המשך גלילה.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 32,
+      "name": "FinishedMatchGamesLong",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "פרטי מחזור שהסתיים, רשימת משחקים מורחבת",
+      "observations": [
+        "מוצגים12 משחקים ומסנני קבוצות; בכרטיס הראשון האדומים ניצחו3 מול1.",
+        "אירועי שערים ובישולים, דקות המשחק ואזור הרכבים סגור נראים קריאים."
+      ],
+      "comparison": "הרשימה המקורית מוצגת ללא חפיפת עזרה.",
+      "evidence": {
+        "index": 32,
+        "name": "FinishedMatchGamesLong",
+        "file": "artifacts/overnight-2026-11-02/native-final/FinishedMatchGamesLong.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 952544,
+        "sha256": "26ff06856b02a15d36064314012c11017fd397dbb36a0798609192a847ede6ab",
+        "expectedRoute": "MatchDetails",
+        "actualRoute": "MatchDetails",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "צולם תחילת תרחיש רשימה ארוכה בלבד; אין הוכחת גלילה בכל12 המשחקים או בדיקת הרכבים.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 33,
+      "name": "MatchPlayers",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "סגל מחזור מלא",
+      "observations": [
+        "מוצגים ההרכב10/10 ועשר שורות שחקנים.",
+        "שמות, אווטארים, מנהל וכרטיסי אזהרה קריאים; תפריטים מופיעים בצד הנגדי."
+      ],
+      "comparison": "אין חפיפת בועה באזור התחתון של רשימת השחקנים.",
+      "evidence": {
+        "index": 33,
+        "name": "MatchPlayers",
+        "file": "artifacts/overnight-2026-11-02/native-final/MatchPlayers.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 250569,
+        "sha256": "7ba281525e7f7aa7ebe1792dd5c76bd21b29b2afe75be249d468ed0aa112da21",
+        "expectedRoute": "MatchPlayers",
+        "actualRoute": "MatchPlayers",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "לא נבדקו תפריטים, פעולה על שחקן, המתנה, אורחים או שינוי סדר.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    },
+    {
+      "launcherIndex": 34,
+      "name": "MatchRounds",
+      "visualReviewCompleted": true,
+      "visualStatus": "נבדק חזותית במצב המצולם",
+      "state": "היסטוריית משחקים ריקה",
+      "observations": [
+        "מוצגים כדור, אין היסטוריית משחקים והסבר שלא נשמרו פרטי משחקים למחזור.",
+        "המצב הריק ממורכז וקריא, ללא מחוון טעינה, בועה או אזור שקט לא מוסבר."
+      ],
+      "comparison": "נסקר מצב ריק מפורש ולא תוכן היסטוריה מלא.",
+      "evidence": {
+        "index": 34,
+        "name": "MatchRounds",
+        "file": "artifacts/overnight-2026-11-02/native-final/MatchRounds.png",
+        "width": 1080,
+        "height": 2400,
+        "bytes": 77124,
+        "sha256": "441342f9c047a1f0bae80e9657541ac63cadf06a2b5214b56b5caed0e6cd446a",
+        "expectedRoute": "MatchRounds",
+        "actualRoute": "MatchRounds",
+        "treeFresh": true
+      },
+      "helpBubble": {
+        "visible": false,
+        "overlapsContent": false,
+        "secondaryScreen": true
+      },
+      "remainingVisualIssues": [],
+      "evidenceGaps": [],
+      "limitations": [
+        "אין הוכחה לשורות היסטוריה במסך זה; תוכן משחקים קיים צולם בנפרד בתרחיש FinishedMatchGamesLong.",
+        "בדיקת צילום בלבד, ללא הפעלת לחיצה, הוכחת מסירה לשרת או בדיקת כל מצבי המסך."
+      ],
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullScreenStateCoverageCompleted": false
+    }
+  ]
+}

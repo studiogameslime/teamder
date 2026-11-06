@@ -1,5 +1,6 @@
 import { observeCaughtError } from '../services/errorObservation';
 import { Disclosure } from './ui';
+import { ConvertToTaskButton } from './ConvertToTaskButton';
 // The "reply as Teamder" sheet.
 //
 // Opened from a task built out of a report, and from a user's card. Shows the
@@ -209,6 +210,7 @@ export function TeamderChatSheet({
                   {m.supportImage ? <Pressable onPress={() => setPreview(m.supportImage!)} accessibilityLabel="הגדלת צילום המסך"><Image source={{uri:`data:image/jpeg;base64,${m.supportImage}`}} style={st.photo} resizeMode="contain" /></Pressable> : null}
                   <Text selectable style={st.bubbleText}>{m.text}</Text>
                   <Text style={st.time}>{new Date(m.createdAt).toLocaleString('he-IL',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'})}</Text>
+                  {!m.fromTeamder && m.senderId === userId ? <ConvertToTaskButton origin={{kind:'support_message',userId,messageId:m.id}} onOpen={() => { Keyboard.dismiss(); onClose(); }}/> : null}
                 </View>
               ))
             ) : !failed ? (

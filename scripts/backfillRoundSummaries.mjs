@@ -26,6 +26,7 @@ import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
 const { buildRoundSummary, nextRecordBaseline } = require('../functions/lib/roundSummary.js');
+const { didEveningHappen } = require('../functions/lib/eveningPlayed.js');
 
 const PROJECT = 'soccer-app-52b6b';
 const FS = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
@@ -82,6 +83,12 @@ function toValue(x) {
   return { mapValue: { fields: Object.fromEntries(Object.entries(x).map(([k, v]) => [k, toValue(v)])) } };
 }
 
+function decodeField(value) {
+  if ('mapValue' in value) return Object.fromEntries(Object.entries(value.mapValue.fields ?? {}).map(([k, v]) => [k, decodeField(v)]));
+  if ('arrayValue' in value) return (value.arrayValue.values ?? []).map(decodeField);
+  return V({ v: value }, 'v');
+}
+
 async function evenings(groupId) {
   const games = await runQuery({
     structuredQuery: {
@@ -93,7 +100,8 @@ async function evenings(groupId) {
   const out = [];
   for (const g of games) {
     const gameId = g.name.split('/').pop();
-    if (V(g.fields, 'status', '') !== 'finished') continue;
+    const data = decodeField({ mapValue: { fields: g.fields } });
+    if (!didEveningHappen(data) || !Number.isFinite(data.startsAt) || data.startsAt <= 0) continue;
     const ps = await runQuery({
       structuredQuery: {
         from: [{ collectionId: 'gamePlayerStats' }],
@@ -222,7 +230,7 @@ async function backfillClub(groupId, name) {
         `${summary.events.length} event(s)`;
       console.log(`  ${date}  ${line}`);
       if (LIVE) {
-        await createDoc('roundSummaries', e.gameId, toValue({ ...summary, backfilled: true }).mapValue.fields);
+        await createDoc('roundSummaries', e.gameId, toValue({ ...summary, clubEveningOrdinal: club.evenings, backfilled: true }).mapValue.fields);
         written += 1;
       }
     }

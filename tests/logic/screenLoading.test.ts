@@ -150,6 +150,7 @@ test.each(['expired', 'failed'])('player invitation %s preload is fetched again'
   const file = source('src/components/social/SocialPlayerProfile.tsx');
   const ctx: any = { preview: undefined, me: { id: 'viewer' }, managers: [], inviteLoading: false,
     inviteError: mode === 'failed', inviteGamesLoadedAt: { current: Date.now() - 31000 },
+    visit:{current:1},useUserStore:{getState:()=>({currentUser:{id:'viewer'}})},
     setInvites: jest.fn(), setInviteLoading: jest.fn(), setInviteError: jest.fn(), setGames: jest.fn(),
     gameService: { getMyGames: jest.fn().mockResolvedValue([]) } };
   await run(file, variable(file, 'openInvites'), ctx)();

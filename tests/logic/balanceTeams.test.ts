@@ -94,9 +94,19 @@ describe('balanceTeams — fairness', () => {
     expect(Math.max(...averages)).toBeLessThanOrEqual(5);
   });
 
-  it('unrated players count as the neutral middle and spread out', () => {
+  it('unrated players use the default rating', () => {
     const { out } = run([5, 4.5, 4, null, null, null, 2, 1.5], 2);
     expect(out.unratedCount).toBe(3);
+  });
+
+  it('uses 2.5 for missing and zero ratings, preserving explicit ratings and input', () => {
+    const input = roster([null, 0, 0.5, 3]);
+    const original = { ...input.ratings };
+    const out = balanceTeams({ ...input, numTeams: 1, createdBy: 'admin' });
+    expect(out.unratedCount).toBe(2);
+    expect(out.teamAverages).toEqual([2.1]); // (2.5 + 2.5 + 0.5 + 3) / 4
+    expect(out.result.teams[0].captainId).toBe('p3');
+    expect(input.ratings).toEqual(original);
   });
 
   it('never makes more teams than there are players', () => {

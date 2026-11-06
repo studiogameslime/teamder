@@ -1,0 +1,48 @@
+[copy-template] copied public\c\index.html → functions\templates\community.html
+[copy-template] copied public\invite.html → functions\templates\invite.html
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in C:/Users/User/Documents/Codex/Teamder/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+FAIL tests/logic/gameCreationInvitations.test.ts
+  × partial invitation failure preserves the game and reports confirmed, existing and failed invitations separately (8 ms)
+  ○ skipped all invitation failures leave a usable created game and report zero confirmed invitations
+  ○ skipped already invited and already registered recipients are not counted as newly sent or failed
+  ○ skipped an unconfirmed or refused invitation response cannot be counted as a sent invitation
+  ○ skipped a persisted completion returns the same partial result without another creation, invitation or analytics event
+  ○ skipped no selected invitations preserves the existing result contract
+  ○ skipped resuming creation remains terminal and opens the saved game while announcing partial invitation failure once
+  ○ skipped resumed creation with all invitations confirmed does not add another success notice
+
+  ● partial invitation failure preserves the game and reports confirmed, existing and failed invitations separately
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 6
+    + Received  + 0
+
+      Object {
+        "gameId": "created-game",
+    -   "invitations": Object {
+    -     "existing": 1,
+    -     "failed": 1,
+    -     "requested": 3,
+    -     "sent": 1,
+    -   },
+        "isOrphan": false,
+      }
+
+      94 |   });
+      95 |
+    > 96 |   expect(result).toMatchObject({
+         |                  ^
+      97 |     gameId: 'created-game', isOrphan: false,
+      98 |     invitations: { requested: 3, sent: 1, existing: 1, failed: 1 },
+      99 |   });
+
+      at Object.<anonymous> (tests/logic/gameCreationInvitations.test.ts:96:18)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 7 skipped, 8 total
+Snapshots:   0 total
+Time:        2.291 s
+Ran all test suites matching /tests\\logic\\gameCreationInvitations.test.ts/i with tests matching "partial invitation failure preserves".

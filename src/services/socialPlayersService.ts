@@ -40,20 +40,22 @@ export const socialPlayersService = {
     const serverTime = times?.length ? (times.length === 1 ? times[0] : undefined) : time;
     const page = await call<PlayerSearchPage>('searchSocialPlayers', {
       ...single,
+      searchVersion: 2,
+      filtered: !!(days?.length || times?.length),
       ...(serverDay !== undefined ? { day: serverDay } : {}),
       ...(serverTime ? { time: serverTime } : {}),
     });
     if (opts.cursor && page.cursor === opts.cursor) throw new Error('SOCIAL_SEARCH_CURSOR_STALLED');
     return { ...page, players: page.players.filter(player => playerDiscoveryMatches(player, opts)) };
   },
-  async profile(userId: string): Promise<SocialProfile> {
+  async profile(userId: string, view?: 'card'|'summary'): Promise<SocialProfile> {
     if (USE_MOCK_DATA) {
       const { socialDemoProfile } = require('@/dev/socialPlayersFixture') as typeof import('@/dev/socialPlayersFixture');
       const { friendsService } = require('./friendsService') as typeof import('./friendsService');
       const me=useUserStore.getState().currentUser;
       return socialDemoProfile(userId, !!me && await friendsService.getRelationship(me.id,userId)==='friends');
     }
-    return call('getSocialPlayerProfile', { userId });
+    return call('getSocialPlayerProfile', { userId, ...(view?{view}:{}) });
   },
   async savePrivacy(privacy: SocialPrivacy, expectedOwner: string): Promise<void> {
     const owner = useUserStore.getState().currentUser?.id;

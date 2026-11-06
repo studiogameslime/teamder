@@ -2,7 +2,7 @@ import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import { gameService } from './gameService';
 import { StaleSessionError } from './staleSession';
-import type { ReceivedInvitation } from '@/utils/receivedInvitations';
+import { invitationHasExpired, type ReceivedInvitation } from '@/utils/receivedInvitations';
 
 /** Use the existing authorised joins; notification payloads never grant membership. */
 export async function acceptReceivedInvitation(item: ReceivedInvitation, uid: string) {
@@ -11,7 +11,7 @@ export async function acceptReceivedInvitation(item: ReceivedInvitation, uid: st
     if (user?.id !== uid || user.isGuest) throw new StaleSessionError(uid, user?.id ?? '');
   };
   assertOwner();
-  if (['unavailable', 'expired', 'full', 'scheduled'].includes(item.status ?? '')) {
+  if (invitationHasExpired(item.payload) || ['unavailable', 'expired', 'full', 'scheduled'].includes(item.status ?? '')) {
     throw new Error('INVITATION_UNAVAILABLE');
   }
   if (item.type === 'groupInvitation') {

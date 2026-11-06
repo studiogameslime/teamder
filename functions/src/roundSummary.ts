@@ -217,6 +217,8 @@ export interface PairHighlight {
 
 export interface RoundSummary {
   version: number;
+  /** Lifetime played position at seal time; absent on old, seal-count summaries. */
+  clubEveningOrdinal?: number | null;
   generatedAt: number;
   gameId: string;
   groupId: string;

@@ -222,17 +222,19 @@ function PlainLiveMatchScreen() {
   const [stoppagesOpen, setStoppagesOpen] = useState(false);
   // 1s ticker so the still-ongoing stoppage duration counts up while paused
   // (the synced-timer hook only ticks while RUNNING).
+  const timerFocused = useIsFocused();
   const [nowTick, setNowTick] = useState(() => serverNow());
   useEffect(() => {
+    if (!timerFocused) return;
+    setNowTick(serverNow());
     const id = setInterval(() => setNowTick(serverNow()), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [timerFocused]);
 
   // Synced clock — derived from the three `liveMatch.timer*` primitives.
-  const timerFocused = useIsFocused();
   const timerFeedback = useTimerFeedback(live, timerFocused && gameId && me && game?.status !== 'finished' && game?.status !== 'cancelled'
     ? JSON.stringify([gameId, me.id, (live?.roundNumber ?? 0)]) : null);
-  const timerView = useSyncedTimer(timerFeedback.visibleLive);
+  const timerView = useSyncedTimer(timerFeedback.visibleLive, timerFocused);
   const timerMs = timerView.displayMs;
   const timerRunning = timerView.running;
   const timerStarted = timerView.started;

@@ -1,6 +1,7 @@
 import fs from 'fs';
 import vm from 'vm';
 import ts from 'typescript';
+import { retryRead, isTransientReadError } from '../../src/services/readRetry';
 import { StaleSessionError } from '../../src/services/staleSession';
 import { clearCaughtErrorOrigins, installCaughtErrorSink } from '../../src/utils/errorObservation';
 
@@ -24,6 +25,7 @@ function fixture() {
     './userService': { userService: { getUserById: user } },
     './publicPlayerService': { readPlayerIdentities: identities },
     './staleSession': { StaleSessionError },
+    './readRetry': { retryRead: (read: any, assert: any) => retryRead(read, assert, 0), isTransientReadError },
     '@/data/mockUsers': {}, './analyticsService': { AnalyticsEvent: {}, logEvent: jest.fn() },
     '@/services/errorLog': { logError: jest.fn(), isExpectedDenial: () => false },
   };
@@ -74,4 +76,28 @@ test('requests hydrate public identities once and retain a genuinely missing pla
   const rows = await f.service.listIncomingRequests('owner');
   expect(rows).toHaveLength(1); expect(rows[0].user).toBeNull();
   expect(f.identities).toHaveBeenCalledWith(['peer']); expect(f.user).not.toHaveBeenCalled();
+});
+
+
+test('a temporary offline request read recovers before choosing the relationship', async () => {
+  const f = fixture();
+  f.readDoc.mockRejectedValueOnce({ code: 'unavailable', message: 'client is offline' });
+  f.readDoc.mockResolvedValueOnce({ exists: () => true, data: () => ({status:'pending'}) } as any);
+  await expect(f.service.getRelationship('owner', 'peer')).resolves.toBe('outgoing');
+  expect(f.readDoc).toHaveBeenCalledTimes(3);
+  expect(f.observeCaughtError).not.toHaveBeenCalled();
+});
+
+test('an exhausted offline lookup rejects without pretending the relationship is absent', async () => {
+  const f = fixture(); const error = {code:'unavailable',message:'client is offline'};
+  f.readDoc.mockRejectedValue(error);
+  await expect(f.service.getRelationship('owner', 'peer')).rejects.toBe(error);
+  expect(f.readDoc).toHaveBeenCalledTimes(2);
+});
+
+test('switching accounts during a failed read prevents a retry for the new owner', async () => {
+  const f = fixture();
+  f.readDoc.mockImplementationOnce(async () => {f.auth.currentUser.uid='new-owner';throw {code:'unavailable'};});
+  await expect(f.service.getRelationship('owner', 'peer')).rejects.toBeInstanceOf(StaleSessionError);
+  expect(f.readDoc).toHaveBeenCalledTimes(1);
 });

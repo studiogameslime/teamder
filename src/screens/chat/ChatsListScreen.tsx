@@ -1,3 +1,4 @@
+import {useUserStore} from '@/store/userStore';
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +20,8 @@ export function ChatsListScreen() {
   const socialBadge=useSocialInboxBadge();
   const qaSocialPreview=__DEV__&&process.env.EXPO_PUBLIC_QA_ROUTES==='1'&&process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK==='1'&&(route.params as {qaSocialPreview?:boolean}|undefined)?.qaSocialPreview;
   const qaChatPreview=__DEV__&&process.env.EXPO_PUBLIC_QA_ROUTES==='1'&&process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK==='1'&&(route.params as {qaChatPreview?:boolean}|undefined)?.qaChatPreview;
+  const owner=useUserStore(s=>s.currentUser?.id);
+  const [visited,setVisited]=useState(Boolean(qaSocialPreview));
   const [socialTab, setSocialTab] = useState<'chats' | 'players'>(qaSocialPreview?'players':'chats');
   useEffect(()=>{if(qaSocialPreview)setSocialTab('players');},[qaSocialPreview]);
 
@@ -26,9 +29,10 @@ export function ChatsListScreen() {
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title="חברים" showBack={false} actions={[{icon:'mail-outline',label:socialBadge?`חברים והזמנות, ${socialBadge} ממתינות`:'חברים והזמנות',badge:socialBadge,onPress:()=>nav.navigate('Friends')},{icon:'settings-outline',label:'הגדרות פרטיות',onPress:()=>nav.navigate('SocialPrivacy')}]} />
       <View style={{flexDirection:'row',borderBottomWidth:1,borderBottomColor:'#E5EDF7',paddingHorizontal:16}}>
-        {([['chats',"צ׳אטים"],['players','מצא שחקנים']] as const).map(([value,label])=><Pressable key={value} accessibilityRole="tab" accessibilityState={{selected:socialTab===value}} onPress={()=>setSocialTab(value)} style={{flex:1,paddingVertical:14,borderBottomWidth:2,borderBottomColor:socialTab===value?'#2563EB':'transparent'}}><Text style={{textAlign:'center',fontSize:16,fontWeight:'700',color:socialTab===value?'#2563EB':'#667796'}}>{label}</Text></Pressable>)}
+        {([['chats',"צ׳אטים"],['players','מצא שחקנים']] as const).map(([value,label])=><Pressable key={value} accessibilityRole="tab" accessibilityState={{selected:socialTab===value}} onPress={()=>{if(value==='players')setVisited(true);setSocialTab(value);}} style={{flex:1,paddingVertical:14,borderBottomWidth:2,borderBottomColor:socialTab===value?'#2563EB':'transparent'}}><Text style={{textAlign:'center',fontSize:16,fontWeight:'700',color:socialTab===value?'#2563EB':'#667796'}}>{label}</Text></Pressable>)}
       </View>
-      {socialTab === 'players' ? <PlayerDiscovery preview={qaSocialPreview?(require('@/dev/socialPlayersFixture') as typeof import('@/dev/socialPlayersFixture')).socialDemoPlayers:undefined}/> : <ChatInbox preview={qaChatPreview?(require('@/dev/chatInboxFixture') as typeof import('@/dev/chatInboxFixture')).chatInboxPreview:undefined}/>}
+      {(visited || socialTab==='players') && <View style={{flex:1,display:socialTab==='players'?'flex':'none'}}><PlayerDiscovery key={owner??'guest'} active={socialTab==='players'} preview={qaSocialPreview?(require('@/dev/socialPlayersFixture') as typeof import('@/dev/socialPlayersFixture')).socialDemoPlayers:undefined}/></View>}
+      {socialTab==='chats' && <ChatInbox preview={qaChatPreview?(require('@/dev/chatInboxFixture') as typeof import('@/dev/chatInboxFixture')).chatInboxPreview:undefined}/>}
     </SafeAreaView>
   );
 }

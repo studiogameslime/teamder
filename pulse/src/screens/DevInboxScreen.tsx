@@ -13,11 +13,12 @@ import { FeaturesBody } from './FeaturesScreen';
 import { ReportsBody } from './ReportsScreen';
 import { QaUsersBody } from './QaUsersScreen';
 
-type Seg = 'errors' | 'features' | 'reports' | 'qa';
+type Seg = 'errors' | 'features' | 'reports' | 'suggestions' | 'qa';
 const SEGS: { key: Seg; label: string }[] = [
   { key: 'errors', label: 'שגיאות' },
   { key: 'features', label: 'פיצרים' },
   { key: 'reports', label: 'דיווחים' },
+  { key: 'suggestions', label: 'הצעות' },
   { key: 'qa', label: 'מדווחים' },
 ];
 
@@ -53,7 +54,10 @@ export function DevInboxScreen() {
           {visited.has('features') ? <FeaturesBody /> : null}
         </View>
         <View style={[st.page, seg !== 'reports' && st.hidden]}>
-          {visited.has('reports') ? <ReportsBody /> : null}
+          {visited.has('reports') ? <ReportsBody reportType="bug"/> : null}
+        </View>
+        <View style={[st.page, seg !== 'suggestions' && st.hidden]}>
+          {visited.has('suggestions') ? <ReportsBody reportType="suggestion"/> : null}
         </View>
         <View style={[st.page, seg !== 'qa' && st.hidden]}>
           {visited.has('qa') ? <QaUsersBody /> : null}

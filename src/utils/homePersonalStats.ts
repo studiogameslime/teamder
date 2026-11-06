@@ -50,7 +50,7 @@ export function homeProfileInsights(stats: PlayerStatsSummary, now = Date.now())
     const mean = points.reduce((sum, p) => sum + p.score, 0) / 5;
     const previous = points.slice(0, 4).reduce((sum, p) => sum + p.score, 0) / 4;
     if (points[4].score >= 8.5 && points[4].score - previous >= 0.5) {
-      insights.push({ kind: 'form', title: 'המחזור האחרון שלך בלט', detail: `ציון ${decimal(points[4].score)} במחזור האחרון עם ציון, לעומת ממוצע ${decimal(previous)} בארבעת קודמיו.` });
+      insights.push({ kind: 'form', title: 'המחזור האחרון שלך בלט', detail: `ציון ${decimal(points[4].score)} במחזור האחרון, לעומת ממוצע ${decimal(previous)} בארבעת קודמיו.` });
     } else if (latest - earlier >= 0.5) {
       insights.push({ kind: 'form', title: 'המשחק שלך עולה מדרגה', detail: `ממוצע ${decimal(latest)} בשני המחזורים האחרונים עם ציון, לעומת ${decimal(earlier)} בשלושת קודמיהם.` });
     } else if (mean >= 7 && Math.max(...points.map(p => p.score)) - Math.min(...points.map(p => p.score)) <= 0.75) {

@@ -22,7 +22,7 @@ import { RouteProp, useFocusEffect, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { MiniGamesSkeleton } from '@/components/loading/CentralSkeletons';
 import { ScrollSurface } from '@/components/ScrollSurface';
 import { TabScroll } from '@/components/match/tabs/MatchTabShell';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -303,21 +303,15 @@ export function MatchRoundsScreen(props: MatchRoundsScreenProps = {}) {
         );
 
   if (!hasCurrentData && !failed) {
-    const spinner = (
-      <View style={styles.center}>
-        <SoccerBallLoader />
-      </View>
-    );
+    const loadingContent = <ScrollSurface contentContainerStyle={styles.scroll}><MiniGamesSkeleton filters={props.showFilter} /></ScrollSurface>;
     return embedded ? (
       <TabScroll header={props.header} stickyHeader={props.stickyHeader} bottomInset={props.bottomInset}>
-        <View style={{ minHeight: 160, alignItems: 'center', justifyContent: 'center' }}>
-          <SoccerBallLoader />
-        </View>
+        <MiniGamesSkeleton filters={props.showFilter} />
       </TabScroll>
     ) : (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={live ? he.matchRoundsLiveTitle : he.matchRoundsTitle} />
-        {spinner}
+        {loadingContent}
       </SafeAreaView>
     );
   }

@@ -1,0 +1,43 @@
+{
+  "at": "2026-11-05T08:21:32.527897+00:00",
+  "localOnly": true,
+  "jest": {
+    "command": "node node_modules/jest/bin/jest.js --maxWorkers=2 --silent",
+    "suitesPassed": 645,
+    "testsPassed": 7180,
+    "failed": 0,
+    "log": "artifacts/pulse-source-tasks-2026-11-05/jest-verified.log"
+  },
+  "typecheck": {
+    "application": true,
+    "pulse": true
+  },
+  "sourceFilesVerifiedUnchangedAfterTests": 14,
+  "browser": {
+    "native": false,
+    "store": "memory",
+    "layoutChecks": 18,
+    "errors": 0,
+    "source": "scripts/audits/pulse-source-tasks-proof.cjs"
+  },
+  "documentation": {
+    "stateFailures": 0,
+    "existingMissingEvidenceLinks": 107,
+    "missingEvidenceLinksNow": 107,
+    "newFailures": 0
+  },
+  "releaseLog": {
+    "entriesReadBack": 2,
+    "proofsReadBack": 2
+  },
+  "productionConversionTested": false,
+  "productionTestTasksCreated": false,
+  "nativeTested": false,
+  "built": false,
+  "deployed": false,
+  "permissionsChanged": false,
+  "pulseItemId": null,
+  "pulseTaskStatusUpdated": false,
+  "committed": false,
+  "pushed": false
+}

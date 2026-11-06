@@ -274,12 +274,23 @@ export function seasonExpected(s?: GroupSeasons): SeasonExpected {
   return { currentId: s?.currentId ?? '', revision: s?.revision ?? 0, playedRounds: s?.playedRounds ?? 0, enabled: s?.enabled === true };
 }
 export interface SeasonPreview { played: number; startsAt: number; unverified: number; expected: SeasonExpected }
+type CloseReceipt = { closedNo: number; waiting?: boolean };
+function measureSeasonClose(groupId: string, action: 'close' | 'disable', result: CloseReceipt) {
+  const { AnalyticsEvent, logEvent } = require('./analyticsService') as typeof import('./analyticsService');
+  if (result?.waiting === true) logEvent(AnalyticsEvent.SeasonCloseDeferred, { groupId, action });
+  else if (Number.isInteger(result?.closedNo) && result.closedNo > 0) {
+    if (action === 'close') logEvent(AnalyticsEvent.SeasonEndedEarly, { groupId });
+    else logEvent(AnalyticsEvent.SeasonsDisabled, { groupId });
+  }
+}
 export const seasonService = {
   async preview(groupId: string): Promise<SeasonPreview> {
     if (USE_MOCK_DATA) return { played: 12, startsAt: Date.now() - 60 * 86400000, unverified: 0, expected: seasonExpected() };
     return call('previewClubSeasons', { groupId });
   },
   async resume(groupId: string): Promise<void> {
+    const { AnalyticsEvent, logEvent } = require('./analyticsService') as typeof import('./analyticsService');
+    logEvent(AnalyticsEvent.SeasonResumeRequested, { groupId });
     if (USE_MOCK_DATA) return;
     await call('resumeClubSeason', { groupId });
   },
@@ -293,7 +304,8 @@ export const seasonService = {
   },
   async disable(groupId: string, expected?: SeasonExpected): Promise<void> {
     if (USE_MOCK_DATA) return;
-    await call('disableClubSeasons', { groupId, ...(expected ? { expected } : {}) });
+    const result = await call<CloseReceipt>('disableClubSeasons', { groupId, ...(expected ? { expected } : {}) });
+    measureSeasonClose(groupId, 'disable', result);
   },
   async updateTarget(args: { groupId: string; cadenceType: 'date' | 'rounds'; months?: number; targetRounds?: number;
     scope?: 'current' | 'next'; expected?: SeasonExpected }): Promise<void> {
@@ -302,6 +314,8 @@ export const seasonService = {
   },
   async endNow(groupId: string, expected?: SeasonExpected): Promise<{ closedNo: number; waiting?: boolean }> {
     if (USE_MOCK_DATA) return { closedNo: 1 };
-    return call('endSeasonNow', { groupId, ...(expected ? { expected } : {}) });
+    const result = await call<CloseReceipt>('endSeasonNow', { groupId, ...(expected ? { expected } : {}) });
+    measureSeasonClose(groupId, 'close', result);
+    return result;
   },
 };

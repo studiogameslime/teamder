@@ -307,15 +307,15 @@ describe('10 · a missed night does not consume a pair slot', () => {
 });
 
 describe('11/12 · ratings', () => {
-  it('a missing rating still scores as the neutral 3.0', () => {
+  it('a missing rating scores as the default 2.5', () => {
     const r = balanceCore({
       playerIds: ['a', 'b', 'c', 'd'],
-      ratings: { a: 3, c: 3 },
+      ratings: { a: 2.5, c: 2.5 },
       numTeams: 2,
       perTeam: 2,
     });
     expect(r.unratedCount).toBe(2);
-    expect(r.gap).toBeCloseTo(0, 6); // everyone effectively 3.0
+    expect(r.gap).toBeCloseTo(0, 6); // everyone effectively 2.5
   });
 
   it('legacy 1–10 ratings are normalised, not left to dominate', () => {

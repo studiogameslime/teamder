@@ -17,7 +17,8 @@
 // NEW rotation (and, for permanent fills, a NEW teams array). No I/O, no
 // randomness source beyond an injectable picker so it's deterministic in tests.
 
-import type { FillMode, MatchRotation, RotationLoan } from '@/types';
+import type { FillMode, MatchRotation, RotationLoan, RoundTieResolution } from '@/types';
+import { drawRotationPreview } from '@/utils/drawRotationPreview';
 import { retainRotationLoans } from '@/utils/rotationLoans';
 
 export interface RotationTeam {
@@ -383,9 +384,13 @@ export function recordTieSkeleton(
   rotation: MatchRotation,
   perTeam: number,
   fillMode: FillMode,
-  mode: 'bothOut' | 'veteranOut',
+  mode: RoundTieResolution,
 ): RotationFillState {
   const [a, b] = rotation.playing;
+  if (mode === 'keepPlaying' && (teams.length !== 2 || rotation.waiting.length !== 0) ||
+      (mode === 'stayA' || mode === 'stayB') && (teams.length !== 3 || rotation.waiting.length !== 1)) {
+    throw new Error('סדר הקבוצות השתנה. יש לבחור שוב מי נשארים.');
+  }
   const lastRoundAt = Date.now();
   const base = {
     wins: { ...(rotation.wins ?? {}) },
@@ -405,6 +410,12 @@ export function recordTieSkeleton(
   if (noOneWaiting) {
     // Nobody to swap in → both stay, just advance the round (no fill).
     return state(rotation.playing, { ...rotation, ...base, loans: rotation.loans.filter(l => !l.swapId) }, null);
+  }
+
+  if (mode === 'stayA' || mode === 'stayB') {
+    const preview = drawRotationPreview(rotation, mode === 'stayA' ? 'A' : 'B')!;
+    const loans = retainRotationLoans(rotation.loans, l => l.homeTeam !== preview.incoming && l.filledTeam !== preview.outgoing);
+    return state(preview.playing, { ...rotation, ...base, playing: preview.playing, waiting: [preview.outgoing!], loans }, preview.outgoing);
   }
 
   // Helper: rotate so `out` goes to the back and `stay` is joined by `incoming`.
@@ -446,7 +457,7 @@ export function recordTie(
   rotation: MatchRotation,
   perTeam: number,
   fillMode: FillMode,
-  mode: 'bothOut' | 'veteranOut',
+  mode: RoundTieResolution,
   pick: <T>(a: T[], n: number) => T[] = pickRandom,
 ): { rotation: MatchRotation; teams: RotationTeam[] } {
   const s = recordTieSkeleton(teams, rotation, perTeam, fillMode, mode);

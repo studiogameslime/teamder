@@ -15,12 +15,13 @@ function setup() {
   const state: any = { loading: false, failed: false, game: { id: 'round', revision: 'old' } };
   const context: any = { module: { exports: {} }, AbortController, gameId: 'round', readOnly: true, resume: false,
     ownerKey: 'current', currentOwner: { current: 'current' }, expectedDraftCreatedAt: undefined, setRequestOwner: jest.fn(),
-    currentUser: { id: 'owner' }, myCommunities: [], captainIds: [],
+    currentUser: { id: 'owner' }, myCommunities: [], captainIds: [], viewerId: 'owner', viewerIsGuest: false, adminScope: '[]', captainScope: '[]',
     gameService: { getGameById: jest.fn() },
     setLoading: (v: boolean) => state.loading = v, setLoadFailed: (v: boolean) => state.failed = v,
     setGame: (v: any) => state.game = v, logError: jest.fn(), logEvent: jest.fn(), AnalyticsEvent: {},
     hydratePlayers: jest.fn(), isGuestId: () => false, draftColorTeams, setTeamColors: jest.fn(),
   };
+  context.useUserStore = { getState: () => ({ currentUser: context.currentUser }) };
   vm.runInNewContext(ts.transpileModule(`module.exports=${loader}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, context);
   return { state, context, focus: context.module.exports };
 }

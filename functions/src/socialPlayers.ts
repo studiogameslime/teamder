@@ -5,12 +5,14 @@ import { getFirestore, FieldPath, FieldValue, Filter } from 'firebase-admin/fire
 import { HttpsError, onCall, type CallableRequest } from './observedFunctions';
 import { didEveningHappen } from './eveningPlayed';
 import { socialPairSummary } from './socialPairSummary';
+import {dmStatus,type DmRequest} from './dmPolicy';
+import { directoryReadyPath, indexedNamePage, normalizeSocialSearch } from './socialDirectory';
+export { normalizeSocialSearch } from './socialDirectory';
 
 type Data = Record<string, any>;
 const strings = (value: unknown): string[] => Array.isArray(value) ? value.filter(v => typeof v === 'string') : [];
 const text = (v: unknown, max = 120): string => typeof v === 'string' ? v.slice(0, max).trim() : '';
 const number = (v: unknown): number => typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : 0;
-export const normalizeSocialSearch = (v: string) => v.normalize('NFKC').replace(/[\u0591-\u05C7]/g, '').replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
 export function socialPrivacy(user: Data) {
   return { discoverable: user.socialPrivacy?.discoverable !== false, statistics: ['everyone', 'onlyMe'].includes(user.socialPrivacy?.statistics) ? user.socialPrivacy.statistics as string : 'friends' };
 }
@@ -33,37 +35,35 @@ export function socialMatches(u: Data, opts: Data): boolean {
   if (opts.text && !normalizeSocialSearch(u.name).includes(normalizeSocialSearch(opts.text))) return false;
   if (opts.city && !normalizeSocialSearch(u.city).includes(normalizeSocialSearch(opts.city))) return false;
   if (opts.friendsOnly && !u.friend) return false;
-  if (opts.day !== undefined) {
+  if (opts.day !== undefined || opts.time) {
     const a = u.availability;
     if (!a || a.isAvailableForInvites === false) return false;
-    const slots = a.availabilitySlots;
-    const times = slots ? slots[String(opts.day)] : a.preferredDays?.includes(opts.day) ? a.preferredTimes : undefined;
-    if (slots ? !times?.length : !a.preferredDays?.includes(opts.day)) return false;
-    if (opts.time && !times?.includes(opts.time)) return false;
-  }
-  if (opts.day === undefined && opts.time) {
-    const a = u.availability;
-    if (!a || a.isAvailableForInvites === false) return false;
-    const times = a.availabilitySlots ? Object.values(a.availabilitySlots).flat() : a.preferredDays?.length ? a.preferredTimes : [];
-    if (!times?.includes(opts.time)) return false;
+    if(a.availabilitySlots){
+      const slots=opts.day===undefined?Object.values(a.availabilitySlots).flat():strings(a.availabilitySlots[String(opts.day)]);
+      return opts.time ? slots.includes(opts.time) : slots.length>0;
+    }
+    const days=a.preferredDays ?? [], times=a.preferredTimes ?? [];
+    return !!(days.length || times.length) && (opts.day===undefined || !days.length || days.includes(opts.day))
+      && (!opts.time || !times.length || times.includes(opts.time));
   }
   return true;
 }
-async function session(request: CallableRequest, operation: string, cap = 100) {
+async function session(request: CallableRequest, operation: string, cap = 100, readDirectory = false) {
   const uid = request.auth?.uid;
   if (!uid || request.auth?.token.firebase?.sign_in_provider === 'anonymous') throw new ExpectedCallableError('unauthenticated', 'Full account required');
   const db = getFirestore();
-  const snap = await db.collection('users').doc(uid).get();
-  if (!snap.exists || snap.data()?.isGuest === true) throw new HttpsError('unauthenticated', 'Account missing');
   const ref = db.collection('serverRateLimits').doc(`${uid}_social_${operation}`);
-  await db.runTransaction(async tx => {
-    const data = (await tx.get(ref)).data() ?? {};
+  const result = await db.runTransaction(async tx => {
+    const [snap,limit,index] = await tx.getAll(db.collection('users').doc(uid),ref,...(readDirectory?[db.doc(directoryReadyPath)]:[]));
+    if (!snap.exists || snap.data()?.isGuest === true) throw new HttpsError('unauthenticated', 'Account missing');
+    const data = limit.data() ?? {};
     const start = Date.now() - number(data.start) < 60000 ? number(data.start) : Date.now();
     const count = start === data.start ? number(data.count) : 0;
     if (count >= cap) throw new HttpsError('resource-exhausted', 'Please wait before retrying');
     tx.set(ref, { start, count: count + 1 });
+    return {user:{ ...snap.data(), id: uid } as Data, directoryGeneration:index?.get('ready')===true?number(index.get('generation')):null};
   });
-  return { uid, user: { ...snap.data()!, id: uid } as Data, db };
+  return { uid, db, ...result };
 }
 function validId(v: unknown): string {
   if (typeof v !== 'string' || !v || v.length > 128 || /[\/\x00-\x1f]/.test(v)) throw new HttpsError('invalid-argument', 'Invalid id');
@@ -121,9 +121,8 @@ export const findAvailableSocialPlayers = onCall({ enforceAppCheck: ENFORCE_APP_
   if(request.data?.cursor) query=query.startAfter(validId(request.data.cursor));
   const pool=await query.get();
   const result:Data[]=[];
-  let examined=0, last:string|null=null;
+  const eligible: FirebaseFirestore.QueryDocumentSnapshot[]=[];
   for(const d of pool.docs){
-    examined++; last=d.id;
     const u=d.data(), a=u.availability;
     if(excluded.has(d.id)||u.isGuest||!socialPrivacy(u).discoverable||!a||a.isAvailableForInvites===false)continue;
     if(a.availabilitySlots){ if(!strings(a.availabilitySlots[String(day)]).includes(window))continue; }
@@ -135,19 +134,28 @@ export const findAvailableSocialPlayers = onCall({ enforceAppCheck: ENFORCE_APP_
       const h=Math.sin(deltaLat/2)**2+Math.cos(rad(lat))*Math.cos(rad(a.homeCityLat))*Math.sin(deltaLng/2)**2;
       if(6371*2*Math.asin(Math.sqrt(Math.min(1,h)))>(number(a.availabilityRadiusKm)||20))continue;
     }else if(club?.city&&(a.homeCity||a.preferredCity)&&normalizeSocialSearch(club.city)!==normalizeSocialSearch(a.homeCity||a.preferredCity))continue;
-    if(await blocked(uid,d.id))continue;
-    result.push({...identity(d.id,u),availability:{preferredCity:text(a.homeCity||a.preferredCity)}});
-    if(result.length>=50)break;
+    eligible.push(d);
   }
-  return {players:result,cursor:examined<pool.size||pool.size===250?last:null};
+  for(let i=0;i<eligible.length;i+=50){
+    const batch=eligible.slice(i,i+50);
+    const blocks=await db.getAll(...batch.flatMap(d=>[db.doc(`users/${uid}/blocked/${d.id}`),db.doc(`users/${d.id}/blocked/${uid}`)]));
+    for(const [j,d] of batch.entries()){
+      if(blocks[2*j].exists || blocks[2*j+1].exists)continue;
+      const u=d.data(), a=u.availability;
+      result.push({...identity(d.id,u),availability:{preferredCity:text(a.homeCity||a.preferredCity)}});
+      if(result.length===50)return {players:result,cursor:pool.size===250 || d.id!==pool.docs[pool.size-1].id ? d.id : null};
+    }
+  }
+  return {players:result,cursor:pool.size===250 ? pool.docs[249].id : null};
 });
-async function blocked(a: string, b: string) {
+async function blocked(a: string, b: string, tx?: FirebaseFirestore.Transaction) {
   const db = getFirestore();
-  const docs = await db.getAll(db.doc(`users/${a}/blocked/${b}`), db.doc(`users/${b}/blocked/${a}`));
+  const refs=[db.doc(`users/${a}/blocked/${b}`),db.doc(`users/${b}/blocked/${a}`)];
+  const docs = tx ? await tx.getAll(...refs) : await db.getAll(...refs);
   return docs.some(d => d.exists);
 }
-export async function assertSocialContact(a: string, b: string) {
-  if (await blocked(a,b)) throw new HttpsError('permission-denied','Contact blocked');
+export async function assertSocialContact(a: string, b: string, tx?: FirebaseFirestore.Transaction) {
+  if (await blocked(a,b,tx)) throw new HttpsError('permission-denied','Contact blocked');
 }
 export const checkSocialMessaging = onCall({enforceAppCheck: ENFORCE_APP_CHECK},async request=>{
   const {uid,user,db}=await session(request,'message',120);
@@ -190,30 +198,98 @@ function clubView(id: string, g: Data) {
   return { id, name: text(g.name), city: text(g.city), isOpen: g.isOpen === true, ...(text(g.coverImageId) ? { coverImageId: text(g.coverImageId) } : {}), ...(text(g.coverPhotoUrl, 2048) ? { coverPhotoUrl: text(g.coverPhotoUrl, 2048) } : {}) };
 }
 
+type SearchContext = { common: Map<string,number>; shared: Map<string,number> };
+async function searchContext(db: FirebaseFirestore.Firestore, uid: string): Promise<SearchContext> {
+  const [clubs,games] = await Promise.all([clubsFor(uid),db.collection('games').where('participantIds','array-contains',uid).get()]);
+  const common=new Map<string,number>(), shared=new Map<string,number>();
+  for(const doc of clubs.docs) {
+    const g=doc.data();
+    for(const id of new Set([...strings(g.playerIds),...strings(g.adminIds)]))common.set(id,(common.get(id)??0)+1);
+  }
+  for(const doc of games.docs) {
+    const g=doc.data(), roster=strings(g.players);
+    if(g.status!=='finished' || number(g.startsAt)>=Date.now() || !roster.includes(uid) || g.arrivals?.[uid]==='no_show' || !didEveningHappen(g))continue;
+    for(const id of new Set(roster))if(g.arrivals?.[id]!=='no_show')shared.set(id,(shared.get(id)??0)+1);
+  }
+  return {common,shared};
+}
+const pageSize=40;
+type SearchCandidates={docs:FirebaseFirestore.DocumentSnapshot[];cursor:string|null};
+async function candidatePage(db:FirebaseFirestore.Firestore, user:Data, opts:Data, context:()=>Promise<SearchContext>, generation:number|null):Promise<SearchCandidates> {
+  const upgraded=opts.searchVersion===2, name=normalizeSocialSearch(opts.text??'');
+  const cursor=opts.cursor;
+  const readIds=async(ids:string[])=>ids.length?db.getAll(...ids.map(id=>db.collection('users').doc(id))):[];
+  if(upgraded && (opts.friendsOnly || (!name && !opts.city && opts.day===undefined && !opts.time && !opts.filtered))) {
+    const friends=new Set(strings(user.friends)), c=opts.friendsOnly?null:await context();
+    const preferred=new Set(opts.friendsOnly?friends:[...friends,...c!.shared.keys(),...c!.common.keys()]);
+    preferred.delete(user.id);
+    const regional=[...preferred].sort((a,b)=>(c?.shared.get(b)??0)-(c?.shared.get(a)??0) ||
+      (c?.common.get(b)??0)-(c?.common.get(a)??0) || Number(friends.has(b))-Number(friends.has(a)) || a.localeCompare(b));
+    if((!cursor || cursor.startsWith('p:')) && (regional.length || opts.friendsOnly || cursor)) {
+      const offset=Number(cursor?.slice(2)??0);
+      if(!Number.isSafeInteger(offset)||offset<0)throw new HttpsError('invalid-argument','Invalid page');
+      const ids=regional.slice(offset,offset+pageSize);
+      if(!opts.friendsOnly && ids.length<pageSize){
+        const [first,ordinary]=await Promise.all([readIds(ids),db.collection('users').orderBy(FieldPath.documentId()).limit(pageSize).get()]);
+        const docs=[...first];
+        for(const d of ordinary.docs){
+          if(!preferred.has(d.id) && d.id!==user.id)docs.push(d);
+          if(docs.length===pageSize)return {docs,cursor:'r:'+d.id};
+        }
+        return {docs,cursor:ordinary.size===pageSize?'r:'+ordinary.docs[pageSize-1].id:null};
+      }
+      return {docs:await readIds(ids),cursor:offset+ids.length<regional.length?'p:'+(offset+ids.length):opts.friendsOnly?null:'r:'};
+    }
+    let q=db.collection('users').orderBy(FieldPath.documentId()).limit(pageSize);
+    if(cursor && !cursor.startsWith('r:'))throw new HttpsError('invalid-argument','Invalid page');
+    if(cursor?.slice(2))q=q.startAfter(validId(cursor.slice(2)));
+    const page=await q.get();
+    return {docs:page.docs.filter(d=>!preferred.has(d.id)),cursor:page.size===pageSize?'r:'+page.docs[pageSize-1].id:null};
+  }
+  if(upgraded && name && generation!==null && (!cursor || cursor.startsWith('i:'))){
+    const page=await indexedNamePage(db,name,cursor?validId(cursor.slice(2)):undefined,generation,pageSize);
+    return {docs:await readIds(page.ids),cursor:page.cursor};
+  }
+  let q=db.collection('users').orderBy(FieldPath.documentId()).limit(pageSize);
+  if(cursor)q=q.startAfter(validId(upgraded && (cursor.startsWith('s:')||cursor.startsWith('i:'))?cursor.slice(2):cursor));
+  const page=await q.get();
+  return {docs:page.docs,cursor:page.size===pageSize?(upgraded?'s:':'')+page.docs[pageSize-1].id:null};
+}
+
 export const searchSocialPlayers = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, async request => {
-  const { uid, user, db } = await session(request, 'search', 90);
   const opts = request.data ?? {};
+  const { uid, user, db, directoryGeneration } = await session(request, 'search', 90,opts.searchVersion===2 && !!opts.text && !opts.friendsOnly);
   if (typeof opts.text !== 'undefined' && (typeof opts.text !== 'string' || opts.text.length > 60) || typeof opts.city !== 'undefined' && (typeof opts.city !== 'string' || opts.city.length > 120)) throw new HttpsError('invalid-argument', 'Invalid search');
   if (opts.day !== undefined && (!Number.isInteger(opts.day) || opts.day < 0 || opts.day > 6)) throw new HttpsError('invalid-argument', 'Invalid day');
   if (opts.time !== undefined && !['morning', 'noon', 'evening'].includes(opts.time)) throw new HttpsError('invalid-argument', 'Invalid time');
-  // Bounded server scan also searches legacy accounts without a migration or
-  // downloading the private users collection to the device. Cursor advances
-  // through examined documents, including pages containing only hidden users.
-  const scanSize = 40;
-  let query = db.collection('users').orderBy(FieldPath.documentId()).limit(scanSize);
-  if (opts.cursor) query = query.startAfter(validId(opts.cursor));
-  const [snap, clubs, myBlocks, myGames] = await Promise.all([query.get(), clubsFor(uid), db.collection(`users/${uid}/blocked`).get(), db.collection('games').where('participantIds','array-contains',uid).get()]);
-  const excluded = new Set(myBlocks.docs.map(d => d.id));
-  const candidates = snap.docs.filter(d => d.id !== uid && !excluded.has(d.id) && d.data().isGuest !== true && socialPrivacy(d.data()).discoverable && text(d.data().name));
-  const hits = candidates.map(d => {
-    const common = clubs.docs.filter(c => strings(c.data().playerIds).includes(d.id) || strings(c.data().adminIds).includes(d.id)).length;
-    const shared=myGames.docs.filter(game=>{const g=game.data();return g.status==='finished'&&number(g.startsAt)<Date.now()&&strings(g.players).includes(uid)&&strings(g.players).includes(d.id)&&g.arrivals?.[uid]!=='no_show'&&g.arrivals?.[d.id]!=='no_show'&&didEveningHappen(g);}).length;
-    return socialIdentity(d.id, d.data(), user, common, shared);
-  }).filter(p => socialMatches(p, opts));
-  const reverseRefs = hits.map(p => db.doc(`users/${p.id}/blocked/${uid}`));
-  const reverse = reverseRefs.length ? await db.getAll(...reverseRefs) : [];
-  const players = hits.filter((_, i) => !reverse[i].exists).sort((a, b) => Number(b.friend) - Number(a.friend) || b.sharedRounds-a.sharedRounds || b.commonClubCount - a.commonClubCount || a.name.localeCompare(b.name, 'he'));
-  return { players, cursor: snap.size === scanSize ? snap.docs[snap.size - 1].id : null };
+  if(opts.cursor && (typeof opts.cursor!=='string'||opts.cursor.length>140))throw new HttpsError('invalid-argument','Invalid page');
+  let pending:Promise<SearchContext>|undefined;
+  const context=()=>pending??=(searchContext(db,uid));
+  const {docs,cursor}=await candidatePage(db,user,opts,context,directoryGeneration);
+  const candidates=docs.flatMap(doc=>{
+    const u=doc.data();
+    if(!u || doc.id===uid || u.isGuest || !socialPrivacy(u).discoverable || !text(u.name))return [];
+    const player=socialIdentity(doc.id,u,user);
+    return socialMatches(player,opts)?[player]:[];
+  });
+  if(!candidates.length)return {players:[],cursor};
+  const includeRelationship=opts.searchVersion===2;
+  const refs=candidates.flatMap(p=>[
+    db.doc(`users/${uid}/blocked/${p.id}`),db.doc(`users/${p.id}/blocked/${uid}`),
+    ...(includeRelationship && !p.friend?[db.doc(`friendRequests/${uid}__${p.id}`),db.doc(`friendRequests/${p.id}__${uid}`)]:[]),
+  ]);
+  const [c,checks]=await Promise.all([context(),db.getAll(...refs)]);
+  const checked=new Map(checks.map(d=>[d.ref.path,d]));
+  const players=candidates.flatMap(p=>{
+    if(checked.get(`users/${uid}/blocked/${p.id}`)?.exists || checked.get(`users/${p.id}/blocked/${uid}`)?.exists)return [];
+    const out=checked.get(`friendRequests/${uid}__${p.id}`)?.get('status'), incoming=checked.get(`friendRequests/${p.id}__${uid}`)?.get('status');
+    const relationship=p.friend?'friends':out==='pending'?'outgoing':incoming==='pending'?'incoming':out==='declined'?'rejected':'none';
+    return [{...p,commonClubCount:c.common.get(p.id)??0,sharedRounds:c.shared.get(p.id)??0,...(includeRelationship?{relationship}:{})}];
+  });
+  const term=normalizeSocialSearch(opts.text??'');
+  const rank=(name:string)=>!term?0:normalizeSocialSearch(name)===term?2:Number(normalizeSocialSearch(name).startsWith(term));
+  players.sort((a,b)=>rank(b.name)-rank(a.name) || b.sharedRounds-a.sharedRounds || b.commonClubCount-a.commonClubCount || Number(b.friend)-Number(a.friend) || a.name.localeCompare(b.name,'he'));
+  return {players,cursor};
 });
 
 export const setSocialPrivacy = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, async request => {
@@ -227,12 +303,24 @@ export const setSocialPrivacy = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, a
 export const getSocialPlayerProfile = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, async request => {
   const { uid, user: viewer, db } = await session(request, 'profile', 90);
   const targetId = validId(request.data?.userId);
-  if (uid !== targetId && await blocked(uid, targetId)) throw new HttpsError('not-found', 'Player unavailable');
-  const target = await db.doc(`users/${targetId}`).get();
-  if (!target.exists || target.data()?.isGuest) throw new HttpsError('not-found', 'Player unavailable');
+  const card=request.data?.view==='card', summary=request.data?.view==='summary';
+  const pairId=[uid,targetId].sort().join('__');
+  const [target,blockA,blockB,conv,privateState]=await db.getAll(db.doc(`users/${targetId}`),
+    db.doc(`users/${uid}/blocked/${targetId}`),db.doc(`users/${targetId}/blocked/${uid}`),
+    ...(card?[db.doc(`dmConversations/${pairId}`),db.doc(`dmRequestState/${pairId}`)]:[]));
+  if (!target.exists || target.data()?.isGuest || blockA.exists || blockB.exists) throw new HttpsError('not-found', 'Player unavailable');
   const u = target.data()!;
   const canSeeStatistics = statisticsAllowed(uid, targetId, u, viewer);
-  const [clubs, games, pair, statisticRows] = await Promise.all([clubsFor(targetId), db.collection('games').where('participantIds', 'array-contains', targetId).get(), db.doc(`pairStats/${[uid, targetId].sort().join('__')}`).get(), canSeeStatistics ? readStatisticsRows(targetId) : null]);
+  if(card){
+    const player=socialIdentity(targetId,u,viewer);
+    const access=dmStatus(uid,{blocked:false,friends:player.friend,approved:conv?.get('messagingApproved')===true,
+      accepts:u.dmRequestPolicy==='everyone',request:privateState?.data() as DmRequest|undefined});
+    return {player,canSeeStatistics,statisticsVisibility:socialPrivacy(u).statistics,detailsPending:true,
+      messaging:access==='compose'?'request':access==='unavailable' && !conv?.exists?'unavailable':'conversation',
+      clubs:[],statistics:null,together:null};
+  }
+  const [clubs, games, pair, statisticRows, ownUpcoming] = await Promise.all([clubsFor(targetId), db.collection('games').where('participantIds', 'array-contains', targetId).get(), db.doc(`pairStats/${pairId}`).get(), canSeeStatistics && !summary ? readStatisticsRows(targetId) : null,
+    summary?db.collection('games').where('createdBy','==',uid).where('startsAt','>',Date.now()).select('status').get():null]);
   const played = games.docs.filter(d => { const g = d.data(); return g.status === 'finished' && number(g.startsAt) < Date.now() && strings(g.players).includes(targetId) && g.arrivals?.[targetId] !== 'no_show' && didEveningHappen(g); });
   const shared = played.filter(d => strings(d.data().players).includes(uid) && d.data().arrivals?.[uid] !== 'no_show').length;
   const common = clubs.docs.filter(d => strings(d.data().playerIds).includes(uid) || strings(d.data().adminIds).includes(uid)).length;
@@ -240,9 +328,9 @@ export const getSocialPlayerProfile = onCall({ enforceAppCheck: ENFORCE_APP_CHEC
   const gamesTogether = number(p?.sameTeam), wins = number(p?.winsTogether), losses = number(p?.lossesTogether);
   const together = p && ['sameTeam','winsTogether','lossesTogether'].every(k=>typeof p[k]==='number'&&Number.isFinite(p[k])&&p[k]>=0) && gamesTogether >= wins + losses ? { rounds: shared, games: gamesTogether, wins, losses, ties: gamesTogether - wins - losses } : null;
   const registered=games.docs.filter(d=>{const g=d.data();return g.status==='finished'&&number(g.startsAt)<Date.now()&&strings(g.players).includes(targetId)&&didEveningHappen(g);}).length;
-  const statistics = canSeeStatistics ? await readStatistics(targetId, u, played, registered, statisticRows!) : null;
+  const statistics = statisticRows ? await readStatistics(targetId, u, played, registered, statisticRows) : null;
   const sharedDates = played.filter(d => strings(d.data().players).includes(uid) && d.data().arrivals?.[uid] !== 'no_show').map(d => number(d.data().startsAt));
-  return { player: socialIdentity(targetId, u, viewer, common, shared), clubs: clubs.docs.filter(d => !d.data().isPersonal && !d.data().deletedAt).map(d => ({ ...clubView(d.id, d.data()), isCommon: strings(d.data().playerIds).includes(uid) || strings(d.data().adminIds).includes(uid) })), canSeeStatistics, statisticsVisibility: socialPrivacy(u).statistics, statistics, together, pairSummary: socialPairSummary(uid, targetId, p, sharedDates) };
+  return { ...(summary?{canInviteCreated:ownUpcoming?.docs.some(d=>d.get('status')==='open')??false,cardStats:canSeeStatistics?{attendedGames:played.length,goals:number(u.stats?.goals),assists:number(u.stats?.assists)}:null}:{}), player: socialIdentity(targetId, u, viewer, common, shared), clubs: clubs.docs.filter(d => !d.data().isPersonal && !d.data().deletedAt).map(d => ({ ...clubView(d.id, d.data()), isCommon: strings(d.data().playerIds).includes(uid) || strings(d.data().adminIds).includes(uid) })), canSeeStatistics, statisticsVisibility: socialPrivacy(u).statistics, statistics, together, pairSummary: socialPairSummary(uid, targetId, p, sharedDates) };
 });
 
 async function readStatisticsRows(uid: string) {
@@ -296,17 +384,17 @@ async function readStatistics(uid: string, u: Data, played: FirebaseFirestore.Qu
 export const inviteSocialPlayerToClub = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, async request => {
   const {uid,user,db}=await session(request,'invite',20);
   const groupId=validId(request.data?.groupId),targetId=validId(request.data?.userId);
-  if(uid===targetId||await blocked(uid,targetId))throw new HttpsError('failed-precondition','Player unavailable');
   return sendClubInvitation(db,uid,user,groupId,targetId,true);
 });
 
 export async function sendClubInvitation(db: ReturnType<typeof getFirestore>, uid: string, user: Data, groupId: string, targetId: string, managerOnly = false) {
   validId(groupId);validId(targetId);
-  if(uid===targetId||await blocked(uid,targetId))throw new HttpsError('failed-precondition','Player unavailable');
+  if(uid===targetId)throw new HttpsError('failed-precondition','Player unavailable');
   const gref=db.doc(`groups/${groupId}`),targetRef=db.doc(`users/${targetId}`);
   const marker=db.doc(`serverRateLimits/socialClubInvite_${createHash('sha256').update(JSON.stringify([groupId,targetId])).digest('hex')}`);
   const result=await db.runTransaction(async tx=>{
-    const [gs,us,last,rejections]=await Promise.all([tx.get(gref),tx.get(targetRef),tx.get(marker),tx.get(db.collection('joinRequests').where('groupId','==',groupId).where('userId','==',targetId).where('status','==','rejected'))]);const g=gs.data();
+    const [gs,us,last,rejections,contactBlocked]=await Promise.all([tx.get(gref),tx.get(targetRef),tx.get(marker),tx.get(db.collection('joinRequests').where('groupId','==',groupId).where('userId','==',targetId).where('status','==','rejected')),blocked(uid,targetId,tx)]);const g=gs.data();
+    if(contactBlocked)throw new HttpsError('failed-precondition','Player unavailable');
     if(!g||!us.exists||us.data()?.isGuest)throw new HttpsError('not-found','Not found');
     const manager=strings(g.adminIds).includes(uid);
     if(managerOnly?!manager:![...strings(g.adminIds),...strings(g.playerIds)].includes(uid))throw new HttpsError('permission-denied','Manager or member required');
@@ -364,6 +452,12 @@ export const getReceivedInvitations = onCall({ enforceAppCheck: ENFORCE_APP_CHEC
   const {uid,db}=await session(request,'receivedInvitations',60);
   const snap=await db.collection('notifications').where('recipientId','==',uid).get();
   const rows=snap.docs.filter(d=>['groupInvitation','inviteToGame'].includes(d.get('type')));
+  const contacts=new Map<string,Promise<boolean>>();
+  const blockedInviter=(id:unknown)=>{
+    if(typeof id!=='string'||!id||id.length>128||id.includes('/'))return false;
+    if(!contacts.has(id))contacts.set(id,blocked(uid,id));
+    return contacts.get(id)!;
+  };
   return Promise.all(rows.map(async notice=>{
     const data=notice.data(),p=data.payload??{},club=data.type==='groupInvitation';
     const targetId=club?p.groupId:p.gameId;
@@ -372,9 +466,10 @@ export const getReceivedInvitations = onCall({ enforceAppCheck: ENFORCE_APP_CHEC
     let state='available';
     if(!target||target.deletedAt||target.isPersonal&&club)state='unavailable';
     else if((club?[...strings(target.playerIds),...strings(target.adminIds)]:[...strings(target.players),...strings(target.waitlist)]).includes(uid))state='joined';
+    else if(await blockedInviter(p.inviterId||data.createdByUid))state='unavailable';
+    else if(number(p.expiresAt)>0&&number(p.expiresAt)<=Date.now())state='expired';
     else if(strings(club?target.pendingPlayerIds:target.pending).includes(uid))state='pending';
     else if(!club&&(!['open','scheduled'].includes(target.status)||target.liveMatch?.phase==='live'||number(target.startsAt)+3600000<Date.now()))state='unavailable';
-    else if(number(p.expiresAt)>0&&number(p.expiresAt)<=Date.now())state='expired';
     else if(!club&&target.status==='scheduled')state='scheduled';
     return {id:notice.id,data:{...data,invitationStatus:state}};
   }));

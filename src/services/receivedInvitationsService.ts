@@ -21,9 +21,10 @@ async function withPreviews(items: ReceivedInvitation[], uid: string): Promise<R
     if (!clubs.has(id)) clubs.set(id, groupService.getPublic(id).catch((caughtError71e70f241f: unknown) => { observeCaughtError(caughtError71e70f241f, {"source":"src/services/receivedInvitationsService.ts","handler":"club","site":"receivedInvitationsService:71e70f241f"}); return null; }));
     return clubs.get(id)!;
   };
-  const inviterIds = [...new Set(items.map(item => item.payload.inviterId).filter((id): id is string => typeof id === 'string' && !!id))];
-  const people = await groupService.hydratePublicUsers(inviterIds).catch((caughtError03ee5dd9bc: unknown) => { observeCaughtError(caughtError03ee5dd9bc, {"source":"src/services/receivedInvitationsService.ts","handler":"withPreviews","site":"receivedInvitationsService:03ee5dd9bc"}); return []; });
+  const inviterIds = [...new Set(items.filter(item=>item.status!=='unavailable').map(item => item.payload.inviterId).filter((id): id is string => typeof id === 'string' && !!id))];
+  const people = inviterIds.length ? await groupService.hydratePublicUsers(inviterIds).catch((caughtError03ee5dd9bc: unknown) => { observeCaughtError(caughtError03ee5dd9bc, {"source":"src/services/receivedInvitationsService.ts","handler":"withPreviews","site":"receivedInvitationsService:03ee5dd9bc"}); return []; }) : [];
   const rows = await Promise.all(items.map(async item => {
+    if(item.status==='unavailable')return item;
     const person = people.find(p => p.id === item.payload.inviterId);
     const identity = { inviterPhotoUrl: person?.photoUrl, inviterAvatarId: person?.avatarId };
     if (item.type === 'groupInvitation') {
@@ -39,7 +40,7 @@ async function withPreviews(items: ReceivedInvitation[], uid: string): Promise<R
     const occupied = game.players.length + activeGuestCount(game.guests) + (game.pendingPromotion?.uid ? 1 : 0);
     const unavailable = !['open', 'scheduled'].includes(game.status) || game.liveMatch?.phase === 'live' || game.startsAt + 3600000 < Date.now();
     return { ...item, title: game.title || item.title, startsAt: game.startsAt,
-      status: joined ? 'joined' as const : unavailable ? 'unavailable' as const : game.status === 'scheduled' ? 'scheduled' as const : game.pending?.includes(uid) ? 'pending' as const : item.status,
+      status: joined ? 'joined' as const : unavailable ? 'unavailable' as const : item.status==='expired' ? 'expired' as const : game.status === 'scheduled' ? 'scheduled' as const : game.pending?.includes(uid) ? 'pending' as const : item.status,
       preview: { ...identity, groupId: game.groupId, groupName: target?.name, coverPhotoUrl: target?.coverPhotoUrl, coverImageId: target?.coverImageId,
         city: game.city, fieldName: game.fieldName, fieldType: game.fieldType, format: game.format, isOrphanContext: game.isOrphanContext,
         isFull: !!game.maxPlayers && occupied >= game.maxPlayers } };

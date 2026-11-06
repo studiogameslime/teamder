@@ -74,17 +74,37 @@ export function HomePersonalStats({ user, onOpen, onProfile, preview }: { user: 
     let alive = true;
     setFailed(false);
     if (preview) return () => { alive = false; };
+    let partnerRequested = false;
+    const publish = (stats: PlayerStatsSummary) => {
+      if (!alive) return;
+      setResult(previous => previous?.owner === user.id
+        ? { ...previous, stats, partner: previous.partner?.id === stats.mostPlayedWith?.uid ? previous.partner : undefined }
+        : { owner: user.id, stats });
+      if (partnerRequested || !stats.mostPlayedWith) return;
+      partnerRequested = true;
+      void userService.getUserById(stats.mostPlayedWith.uid).then(partner => {
+        if (alive && partner) setResult(previous => previous?.owner === user.id && previous.stats.mostPlayedWith?.uid === partner.id
+          ? { ...previous, partner } : previous);
+      }).catch((error: unknown) => {
+        if (alive) observeCaughtError(error, { source: 'src/components/home/HomePersonalStats.tsx', handler: 'HomePersonalStats', site: 'HomePersonalStats:partner' });
+      });
+    };
     void (async () => {
       try {
-        const fresh = await userService.getUserById(user.id);
-        if (!alive) return;
-        const stats = await playerStatsService.compute(user.id, { goals: fresh?.stats?.goals ?? user.stats?.goals ?? 0, assists: fresh?.stats?.assists ?? user.stats?.assists ?? 0, isCurrent: () => alive, recentHighlightsOnly: true });
-        if (!alive) return;
-        setResult({ owner: user.id, stats });
-        if (stats.mostPlayedWith) {
-          const partner = await userService.getUserById(stats.mostPlayedWith.uid).catch((caughtError80e6d37cbb: unknown) => { observeCaughtError(caughtError80e6d37cbb, {"source":"src/components/home/HomePersonalStats.tsx","handler":"HomePersonalStats","site":"HomePersonalStats:80e6d37cbb"}); return null; });
-          if (alive && partner) setResult({ owner: user.id, stats, partner });
-        }
+        const totals = userService.getUserById(user.id).then(fresh => ({
+          goals: fresh?.stats?.goals ?? user.stats?.goals ?? 0,
+          assists: fresh?.stats?.assists ?? user.stats?.assists ?? 0,
+        }));
+        const stats = await playerStatsService.compute(user.id, {
+          goals: user.stats?.goals ?? 0, assists: user.stats?.assists ?? 0,
+          totals, isCurrent: () => alive, recentHighlightsOnly: true,
+          onBase: publish,
+          onHighlights: highlights => {
+            if (alive) setResult(previous => previous?.owner === user.id
+              ? { ...previous, stats: { ...previous.stats, highlights } } : previous);
+          },
+        });
+        publish(stats);
       } catch (caughtError4e31577975) {
     observeCaughtError(caughtError4e31577975, {"source":"src/components/home/HomePersonalStats.tsx","handler":"HomePersonalStats","site":"HomePersonalStats:4e31577975"}); if (alive) setFailed(true); }
     })();
@@ -97,7 +117,7 @@ export function HomePersonalStats({ user, onOpen, onProfile, preview }: { user: 
   useEffect(() => { setIndex(0); list.current?.scrollToOffset({ offset: 0, animated: false }); }, [user.id, preview]);
   const stats = data?.stats;
   const milestone = stats ? nextPersonalMilestone(stats.goals) : null;
-  const cardHeight = Math.max(!stats && !failed ? 318 : 204, ...(slides.length ? slides : ['overview']).map(slide => cardHeights[layoutKey + slide] ?? 0));
+  const cardHeight = Math.max(!stats && !failed ? 318 : 204, cardHeights[layoutKey + (slides[current] ?? 'overview')] ?? 0);
   const renderCard = (slide: string) => {
     const content = <>
         <PitchWatermark />
@@ -109,7 +129,7 @@ export function HomePersonalStats({ user, onOpen, onProfile, preview }: { user: 
         }}>
           {!stats ? failed ? <View style={s.loading}><Text style={s.subtitle}>לא הצלחנו לטעון את הנתונים שלך</Text></View> : <PersonalStatsSkeleton /> : slide === 'overview' ?
             <HomeProfileOverview stats={stats} playerId={user.id} onStatistics={onOpen} onProfile={onProfile} />
-          : slide === 'scores' ? <><Text style={s.title}>הכושר האחרון שלך</Text><Text style={s.subtitle}>הציונים שלך ב־{stats.highlights!.recentCount} המחזורים האחרונים</Text><MiniScores points={stats.highlights!.points.slice(-5)} /><View style={s.scoreFoot}><Text style={[s.trend, { color: scoreTrend(stats.highlights!.points) === 'up' ? '#139A55' : '#607292' }]}>{stats.highlights!.points.length < 2 ? 'ציון מחזור מתוך 10' : { up: 'במגמת עלייה', down: 'במגמת ירידה', mixed: 'מגמה מעורבת', stable: 'ללא שינוי' }[scoreTrend(stats.highlights!.points)]}</Text><FootballDataIllustration /></View></> : slide === 'partner' ? <><Text style={s.title}>השותף הקבוע שלך</Text><Text style={s.subtitle}>יש אנשים שהכדורגל פשוט מחבר ביניהם</Text><View style={s.partner}><UserAvatar user={data!.partner!} size={64} /><View><Text style={s.title}>{data!.partner!.name}</Text><Text style={s.subtitle}>{stats.mostPlayedWith!.count} מחזורים יחד</Text></View></View>{stats.regularPartnerResults && <PartnerResults results={stats.regularPartnerResults} />}</> : slide === 'milestone' && milestone ? <><Text style={s.title}>היעד הבא שלך קרוב</Text><View style={s.partner}><StatisticsIllustration kind="trophy" size={72} /><View style={{ flex: 1 }}><Text style={s.value}>עוד {milestone.remaining}</Text><Text style={s.subtitle}>שערים עד ל־{milestone.target} שערים</Text></View></View></> : null}
+          : slide === 'scores' ? <><Text style={s.title}>הכושר האחרון שלך</Text><Text style={s.subtitle}>הציונים שלך ב־{stats.highlights!.recentCount} המחזורים האחרונים</Text><MiniScores points={stats.highlights!.points.slice(-5)} /><View style={s.scoreFoot}><Text style={[s.trend, { color: scoreTrend(stats.highlights!.points) === 'up' ? '#139A55' : '#607292' }]}>{stats.highlights!.points.length < 2 ? 'ציון מחזור מתוך 10' : { up: 'במגמת עלייה', down: 'במגמת ירידה', mixed: 'מגמה מעורבת', stable: 'ללא שינוי' }[scoreTrend(stats.highlights!.points)]}</Text><FootballDataIllustration /></View></> : slide === 'partner' ? <><Text style={s.title}>השותף הקבוע שלך</Text><Text style={s.subtitle}>יש אנשים שהכדורגל פשוט מחבר ביניהם</Text><View style={s.partner}><UserAvatar user={data!.partner!} size={64} /><View><Text style={s.title}>{data!.partner!.name}</Text><Text style={s.subtitle}>{stats.mostPlayedWith!.count} מחזורים יחד</Text></View></View>{stats.regularPartnerResults && <PartnerResults results={stats.regularPartnerResults} />}</> : slide === 'milestone' && milestone ? <><Text style={s.title}>היעד הבא שלך קרוב</Text><View style={s.partner}><StatisticsIllustration kind="trophy" size={64} /><View style={{ flex: 1 }}><Text style={s.value}>עוד {milestone.remaining}</Text><Text style={s.subtitle}>שערים עד ל-{milestone.target} שערים</Text></View></View><View style={{marginTop:16,gap:8}}><View style={{height:10,borderRadius:5,overflow:'hidden',backgroundColor:'#E5EDF9'}} accessibilityRole="progressbar" accessibilityValue={{min:0,max:milestone.target,now:stats.goals}}><View style={{height:10,width:`${Math.min(100,stats.goals/milestone.target*100)}%`,backgroundColor:'#2467F4',borderRadius:5}}/></View><Text style={s.subtitle}>{stats.goals} שערים כבר שלך, {Math.round(stats.goals/milestone.target*100)}% מהיעד</Text>{stats.attendedGames > 0 && <Text style={s.subtitle}>{Number((stats.goals/stats.attendedGames).toFixed(1))} שערים בממוצע למחזור, מתוך {stats.attendedGames} מחזורים</Text>}</View></> : null}
         </View>
       </>;
     const cardStyle = [s.card, { minHeight: cardHeight, width: slides.length > 1 ? width - 14 : width }];

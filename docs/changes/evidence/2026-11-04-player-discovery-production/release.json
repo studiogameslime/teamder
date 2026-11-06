@@ -1,0 +1,185 @@
+{
+  "test-gates": {
+    "pass": true,
+    "jest": 7087,
+    "suites": 633,
+    "rules": 361,
+    "backend": 41,
+    "clientTypes": true,
+    "serverTypes": true,
+    "releaseSourceTypes": true,
+    "activeRulesMatchCompatibility": true,
+    "liveDeniedReads": 6,
+    "cases": 21,
+    "sourceFiles": 1163,
+    "sourceArchive": "d8d5d6065f55c9d87cf51a87f0cafdb9eb8ee52673fa61430022c22f5ddff5d4"
+  },
+  "inventory-verified": {
+    "at": "2026-11-04T14:24:50.672319+00:00",
+    "region": "us-central1",
+    "existing": 120,
+    "untouched": 117,
+    "sourceOnlyUpdated": [
+      "searchSocialPlayers",
+      "getSocialPlayerProfile",
+      "findAvailableSocialPlayers"
+    ],
+    "newEventHandler": "onSocialSearchNameWritten",
+    "rulesetIdentical": true,
+    "knownHealthyRevisions": {
+      "searchSocialPlayers": "searchsocialplayers-00005-mah",
+      "getSocialPlayerProfile": "getsocialplayerprofile-00009-tib",
+      "findAvailableSocialPlayers": "findavailablesocialplayers-00003-kez",
+      "onSocialSearchNameWritten": "onsocialsearchnamewritten-00002-liy"
+    }
+  },
+  "index-before": {
+    "at": "2026-11-04T14:05:48.339Z",
+    "accounts": 801,
+    "eligible": 777,
+    "indexed": 0,
+    "ready": false,
+    "generation": 0
+  },
+  "index-before-activation": {
+    "at": "2026-11-04T14:22:25.731Z",
+    "accounts": 801,
+    "eligible": 777,
+    "indexed": 777,
+    "bucketRows": 17422,
+    "expectedRows": 17422,
+    "checkedTerms": 45471,
+    "differences": 0,
+    "generation": 64,
+    "stableGeneration": true,
+    "ready": false
+  },
+  "index-verified": {
+    "at": "2026-11-04T14:22:36.620Z",
+    "accounts": 801,
+    "eligible": 777,
+    "indexed": 777,
+    "bucketRows": 17422,
+    "expectedRows": 17422,
+    "checkedTerms": 45471,
+    "differences": 0,
+    "generation": 65,
+    "stableGeneration": true,
+    "ready": true
+  },
+  "trigger-delivery": {
+    "at": "2026-11-04T14:21:19.276Z",
+    "eventTransitionsChecked": 2,
+    "temporaryQaNameAdded": true,
+    "originalEmptyNameRestored": true,
+    "entryRemoved": true,
+    "addDelayMs": 3510,
+    "removeDelayMs": 1207
+  },
+  "legacy-readback": {
+    "at": "2026-11-04T14:23:46.101Z",
+    "bareLegacyCursor": true,
+    "oldSecondPageDisjoint": true,
+    "oldFullCard": true,
+    "newIndexedNameMatched": true,
+    "absentNameOnePage": true
+  },
+  "private-read-check": {
+    "getsDenied": 3,
+    "listsDenied": 3,
+    "at": "2026-11-04T14:07:06.156Z"
+  },
+  "logs-after": {
+    "from": "2026-11-04T14:21:18.965566+00:00",
+    "until": "2026-11-04T14:24:50.001598+00:00",
+    "revisions": {
+      "findavailablesocialplayers-00003-kez": {
+        "statuses": {
+          "200": 12
+        },
+        "successfulPosts": 12,
+        "p50ms": 1352,
+        "p95ms": 4962
+      },
+      "getsocialplayerprofile-00009-tib": {
+        "statuses": {
+          "200": 25
+        },
+        "successfulPosts": 25,
+        "p50ms": 601,
+        "p95ms": 987
+      },
+      "searchsocialplayers-00005-mah": {
+        "statuses": {
+          "200": 28
+        },
+        "successfulPosts": 28,
+        "p50ms": 776,
+        "p95ms": 1152
+      }
+    }
+  },
+  "candidateCountEveryRequest": [
+    37
+  ],
+  "errorsGate": {
+    "read": 100,
+    "open": 76,
+    "awaitingOwner": 61
+  },
+  "play-verified": {
+    "at": "2026-11-04T14:55:59.425585+00:00",
+    "track": "internal",
+    "version": "1.1.75",
+    "code": 307,
+    "status": "completed",
+    "production": "1.1.72",
+    "otherTracksUnchanged": true,
+    "bundleSha256": "5321afcc3e5c8e084cee5fbf0d984141e2357c19bcb2e619c9dd1f9abe6ecf0d"
+  },
+  "bundle-verified": {
+    "verified": true,
+    "id": "internal-1.1.75-307-local",
+    "version": "1.1.75",
+    "code": 307,
+    "bundleSha256": "5321afcc3e5c8e084cee5fbf0d984141e2357c19bcb2e619c9dd1f9abe6ecf0d",
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "sourceFiles": 1163,
+    "sourceArchive": "d8d5d6065f55c9d87cf51a87f0cafdb9eb8ee52673fa61430022c22f5ddff5d4",
+    "embeddedRevision": "fb0b6678ca321e408eeb8eba",
+    "certMatches": true,
+    "releaseMode": true,
+    "discoveryCodeInBundle": true,
+    "nativeInputCount": 121,
+    "nativeInputManifestSha256": "681200476b043cb7115a166be411374b733302123d045337d57a56032bff327c",
+    "cloudReservationCanceled": true,
+    "isolatedHermesBundleSha256": "60d1f518f46c0a9459a6c5a9b9cbda1fb1f9cb874c0082fa0f3e3bbe578a7573",
+    "packagingScriptSha256": "e6ad254e4ad8c0b226cce029aae9f88fc56a9b118e0376904e4a5d05546bf7f4"
+  },
+  "journal": {
+    "version": "1.1.75",
+    "assignedItems": 5,
+    "unchangedScreenshotsVerified": 3,
+    "readBackVerified": true,
+    "retainedUnrelatedItems": true
+  },
+  "postPublishSmoke": {
+    "at": "2026-11-04T14:56:28.241Z",
+    "productionServer": true,
+    "androidStoreInstallation": false,
+    "checks": {
+      "index": {
+        "success": true,
+        "ms": 5665
+      },
+      "card": {
+        "success": true,
+        "ms": 800
+      },
+      "recruit": {
+        "success": true,
+        "ms": 5372
+      }
+    }
+  }
+}

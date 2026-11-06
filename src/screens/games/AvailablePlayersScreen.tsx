@@ -43,6 +43,25 @@ import { useGroupStore } from '@/store/groupStore';
 
 type RouteParams = { AvailablePlayers: { gameId: string; previewCandidates?: boolean } };
 
+type PulseCapacity = Pick<Game, 'maxPlayers' | 'players' | 'guests' | 'pendingPromotion'>;
+type PulseBlock = 'roster-full' | 'pulse-full' | null;
+type PulseScope = { gameId: string; userId: string };
+type PulseUiState = { scope: PulseScope; pending: boolean; sent: boolean };
+const PULSE_BLOCK_COPY = {
+  'roster-full': 'ההרכב מלא. אפשר להזמין שחקנים ידנית לרשימת ההמתנה.',
+  'pulse-full': 'הזמנה בפעימות אינה זמינה כרגע. אפשר להזמין שחקנים ידנית.',
+};
+
+/** A pulse-only gate. Keep the displayed roster denominator unchanged.
+ * The server pulse guard counts ALL guests and does not reserve a promotion
+ * slot; the roster counts active guests plus that reservation. Block when
+ * EITHER says full without pretending those are the same occupancy rule. */
+export function availablePlayersPulseAvailability(game: PulseCapacity | null): { free: number | null; blocked: PulseBlock } {
+  const free = game?.maxPlayers ? Math.max(0, game.maxPlayers - (game.players?.length ?? 0) - activeGuestCount(game.guests) - (game.pendingPromotion?.uid ? 1 : 0)) : null;
+  const serverFull = !!game && game.maxPlayers > 0 && (game.players?.length ?? 0) + (game.guests?.length ?? 0) >= game.maxPlayers;
+  return { free, blocked: free === 0 ? 'roster-full' : serverFull ? 'pulse-full' : null };
+}
+
 export function AvailablePlayersScreen() {
   const route = useRoute<RouteProp<RouteParams, 'AvailablePlayers'>>();
   const nav = useNavigation<any>();
@@ -50,6 +69,8 @@ export function AvailablePlayersScreen() {
   const preview = __DEV__ && USE_MOCK_DATA && process.env.EXPO_PUBLIC_QA_ROUTES === '1' && route.params.previewCandidates === true;
   const me = useUserStore((s) => s.currentUser);
   const myCommunities = useGroupStore((s) => s.groups);
+  // A new object also separates returning A -> B -> A from the earlier A.
+  const pulseScope = useMemo(() => ({ gameId, userId: me?.id ?? '' }), [gameId, me?.id]);
 
   const [game, setGame] = useState<Game | null>(null);
   const [candidates, setCandidates] = useState<User[]>([]);
@@ -57,8 +78,9 @@ export function AvailablePlayersScreen() {
   const [invitingId, setInvitingId] = useState<string | null>(null);
   const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
   // "Send to everyone available, in pulses" — manual filler-pulse trigger.
-  const [pulsing, setPulsing] = useState(false);
-  const [pulseSent, setPulseSent] = useState(false);
+  const [pulseState, setPulseState] = useState<PulseUiState | null>(null);
+  const pulsing = pulseState?.scope === pulseScope && pulseState.pending;
+  const pulseSent = pulseState?.scope === pulseScope && pulseState.sent;
   const [query, setQuery] = useState('');
   const [onlyUninvited, setOnlyUninvited] = useState(false);
   const [sameCity, setSameCity] = useState(false);
@@ -70,7 +92,12 @@ export function AvailablePlayersScreen() {
   const pageEpoch = useRef(0);
   const pageLock = useRef(false);
   const inviteLock = useRef(false);
-  const pulseLock = useRef(false);
+  const pulseRequestRef = useRef<{ scope: PulseScope } | null>(null);
+  const pulseGameRef = useRef<Game | null>(null);
+  const pulseSentScopeRef = useRef<PulseScope | null>(null);
+  const pulseScopeRef = useRef(pulseScope);
+  pulseGameRef.current = game;
+  pulseScopeRef.current = pulseScope;
   const group = myCommunities.find(c => c.id === game?.groupId);
   const city = game?.city || group?.city || '';
   const visible = useMemo(() => candidates.filter(u =>
@@ -78,7 +105,25 @@ export function AvailablePlayersScreen() {
     (!onlyUninvited || !invitedIds.has(u.id)) &&
     (!sameCity || (u.availability?.homeCity || u.availability?.preferredCity || '').trim() === city.trim())
   ), [candidates, query, onlyUninvited, invitedIds, sameCity, city]);
-  const free = game?.maxPlayers ? Math.max(0, game.maxPlayers - (game.players?.length ?? 0) - activeGuestCount(game.guests) - (game.pendingPromotion?.uid ? 1 : 0)) : null;
+  const { free, blocked: pulseBlocked } = availablePlayersPulseAvailability(game);
+
+  // Capacity can change while the confirmation is open. Update the ref before
+  // React renders so even the previous button/confirmation cannot start a pulse
+  // using an earlier available slot. Candidate pages remain untouched.
+  useEffect(() => {
+    if (!game || game.id !== gameId || !me?.id) return;
+    const scope = pulseScope;
+    let alive = true;
+    const stop = gameService.subscribeLiveGame(gameId, ({ game: latest }) => {
+      const current = pulseGameRef.current;
+      if (!alive || pulseScopeRef.current !== scope || current?.id !== gameId || latest?.id !== gameId) return;
+      const next = { ...current, players: latest.players, guests: latest.guests, maxPlayers: latest.maxPlayers, pendingPromotion: latest.pendingPromotion };
+      pulseGameRef.current = next;
+      setGame(next);
+    });
+    return () => { alive = false; stop(); };
+    // Capacity updates deliberately do not reload the candidate query.
+  }, [gameId, game?.id, me?.id, pulseScope]);
 
   // Stable key of the viewer's communities (id + the fields that affect the
   // availability query). Keying the loader on THIS string instead of the raw
@@ -106,7 +151,12 @@ export function AvailablePlayersScreen() {
       setLoading(true);
       setLoadFailed(false);
       try {
-        const g = await gameService.getGameById(gameId);
+        // Both reads use the route id and enforce access independently. Start
+        // together, but publish candidates only after the game is confirmed.
+        const [g, page] = await Promise.all([
+          gameService.getGameById(gameId),
+          userService.findAvailablePlayersPage(gameId),
+        ]);
         if (!alive) return;
         setGame(g);
         if (!g) {
@@ -121,7 +171,6 @@ export function AvailablePlayersScreen() {
         setInvitedIds(new Set(g.invitedUserIds ?? []));
         const grp = myCommunities.find((c) => c.id === g.groupId);
         // Time, location, membership and privacy are derived on the server.
-        const page = await userService.findAvailablePlayersPage(gameId);
         const list = page.players;
         if (alive) {
           setCursor(page.cursor);
@@ -234,19 +283,29 @@ export function AvailablePlayersScreen() {
   };
 
   const sendToAll = () => {
-    if (!game || pulsing || pulseSent) return;
+    const current = pulseGameRef.current;
+    if (!current || current.id !== gameId || pulseScopeRef.current !== pulseScope || pulseRequestRef.current?.scope === pulseScope || pulseSentScopeRef.current === pulseScope) return;
+    const blocked = availablePlayersPulseAvailability(current).blocked;
+    if (blocked) { toast.info(PULSE_BLOCK_COPY[blocked]); return; }
+    const scope = pulseScope;
     appAlert(he.sendPulseTitle, he.sendPulseConfirm, [
       { text: he.cancel, style: 'cancel' },
       {
         text: he.sendPulseCta,
         onPress: async () => {
-          if (pulseLock.current) return;
-          pulseLock.current = true;
-          setPulsing(true);
+          const latest = pulseGameRef.current;
+          if (pulseRequestRef.current?.scope === scope || pulseSentScopeRef.current === scope || pulseScopeRef.current !== scope || latest?.id !== gameId) return;
+          const blockedNow = availablePlayersPulseAvailability(latest).blocked;
+          if (blockedNow) { toast.info(PULSE_BLOCK_COPY[blockedNow]); return; }
+          const request = { scope };
+          pulseRequestRef.current = request;
+          setPulseState({ scope, pending: true, sent: false });
           try {
-            const res = preview ? { started: true, alreadyRunning: false, reason: undefined } : await gameService.startFillerPulse(game.id);
+            const res = preview ? { started: true, alreadyRunning: false, reason: undefined } : await gameService.startFillerPulse(latest.id);
+            if (pulseScopeRef.current !== scope || pulseRequestRef.current !== request) return;
             if (res.started) {
-              setPulseSent(true);
+              pulseSentScopeRef.current = scope;
+              setPulseState({ scope, pending: true, sent: true });
               toast.success(
                 res.alreadyRunning ? he.sendPulseAlready : he.sendPulseStarted,
               );
@@ -255,11 +314,17 @@ export function AvailablePlayersScreen() {
             }
           } catch (err) {
     observeCaughtError(err, {"source":"src/screens/games/AvailablePlayersScreen.tsx","handler":"onPress","site":"AvailablePlayersScreen:3163eb023a"});
-            logError('startFillerPulse', err, { gameId: game.id });
+            if (pulseScopeRef.current !== scope || pulseRequestRef.current !== request) return;
+            logError('startFillerPulse', err, { gameId: latest.id });
             toast.error(he.sendPulseError);
           } finally {
-            pulseLock.current = false;
-            setPulsing(false);
+            // A settled request may clear only its own lock and UI state.
+            if (pulseRequestRef.current === request) {
+              pulseRequestRef.current = null;
+              if (pulseScopeRef.current === scope) {
+                setPulseState((currentState) => currentState?.scope === scope ? { ...currentState, pending: false } : currentState);
+              }
+            }
           }
         },
       },
@@ -283,10 +348,10 @@ export function AvailablePlayersScreen() {
     </View>
   </>;
   const footer = game && <View style={styles.pulseCard}>
-    <View style={styles.line}><Ionicons name="megaphone-outline" size={25} color="#2D68FF"/><Text style={styles.pulseTitle}>מחפשים עוד שחקנים?</Text></View>
-    <Text style={styles.pulseExplain}>{he.sendPulseExplain}</Text>
-    <Button title={pulseSent ? he.sendPulseSentBtn : he.sendPulseCta} variant={pulseSent ? 'outline' : 'primary'} style={pulseSent ? styles.sent : styles.primary} fullWidth loading={pulsing} disabled={pulseSent || pulsing} onPress={sendToAll}/>
-    <Text style={styles.disclaimer}>הפנייה באזור אינה מוגבלת למסנני הרשימה.</Text>
+    <View style={styles.line}><Ionicons name="megaphone-outline" size={25} color="#2D68FF"/><Text style={styles.pulseTitle}>{pulseBlocked ? 'הזמנה ידנית לשחקנים' : 'מחפשים עוד שחקנים?'}</Text></View>
+    <Text style={styles.pulseExplain}>{pulseBlocked ? PULSE_BLOCK_COPY[pulseBlocked] : he.sendPulseExplain}</Text>
+    <Button title={pulseSent ? he.sendPulseSentBtn : he.sendPulseCta} variant={pulseSent ? 'outline' : 'primary'} style={pulseSent ? styles.sent : styles.primary} fullWidth loading={pulsing} disabled={!!pulseBlocked || pulseSent || pulsing} onPress={sendToAll}/>
+    {!pulseBlocked && <Text style={styles.disclaimer}>הפנייה באזור אינה מוגבלת למסנני הרשימה.</Text>}
   </View>;
 
   return <SafeAreaView style={styles.root} edges={['top']}>

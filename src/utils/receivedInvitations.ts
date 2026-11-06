@@ -16,6 +16,10 @@ function milliseconds(value: any): number {
   if (value && typeof value.toMillis === 'function') return value.toMillis();
   return 0;
 }
+export function invitationHasExpired(payload: Record<string,unknown> | undefined, now = Date.now()): boolean {
+  const expiry = milliseconds(payload?.expiresAt);
+  return expiry > 0 && expiry <= now;
+}
 /** Never infer invitations from friendship or from membership requests. */
 export function receivedInvitations(rows: {id:string; data:Record<string, any>}[], uid:string): ReceivedInvitation[] {
   const latest = new Map<string, ReceivedInvitation>();
@@ -28,7 +32,7 @@ export function receivedInvitations(rows: {id:string; data:Record<string, any>}[
       title:typeof (club?p.groupName:p.gameTitle)==='string'?(club?p.groupName:p.gameTitle):'',
       inviterName:typeof p.inviterName==='string'?p.inviterName:'מנהל',
       createdAt:milliseconds(data.createdAtMs)||milliseconds(data.createdAt),
-      startsAt:milliseconds(p.startsAt)||undefined,read:data.read===true,status:data.invitationStatus};
+      startsAt:milliseconds(p.startsAt)||undefined,read:data.read===true,status:data.invitationStatus ?? (invitationHasExpired(p) ? 'expired' : undefined)};
     const key=`${item.type}:${targetId}`, old=latest.get(key);
     if (!old || old.createdAt < item.createdAt) latest.set(key,item);
   }
@@ -42,5 +46,5 @@ export function hasClubInvitation(items: ReceivedInvitation[], groupId: string, 
   return items.some(item => item.type === 'groupInvitation' && item.targetId === groupId &&
     !['joined', 'expired', 'unavailable'].includes(item.status ?? '') &&
     item.payload.managerApproved !== false &&
-    !(typeof item.payload.expiresAt === 'number' && item.payload.expiresAt > 0 && item.payload.expiresAt <= now));
+    !invitationHasExpired(item.payload,now));
 }

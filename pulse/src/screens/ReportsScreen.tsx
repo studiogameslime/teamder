@@ -20,6 +20,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { RTL_LABEL_ALIGN, colors, font, radius  } from '../theme';
 import { Disclosure, Card, Empty } from '../components/ui';
+import { ConvertToTaskButton } from '../components/ConvertToTaskButton';
 import {
   listReports,
   groupByReporter,
@@ -29,6 +30,7 @@ import {
   deleteReport,
   type ReportItem,
   type ReportStatus,
+  type ReportType,
 } from '../services/reportsService';
 import { screenHe } from '../services/screenNames';
 
@@ -57,20 +59,20 @@ function timeHe(ms: number): string {
   return `${p(d.getDate())}.${p(d.getMonth() + 1)} · ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-export function ReportsBody() {
+export function ReportsBody({ reportType = 'bug' }: { reportType?: ReportType } = {}) {
   const nav = useNavigation<any>();
   const [items, setItems] = useState<ReportItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const [groupMode, setGroupMode] = useState<GroupMode>('reporter');
   const saving = useRef(new Set<string>());
 
   const load = useCallback(async () => {
-    const rows = await listReports().catch((caughtError4a1ecedb8b: unknown) => { observeCaughtError(caughtError4a1ecedb8b, {"source":"pulse/src/screens/ReportsScreen.tsx","handler":"ReportsBody","site":"ReportsScreen:4a1ecedb8b"}); return [] as ReportItem[]; });
-    setItems(rows);
-    setLoading(false);
-    setRefreshing(false);
+    try { setItems(await listReports()); setFailed(false); }
+    catch (error) { observeCaughtError(error, {source:'pulse/src/screens/ReportsScreen.tsx',handler:'load',site:'reports:read'}); setFailed(true); }
+    finally { setLoading(false); setRefreshing(false); }
   }, []);
 
   useEffect(() => {
@@ -103,26 +105,27 @@ export function ReportsBody() {
       () => deleteReport(it.id), () => setItems(previous => previous.filter(row => row.id !== it.id))) },
   ]);
 
-  // Stats over ALL items (not the filtered view).
+  const scoped = useMemo(() => items.filter(item => item.type === reportType), [items, reportType]);
+  // Stats over this source type, before the status filter.
   const stats = useMemo(() => {
-    const total = items.length;
-    const done = items.filter((i) => i.status === 'done').length;
-    const flagged = items.filter((i) => i.fixRequested && i.status !== 'done').length;
+    const total = scoped.length;
+    const done = scoped.filter((i) => i.status === 'done').length;
+    const flagged = scoped.filter((i) => i.fixRequested && i.status !== 'done').length;
     return { total, done, open: total - done, flagged };
-  }, [items]);
+  }, [scoped]);
 
   const filtered = useMemo(() => {
     switch (filter) {
       case 'fix':
-        return items.filter((i) => i.fixRequested && i.status !== 'done');
+        return scoped.filter((i) => i.fixRequested && i.status !== 'done');
       case 'open':
-        return items.filter((i) => i.status !== 'done');
+        return scoped.filter((i) => i.status !== 'done');
       case 'done':
-        return items.filter((i) => i.status === 'done');
+        return scoped.filter((i) => i.status === 'done');
       default:
-        return items;
+        return scoped;
     }
-  }, [items, filter]);
+  }, [scoped, filter]);
 
   const groups = useMemo(
     () => (groupMode === 'screen' ? groupByScreen(filtered) : groupByReporter(filtered)),
@@ -145,7 +148,8 @@ export function ReportsBody() {
         />
       }
     >
-      <Text style={{ ...font.title,textAlign: RTL_LABEL_ALIGN,marginBottom:12}}>{stats.open} דיווחים פתוחים · {stats.flagged} מסומנים לתיקון</Text>
+      {!loading && (!failed || scoped.length > 0) ? <Text style={{ ...font.title,textAlign: RTL_LABEL_ALIGN,marginBottom:12}}>{stats.open} {reportType === 'suggestion' ? 'הצעות שיפור וייעול פתוחות' : `דיווחים פתוחים. ${stats.flagged} מסומנים לתיקון`}{failed ? '. מידע קודם' : ''}</Text> : null}
+      {failed ? <Pressable accessibilityRole="button" onPress={() => void load()}><Text style={{...font.body,color:colors.red,textAlign:RTL_LABEL_ALIGN}}>טעינת המקור נכשלה. מידע קודם נשמר. לחצו לניסיון חוזר.</Text></Pressable> : null}
       <Disclosure title="קיבוץ הדיווחים">
       {/* Group-by toggle */}
       <View style={s.filterRow}>
@@ -168,7 +172,7 @@ export function ReportsBody() {
       </Disclosure>
       {/* Filters */}
       <View style={s.filterRow}>
-        {FILTERS.map((f) => (
+        {FILTERS.filter(f => reportType === 'bug' || f.key !== 'fix').map((f) => (
           <Pressable
             key={f.key}
             onPress={() => setFilter(f.key)}
@@ -183,8 +187,8 @@ export function ReportsBody() {
         <View style={{ paddingVertical: 40 }}>
           <ActivityIndicator color={colors.primary} />
         </View>
-      ) : groups.length === 0 ? (
-        <Empty text="אין דיווחים בקטגוריה הזו" />
+      ) : groups.length === 0 && !failed ? (
+        <Empty text={reportType === 'suggestion' ? 'אין הצעות בקטגוריה הזו' : 'אין דיווחים בקטגוריה הזו'} />
       ) : (
         groups.map((g) => (
           <View key={g.key} style={s.group}>
@@ -215,6 +219,7 @@ export function ReportsBody() {
               const isBug = it.type === 'bug';
               return (
                 <Card key={it.id} style={s.item}>
+                  <ConvertToTaskButton origin={{kind:'feedback',id:it.id}}/>
                   {it.message ? <Text style={s.message} numberOfLines={3}>{it.message}</Text> : null}
                   <Pressable accessibilityRole="button" onPress={() => nav.navigate('ErrorDetail', {id:it.id,collection:'feedback'})} style={{paddingVertical:14}}><Text style={{ direction: 'rtl' as const,color:colors.primary,fontWeight:'700',textAlign: RTL_LABEL_ALIGN}}>פתיחת אבחון, צילום ורצף פעולות</Text></Pressable>
                   <Disclosure title="פעולות ופרטי הדיווח">

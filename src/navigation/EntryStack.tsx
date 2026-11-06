@@ -18,9 +18,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import { EmailAuthScreen } from '@/screens/auth/EmailAuthScreen';
-import { IntentScreen } from '@/screens/entry/IntentScreen';
-
 export type EntryStackParamList = {
   EntryIntent: undefined;
   /**
@@ -36,6 +33,8 @@ export type EntryStackParamList = {
   EmailAuth: undefined;
 };
 
+// Screen modules are evaluated only when their route renders. Keep all route
+// registrations local so shared destinations preserve their back stack.
 const Stack = createNativeStackNavigator<EntryStackParamList>();
 
 export function EntryStack() {
@@ -44,8 +43,8 @@ export function EntryStack() {
       initialRouteName="EntryIntent"
       screenOptions={{ headerShown: false }}
     >
-      <Stack.Screen name="EntryIntent" component={IntentScreen} />
-      <Stack.Screen name="EmailAuth" component={EmailAuthScreen} />
+      <Stack.Screen name="EntryIntent" getComponent={() => require('@/screens/entry/IntentScreen').IntentScreen as typeof import('@/screens/entry/IntentScreen').IntentScreen} />
+      <Stack.Screen name="EmailAuth" getComponent={() => require('@/screens/auth/EmailAuthScreen').EmailAuthScreen as typeof import('@/screens/auth/EmailAuthScreen').EmailAuthScreen} />
     </Stack.Navigator>
   );
 }

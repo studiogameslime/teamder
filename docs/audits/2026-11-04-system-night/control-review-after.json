@@ -1,0 +1,128 @@
+{
+  "menuSites": [
+    {
+      "id": "ui_a0a882629e69fd83ba",
+      "kind": "press",
+      "label": "לחיצה במסך פרופיל",
+      "scope": "MenuRow",
+      "handler": "inheritControl"
+    },
+    {
+      "id": "ui_78ae8e193ec15a14b9",
+      "kind": "change",
+      "label": "שינוי ערך במסך פרופיל",
+      "scope": "MenuRow",
+      "handler": "inheritControl"
+    }
+  ],
+  "allMenuInventoryIDsCompiled": true,
+  "before": [
+    {
+      "id": "ui_0b30176e9d7fa57546",
+      "kind": "press",
+      "label": "ראשון",
+      "scope": "Example",
+      "handler": "choose"
+    },
+    {
+      "id": "ui_aa7de481729fe1d1dc",
+      "kind": "press",
+      "label": "שני",
+      "scope": "Example",
+      "handler": "choose"
+    }
+  ],
+  "inserted": [
+    {
+      "id": "ui_5b0f124d209a57d683",
+      "kind": "press",
+      "label": "חדש",
+      "scope": "Example",
+      "handler": "choose"
+    },
+    {
+      "id": "ui_0b30176e9d7fa57546",
+      "kind": "press",
+      "label": "ראשון",
+      "scope": "Example",
+      "handler": "choose"
+    },
+    {
+      "id": "ui_aa7de481729fe1d1dc",
+      "kind": "press",
+      "label": "שני",
+      "scope": "Example",
+      "handler": "choose"
+    }
+  ],
+  "keyboard": [
+    {
+      "id": "ui_fc21d585e627022a96",
+      "kind": "submit",
+      "label": "אישור מהמקלדת במסך מסכים",
+      "scope": "Entry",
+      "handler": "submit"
+    }
+  ],
+  "dialogs": [
+    {
+      "id": "ui_ab492e8eaf1c6bb0ad",
+      "kind": "press",
+      "label": "ביטול",
+      "scope": "Dialog",
+      "handler": "dialog"
+    },
+    {
+      "id": "ui_71a7f8f05f3a2f0829",
+      "kind": "press",
+      "label": "אישור",
+      "scope": "Dialog",
+      "handler": "dialog"
+    }
+  ],
+  "sync": [
+    {
+      "name": "teamder_ui_action",
+      "params": {
+        "content_id": "ui_deep",
+        "content_type": "press"
+      }
+    }
+  ],
+  "asyncForward": [
+    {
+      "name": "teamder_ui_action",
+      "params": {
+        "content_id": "ui_deep",
+        "content_type": "press"
+      }
+    }
+  ],
+  "submitted": [
+    {
+      "name": "teamder_ui_action",
+      "params": {
+        "content_id": "ui_keyboard",
+        "content_type": "submit"
+      }
+    }
+  ],
+  "background": [],
+  "menuOptions": [
+    {
+      "id": "ui_4f136dcfb8cfebe610",
+      "kind": "press",
+      "label": "פרופיל",
+      "scope": "options",
+      "handler": "menu"
+    },
+    {
+      "id": "ui_e5333172ad614abc4f",
+      "kind": "press",
+      "label": "היסטוריה",
+      "scope": "options",
+      "handler": "menu"
+    }
+  ],
+  "forbiddenDataLeaked": false
+}

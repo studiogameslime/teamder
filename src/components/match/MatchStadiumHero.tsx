@@ -27,6 +27,8 @@ interface Props {
   showStarted?: boolean;
   chatUnread?: number;
   locationLine?: string;
+  changedTime?: boolean;
+  changedLocation?: boolean;
   coverUrl?: string;
   coverImageId?: string;
   /** Retained for callers of the previous hero layout. */
@@ -40,7 +42,7 @@ interface Props {
 
 export function MatchStadiumHero({roundId, fieldType, groupId, coverLoading = false, startsAt, title,
   seasonLabel, onMenuPress, onBackPress, onSharePress, onChatPress, countdownHidden = false,
-  showStarted = false, chatUnread = 0, locationLine, coverUrl, coverImageId,
+  showStarted = false, chatUnread = 0, locationLine, changedTime = false, changedLocation = false, coverUrl, coverImageId,
   statusLabel, occupancy, weather}: Props) {
   const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
   const activePhoto = useRef(coverUrl);
@@ -75,7 +77,9 @@ export function MatchStadiumHero({roundId, fieldType, groupId, coverLoading = fa
             <View style={styles.date}><Ionicons name="calendar-outline" size={17} color="#FFFFFF" /><Text style={styles.detail}>{formatDayDate(startsAt, {withYear: true})}</Text></View>
             <View style={styles.time}><Ionicons name="time-outline" size={17} color="#FFFFFF" /><Text style={styles.hour}>{`⁦${formatTime(startsAt)}⁩`}</Text></View>
           </View> : null}
+          {changedTime ? <Text accessibilityLiveRegion="polite" style={styles.changeBadge}>מועד המחזור השתנה מאז הצפייה הקודמת</Text> : null}
           {locationLine ? <View style={styles.place}><Ionicons name="location-outline" size={18} color="#FFFFFF" /><Text style={styles.placeText}>{locationLine}</Text></View> : null}
+          {changedLocation ? <Text accessibilityLiveRegion="polite" style={styles.changeBadge}>המיקום השתנה מאז הצפייה הקודמת</Text> : null}
         </View>
         <View style={styles.footer}>
           {startsAt && !countdownHidden ? <LiveCountdown startsAt={startsAt} /> : null}
@@ -96,6 +100,7 @@ function HeaderAction({icon, label, onPress, count = 0}: {icon: keyof typeof Ion
 }
 
 const styles = StyleSheet.create({
+  changeBadge: {alignSelf: 'flex-start', backgroundColor: '#FFF0BF', color: '#604300', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, fontSize: 11, fontWeight: '800', textAlign: RTL_LABEL_ALIGN},
   wrap: {backgroundColor: colors.bg},
   topBar: {flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 6, minHeight: 48, backgroundColor: colors.surface},
   headerTitle: {flex: 1, fontSize: 18, fontWeight: '800', color: colors.text, textAlign: 'center'},

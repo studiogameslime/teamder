@@ -9,9 +9,11 @@ import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 import React, { useRef, useState } from 'react';
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeModal as Modal } from '@/components/SafeModal';
 import { useSafeAreaFrame } from 'react-native-safe-area-context';
@@ -52,6 +54,8 @@ interface Anchor {
 
 export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Props) {
   const screen = useSafeAreaFrame();
+  const { fontScale } = useWindowDimensions();
+  const cardWidth = Math.max(1, Math.min(CARD_W * Math.max(fontScale, 1), screen.width - 2 * MARGIN));
   const ref = useRef<View>(null);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
 
@@ -79,9 +83,9 @@ export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Pr
       const x = windowX - screen.x;
       const y = windowY - screen.y;
       const iconCenterX = x + w / 2;
-      let left = iconCenterX - CARD_W / 2;
-      left = Math.max(MARGIN, Math.min(left, screen.width - CARD_W - MARGIN));
-      const caretLeft = Math.max(16, Math.min(iconCenterX - left, CARD_W - 16));
+      let left = iconCenterX - cardWidth / 2;
+      left = Math.max(MARGIN, Math.min(left, screen.width - cardWidth - MARGIN));
+      const caretLeft = Math.max(16, Math.min(iconCenterX - left, cardWidth - 16));
       // Prefer below the icon; flip above if there isn't room.
       const above = y + h + 8 + EST_H > screen.height - MARGIN;
       const top = above ? y - 8 - EST_H : y + h + 8;
@@ -117,7 +121,10 @@ export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Pr
               // caret to the wrong side of the card. The card's OWN position
               // (`left: anchor.left`) is resolved in the backdrop's frame and
               // is unaffected by this.
-              style={[styles.card, { width: CARD_W, top: anchor.top, left: anchor.left }]}
+              style={[styles.card, {
+                width: cardWidth, maxHeight: Math.max(1, screen.height - 2 * MARGIN),
+                top: anchor.top, left: Math.max(MARGIN, Math.min(anchor.left, screen.width - cardWidth - MARGIN)),
+              }]}
               onPress={(e) => e.stopPropagation()}
               onLayout={(e) => onCard(e.nativeEvent.layout.height)}
             >
@@ -131,13 +138,13 @@ export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Pr
               />
               {/* Keep the measured card and text block in one physical frame;
                   each Text explicitly supplies RTL writing and right alignment. */}
-              <View style={styles.textBlock}>
+              <ScrollView style={styles.scroll} contentContainerStyle={styles.textBlock} bounces={false}>
                 {title ? <Text style={styles.title}>{title}</Text> : null}
                 <Text style={styles.body}>{text}</Text>
-              </View>
-              <Pressable onPress={() => setAnchor(null)} style={styles.gotItWrap} hitSlop={6}>
-                <Text style={styles.gotIt}>{he.infoTipGotIt}</Text>
-              </Pressable>
+                <Pressable onPress={() => setAnchor(null)} style={styles.gotItWrap} hitSlop={6}>
+                  <Text style={styles.gotIt}>{he.infoTipGotIt}</Text>
+                </Pressable>
+              </ScrollView>
             </Pressable>
           ) : null}
         </Pressable>
@@ -150,7 +157,8 @@ const styles = StyleSheet.create({
   // Keep the physical frame LTR; Text explicitly sets Hebrew direction and
   // physical right alignment. Mixing an RTL frame with swapped alignment
   // makes Android forceRTL align tooltip paragraphs on the wrong side.
-  textBlock: { direction: 'ltr', alignSelf: 'stretch' },
+  scroll: { flexGrow: 0, flexShrink: 1 },
+  textBlock: { direction: 'ltr', alignSelf: 'stretch', gap: spacing.sm },
   backdrop: { backgroundColor: overlayTheme.popoverBackdrop,
     flex: 1,
     // The whole overlay is laid out LTR so every absolute `left` here —

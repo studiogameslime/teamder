@@ -1,0 +1,82 @@
+{
+  "version": "1.1.73",
+  "androidCode": 305,
+  "track": "internal",
+  "google": {
+    "at": "2026-11-03T14:33:34.523985+00:00",
+    "version": "1.1.73",
+    "code": 305,
+    "internalVerified": true,
+    "productionUnchanged": true,
+    "otherTracksUnchanged": true,
+    "bundleHashMatches": true
+  },
+  "binary": {
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "sourceFilesUnchanged": 1150,
+    "phoneVersion": "1.1.73/305",
+    "phoneUploadCertificateVerified": true,
+    "phoneBundleValidated": true,
+    "sportsPermissionsAbsent": true,
+    "sportsServicesAbsent": true,
+    "feedbackBannerPresent": [
+      "base/res/drawable-mdpi-v4/assets_feedback_promptfootballbanner.png"
+    ],
+    "feedbackPromptInBundle": true,
+    "productionPromoted": false
+  },
+  "source": {
+    "baseCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "dirtyTree": true,
+    "sourceFiles": 1150,
+    "sourceArchiveSha256": "c908a41913b53f3022deb1406dff8d0671fd87f5b19bb4cf41658c22c8f73b39",
+    "version": "1.1.73",
+    "versionCode": 305,
+    "committed": false,
+    "pushed": false
+  },
+  "tests": {
+    "version": "1.1.73",
+    "fullSuitePassed": true,
+    "tests": 6815,
+    "testSuites": 607,
+    "clientTypesPassed": true,
+    "serverTypesPassed": true,
+    "rulesTests": 360,
+    "backendTests": 38,
+    "rulesChanged": false
+  },
+  "diagnostic": {
+    "embeddedRevision": "bd6f07a8d7471972950a5467",
+    "calculatedRevision": "bd6f07a8d7471972950a5467",
+    "revisionMatches": true,
+    "buildId": "internal-1.1.73-305-local"
+  },
+  "journal": {
+    "version": "1.1.73",
+    "code": 305,
+    "assignedItems": 49,
+    "proofsPreservedAndReadBackVerified": 46,
+    "beforeCount": 431,
+    "afterCount": 424,
+    "prunedVersionKeys": [
+      "1.1.68",
+      "1.1.69",
+      "1.1.66"
+    ],
+    "phoneVersionFloor": "1.1.72",
+    "readBackVerified": true,
+    "productionTrackChanged": false,
+    "serverDeployed": false
+  },
+  "pulse": {
+    "items": 7,
+    "readBackVerified": true,
+    "sourceStatusAndImagesPreserved": true,
+    "closed": 0,
+    "serverDeploymentClaimed": false
+  },
+  "serverDeployment": "awaiting-owner-approval",
+  "deviceInstallVerified": false,
+  "iosBuilt": false
+}

@@ -1,0 +1,91 @@
+{
+  "transform": "normal Babel config, Metro caller, Android, production",
+  "files": [
+    {
+      "file": "src/components/support/SupportChatHost.tsx",
+      "references": 11,
+      "unbound": []
+    },
+    {
+      "file": "src/screens/auth/SignInScreen.tsx",
+      "references": 7,
+      "unbound": []
+    },
+    {
+      "file": "src/screens/auth/EmailAuthScreen.tsx",
+      "references": 11,
+      "unbound": []
+    },
+    {
+      "file": "src/screens/tabs/ProfileScreen.tsx",
+      "references": 35,
+      "unbound": []
+    },
+    {
+      "file": "src/screens/players/PlayerCompareScreen.tsx",
+      "references": 5,
+      "unbound": []
+    },
+    {
+      "file": "src/components/match/LiveScoreboardCard.tsx",
+      "references": 11,
+      "unbound": []
+    },
+    {
+      "file": "src/components/AppDialog.tsx",
+      "references": 2,
+      "unbound": []
+    },
+    {
+      "file": "src/components/profile/HamburgerMenu.tsx",
+      "references": 4,
+      "unbound": []
+    },
+    {
+      "file": "src/components/chat/ChatView.tsx",
+      "references": 30,
+      "unbound": []
+    },
+    {
+      "file": "src/components/PressableScale.tsx",
+      "references": 2,
+      "unbound": []
+    },
+    {
+      "file": "src/components/anim/BallSwitch.tsx",
+      "references": 1,
+      "unbound": []
+    },
+    {
+      "file": "src/firebase/auth.ts",
+      "references": 1,
+      "unbound": []
+    },
+    {
+      "file": "src/services/gameService.ts",
+      "references": 23,
+      "unbound": []
+    },
+    {
+      "file": "src/services/userService.ts",
+      "references": 0,
+      "unbound": []
+    },
+    {
+      "file": "src/screens/SplashScreen.tsx",
+      "references": 2,
+      "unbound": []
+    },
+    {
+      "file": "src/screens/onboarding/PostSignInOnboardingScreen.tsx",
+      "references": 6,
+      "unbound": []
+    },
+    {
+      "file": "src/screens/profile/AvailabilityEditScreen.tsx",
+      "references": 13,
+      "unbound": []
+    }
+  ],
+  "unbound": 0
+}

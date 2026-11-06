@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "usageActivity",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath":"action","order":"ASCENDING"},
+        {"fieldPath":"sortAt","order":"ASCENDING"}
+      ]
+    },
+    {
       "collectionGroup": "games",
       "queryScope": "COLLECTION",
       "fields": [
@@ -387,6 +395,20 @@
       ]
     },
     {
+      "collectionGroup": "games",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "seriesId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "startsAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "communityPairStats",
       "queryScope": "COLLECTION",
       "fields": [
@@ -483,6 +505,38 @@
         {
           "fieldPath": "at",
           "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "usageSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lastActivityAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "usageActivity",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "visitId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sequence",
+          "order": "ASCENDING"
         }
       ]
     }

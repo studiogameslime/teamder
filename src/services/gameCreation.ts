@@ -43,6 +43,16 @@ export interface CreateGameContext {
 export interface CreatedGame {
   gameId: string;
   isOrphan: boolean;
+  /** Optional for completed receipts saved before invitation outcomes were tracked. */
+  invitations?: {
+    requested: number;
+    /** A new invitation was explicitly acknowledged by the service. */
+    sent: number;
+    /** Already invited or registered, so there is no new invitation to count. */
+    existing: number;
+    /** Rejected, unconfirmed or failed requests. The game is still saved. */
+    failed: number;
+  };
 }
 
 /**
@@ -145,23 +155,35 @@ export async function createGameFromValues(ctx: CreateGameContext): Promise<Crea
     });
   }
 
-  // Friend invites picked in step 3. Best-effort — a failed invite never blocks
-  // landing on the match.
-  const inviteIds = v.inviteFriendIds ?? [];
+  // Creation is already complete. Invitation failures must not discard the
+  // game, but both entry points need the actual outcome of this secondary step.
+  const inviteIds = Array.from(new Set(v.inviteFriendIds ?? []));
+  let invitations: CreatedGame['invitations'];
   if (inviteIds.length > 0) {
-    await Promise.all(
-      inviteIds.map((rid) =>
-        notificationsService
-          .inviteToGame({ recipientId: rid, gameId: created.id })
-          .catch((caughtErroredfe64c7dc: unknown) => {
-    observeCaughtError(caughtErroredfe64c7dc, {"source":"src/services/gameCreation.ts","handler":"createGameFromValues","site":"gameCreation:edfe64c7dc"});
-            /* best-effort per-invite */
-          }),
-      ),
+    const results = await Promise.all(
+      inviteIds.map(async (rid) => {
+        try {
+          return await notificationsService.inviteToGame({ recipientId: rid, gameId: created.id });
+        } catch (caughtErroredfe64c7dc: unknown) {
+          observeCaughtError(caughtErroredfe64c7dc, {"source":"src/services/gameCreation.ts","handler":"createGameFromValues","site":"gameCreation:edfe64c7dc"});
+          return null;
+        }
+      }),
     );
+    assertCreationOwner(ctx.uid);
+    invitations = { requested: inviteIds.length, sent: 0, existing: 0, failed: 0 };
+    for (const result of results) {
+      if (result?.invited === true) invitations.sent += 1;
+      else if (result?.invited === false && (result.reason === 'already_invited' || result.reason === 'already_registered')) {
+        invitations.existing += 1;
+      } else invitations.failed += 1;
+    }
     logEvent(AnalyticsEvent.FriendsInvitedToGame, {
       gameId: created.id,
-      count: inviteIds.length,
+      count: invitations.sent,
+      requestedCount: invitations.requested,
+      existingCount: invitations.existing,
+      failedCount: invitations.failed,
     });
   }
   if (isOrphan) {
@@ -176,6 +198,6 @@ export async function createGameFromValues(ctx: CreateGameContext): Promise<Crea
     });
   }
 
-  return { gameId: created.id, isOrphan };
+  return { gameId: created.id, isOrphan, ...(invitations ? { invitations } : {}) };
   });
 }

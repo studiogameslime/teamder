@@ -14,7 +14,7 @@ const text=(n:any):string=>n==null||typeof n==='boolean'?'':typeof n==='string'|
 const compile=(s:string)=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.React,target:ts.ScriptTarget.ES2022}}).outputText;
 const he={funRateUnknown:'האחוז יחושב כשייאסף מדגם מלא',funScorelessCount:(v:number)=>`${v} משחקים`,funAssistedGoals:'בישולים',funScoreless:'ללא שערים',funPenaltyRate:'הבקעות'};
 test.each([undefined,0,6])('club count %s is visible only for a recorded positive count',count=>{
- const value=vm.runInNewContext(compile(`(${rows})`),{derived:{inPlayPenalties:count??0,totalGoals:0,totalAssists:0,countedRounds:0,scorelessRounds:0,penTakenTotal:0},sampled:false,clubAccent:{blue:'blue',green:'green',purple:'purple'},he});
+ const value=vm.runInNewContext(compile(`(${rows})`),{derived:{inPlayPenalties:count??0,totalGoals:0,totalAssists:0,totalRounds:0,goalsPerMini:0,guestGoals:0,countedRounds:0,scorelessRounds:0,penTakenTotal:0},sampled:false,clubAccent:{blue:'blue',green:'green',purple:'purple'},he});
  expect(value.some((r:any)=>r.key==='inPlayPenalties')).toBe((count??0)>0);
 });
 test('a standalone club count shows a count and label once, without a promised percentage',()=>{

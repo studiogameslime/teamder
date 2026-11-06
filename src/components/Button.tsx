@@ -111,7 +111,7 @@ export function Button({
     >
         <View style={styles.content}>
           {confirmation ? <Ionicons name="checkmark-circle" size={18} color={palette.text} /> : loading ? <ActivityIndicator color={palette.text} /> : first ? <Ionicons name={first} size={18} color={palette.text} /> : null}
-          <Text style={[typography.button, { color: palette.text }]} numberOfLines={1}>
+          <Text style={[typography.button, styles.label, { color: palette.text }]}>
             {confirmation ?? title}
           </Text>
           {!confirmation && !loading && second && <Ionicons name={second} size={18} color={palette.text} />}
@@ -137,7 +137,7 @@ function variantPalette(v: Variant) {
       // filled CTA (e.g. "leave community", "cancel game"). Pairs the
       // outline shape with the danger token so it reads as "destructive
       // but you have to opt in" rather than a primary path.
-      return { bg: colors.surface, text: colors.danger, border: colors.danger };
+      return { bg: colors.surface, text: '#B91C1C', border: colors.danger };
     case 'team1':
       return { bg: colors.team1, text: colors.textOnPrimary, border: colors.team1 };
     case 'team2':
@@ -154,14 +154,20 @@ const styles = StyleSheet.create({
     // not the classic rounded-rectangle.
     borderRadius: radius.pill,
     borderWidth: 1.5,
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'center',
     minHeight: 44,
+    maxWidth: '100%',
+    flexShrink: 1,
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
+  },
+  label: {
+    flexShrink: 1,
+    textAlign: 'center',
   },
 });

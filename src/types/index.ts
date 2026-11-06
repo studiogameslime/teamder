@@ -1355,6 +1355,8 @@ export interface RotationLoan {
  * are FULL (per-team size = playersPerTeam) — a short incoming team is
  * completed by borrowing random players from the team that just lost.
  */
+export type RoundTieResolution = 'bothOut' | 'veteranOut' | 'stayA' | 'stayB' | 'keepPlaying';
+
 export interface MatchRotation {
   /** Completed matches only; used for fair filler recommendations, never lifetime stats. */
   fillUsage?: Record<string, { games: number; fills: number; lastRound: number }>;
@@ -1651,6 +1653,8 @@ export interface GameSeriesSettings {
 }
 
 export interface Game {
+  /** Server-frozen scoring model. Absent on historical evenings. */
+  scoreCalibration?: import('../utils/sharedEveningScore').SharedScoreCalibration;
   /** Content bound to a durable create attempt; never an edit revision. */
   creationFingerprint?: string;
   id: string;
@@ -2400,6 +2404,8 @@ export interface LiveMatchState {
   timerControlledByName?: string | null;
   /** Idempotency key for a durable native-widget command. */
   lastWidgetCommandId?: string;
+  /** Recent durable command IDs and application times, retained only across the retry window. */
+  widgetCommandReceipts?: Record<string, number>;
 
   /**
    * Chronological, synced log of every timer control press — drives the

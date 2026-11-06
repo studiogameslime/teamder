@@ -1,0 +1,18 @@
+{
+  "documentsReviewed": 13,
+  "coverageRows": 65,
+  "statuses": {
+    "הורץ חלקית": 20,
+    "הורץ": 45
+  },
+  "controlSites": 1291,
+  "distinctControlIDs": 1233,
+  "sourceFiles": 256,
+  "missingLocalLinks": [],
+  "deviceShotsInspected": [
+    "artifacts/system-night/invite-auth-final.png"
+  ],
+  "browserShotsInspected": [
+    "docs/audits/2026-11-04-system-night/pulse-actions-after-390-1-account-ready.png"
+  ]
+}

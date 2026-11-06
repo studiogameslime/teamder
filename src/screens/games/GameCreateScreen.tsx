@@ -633,7 +633,7 @@ export function GameCreateScreen() {
       // when this screen is gone — both resume paths unmount it. What stays here
       // is what needs a UI: the two confirmations above, the error dialogs
       // below, and this navigation.
-      const { gameId } = await createGameFromValues({
+      const { gameId, invitations } = await createGameFromValues({
         values: v,
         uid: user.id,
         groupId: isOrphan ? null : selectedGroup.id,
@@ -641,6 +641,9 @@ export function GameCreateScreen() {
         draftId: draft.id,
       });
       await draftStore.consume('game', draft);
+      if (invitations?.failed) {
+        toast.info('המחזור נוצר, אבל לא כל ההזמנות נשלחו. אפשר להזמין שוב מתוך פרטי המחזור.', 6500);
+      }
       (nav as { replace: (s: string, p: unknown) => void }).replace(
         'MatchDetails',
         { gameId, celebrate: true },

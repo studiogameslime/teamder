@@ -97,25 +97,41 @@ export function SeasonClubNumbers({ model, forShare = false }: { model: SeasonSu
   </> : null}</View>;
 }
 
+type ClubRecordRead = {
+  scopeKey: string;
+  status: 'loading' | 'ready' | 'error' | 'unavailable';
+  value: EveningRecord | null;
+  truncated: boolean;
+};
+
 export function SeasonClubSummary({ model }: { model: SeasonSummaryModel }) {
   const people = useMemo(() => Object.fromEntries(Object.entries(model.names).map(([id, name]) => [id, { id, name, ...model.peerAvatars[id] }])), [model.names, model.peerAvatars]);
-  const [record, setRecord] = useState<{ source: SeasonSummaryModel; value: EveningRecord | null; truncated: boolean } | null>(null);
+  const scopeKey = JSON.stringify([model.groupId, model.seasonId, model.startsAt ?? null, model.endsAt ?? null]);
+  const [record, setRecord] = useState<ClubRecordRead | null>(null);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let alive = true;
-    setRecord(null);
     if (model.club?.mostGoalsEvening !== undefined) {
-      setRecord({ source: model, value: model.club.mostGoalsEvening, truncated: false });
-      return;
+      setRecord({ scopeKey, status: 'ready', value: model.club.mostGoalsEvening, truncated: false });
+      return () => { alive = false; };
     }
     // Never turn an unknown starting boundary into a lifetime record.
-    if (!model.startsAt) return;
+    if (!model.startsAt) {
+      setRecord({ scopeKey, status: 'unavailable', value: null, truncated: false });
+      return () => { alive = false; };
+    }
+    setRecord(previous => ({ scopeKey, status: 'loading', value: previous?.scopeKey === scopeKey ? previous.value : null, truncated: previous?.scopeKey === scopeKey ? previous.truncated : false }));
     void roundSummaryService.listEveningStats(model.groupId, { from: model.startsAt, ...(model.endsAt ? { to: model.endsAt } : {}) })
-      .then(result => { if (alive) setRecord({ source: model, value: eveningRecordsOf(result.evenings).goals, truncated: result.truncated }); })
+      .then(result => { if (alive) setRecord({ scopeKey, status: 'ready', value: eveningRecordsOf(result.evenings).goals, truncated: result.truncated }); })
       .catch((caughtError1b5a184dea: unknown) => {
-    observeCaughtError(caughtError1b5a184dea, {"source":"src/components/summary/SeasonClubSummary.tsx","handler":"SeasonClubSummary","site":"SeasonClubSummary:1b5a184dea"}); if (alive) setRecord({ source: model, value: null, truncated: false }); });
+    observeCaughtError(caughtError1b5a184dea, {"source":"src/components/summary/SeasonClubSummary.tsx","handler":"SeasonClubSummary","site":"SeasonClubSummary:1b5a184dea"}); if (alive) setRecord(previous => ({ scopeKey, status: 'error', value: previous?.scopeKey === scopeKey ? previous.value : null, truncated: previous?.scopeKey === scopeKey ? previous.truncated : false })); });
     return () => { alive = false; };
-  }, [model]);
-  const currentRecord = record?.source === model ? record.value : null;
+  }, [model, scopeKey, attempt]);
+  const viewRecord: ClubRecordRead = model.club?.mostGoalsEvening !== undefined
+    ? { scopeKey, status: 'ready', value: model.club.mostGoalsEvening, truncated: false }
+    : !model.startsAt ? { scopeKey, status: 'unavailable', value: null, truncated: false }
+      : record?.scopeKey === scopeKey ? record : { scopeKey, status: 'loading', value: null, truncated: false };
+  const currentRecord = viewRecord.value;
   return <>
     <View style={seasonSummaryStyles.card}>
       {model.closed && model.awardNotes ? Object.entries(model.awardNotes).map(([key, text]) => <Text key={key} style={seasonSummaryStyles.note}>{text}</Text>) : null}
@@ -131,7 +147,14 @@ export function SeasonClubSummary({ model }: { model: SeasonSummaryModel }) {
           <View style={{ flex: 1 }}>
             <Text style={seasonSummaryStyles.metricLabel}>המחזור הפורה ביותר שתועד</Text>
             <Text style={seasonSummaryStyles.valueLabel}>{currentRecord ? `${currentRecord.value} שערים` : '—'}</Text>
-            <Text style={seasonSummaryStyles.hint}>{currentRecord ? new Date(currentRecord.at).toLocaleDateString('he-IL') : 'אין נתון מתועד'}</Text>
+            {currentRecord || viewRecord.status === 'ready' || viewRecord.status === 'unavailable' ? <Text style={seasonSummaryStyles.hint}>{currentRecord ? new Date(currentRecord.at).toLocaleDateString('he-IL') : viewRecord.status === 'unavailable' ? 'טווח העונה אינו זמין' : 'אין נתון מתועד'}</Text> : null}
+            {viewRecord.status === 'loading' ? <Text accessibilityLiveRegion="polite" style={seasonSummaryStyles.hint}>טוענים את שיא המחזור...</Text> : null}
+            {viewRecord.status === 'error' ? <>
+              <Text accessibilityRole="alert" style={seasonSummaryStyles.hint}>לא הצלחנו לטעון את שיא המחזור</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="נסה שוב לטעון את שיא המחזור" onPress={() => setAttempt(value => value + 1)} style={{ minHeight: 44, justifyContent: 'center' }}>
+                <Text style={[seasonSummaryStyles.muted, { color: colors.primary }]}>נסה שוב</Text>
+              </Pressable>
+            </> : null}
           </View>
           <SeasonSummaryIcon name="bars" size={25} />
         </View>
@@ -145,7 +168,7 @@ export function SeasonClubSummary({ model }: { model: SeasonSummaryModel }) {
         </View>
       </View>
       {model.club?.numbers.penSaved != null ? <Text style={seasonSummaryStyles.note}>פנדלים שנעצרו: {model.club.numbers.penSaved}</Text> : null}
-      {record?.truncated ? <Text style={seasonSummaryStyles.note}>השיא מבוסס על 400 המחזורים המתועדים האחרונים בעונה.</Text> : null}
+      {viewRecord.truncated ? <Text style={seasonSummaryStyles.note}>השיא מבוסס על 400 המחזורים המתועדים האחרונים בעונה.</Text> : null}
     </View>
     <View style={seasonSummaryStyles.card}>
       <SeasonSectionTitle text="הצמדים של המועדון" icon="people-outline" />

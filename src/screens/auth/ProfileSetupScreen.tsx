@@ -12,6 +12,8 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { appAlert } from '@/components/AppDialog';
 import { AVATARS, getAvatarById } from '@/data/avatars';
 import { pickAndUploadAvatar, deleteUserPhoto } from '@/services/photoService';
+import { photoPhaseLabel, type PhotoPhase } from '@/utils/photoPhase';
+import { OperationStatus } from '@/components/ReadStatusNotice';
 import { RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
@@ -30,6 +32,7 @@ export function ProfileSetupScreen({ onClose }: { onClose?: () => void } = {}) {
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [photoPhase, setPhotoPhase] = useState<PhotoPhase>('permission');
   const inFlight = useRef(false);
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -40,9 +43,12 @@ export function ProfileSetupScreen({ onClose }: { onClose?: () => void } = {}) {
     if (!user || inFlight.current) return;
     inFlight.current = true;
     setUploading(true);
+    setPhotoPhase('permission');
     logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'photo_picker_opened', step: 'profile_setup' });
     try {
-      const result = await pickAndUploadAvatar(user.id);
+      const result = await pickAndUploadAvatar(user.id, phase => {
+        if (mounted.current && useUserStore.getState().currentUser?.id === user.id) setPhotoPhase(phase);
+      });
       if (!mounted.current || useUserStore.getState().currentUser?.id !== user.id) return;
       if (result.ok) {
         setPhotoUrl(result.url);
@@ -75,14 +81,16 @@ export function ProfileSetupScreen({ onClose }: { onClose?: () => void } = {}) {
     logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'profile_save_tapped', step: 'profile_setup' });
     setBusy(true);
     try {
-      await updateProfile({ name: name.trim(), photoUrl, ...(avatarId ? { avatarId } : {}) });
+      await updateProfile({ name: name.trim(), photoUrl, ...(avatarId ? { avatarId } : {}) }, user.id);
+      if (!mounted.current || useUserStore.getState().currentUser?.id !== user.id) return;
       // Cleanup follows a successful profile write; a failed save keeps the old image intact.
-      if (!photoUrl && user.photoUrl && useUserStore.getState().currentUser?.id === user.id) {
+      if (!photoUrl && user.photoUrl) {
         void deleteUserPhoto(user.id);
       }
       logEvent(AnalyticsEvent.ProfileConfirmed, { source: 'profile_setup' });
     } catch (err) {
     observeCaughtError(err, {"source":"src/screens/auth/ProfileSetupScreen.tsx","handler":"handleSave","site":"ProfileSetupScreen:ebf6a14416"});
+      if (!mounted.current || useUserStore.getState().currentUser?.id !== user.id || (err as Error)?.name === 'StaleSessionError') return;
       // First-run name capture gates entry to the whole app. A silent
       // failure here strands the user on this screen with no feedback —
       // surface the error so they know to retry.
@@ -129,13 +137,14 @@ export function ProfileSetupScreen({ onClose }: { onClose?: () => void } = {}) {
           <Text style={styles.headerTitle}>כרטיס השחקן שלך</Text>
         </View>
         <Text style={styles.title}>איך קוראים לך על המגרש?</Text>
+        <OperationStatus active={uploading || busy} label={busy ? 'שומרים את הפרופיל' : photoPhaseLabel(photoPhase)} scope={user?.id ?? 'profile-setup'} awaitingConfirmation={busy}/>
         <Text style={styles.subtitle}>זה השם שיראו שחקנים אחרים באפליקציה</Text>
         <View style={styles.card}>
           <Pressable onPress={handlePickPhoto} disabled={locked} accessibilityRole="button" accessibilityLabel="העלאת תמונת פרופיל" style={styles.portrait}>
             <UserAvatar user={previewUser} size={124} />
           </Pressable>
           <Pressable onPress={handlePickPhoto} disabled={locked} accessibilityRole="button" accessibilityState={{ disabled: locked, busy: uploading }} style={styles.upload}>
-            <Text style={styles.uploadText}>{uploading ? 'מעלה תמונה…' : 'העלאת תמונה'}</Text><Ionicons name="camera" size={23} color={BLUE}/>
+            <Text style={styles.uploadText}>{uploading ? photoPhaseLabel(photoPhase) : 'העלאת תמונה'}</Text><Ionicons name="camera" size={23} color={BLUE}/>
           </Pressable>
           <View style={styles.divider}><View style={styles.line}/><Text style={styles.dividerText}>או בחרו דמות מהמבחר</Text><View style={styles.line}/></View>
           <View style={styles.grid}>

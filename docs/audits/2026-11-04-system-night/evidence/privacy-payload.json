@@ -1,0 +1,16 @@
+{
+  "emulator": "127.0.0.1:8195",
+  "syntheticProject": "demo-privacy-payload-mw355qfh",
+  "catalogCopies": 3,
+  "approvedKeysPerCopy": 1550,
+  "allApprovedKeysExecuted": true,
+  "unknownKeysRejected": true,
+  "productTargetFieldsRejected": true,
+  "arbitraryTextStripped": true,
+  "mismatchedOwnerRejected": true,
+  "anonymousAndMissingProviderRejected": true,
+  "forgedOwnerAndSourceStripped": true,
+  "deletedAccountRecreationRejected": true,
+  "cleanupCollectionsVerifiedEmpty": 5,
+  "verified": true
+}

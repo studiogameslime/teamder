@@ -1,0 +1,1067 @@
+{
+  "schemaVersion": 1,
+  "reviewer": "design_audit",
+  "reviewedAt": "2026-11-03T00:05:56.329Z",
+  "scope": "26 תמונות ראשונות לפי המספרים 0 עד 25 במיפוי. חלונות ורכיבי מקור במארח דמו, לא זרימות מוצר מלאות.",
+  "method": "כל צילום נפתח בנפרד באמצעות view_image עם detail original ונקרא במידות 1080 על 2400. לא נעשה שימוש בלוח תמונות כתחליף.",
+  "inventory": "artifacts/overnight-2026-11-02/overlay-inventory.json",
+  "captureMetadata": "artifacts/overnight-2026-11-02/overlay-final/captures.json",
+  "summary": {
+    "imageReviews": 26,
+    "sourceComponentFixtureImages": 24,
+    "sourceTriggerOnlyImages": 2,
+    "distinctVisibleSubjectComponentFiles": 18,
+    "distinctHostedScreenFiles": 1,
+    "fullProductFlowsVerified": 0,
+    "functionalVerified": 0,
+    "regressionCompleted": 0,
+    "newSignificantVisualIssues": 0
+  },
+  "visibleSubjectComponentFiles": [
+    "src/components/community/RichRulesText.tsx",
+    "src/components/match/SubstitutionModal.tsx",
+    "src/components/social/PlayerAvailabilitySummary.tsx",
+    "src/components/home/DidYouKnowCard.tsx",
+    "src/components/match/RetroGoalsSheet.tsx",
+    "src/components/home/HomePersonalStats.tsx",
+    "src/components/home/HomeProfileOverview.tsx",
+    "src/components/community/NewClubSeasons.tsx",
+    "src/components/match/tabs/MatchStatsTab.tsx",
+    "src/components/draft/DraftTeamCard.tsx",
+    "src/components/match/BalancedFillModal.tsx",
+    "src/components/summary/EveningSummaryCard.tsx",
+    "src/components/community/SeasonConfirmSheet.tsx",
+    "src/components/AchievementCelebration.tsx",
+    "src/components/community/CommunityStatsTable.tsx",
+    "src/components/DateTimeFields.tsx",
+    "src/components/match/FillerPickerModal.tsx",
+    "src/components/community/ManageEquipmentSheet.tsx"
+  ],
+  "componentCountLimit": "זו ספירת נושאי הרכיבים שנראו במפורש ברשומות, ללא ניפוח באמצעות כל רכיב עזר או ייבוא. היא נפרדת מקריאת קוד ומ 35 מצבי המסך המלאים שבדוח native-final-design.",
+  "codeReadReceipt": "docs/audits/2026-11-02-overnight/component-review-receipt.json",
+  "globalLimitations": [
+    "הסוכן לא שלט באימולטור ולא ביצע לחיצה. הסוכן architecture_inventory הפעיל את סקר הצילומים.",
+    "נתוני המארח סינתטיים. תנאי ההופעה האמיתיים, הרשאות, שרת ותשובות שירות אינם נבדקים בסקר זה.",
+    "שני פקדי time ו-datetimeנראים במצב סגור; אין לקרוא להם בדיקת החלון הפנימי.",
+    "רשימות ארוכות וסיכום אישי נבדקו רק באזור הגלוי.",
+    "51 מצבים לא נסקרים כאן. הראשי אחראי בנפרד למספרים 26 עד 50.",
+    "בועת העזרה שנראית ברקע מסך הבית אינה חופפת לתוכן החלונות בחזית במצבים שנבדקו."
+  ],
+  "records": [
+    {
+      "inventoryIndex": 0,
+      "kind": "night_signin",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "מסך ההתחברות המקורי בתוך חלון הדגמה.",
+      "observations": [
+        "בואו נתחיל מופיע מעל סמל כדור וכיתוב הסבר קריא.",
+        "כפתורי גוגל, דואר וכניסה כאורח והערת תנאי שימוש גלויים בשלמותם."
+      ],
+      "issues": [],
+      "limitations": [
+        "אין התחברות או מעבר לספק, אין בדיקת שגיאות הרשמה או אתחול משתמש.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "SignInScreen",
+          "path": "src/screens/auth/SignInScreen.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/01-night_signin.png",
+        "sha256": "9afb81779472c4d4b631ca453d3fc5a09ef7074df50be3fabc17c3e91b4d13a8",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/01-night_signin.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 1,
+      "kind": "night_rules",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "חוקי מועדון עם רשימה והדגשה.",
+      "observations": [
+        "כותרת חוקי המועדון, שתי שורות רשימה, הדגשת החברים במגרש ופסקת סיום מוצגות מימין.",
+        "כפתור סגירת בדיקה גלוי ללא חפיפה."
+      ],
+      "issues": [],
+      "limitations": [
+        "רק התוכן המקומי והאזור הנראה, ללא גלילה.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "RichRulesText",
+          "path": "src/components/community/RichRulesText.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/02-night_rules.png",
+        "sha256": "ffb09424dc7254a33b46a3ed4d51daa8fb1b29c2fb3520be3226d52c8e591b3d",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/02-night_rules.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 2,
+      "kind": "night_substitution",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "החלפה בין שלוש קבוצות, שעון אינו פועל.",
+      "observations": [
+        "חלון חילוף שחקנים מציג שעון עצור, חמשה שחקנים באדומים וחמשה בכחולים ושניים בירוקים.",
+        "השמות הארוכים נשברים לשתי שורות; כפתור בחירת שחקן מושבת כל עוד אין בחירה."
+      ],
+      "issues": [],
+      "limitations": [
+        "אין בחירת שחקן, החלפה, מעבר או מצב שעון פועל.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "SubstitutionModal",
+          "path": "src/components/match/SubstitutionModal.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/03-night_substitution.png",
+        "sha256": "13f26e01ff91e5157364442eec5bc3c3484e10a80c75dcf8406ded5e4d5eefad",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/03-night_substitution.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 3,
+      "kind": "pulse_review",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "רשת זמינות מלאה וטיפים מקומיים.",
+      "observations": [
+        "רשת זמינות מציגה שבעה ימים ושלושה חלקי יום מסומנים, עם העיר קריית עקרון.",
+        "טיפ כחול עם תוכן גלוי, חיווי עמודים ושני כפתורי ההדגמה מופיעים מתחת לרשת."
+      ],
+      "issues": [],
+      "limitations": [
+        "כפתור אזהרת העונה לא נלחץ ולכן חלון האזהרה הנוסף אינו מכוסה.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "PlayerAvailabilitySummary",
+          "path": "src/components/social/PlayerAvailabilitySummary.tsx"
+        },
+        {
+          "name": "DidYouKnowCard",
+          "path": "src/components/home/DidYouKnowCard.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/04-pulse_review.png",
+        "sha256": "9449d6cff9b21dcec7bcc3a1707b285c9c2462e8b01ee444a1526c54b48aced7",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/04-pulse_review.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 4,
+      "kind": "retro_list",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "רשימה מקומית של 25 גולים עם סגל מקומי.",
+      "observations": [
+        "חלון השלמת גולים מציג הסבר על עדכון ציונים וסיכום בלי שינוי תוצאות המשחקים.",
+        "מוצגות שורות מבקיע ובישול וכפתורי מחיקה; פעולת הוספת גול וסגירה גלויות בתחתית."
+      ],
+      "issues": [],
+      "limitations": [
+        "הצילום הראשוני אינו מוכיח את כל הרשימה, בחירת מבקיע או שמירת גול.",
+        "רק כשבע שורות מן הרשימה הארוכה נראות; יתרת 25 הגולים לא נבדקה בגלילה.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "RetroGoalsSheet",
+          "path": "src/components/match/RetroGoalsSheet.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/05-retro_list.png",
+        "sha256": "c5e677aabccb82629064ee00c99bfc6711cd9831fe1a829f438ebddf171456a6",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/05-retro_list.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 5,
+      "kind": "home_cards",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "כרטיסי הבית עם נתוני תצוגה וטיפים מקומיים.",
+      "observations": [
+        "כרטיס הכדורגל שלי מציג 49 מחזורים,38 שערים,16 בישולים ו 20 חברים שונים.",
+        "שתי פעולות הכרטיס נפרדות וקריאות; הטיפ הראשון ותוכן הטקסט גלויים עם חיווי העמודים."
+      ],
+      "issues": [],
+      "limitations": [
+        "הכרטיס האישי מוצג רק כאשר קיים משתמש בחנות; צילום אחד אינו מכסה את כל שקופיותיו.",
+        "לא נצפו השקופית הבאה או המעבר האוטומטי ברצף.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "HomePersonalStats",
+          "path": "src/components/home/HomePersonalStats.tsx"
+        },
+        {
+          "name": "HomeProfileOverview",
+          "path": "src/components/home/HomeProfileOverview.tsx"
+        },
+        {
+          "name": "DidYouKnowCard",
+          "path": "src/components/home/DidYouKnowCard.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/06-home_cards.png",
+        "sha256": "4ea92f1f31ea0ca0216e68edd00b93a13c6fb9509fbee6147a0eaefcf3a39362",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/06-home_cards.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 6,
+      "kind": "new_seasons",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "טיוטת עונות במצב ברירת מחדל.",
+      "observations": [
+        "כרטיס עונות מציג הסבר, סמל מידע ומתג במצב כבוי.",
+        "הטקסט נשבר בתוך הכרטיס ואינו חופף למתג."
+      ],
+      "issues": [],
+      "limitations": [
+        "אין הרחבת אפשרויות, שינוי לוח זמנים או שמירה.",
+        "אפשרויות עונה מורחבות אינן מוצגות כשהמתג כבוי.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "NewClubSeasons",
+          "path": "src/components/community/NewClubSeasons.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/07-new_seasons.png",
+        "sha256": "48a64aeb9751a561f9364909c2b27d595784027b9fd3182921d8c8a8dc611d15",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/07-new_seasons.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 7,
+      "kind": "stats_empty",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "לשונית סטטיסטיקה ללא סיכום במחזור הדמו החי.",
+      "observations": [
+        "מופיעה תצוגה מקדימה המבהירה שהסטטיסטיקה תופיע בסיום המחזור.",
+        "משחקים, פנדלים, שערים, בישולים וכוכבי המחזור מוצגים במקפים ובטקסט כיסוי, בלי להציג אפס כהישג."
+      ],
+      "issues": [],
+      "limitations": [
+        "שם הענף אינו הוכחה למצב ריק של מחזור שהסתיים; המחזור החי מציג תצוגה מקדימה.",
+        "למרות שם הענף, זהו מחזור חי ללא סיכום, לא מצב ריק של מחזור שהסתיים.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "MatchStatsTab",
+          "path": "src/components/match/tabs/MatchStatsTab.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/08-stats_empty.png",
+        "sha256": "7180c3e5eab928bc815dfc1d13873161336449acca54222f2261be6f60acb48c",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/08-stats_empty.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 8,
+      "kind": "balanced_teams",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "שלוש קבוצות עם 13 שחקנים והשלמות בקיבולת חמש.",
+      "observations": [
+        "שלושה כרטיסי קבוצות מציגים את האדומים 5 מתוך 5, הכחולים 4 מתוך 5 והירוקים 4 מתוך 5.",
+        "מקומות ההשלמה מובחנים במסגרת מקווקוות וטקסט קריא."
+      ],
+      "issues": [],
+      "limitations": [
+        "אין תהליך הגרלה, איזון או שמירת קבוצות.",
+        "פעולת הסגירה נמצאת מתחת לאזור הצילום, ולא נבדקה גלילה אליה.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "DraftTeamCard",
+          "path": "src/components/draft/DraftTeamCard.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/09-balanced_teams.png",
+        "sha256": "d0e7a2626c551a1c2ab4262be30a4da44e5ace1fb95a28d02972e35931878d40",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/09-balanced_teams.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 9,
+      "kind": "balanced_fill",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "שתי קבוצות שחסר בהן שחקן, קיבולת חמש.",
+      "observations": [
+        "האדומים והירוקים מוצגים 4 מתוך 5, ובכל סגל הודעת חוסר בשחקן אחד.",
+        "חמש הצעות מהכחולים גלויות; נדרשים עוד 2 שחקנים ופעולת האישור מושבתת."
+      ],
+      "issues": [],
+      "limitations": [
+        "אין בחירה, הרחבת פירוט או אישור השלמה.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "BalancedFillModal",
+          "path": "src/components/match/BalancedFillModal.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/10-balanced_fill.png",
+        "sha256": "d79e1961adabc0b5a21c1fc1533c463257bc0198ade6b3b6b82b3ecc80078f44",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/10-balanced_fill.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 10,
+      "kind": "balanced_fill_eleven",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "קיבולת אחת עשרה ורשימת שחקנים ארוכה.",
+      "observations": [
+        "שני סגלים מוצגים 10 מתוך 11, רשימת הצעות נפרדת ופעולות תחתונות גלויות.",
+        "שמות ותמונות הסגל אינם חופפים לאזור הבחירה."
+      ],
+      "issues": [],
+      "limitations": [
+        "אין בחירה, הרחבת פירוט או אישור השלמה.",
+        "רק החלק העליון של כל סגל ארוך נראה; אין הוכחה שניתן להגיע לכל השחקנים בלי גלילה.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "BalancedFillModal",
+          "path": "src/components/match/BalancedFillModal.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/11-balanced_fill_eleven.png",
+        "sha256": "8f059159a2d13f73f2badd1d693dae016fa7560bdab7b3bb294bd7a80bf38eba",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/11-balanced_fill_eleven.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 11,
+      "kind": "balanced_fill_four",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "קיבולת ארבע, קבוצה אחת מלאה.",
+      "observations": [
+        "האדומים 3 מתוך 4 והירוקים 4 מתוך 4, ורק האדומים זקוקים להשלמה.",
+        "חמש הצעות מופיעות; חסר שחקן אחד ופעולת האישור מושבתת."
+      ],
+      "issues": [],
+      "limitations": [
+        "אין בחירה, הרחבת פירוט או אישור השלמה.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "BalancedFillModal",
+          "path": "src/components/match/BalancedFillModal.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/12-balanced_fill_four.png",
+        "sha256": "c4ed956677e531f9b9b260a0b6ae043bc459e399be39a03b2520434fc0720147",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/12-balanced_fill_four.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 12,
+      "kind": "balanced_fill_multi",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "שני סגלים חלקיים של שניים ושלושה.",
+      "observations": [
+        "האדומים 2 מתוך 5 והירוקים 3 מתוך 5, עם חוסרים של 3 ושל 2 שחקנים בהתאמה.",
+        "חמש הצעות גלויות, ובהתאם ההסבר דורש עוד 5 שחקנים."
+      ],
+      "issues": [],
+      "limitations": [
+        "אין בחירה, הרחבת פירוט או אישור השלמה.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "BalancedFillModal",
+          "path": "src/components/match/BalancedFillModal.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/13-balanced_fill_multi.png",
+        "sha256": "e79407dc0a074ced149f3eaac6b8c0fc9e9d8154284645d23b1d9c2f7c420a21",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/13-balanced_fill_multi.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 13,
+      "kind": "balanced_fill_short",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "סגל תורם ובו שחקן יחיד.",
+      "observations": [
+        "שני סגלים 4 מתוך 5, אך יש הצעה יחידה.",
+        "נראה הסבר למשחק הזה בלבד, השעון יופעל בנפרד, ופעולת אישור הרכבים חסרים מושבתת."
+      ],
+      "issues": [],
+      "limitations": [
+        "אין בחירה, הרחבת פירוט או אישור השלמה.",
+        "הקצאת שחקן ואפשרות לאשר הרכב חסר אינן מוכחות ללא לחיצה.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "BalancedFillModal",
+          "path": "src/components/match/BalancedFillModal.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/14-balanced_fill_short.png",
+        "sha256": "e6197bfbe9feda9cb954ec2ba90c8a4627527ba6e51b3501df3769148bb9ef58",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/14-balanced_fill_short.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 14,
+      "kind": "balanced_fill_sequential",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "השלמה זמנית לצד אחד ללא פירוט השימוש וההשוואה.",
+      "observations": [
+        "הירוקים מודגשים כצד הנבחר והאדומים נראים במצב משני.",
+        "הכותרת מתייחסת להשלמה לירוקים, אין קישור פירוט, ופעולת האישור היחיד מושבתת עד בחירה."
+      ],
+      "issues": [],
+      "limitations": [
+        "אין בחירה, הרחבת פירוט או אישור השלמה.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "BalancedFillModal",
+          "path": "src/components/match/BalancedFillModal.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/15-balanced_fill_sequential.png",
+        "sha256": "2ff25ef65dbf374a5718f683e4894ec6b95c06d8538b6b73ff4ff868d9c749f8",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/15-balanced_fill_sequential.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 15,
+      "kind": "summary_policy",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "סיכום אישי עם ארבעה משחקונים, שני ניצחונות, שני גולים ובישול.",
+      "observations": [
+        "סיכום אישי מציג ציון 8.0, ארבעה משחקים, שני ניצחונות, שני שערים ובישול.",
+        "תוצאות הערב מוצגות כשני ניצחונות, הפסד אחד ותיקו אחד, עם 50 אחוזי ניצחון ובלי חפיפה בין הנתונים."
+      ],
+      "issues": [],
+      "limitations": [
+        "נתוני דוגמה בלבד, ללא שליפה אמיתית, שיתוף או מסך סיכום מלא.",
+        "המשך כרטיס הסיכום מחוץ לאזור הצילום; שיתוף, אינסייטים וגלילה לא נבדקו.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "EveningSummaryCard",
+          "path": "src/components/summary/EveningSummaryCard.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/16-summary_policy.png",
+        "sha256": "c48c2e72337d75904b6a7c02a456791362dc6fe30a1924df6ae9452ee236ea94",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/16-summary_policy.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 16,
+      "kind": "season_restart",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "אישור הפעלה מחדש, יעד 12 מחזורים.",
+      "observations": [
+        "חלון לפני שמפעילים עונות מציג יעד 12 מחזורים, הסבר על ההתקדמות ועל חלון תיקונים של 24 שעות.",
+        "אישור והפעלת עונות וחזרה לעריכה מוצגים בשתי שורות רחבות וקריאות."
+      ],
+      "issues": [],
+      "limitations": [
+        "אין הפעלה מחדש או שינוי עונה.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "SeasonConfirmSheet",
+          "path": "src/components/community/SeasonConfirmSheet.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/17-season_restart.png",
+        "sha256": "2e82af92e5deeee56c673e720157727a47502d5f7cf533d3ec937cbbfb7afd47",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/17-season_restart.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 17,
+      "kind": "retro_policy",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "מצב גולים ריק, ללא סגל.",
+      "observations": [
+        "חלון השלמת גולים מציג עדיין לא הושלמו גולים.",
+        "הסבר המדיניות, כפתור הוספת גול וסגירה גלויים ומופרדים."
+      ],
+      "issues": [],
+      "limitations": [
+        "אין כשל קריאה, הוספה או מחיקה.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "RetroGoalsSheet",
+          "path": "src/components/match/RetroGoalsSheet.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/18-retro_policy.png",
+        "sha256": "69edf6622fba38553e6dd58682caa5c76054249a14628d6cc2a25f766fc57df8",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/18-retro_policy.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 18,
+      "kind": "coaching_policy",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "הישג אימון בדרגת ארד.",
+      "observations": [
+        "חגיגת הישג ניהול בברונזה מוצגת עם מדליה, הודעת פתיחה, יעד 10 שחקנים והתקדמות לעוד 15 לכסף.",
+        "הטקסט וכפתור אדיר קריאים במרכז מעל הרקע המוחשך."
+      ],
+      "issues": [],
+      "limitations": [
+        "צילום בודד אינו מוכיח רציפות אנימציה או שמירת הישג.",
+        "צילום אחד אינו בדיקה של רצף אנימציה או רטט.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "AchievementCelebration",
+          "path": "src/components/AchievementCelebration.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/19-coaching_policy.png",
+        "sha256": "2acc635d2da05dc912f2a82a685bfd0edad9ca7a8848f6787be72939b1a8cd82",
+        "width": 1080,
+        "height": 2400,
+        "tree": null,
+        "treeFresh": false,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 19,
+      "kind": "efficiency_policy",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "טבלת יעילות עם כיסוי מלא וחלקי ושני שחקנים סינתטיים.",
+      "observations": [
+        "טבלת היעילות מציגה שתי שורות,50 אחוזי ניצחון ו 0.24 גולים למשחק.",
+        "הערת כיסוי הנתונים והסבר מצטייני הפנדלים מופיעים מתחת לטבלה."
+      ],
+      "issues": [],
+      "limitations": [
+        "אין שינוי מיון, גלילה אופקית או כרטיס שחקן.",
+        "שתי תוויות הדוגמה מוצגות בשם כיסוי בלבד; אין כאן ראיה להצגת מלוא ההבחנה בין השם המלא והחלקי.",
+        "הצילום הראשוני אינו מראה את כל עמודות הגלילה או בדיקת מיון.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "CommunityStatsTable",
+          "path": "src/components/community/CommunityStatsTable.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/20-efficiency_policy.png",
+        "sha256": "77b4a10d54c18dbc8e218692df517e8a9eb941e94fd8021ae5d6ce0779926c3f",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/20-efficiency_policy.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 20,
+      "kind": "date",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "לוח תאריך פתוח עם תאריך הדגמה קבוע.",
+      "observations": [
+        "לוח אוקטובר 2026 מציג סדר שבוע עברי, יום 15 נבחר ויום 3 בחודש הבא מסומן בקו.",
+        "שני חצי החודש ופעולות אישור וביטול גלויות בתוך חלון עם שוליים."
+      ],
+      "issues": [],
+      "limitations": [
+        "אין מעבר חודש, בחירת יום או אישור.",
+        "שינוי חודש, בחירה וסדר הפעולה של החצים לא הופעלו.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "DatePickerModal",
+          "path": "src/components/DateTimeFields.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/21-date.png",
+        "sha256": "bf453856688363a630114054ee05d74cdd3cb1f5820d6239b87fc24407ee299e",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/21-date.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 21,
+      "kind": "time",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_trigger_only",
+      "fixtureState": "שדה שעת מחזור עם ערך 20:00, הבורר סגור.",
+      "observations": [
+        "שדה שעת המחזור בדמו מציג 20:00 וסמל שעון בתוך כרטיס המארח.",
+        "הערך והכותרת מיושרים ונשארים בתוך מסגרת השדה."
+      ],
+      "issues": [],
+      "limitations": [
+        "TimePickerModal אינו נפתח ללא לחיצה ולכן אינו מכוסה.",
+        "זהו פקד פתיחה בלבד. בורר השעה אינו פתוח בצילום.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "AppTimeField",
+          "path": "src/components/DateTimeFields.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/22-time.png",
+        "sha256": "f7911128151c4e619308829b913a86068848d9367c20d0daa2bd9a7eb52b49f5",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/22-time.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 22,
+      "kind": "datetime",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_trigger_only",
+      "fixtureState": "שדה תאריך ושעה עם ערך קבוע, הבורר סגור.",
+      "observations": [
+        "שדה תאריך ושעה בדמו מציג 15.10.2026 ושעה 20:00 עם סמל לוח.",
+        "השדה נשאר בתוך כרטיס המארח ואינו חופף לכפתור הסגירה."
+      ],
+      "issues": [],
+      "limitations": [
+        "DateTimePickerModal אינו נפתח ללא לחיצה ולכן אינו מכוסה.",
+        "זהו פקד פתיחה בלבד. חלון בחירת תאריך ושעה אינו פתוח בצילום.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "AppDateTimeField",
+          "path": "src/components/DateTimeFields.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/23-datetime.png",
+        "sha256": "88713e0ac99b01d2afdc8928b657774386e99e0067d5d9c18b8741cb6faf1df8",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/23-datetime.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 23,
+      "kind": "filler",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "רשימת 12 משלימים עם שתי המלצות ותוצאה שמורה.",
+      "observations": [
+        "חלון השלמת שחקנים לכחולים מציג תוצאה שמורה 1 מול 2 וניצחון לאדומים.",
+        "שתי המלצות מסומנות ונבחרו 2 מתוך 2; השחקנים הנוספים לא מסומנים, ופעולת האישור גלויה."
+      ],
+      "issues": [],
+      "limitations": [
+        "אין שינוי בחירה, גלילה או אישור.",
+        "רק החלק הראשון של 12 המשלימים נראה; השורה התחתונה ממשיכה מאחורי אזור הפעולה הקבוע ואין בדיקת גלילה.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "FillerPickerModal",
+          "path": "src/components/match/FillerPickerModal.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/24-filler.png",
+        "sha256": "eb707eb05a582117ac21ea0ee1ee93554a07ad3581173ca1368d0fbb37dddd63",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/24-filler.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 24,
+      "kind": "filler_empty",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "רשימת משלימים ריקה.",
+      "observations": [
+        "אותה תוצאה שמורה מופיעה מעל בחירה 0 מתוך 2.",
+        "מוצגת הודעה שאין שחקנים זמינים ויש לסגור ולסדר קבוצות ידנית; האישור מושבת."
+      ],
+      "issues": [],
+      "limitations": [
+        "אין מעבר מריק למלא או אישור.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "FillerPickerModal",
+          "path": "src/components/match/FillerPickerModal.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/25-filler_empty.png",
+        "sha256": "e5a43c2b66b72dd7c00e4cf850fa3b8b3a979c23d1112b643d397a1c97ce6e58",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/25-filler_empty.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    },
+    {
+      "inventoryIndex": 25,
+      "kind": "manage_equipment",
+      "visualReviewCompleted": true,
+      "visualStatus": "נסקר בגודל המקורי, ללא ממצא משמעותי חדש במצב המצולם",
+      "coverageClass": "source_component_fixture",
+      "fixtureState": "ניהול ציוד לשחקן, כדור מסומן וחולצות לא.",
+      "observations": [
+        "חלון ציוד אצל שחקן לדוגמה מציג מתג כדור פעיל ומתג גופיות כבוי.",
+        "בטל גלוי, ושמור מושבת כי המצב לא השתנה. אין חפיפה לטקסט או למחוות המערכת."
+      ],
+      "issues": [],
+      "limitations": [
+        "אין שינוי סימון או שמירה.",
+        "בדיקת צילום בלבד. אין הפעלת לחיצה, גלילה, בקשה, מסירה או תהליך מוצר מלא."
+      ],
+      "visibleSubjectSources": [
+        {
+          "name": "ManageEquipmentSheet",
+          "path": "src/components/community/ManageEquipmentSheet.tsx"
+        }
+      ],
+      "evidence": {
+        "file": "artifacts/overnight-2026-11-02/overlay-final/26-manage_equipment.png",
+        "sha256": "98b992c99a8b69274591ec37b02e6d725064349b32ee6d5ddd1794eedc0cf9e7",
+        "width": 1080,
+        "height": 2400,
+        "tree": "artifacts/overnight-2026-11-02/overlay-final/26-manage_equipment.xml",
+        "treeFresh": true,
+        "kindVerifiedByFiber": true,
+        "rtl": true,
+        "mock": true,
+        "originalExportsRestored": true
+      },
+      "functionalVerified": false,
+      "regressionCompleted": false,
+      "fullStateCoverageCompleted": false
+    }
+  ]
+}

@@ -43,7 +43,8 @@ import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { colors, radius, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 
-const MIN_HOLD_MS = 1400;
+const WELCOME_HOLD_MS = 1400;
+const RETURNING_HOLD_MS = 240;
 /** First run, or an unreadable measurement. A middling phone's cold boot. */
 const DEFAULT_BOOT_MS = 2600;
 const FADE_MS = 320;
@@ -182,6 +183,9 @@ interface Props {
 }
 
 export function SplashScreen({ ready, awaitStart = false, onFinish }: Props) {
+  // Readiness still controls dismissal. Only the cosmetic hold is shorter for
+  // launches that do not owe the welcome; no auth or entry gate is skipped.
+  const minHoldMs = awaitStart ? WELCOME_HOLD_MS : RETURNING_HOLD_MS;
   const rootOpacity = useSharedValue(1);
   const rootScale = useSharedValue(1);
   const ctaOpacity = useSharedValue(0);
@@ -199,11 +203,10 @@ export function SplashScreen({ ready, awaitStart = false, onFinish }: Props) {
     let alive = true;
     void storage
       .getBootDurationMs()
-      // Never shorter than the hold: the screen is up for MIN_HOLD_MS no
-      // matter how fast boot is, so a bar that finished sooner would just sit
-      // at the end.
-      .then((v) => alive && setExpectedMs(Math.max(MIN_HOLD_MS, v ?? DEFAULT_BOOT_MS)))
-      .catch((caughtError679d4907ac: unknown) => { observeCaughtError(caughtError679d4907ac, {"source":"src/screens/SplashScreen.tsx","handler":"SplashScreen","site":"SplashScreen:679d4907ac"}); return alive && setExpectedMs(Math.max(MIN_HOLD_MS, DEFAULT_BOOT_MS)); });
+      // Read once. The selected launch hold is applied at render time, so
+      // resolving the entry gate does not trigger a second storage read.
+      .then((v) => alive && setExpectedMs(v ?? DEFAULT_BOOT_MS))
+      .catch((caughtError679d4907ac: unknown) => { observeCaughtError(caughtError679d4907ac, {"source":"src/screens/SplashScreen.tsx","handler":"SplashScreen","site":"SplashScreen:679d4907ac"}); return alive && setExpectedMs(DEFAULT_BOOT_MS); });
     return () => {
       alive = false;
     };
@@ -240,7 +243,7 @@ export function SplashScreen({ ready, awaitStart = false, onFinish }: Props) {
 
   useEffect(() => {
     const elapsed = Date.now() - mountTsRef.current;
-    const remaining = Math.max(0, MIN_HOLD_MS - elapsed);
+    const remaining = Math.max(0, minHoldMs - elapsed);
     if (!ready) {
       if (remaining === 0) heldEnoughRef.current = true;
       return;
@@ -265,7 +268,7 @@ export function SplashScreen({ ready, awaitStart = false, onFinish }: Props) {
       dismiss();
     }, remaining);
     return () => clearTimeout(timer);
-  }, [ready, awaitStart, dismiss, ctaOpacity, ctaShift]);
+  }, [ready, awaitStart, minHoldMs, dismiss, ctaOpacity, ctaShift]);
 
   useEffect(() => {
     return () => {
@@ -294,10 +297,10 @@ export function SplashScreen({ ready, awaitStart = false, onFinish }: Props) {
       <SplashVisual
         showBar={!showCta}
         ready={ready}
-        expectedMs={expectedMs}
+        expectedMs={expectedMs === null ? null : Math.max(minHoldMs, expectedMs)}
         finishMs={Math.max(
           240,
-          MIN_HOLD_MS - (Date.now() - mountTsRef.current),
+          minHoldMs - (Date.now() - mountTsRef.current),
         )}
       />
       {showCta ? (

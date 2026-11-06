@@ -10,9 +10,10 @@ import { MatchResultPanel } from './MatchResultPanel';
 import { TeamShirtIllustration } from './TeamShirt';
 import { teamColor, teamName } from './rotationView';
 import type { DraftTeamsResult, LiveMatchState, MatchRotation } from '@/types';
+import { drawRotationPreview } from '@/utils/drawRotationPreview';
 export { Shootout } from './ShootoutWizard';
 
-export function TieDecisionModal({ visible, draftTeams, rotation, live, busy = false, onManual, onPenalties, onBothOut, onClose, discardedPenaltyCount = 0, embedded = false }: {
+export function TieDecisionModal({ visible, draftTeams, rotation, live, busy = false, onManual, onPenalties, onBothOut, onDraw, onEndEvening, onClose, discardedPenaltyCount = 0, embedded = false }: {
   visible: boolean;
   draftTeams?: DraftTeamsResult;
   rotation?: MatchRotation;
@@ -22,6 +23,8 @@ export function TieDecisionModal({ visible, draftTeams, rotation, live, busy = f
   onPenalties: () => void;
   /** Requires more than three drafted teams AND two teams actually waiting. */
   onBothOut?: () => void;
+  onDraw?: (staySide: 'A' | 'B' | null) => void;
+  onEndEvening?: () => void;
   onClose: () => void;
   discardedPenaltyCount?: number;
   embedded?: boolean;
@@ -29,25 +32,30 @@ export function TieDecisionModal({ visible, draftTeams, rotation, live, busy = f
   const { height, width, fontScale } = useWindowDimensions();
   const compact = width < 360 || fontScale > 1.2;
   const surfaceHeight = embedded ? Math.min(680, Math.floor(height * 0.92)) : Math.max(240, Math.min(700, Math.floor(height - 80)));
-  const [choice,setChoice]=useState<'penalties'|'manual'|'bothOut'|null>(null);
+  const [choice,setChoice]=useState<'penalties'|'manual'|'bothOut'|'endEvening'|'draw'|null>(null);
+  const [staySide,setStaySide]=useState<'A'|'B'|null>(null);
   const confirming=useRef(false);
   const selectionKey=rotation ? `${rotation.roundInstanceId ?? rotation.round}:${rotation.playing.join(':')}:${rotation.waiting.slice(0,2).join(':')}` : '';
-  useEffect(()=>{setChoice(null);confirming.current=false;},[visible,selectionKey,draftTeams?.teams.length,!!onBothOut]);
+  useEffect(()=>{setChoice(null);setStaySide(null);confirming.current=false;},[visible,selectionKey,draftTeams?.teams.length,live?.scoreA,live?.scoreB,!!onBothOut,!!onDraw,!!onEndEvening]);
   if (!draftTeams || !rotation || !live) return null;
   const incoming = rotation.waiting.slice(0,2);
   const showBothOut = !!onBothOut && draftTeams.teams.length > 3 && incoming.length === 2;
-  const selected=choice==='bothOut' && !showBothOut ? null : choice;
+  const showDraw = !!onDraw && live.scoreA === live.scoreB &&
+    (draftTeams.teams.length === 2 && rotation.waiting.length === 0 || draftTeams.teams.length === 3 && rotation.waiting.length === 1);
+  const drawPreview = showDraw ? drawRotationPreview(rotation, staySide) : null;
+  const showEndEvening = !!onEndEvening && !live.shootout && discardedPenaltyCount === 0;
+  const selected=choice==='bothOut' && !showBothOut || choice==='endEvening' && !showEndEvening || choice==='draw' && !showDraw ? null : choice;
   const close = () => { if (!busy) onClose(); };
   const choose = (next: NonNullable<typeof choice>) => { if (!busy && !confirming.current) setChoice(next); };
   const confirm = () => {
     if (busy || confirming.current) return;
-    const action=selected==='penalties' ? onPenalties : selected==='manual' ? onManual : selected==='bothOut' && showBothOut ? onBothOut : undefined;
+    const action=selected==='penalties' ? onPenalties : selected==='manual' ? onManual : selected==='bothOut' && showBothOut ? onBothOut : selected==='draw' && drawPreview ? () => onDraw?.(drawPreview.staying === null ? null : staySide) : selected==='endEvening' && showEndEvening ? onEndEvening : undefined;
     if (!action) return;
     confirming.current=true;
     action();
   };
-  const confirmLabel=selected==='bothOut' ? he.liveEndMatchConfirm : he.shDecideConfirm;
-  const confirmDisabled=busy || !selected;
+  const confirmLabel=selected==='draw' ? 'שמירת תיקו והמשך' : selected==='bothOut' ? he.liveEndMatchConfirm : he.shDecideConfirm;
+  const confirmDisabled=busy || !selected || selected==='draw' && !drawPreview;
 
   const content = (
       <Pressable style={[s.backdrop,embedded && {padding:14,backgroundColor:'#0B122080'}]} onPress={close} accessible={false}>
@@ -60,11 +68,11 @@ export function TieDecisionModal({ visible, draftTeams, rotation, live, busy = f
               </Pressable>
             </View>
             <Text style={s.round} maxFontSizeMultiplier={1.15}>{he.matchNumber(rotation.round ?? 1)}</Text>
-            <MatchResultPanel draftTeams={draftTeams} rotation={rotation} live={live} compact={compact}/>
-            <Text style={s.question} maxFontSizeMultiplier={compact ? 1.15 : undefined}>{he.shDecideQuestion}</Text>
+            <MatchResultPanel draftTeams={draftTeams} rotation={rotation} live={live} compact={compact || selected==='draw'} compactIdentity={selected==='draw'}/>
+            {selected!=='draw' && <Text style={s.question} maxFontSizeMultiplier={compact ? 1.15 : undefined}>{he.shDecideQuestion}</Text>}
             {discardedPenaltyCount > 0 && <Text style={s.hint}>{discardedPenaltyCount === 1 ? 'אישור הכרעה אחרת ימחק את הבעיטה שנרשמה. חזרה לפנדלים תשמור אותה.' : `אישור הכרעה אחרת ימחק את ${discardedPenaltyCount} הבעיטות שנרשמו. חזרה לפנדלים תשמור אותן.`}</Text>}
 
-            <Pressable style={[s.option,selected==='penalties' && s.selectedOption,busy && s.disabled]} onPress={()=>choose('penalties')} disabled={busy} accessibilityRole="button" accessibilityLabel={he.shDecidePenalties} accessibilityState={{disabled:busy,selected:selected==='penalties'}}>
+            {selected!=='draw' && <><Pressable style={[s.option,selected==='penalties' && s.selectedOption,busy && s.disabled]} onPress={()=>choose('penalties')} disabled={busy} accessibilityRole="button" accessibilityLabel={he.shDecidePenalties} accessibilityState={{disabled:busy,selected:selected==='penalties'}}>
               <View style={s.textBlock}>
                 <Text style={s.label}>{he.shDecidePenalties}</Text>
                 <Text style={s.hint}>{he.shDecidePenaltiesHint}</Text>
@@ -77,7 +85,7 @@ export function TieDecisionModal({ visible, draftTeams, rotation, live, busy = f
                 <Text style={s.hint}>{he.shDecideManualHint}</Text>
               </View>
               <Ionicons name="hand-left-outline" size={34} color={colors.textMuted}/>
-            </Pressable>
+            </Pressable></>}
             {showBothOut && <Pressable style={[s.option,selected==='bothOut' && s.selectedOption,busy && s.disabled]} onPress={()=>choose('bothOut')} disabled={busy} accessibilityRole="button" accessibilityLabel={he.shDecideBothOut} accessibilityState={{disabled:busy,selected:selected==='bothOut'}}>
               <View style={s.textBlock}>
                 <Text style={s.label}>{he.shDecideBothOut}</Text>
@@ -87,9 +95,43 @@ export function TieDecisionModal({ visible, draftTeams, rotation, live, busy = f
                 {incoming.map(index=><TeamShirtIllustration key={index} color={teamColor(index,draftTeams.teams)} width={27}/>)}
               </View>
             </Pressable>}
+            {showDraw && <>
+              {selected!=='draw' && <Pressable style={[s.option,busy && s.disabled]} onPress={()=>choose('draw')} disabled={busy} accessibilityRole="button" accessibilityLabel="סיום בתיקו" accessibilityState={{disabled:busy,selected:false}}>
+                <View style={s.textBlock}><Text style={s.label}>סיום בתיקו</Text><Text style={s.hint}>התוצאה תישמר כתיקו בסטטיסטיקות המועדון והשחקנים.</Text></View>
+                <Ionicons name="swap-horizontal-outline" size={32} color={colors.textMuted}/>
+              </Pressable>}
+              {selected==='draw' && <View style={s.drawDetails} testID="draw-next-match">
+                {rotation.waiting.length === 1 && <>
+                  <Text style={s.question}>מי נשארים למשחק הבא?</Text>
+                  <View style={s.stayChoices}>
+                  {(['A','B'] as const).map(side=>{
+                    const index=rotation.playing[side==='A' ? 0 : 1];
+                    const label=`${teamName(index,draftTeams.teams)} נשארים`;
+                    return <Pressable key={side} style={[s.option,s.stayOption,staySide===side && s.selectedOption,busy && s.disabled]} onPress={()=>{if(!busy && !confirming.current)setStaySide(side);}} disabled={busy} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{disabled:busy,selected:staySide===side}}>
+                      <TeamShirtIllustration color={teamColor(index,draftTeams.teams)} width={30}/>
+                      <Text style={[s.label,s.stayLabel]}>{label}</Text>
+                    </Pressable>;
+                  })}
+                  </View>
+                </>}
+                <Pressable style={s.return} onPress={()=>{if(!busy && !confirming.current){setChoice(null);setStaySide(null);}}} disabled={busy} accessibilityRole="button" accessibilityLabel="שינוי שיטת סיום"><Text style={s.returnText}>שינוי שיטת סיום</Text></Pressable>
+              </View>}
+            </>}
             {showBothOut && <Text style={[s.confirmHint,selected!=='bothOut' && s.hiddenHint]} accessibilityElementsHidden={selected!=='bothOut'} importantForAccessibility={selected==='bothOut' ? 'auto' : 'no-hide-descendants'}>{he.shDecideBothOutInlineHint}</Text>}
+            {showEndEvening && selected!=='draw' && <Pressable style={[s.option,selected==='endEvening' && s.selectedOption,busy && s.disabled]} onPress={()=>choose('endEvening')} disabled={busy} accessibilityRole="button" accessibilityLabel="זה המשחק האחרון, סיום המחזור" accessibilityState={{disabled:busy,selected:selected==='endEvening'}}>
+              <View style={s.textBlock}><Text style={s.label}>זה המשחק האחרון, סיום המחזור</Text><Text style={s.hint}>התוצאה תישמר כתיקו ללא מנצחים. ייפתח אישור לסיום המחזור כולו.</Text></View>
+              <Ionicons name="flag-outline" size={30} color={colors.textMuted}/>
+            </Pressable>}
           </ScrollView>
           <View style={s.actions} testID="tie-decision-actions">
+            {selected==='draw' && drawPreview && <View style={s.drawSummary} testID="draw-rotation-preview">
+              {drawPreview.staying !== null ? <>
+                <Text style={s.hint}>{teamName(drawPreview.staying,draftTeams.teams)} נשארים</Text>
+                <Text style={s.hint}>{teamName(drawPreview.outgoing!,draftTeams.teams)} יוצאים למנוחה</Text>
+                <Text style={s.hint}>{teamName(drawPreview.incoming!,draftTeams.teams)} נכנסים</Text>
+              </> : <Text style={s.hint}>שתי הקבוצות ממשיכות למשחק הבא.</Text>}
+              <Text style={s.nextMatch}>המשחק הבא: {teamName(drawPreview.playing[0],draftTeams.teams)} מול {teamName(drawPreview.playing[1],draftTeams.teams)}</Text>
+            </View>}
             <Pressable style={[s.confirm,confirmDisabled && s.disabled]} onPress={confirm} disabled={confirmDisabled} accessibilityRole="button" accessibilityLabel={confirmLabel} accessibilityState={{disabled:confirmDisabled}}>
               <Text style={s.confirmText}>{confirmLabel}</Text>
             </Pressable>
@@ -134,6 +176,12 @@ const s=StyleSheet.create({
   returnText:{color:colors.primary,fontSize:16,fontWeight:'700'},disabled:{opacity:0.5},
   confirmHint:{fontSize:12,color:colors.textMuted,textAlign:RTL_LABEL_ALIGN},
   hiddenHint:{opacity:0},
+  drawDetails:{gap:10},
+  stayChoices:{flexDirection:'row',gap:10},
+  stayOption:{flex:1,minWidth:0,flexDirection:'column',padding:10,gap:6,justifyContent:'center'},
+  stayLabel:{fontSize:15,textAlign:'center',flexShrink:1},
+  drawSummary:{gap:5,padding:12,borderRadius:12,backgroundColor:colors.surfaceMuted},
+  nextMatch:{fontSize:15,fontWeight:'800',color:colors.text,textAlign:RTL_LABEL_ALIGN},
   confirm:{minHeight:52,borderRadius:16,backgroundColor:colors.primary,alignItems:'center',justifyContent:'center',padding:12},
   confirmText:{fontSize:17,fontWeight:'800',color:'#FFFFFF',textAlign:'center'},
 });

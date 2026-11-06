@@ -1,0 +1,49 @@
+[copy-template] copied public\c\index.html → functions\templates\community.html
+[copy-template] copied public\invite.html → functions\templates\invite.html
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in C:/Users/User/Documents/Codex/Teamder/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+PASS tests/logic/dataLiveAudit.test.ts (49.653 s)
+PASS tests/logic/fillerReviewDecisionMeasurement.test.ts
+PASS tests/logic/eveningSeasonReconciliation.test.ts (13.591 s)
+  ● Console
+
+    console.log
+      [season] archive pairs: kept 0, dropped 0 guest, 39 empty, 0 over cap club s1
+
+      at closeSeason (functions/src/seasonRollover.ts:470:13)
+
+    console.warn
+      [season] archive exists but the wipe never finished — resuming club s1
+
+      703 |       return { archived: false, players: 0, pairs: 0 };
+      704 |     }
+    > 705 |     console.warn(
+          |             ^
+      706 |       '[season] archive exists but the wipe never finished — resuming',
+      707 |       groupId,
+      708 |       seasonId,
+
+      at closeSeason (functions/src/seasonRollover.ts:705:13)
+      at Object.<anonymous> (tests/logic/eveningSeasonReconciliation.test.ts:88:5)
+
+    console.log
+      [season] archive pairs: kept 0, dropped 0 guest, 39 empty, 0 over cap club s1
+
+      at closeSeason (functions/src/seasonRollover.ts:470:13)
+
+    console.log
+      [season] already closed — skip club s1
+
+      at closeSeason (functions/src/seasonRollover.ts:702:15)
+
+PASS tests/logic/seasonDecisionMeasurement.test.ts
+PASS tests/logic/analyticsWiring.test.ts
+PASS tests/logic/clientAuditRecovery.test.ts
+PASS tests/logic/fillerRequestsInbox.test.ts
+
+Test Suites: 7 passed, 7 total
+Tests:       80 passed, 80 total
+Snapshots:   0 total
+Time:        69.649 s, estimated 80 s
+Ran all test suites matching /tests\\logic\\fillerRequestsInbox.test.ts|tests\\logic\\clientAuditRecovery.test.ts|tests\\logic\\fillerReviewDecisionMeasurement.test.ts|tests\\logic\\seasonDecisionMeasurement.test.ts|tests\\logic\\dataLiveAudit.test.ts|tests\\logic\\eveningSeasonReconciliation.test.ts|tests\\logic\\analyticsWiring.test.ts/i.

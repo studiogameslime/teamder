@@ -31,7 +31,8 @@ function fixture() {
   vm.runInNewContext(requestsJs, { exports, require: (name: string) => {if(name.endsWith('/joinDiagnosticId'))return require('@/utils/joinDiagnosticId');if(name.endsWith('/diagnosticJournal'))return require('@/services/diagnosticJournal');if(name==='@/services/diagnosticCallable')name='firebase/functions';
     if (name.endsWith('groupService')) return { groupService };
     if (name.endsWith('friendsService')) return { friendsService: { listIncomingRequests: incoming } };
-    if (name.endsWith('gameService')) return { gameService: { getMyLiveOrUpcomingGames: games } };
+    if (name.endsWith('gameService')) return { gameService: { getMyLiveOrUpcomingGames: games, getUpcomingGamesForGroup: async () => [] } };
+    if (name.endsWith('fillerReview')) return { acceptsFillerApplications: () => false };
     return {};
   } });
   return { groupService, hydrate, exports, incoming };

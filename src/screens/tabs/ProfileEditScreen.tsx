@@ -28,6 +28,9 @@ import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { pickAndUploadAvatar, deleteUserPhoto } from '@/services/photoService';
+import { photoPhaseLabel, type PhotoPhase } from '@/utils/photoPhase';
+import { OperationStatus } from '@/components/ReadStatusNotice';
+import { toast } from '@/components/Toast';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 
 const ACCENT = '#1E40AF';
@@ -44,6 +47,10 @@ export function ProfileEditScreen() {
   const [avatarId, setAvatarId] = useState<string | undefined>(user?.avatarId);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [photoPhase, setPhotoPhase] = useState<PhotoPhase>('permission');
+  const uploadInFlight = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const [avatarGridWidth, setAvatarGridWidth] = useState(0);
 
   // The screen is kept alive by the stack navigator between visits,
@@ -63,6 +70,7 @@ export function ProfileEditScreen() {
   //      which listener is active mid-save.
   const dirtyRef = useRef(false);
   const savingRef = useRef(false);
+  const saveRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
     const unsub = (nav as unknown as {
@@ -89,7 +97,7 @@ export function ProfileEditScreen() {
           {
             text: he.profileEditUnsavedSave,
             onPress: async () => {
-              await save();
+              await saveRef.current?.();
             },
           },
           { text: he.cancel, style: 'cancel' },
@@ -136,9 +144,20 @@ export function ProfileEditScreen() {
   //      reads the live value at event time and skips the dialog
 
   const handlePickPhoto = async () => {
+    if (uploadInFlight.current || savingRef.current) return;
+    uploadInFlight.current = true;
     setUploading(true);
-    const res = await pickAndUploadAvatar(user.id);
-    setUploading(false);
+    setPhotoPhase('permission');
+    let res;
+    try {
+      res = await pickAndUploadAvatar(user.id, phase => {
+        if (mounted.current && useUserStore.getState().currentUser?.id === user.id) setPhotoPhase(phase);
+      });
+    } finally {
+      uploadInFlight.current = false;
+      if (mounted.current) setUploading(false);
+    }
+    if (!mounted.current || useUserStore.getState().currentUser?.id !== user.id) return;
     if (!res.ok) {
       logEvent(AnalyticsEvent.PhotoUploadFailed, {
         source: 'profile_edit',
@@ -172,6 +191,7 @@ export function ProfileEditScreen() {
   };
 
   const save = async () => {
+    if (savingRef.current || uploadInFlight.current || !name.trim()) return;
     // savingRef tells the beforeRemove listener to skip the dialog
     // for the goBack we trigger ourselves at the end. Set it BEFORE
     // any state mutations so the listener sees it even if React
@@ -194,7 +214,8 @@ export function ProfileEditScreen() {
         });
       }
       if (Object.keys(patch).length > 0) {
-        await updateProfile(patch);
+        await updateProfile(patch, user.id);
+        if (!mounted.current || useUserStore.getState().currentUser?.id !== user.id) return;
         if (__DEV__) console.log('[profileEdit] save resolved');
         // Now that the save succeeded, clean up the old Storage photo if the
         // user switched away from it (photo → avatar). Deferred to here so a
@@ -218,8 +239,10 @@ export function ProfileEditScreen() {
         // during nav.goBack() below can never see dirty=true.
         dirtyRef.current = false;
       }
+      toast.success('הפרופיל נשמר');
       nav.goBack();
     } catch (err) {
+      if (!mounted.current || useUserStore.getState().currentUser?.id !== user.id || (err as Error)?.name === 'StaleSessionError') return;
     observeCaughtError(err, {"source":"src/screens/tabs/ProfileEditScreen.tsx","handler":"save","site":"ProfileEditScreen:a0689cfc96"});
       // If we get here, the save FAILED — the previous version
       // swallowed this in `finally` and the user thought the click
@@ -255,13 +278,16 @@ export function ProfileEditScreen() {
       savingRef.current = false;
     }
   };
+  // Keep the existing back listener, but let its dialog save today's draft
+  // rather than the name/photo snapshot captured on the first render.
+  saveRef.current = save;
 
   return (
     <ScreenContainer
       title={he.profileEdit}
       footer={
         <Button
-          title={he.profileSave}
+          title={busy ? 'שומרים את הפרופיל' : he.profileSave}
           variant="primary"
           size="lg"
           fullWidth
@@ -271,6 +297,8 @@ export function ProfileEditScreen() {
         />
       }
     >
+      <OperationStatus active={uploading || busy} label={busy ? 'שומרים את הפרופיל' : photoPhaseLabel(photoPhase)} scope={user.id + (busy ? ':save' : ':photo')} awaitingConfirmation={busy}/>
+      {photoDirty && photoUrl && !uploading ? <Text style={styles.label}>התמונה הועלתה. שמרו את הפרופיל כדי לעדכן אותה.</Text> : null}
       <Card style={styles.identityCard}>
         <View>
           <UserAvatar user={previewUser} size={120} ring />

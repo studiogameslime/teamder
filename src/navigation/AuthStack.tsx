@@ -1,8 +1,5 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { SignInScreen } from '@/screens/auth/SignInScreen';
-import { ProfileSetupScreen } from '@/screens/auth/ProfileSetupScreen';
-import { EmailAuthScreen } from '@/screens/auth/EmailAuthScreen';
 
 export type AuthStackParamList = {
   SignIn: undefined;
@@ -10,6 +7,8 @@ export type AuthStackParamList = {
   EmailAuth: undefined;
 };
 
+// Screen modules are evaluated only when their route renders. Keep all route
+// registrations local so shared destinations preserve their back stack.
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 interface Props {
@@ -22,9 +21,9 @@ export function AuthStack({ initialRoute }: Props) {
       initialRouteName={initialRoute}
       screenOptions={{ headerShown: false }}
     >
-      <Stack.Screen name="SignIn" component={SignInScreen} />
-      <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
-      <Stack.Screen name="EmailAuth" component={EmailAuthScreen} />
+      <Stack.Screen name="SignIn" getComponent={() => require('@/screens/auth/SignInScreen').SignInScreen as typeof import('@/screens/auth/SignInScreen').SignInScreen} />
+      <Stack.Screen name="ProfileSetup" getComponent={() => require('@/screens/auth/ProfileSetupScreen').ProfileSetupScreen as typeof import('@/screens/auth/ProfileSetupScreen').ProfileSetupScreen} />
+      <Stack.Screen name="EmailAuth" getComponent={() => require('@/screens/auth/EmailAuthScreen').EmailAuthScreen as typeof import('@/screens/auth/EmailAuthScreen').EmailAuthScreen} />
     </Stack.Navigator>
   );
 }

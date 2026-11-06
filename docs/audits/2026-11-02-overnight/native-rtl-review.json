@@ -1,0 +1,444 @@
+{
+  "reviewedAt": "2026-11-02T22:09:15.226Z",
+  "environment": {
+    "platform": "Android",
+    "data": "נתוני הדגמה מקומיים",
+    "rtl": "true, אומת בסבב הראשי",
+    "captureOwner": "הסוכן הראשי"
+  },
+  "method": "פתיחת כל צילום כתמונה מלאה וקריאת הטקסט והמספרים; בדיקת מקור ממוקדת להבחנה בין מצב בדיקה לתקלה",
+  "screensReviewed": 20,
+  "needsStableCapture": [
+    "CommunityHistory",
+    "CommunitiesMap",
+    "GamesList",
+    "GamesMap"
+  ],
+  "scopeLimitations": [
+    "צילום יחיד אינו אימות פעולה או רגרסיה",
+    "רק החלק הגלוי נבדק, ללא טענה לגלילה מלאה או פתיחת חלונות",
+    "מקורות ההדגמה אינם הוכחה לחוזי קריאה או כתיבה מול השרת"
+  ],
+  "entries": [
+    {
+      "id": "ManagerRatings",
+      "screenshot": "artifacts/overnight-2026-11-02/census/ManagerRatings.png",
+      "sha256": "cb0f4be0ead805be6807458dd8efe194928830ddec747327b5d18191334d56a3",
+      "modifiedAt": "2026-11-02T22:03:50.704Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "דירוגים, שלושה חודשים, מסנן העלאה",
+      "numbers": "9 שחקנים בסך הכול; 4 להעלאה; 3 להורדה; 4.0/5 דירוג מנהל; ציונים 7.1, 7.4, 7.2, 8.1, 8.5; ממוצע 7.7/10",
+      "rtl": "הכותרות מימין, הזהות מימין והפעולה המשנית משמאל. ציר הזמן מתקדם מימין לשמאל.",
+      "issueKeys": [
+        "overlay-overlap"
+      ],
+      "needsStableCapture": false,
+      "limitations": "החלק העליון וכרטיס ראשון בלבד",
+      "visualStatus": "נבדק חזותית המצב הגלוי בלבד",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "ManagerAllRatings",
+      "screenshot": "artifacts/overnight-2026-11-02/census/ManagerAllRatings.png",
+      "sha256": "e8434ecf19bfa19710372d5fe19754790193a379af62d3315aca5c87d6c32a2c",
+      "modifiedAt": "2026-11-02T22:03:55.502Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "דירוגים, שלושה חודשים, מסנן הכול",
+      "numbers": "הכול 9, העלאה 4, הורדה 3; הכרטיס הראשון במגמת עלייה עם 7.7/10",
+      "rtl": "בחירת הכול מודגשת בכחול מימין, והמסננים האחרים מובחנים.",
+      "issueKeys": [
+        "overlay-overlap"
+      ],
+      "needsStableCapture": false,
+      "limitations": "לא נגללו כל תשעת השחקנים",
+      "visualStatus": "נבדק חזותית המצב הגלוי בלבד",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "ManagerRatingsDown",
+      "screenshot": "artifacts/overnight-2026-11-02/census/ManagerRatingsDown.png",
+      "sha256": "33c589ae1f323cad3b7b1bf15f0563bd5fea416766f67d44f68cc9fea4a3224b",
+      "modifiedAt": "2026-11-02T22:04:00.145Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "דירוגים, שלושה חודשים, מסנן הורדה",
+      "numbers": "3 מועמדים להורדה; ציונים 8.2, 7.8, 7.4, 6.9, 6.5; ממוצע 7.4/10",
+      "rtl": "הכרטיס משתמש בצבע חום ובחץ אנכי מטה; משמעות הירידה נשמרת בקריאה מימין לשמאל.",
+      "issueKeys": [
+        "overlay-overlap"
+      ],
+      "needsStableCapture": false,
+      "limitations": "כרטיס ראשון בלבד; לא נפתח פירוט ציונים",
+      "visualStatus": "נבדק חזותית המצב הגלוי בלבד",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "ManagerEquipment",
+      "screenshot": "artifacts/overnight-2026-11-02/census/ManagerEquipment.png",
+      "sha256": "0647064bc0ffcde94b6246262294840b0688a6804c85418cea92b3187cdf3851",
+      "modifiedAt": "2026-11-02T22:04:04.756Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "ציוד, מחזיקים נוכחיים ושלושה חודשים",
+      "numbers": "מחזיק כדור טרם נרשם למחזור הקרוב; מחזיק גופיות רשום; 9 לקיחות גופיות מתועדות",
+      "rtl": "הסוג והזהות מימין, מצב ההרשמה משמאל; ההבחנה בין מחזיק נוכחי להיסטוריה כתובה במפורש.",
+      "issueKeys": [
+        "overlay-overlap"
+      ],
+      "needsStableCapture": false,
+      "limitations": "בועת העזרה מכסה חלק מכרטיס מדד הכדור; לא נגלל הפירוט",
+      "visualStatus": "נבדק חזותית המצב הגלוי בלבד",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "ManagerClubInsights",
+      "screenshot": "artifacts/overnight-2026-11-02/census/ManagerClubInsights.png",
+      "sha256": "d5ecf9e2560f55b0cd8635cc9a70e404f16c0cff5db5fa117c9bca971a857f03",
+      "modifiedAt": "2026-11-02T22:04:10.253Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "סקירת מנהל, נושאים לטיפול והמחזור הקרוב",
+      "numbers": "5 נושאים פתוחים; מוצגים 2 ועוד 3; בקשה אחת; מחזיק ציוד אחד לא רשום; 6 מתוך 20 רשומים, 14 פנויים, 1 בהמתנה",
+      "rtl": "המספרים והתוויות מסודרים מימין לשמאל; שעת 22:03 ותאריך 4.11 ניתנים לקריאה.",
+      "issueKeys": [
+        "overlay-overlap"
+      ],
+      "needsStableCapture": false,
+      "limitations": "לא נפתחו שלושת הנושאים המוסתרים או תצוגת המוכנות המלאה",
+      "visualStatus": "נבדק חזותית המצב הגלוי בלבד",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "CommunityStats",
+      "screenshot": "artifacts/overnight-2026-11-02/census/CommunityStats.png",
+      "sha256": "0e0751620e0aabc6713f025946e9cf6fb0aca30a3dffe3eb6c80c5ff9c9372de",
+      "modifiedAt": "2026-11-02T22:04:17.096Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "עונה 2, מבט עונתי ותארים",
+      "numbers": "12 מחזורים, 210 משחקים, 268 שערים, 124 בישולים; תארים גלויים: 58 שערים, 26 בישולים, 61 שערים נקיים, 12 מחזורים",
+      "rtl": "היחידות מחזורים ומשחקים מופרדות, כותרות ותוויות מימין וערכים גדולים מובחנים.",
+      "issueKeys": [
+        "overlay-overlap"
+      ],
+      "needsStableCapture": false,
+      "limitations": "לא נבדק מקור המספרים; רשימת התארים ממשיכה מחוץ למסגרת",
+      "visualStatus": "נבדק חזותית המצב הגלוי בלבד",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "CommunityHistory",
+      "screenshot": "artifacts/overnight-2026-11-02/census/CommunityHistory.png",
+      "sha256": "f877cac701ae06fa26b954aff926681b4a508ab4716814faf4d059385dd37caa",
+      "modifiedAt": "2026-11-02T22:04:26.603Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "מעבר מסטטיסטיקת מועדון להיסטוריית מחזורים",
+      "numbers": "מספרי המסך הקודם עדיין נראים מתחת לשכבה שקופה, יחד עם טוען נתונים",
+      "rtl": "אי אפשר לקבוע פריסת היסטוריה יציבה מהצילום הזה.",
+      "issueKeys": [
+        "transition-capture"
+      ],
+      "needsStableCapture": true,
+      "limitations": "הצילום אינו ראיה לתוכן מלא של המסך המבוקש",
+      "visualStatus": "נבדק צילום, נדרש מצב יעד יציב",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "CommunitiesMap",
+      "screenshot": "artifacts/overnight-2026-11-02/census/CommunitiesMap.png",
+      "sha256": "45bc5eb64db8170a608ec9fd9e10b5a9e86566671b3d1db214b1d704992f6501",
+      "modifiedAt": "2026-11-02T22:04:32.179Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "מפת מחזורים ריקה, אף ששם קובץ הצילום הוא מפת מועדונים",
+      "numbers": "אין מה להציג על המפה כרגע; בחירת כל המחזורים, היום, מחר ומותאם",
+      "rtl": "כותרת וחיפוש מימין, מקרא עם צבעים וטקסט; המצב הריק קריא.",
+      "issueKeys": [
+        "wrong-qa-map-mode"
+      ],
+      "needsStableCapture": true,
+      "limitations": "אין הוכחה למפת מועדונים; מסלול הפיתוח הוזן ללא מצב ופריטים",
+      "visualStatus": "נבדק צילום, נדרש מצב יעד יציב",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "AddMembers",
+      "screenshot": "artifacts/overnight-2026-11-02/census/AddMembers.png",
+      "sha256": "747d9c9748f2e3fbe275e4a49f7545e526cdc0175d34218e3c2d7d9a9141934f",
+      "modifiedAt": "2026-11-02T22:04:37.071Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "הוספת שחקנים למחזור, ליגת השכונה, ללא בחירה",
+      "numbers": "10 מתוך 10 רשומים, 0 מקומות פנויים, 0 נבחרו; הודעה ששחקנים נוספים נכנסים להמתנה",
+      "rtl": "אווטאר ושם מימין, תיבת בחירה משמאל; הסבר קיבולת ברור וכפתור בחירה מושבת.",
+      "issueKeys": [
+        "qa-addmembers-scope"
+      ],
+      "needsStableCapture": false,
+      "limitations": "זהו בוחר למחזור ולא תהליך הוספת חברי מועדון. רק חמש שורות גלויות",
+      "visualStatus": "נבדק חזותית המצב הגלוי בלבד",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "AdminApproval",
+      "screenshot": "artifacts/overnight-2026-11-02/census/AdminApproval.png",
+      "sha256": "158cfc34461fde317eb3af84c3d844d09245dee93f49df1a675d7b4e6ca3c68a",
+      "modifiedAt": "2026-11-02T22:04:41.643Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "בקשות הצטרפות למועדון ולמחזור",
+      "numbers": "5 בקשות ממתינות; שתי בקשות מועדון גלויות ובקשת מחזור נוספת ועוד רשימה בהמשך",
+      "rtl": "אישור בימין, דחייה במרכז וקישור לפרופיל בשמאל; הבקשות מחולקות לקבוצות עם כותרות.",
+      "issueKeys": [
+        "overlay-overlap"
+      ],
+      "needsStableCapture": false,
+      "limitations": "לא אושרו או נדחו בקשות; לא נבדקו כל חמש הבקשות",
+      "visualStatus": "נבדק חזותית המצב הגלוי בלבד",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "AvailablePlayers",
+      "screenshot": "artifacts/overnight-2026-11-02/census/AvailablePlayers.png",
+      "sha256": "af2143b2ade922e080d6af49d499e3fa9635b9969386f9d3f2bf2a72e2514f9d",
+      "modifiedAt": "2026-11-02T22:04:46.116Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "רשימת מועמדים ריקה למחזור מלא",
+      "numbers": "0 מוצגים; ההרכב מלא והצטרפות להמתנה; מוצע שלח לכולם בפעימות",
+      "rtl": "המצב הריק והתיאור קריאים; מצב המסננים אינו חד משמעי בצבע הבהיר.",
+      "issueKeys": [
+        "full-pulse-cta",
+        "filter-affordance"
+      ],
+      "needsStableCapture": false,
+      "limitations": "לא נשלחו הזמנות; לא נפתחו מסננים או חלון אישור",
+      "visualStatus": "נבדק חזותית המצב הגלוי בלבד",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "AvailablePlayersPreview",
+      "screenshot": "artifacts/overnight-2026-11-02/census/AvailablePlayersPreview.png",
+      "sha256": "ca9d525e4224ea2e2d0c831b36f9005d42fec21f35442844a6fb4c7309233cf1",
+      "modifiedAt": "2026-11-02T22:04:50.420Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "שלושה מועמדים מודגמים, עם הזמנה קיימת אחת",
+      "numbers": "3 מוצגים; דוד מתל אביב, אריאל מרמת גן, ניר מתל אביב; אצל ניר הזמנה נשלחה",
+      "rtl": "זהות מימין ופעולה משמאל; ההזמנה שכבר נשלחה מוצגת כמצב מושבת.",
+      "issueKeys": [
+        "overlay-overlap",
+        "filter-affordance"
+      ],
+      "needsStableCapture": false,
+      "limitations": "הדגמת פיתוח בלבד; המסננים אינם פעילים כברירת מחדל, ולכן העיר השונה אינה תקלה בסינון",
+      "visualStatus": "נבדק חזותית המצב הגלוי בלבד",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "PromoteOrphan",
+      "screenshot": "artifacts/overnight-2026-11-02/census/PromoteOrphan.png",
+      "sha256": "2799bce7b5d5eb4db4a5a961e2f2f9c44236e5d3804b246d466cb6c7814d6fd5",
+      "modifiedAt": "2026-11-02T22:04:56.054Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "טופס הפיכת מחזור למועדון, מצב ראשוני",
+      "numbers": "שם מוצע הכדורגלנים של חמישי; תיאור ריק; מתג מועדון פתוח כבוי עם הסבר הצטרפות באישור מנהל",
+      "rtl": "שדות ותוויות מימין; סימן חובה אדום ומידע לצד מתג; הטקסט אינו חתוך באזור הראשי.",
+      "issueKeys": [
+        "overlay-overlap"
+      ],
+      "needsStableCapture": false,
+      "limitations": "חלק פרטים נוספים מוסתר בבועת עזרה; לא הורחב ולא נשמר מועדון",
+      "visualStatus": "נבדק חזותית המצב הגלוי בלבד",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "GamesList",
+      "screenshot": "artifacts/overnight-2026-11-02/census/GamesList.png",
+      "sha256": "5041f451a9472afda33b583e6b272574fc70e2629286724f3f45b239f2b83021",
+      "modifiedAt": "2026-11-02T22:05:03.195Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "רשימת המחזורים שלי, מצב רשום ומלא",
+      "numbers": "הכרטיסים הראשונים 10 מתוך 10, הבא 15 מתוך 15; תג אתה רשום וקישור לפרטי המחזור",
+      "rtl": "תאריך ושעה מימין, תמונה משמאל, תפוסה מלאה כתובה ונראית בפס.",
+      "issueKeys": [
+        "list-entry-motion"
+      ],
+      "needsStableCapture": true,
+      "limitations": "הכרטיס השלישי שקוף חלקית ומופיעים אזורים במהלך תנועת הכניסה; אין ראיית סינון או גלילה מלאה",
+      "visualStatus": "נבדק צילום, נדרש מצב יעד יציב",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "GamesMap",
+      "screenshot": "artifacts/overnight-2026-11-02/census/GamesMap.png",
+      "sha256": "35f6473f369216a1ca0ecfe51b98475430e8a41d2aec97dc7668696f6df9c9fa",
+      "modifiedAt": "2026-11-02T22:05:07.986Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "מפת המחזורים עם משטח מפה ריק",
+      "numbers": "אין מפה, סמנים או הודעת מצב ריק בגוף; כפתורי הגדלה ומקרא קיימים",
+      "rtl": "שורת החיפוש והמסננים תקינה בצילום, אך גוף המפה עדיין אינו ניתן לבדיקה.",
+      "issueKeys": [
+        "map-not-stable"
+      ],
+      "needsStableCapture": true,
+      "limitations": "לא ניתן להבדיל בין המתנה לאריחים, מגבלת רשת או כשל מהצילום היחיד",
+      "visualStatus": "נבדק צילום, נדרש מצב יעד יציב",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "MatchDetails",
+      "screenshot": "artifacts/overnight-2026-11-02/census/MatchDetails.png",
+      "sha256": "8357f0cd99862d00243c50d247c4409e42299bca0b7fc9521efad89a4218638e",
+      "modifiedAt": "2026-11-02T22:05:14.621Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "מידע על מחזור חי, ליגת השכונה",
+      "numbers": "10 מתוך 10 רשומים; 5 על 5; 15 דקות; עונה 2; הכוחות מוכנים; מעבר למחזור חי",
+      "rtl": "פרטי מועד ומקום נקראים היטב על התמונה; הלשוניות בסדר עברי והפעולה הראשית מובחנת.",
+      "issueKeys": [
+        "overlay-overlap"
+      ],
+      "needsStableCapture": false,
+      "limitations": "לא נבדקו שיתוף, צאט, ניווט למגרש, ניהול כוחות, הודעה או מעבר למחזור חי",
+      "visualStatus": "נבדק חזותית המצב הגלוי בלבד",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "FinishedMatchStats",
+      "screenshot": "artifacts/overnight-2026-11-02/census/FinishedMatchStats.png",
+      "sha256": "a9b3bb9fba807b6d5e6dc72ae9ac97d680f37f279a3c3d95086801b6cc871841",
+      "modifiedAt": "2026-11-02T22:05:21.493Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "מחזור שהסתיים, לשונית סטטיסטיקות",
+      "numbers": "15 מתוך 15 רשומים; 10 משחקים, 2 הכרעות פנדלים, 31 שערים, 18 בישולים; מלך שערים 6",
+      "rtl": "משחקים והכרעות פנדלים מוצגים בנפרד; כותרות עבריות מימין וסטטיסטיקות קריאות.",
+      "issueKeys": [
+        "overlay-overlap"
+      ],
+      "needsStableCapture": false,
+      "limitations": "הכוכבים והצמד ממשיכים מתחת למסגרת; הסיכום האישי והשיתוף לא נפתחו",
+      "visualStatus": "נבדק חזותית המצב הגלוי בלבד",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "FinishedMatchGamesLong",
+      "screenshot": "artifacts/overnight-2026-11-02/census/FinishedMatchGamesLong.png",
+      "sha256": "e32cad59350a59011156047c72d1897804147b6dd6a493270bc8e5ed0f2e05b1",
+      "modifiedAt": "2026-11-02T22:05:28.571Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "לשונית משחקים, רשימת הדגמה ארוכה",
+      "numbers": "12 משחקים; משחק 1: האדומים 3, הכחולים 1; אירועים בדקות 5, 8, 11 ו-14",
+      "rtl": "התוצאה משייכת את הספרות לקבוצות הנכונות; ניצחון האדומים מנוסח ברבים; שמות ובישולים מימין וזמנים משמאל.",
+      "issueKeys": [
+        "overlay-overlap"
+      ],
+      "needsStableCapture": false,
+      "limitations": "מפעיל הבדיקה מחליף במכוון את ההיסטוריה ב-12 רשומות; אין להשוות מספר זה ל-10 בצילום הקודם כנתונים זהים",
+      "visualStatus": "נבדק חזותית המצב הגלוי בלבד",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "MatchPlayers",
+      "screenshot": "artifacts/overnight-2026-11-02/census/MatchPlayers.png",
+      "sha256": "9ab39ec5a1b01c96b0b95ad044106377682a718e9134ea091c29cde7275271c2",
+      "modifiedAt": "2026-11-02T22:05:33.814Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "סגל מחזור מלא",
+      "numbers": "10 מתוך 10; עשר שורות גלויות ובהן מנהל אחד מסומן",
+      "rtl": "אווטאר ושם מימין, תפריט פעולות משמאל; המספר הכולל תואם לעשר השורות הגלויות.",
+      "issueKeys": [
+        "overlay-overlap"
+      ],
+      "needsStableCapture": false,
+      "limitations": "לא נפתחו תפריטי שחקן, דירוג, ציוד או פעולות סגל",
+      "visualStatus": "נבדק חזותית המצב הגלוי בלבד",
+      "functionalVerification": false,
+      "regressionVerification": false
+    },
+    {
+      "id": "MatchRounds",
+      "screenshot": "artifacts/overnight-2026-11-02/census/MatchRounds.png",
+      "sha256": "74f369f1096d71e7ef116c6d30889cb917899e256cc09984aa6562b64dd211e1",
+      "modifiedAt": "2026-11-02T22:05:38.376Z",
+      "imageWidth": 1080,
+      "imageHeight": 2400,
+      "viewedFullImage": true,
+      "state": "היסטוריית משחקים, מצב ריק",
+      "numbers": "אין היסטוריית משחקים; למחזור הזה לא נשמרו פרטי משחקים",
+      "rtl": "כותרת מימין וטקסט מצב ריק ממורכז; אין טקסט שבור.",
+      "issueKeys": [],
+      "needsStableCapture": false,
+      "limitations": "אין בצילום חץ חזרה או סרגל תחתון, אך חזרת מערכת לא נבדקה. לא הוכח תקלה בניווט",
+      "visualStatus": "נבדק חזותית המצב הגלוי בלבד",
+      "functionalVerification": false,
+      "regressionVerification": false
+    }
+  ],
+  "localFixes": [
+    {
+      "id": "full-pulse-cta",
+      "implementedAt": "2026-11-02T22:16:03.697Z",
+      "file": "src/screens/games/AvailablePlayersScreen.tsx",
+      "helper": "availablePlayersPulseAvailability",
+      "semantics": "שער שמרני לפעימות בלבד עם שני תנאי מלא נפרדים; נוסחת הסגל וההזמנות הידניות נשארו ללא שינוי",
+      "openIssue": "ספירת כל האורחים בשרת שונה ממונה הסגל והקידום השמור",
+      "beforeEvidence": "artifacts/overnight-2026-11-02/available-players-pulse-before/manifest.json",
+      "tests": [
+        "tests/logic/availablePlayersPulseCapacity.test.tsx",
+        "tests/logic/availablePlayersInvite.test.ts"
+      ],
+      "focusedTestsPassed": 20,
+      "afterVisualVerified": false,
+      "liveNotificationsSent": false,
+      "serverChanged": false,
+      "deployed": false
+    }
+  ]
+}

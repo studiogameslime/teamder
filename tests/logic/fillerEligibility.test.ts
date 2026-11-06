@@ -16,6 +16,13 @@ test('guests occupy places, including rounds with no account registrations', () 
   expect(canOfferFiller({ guests: Array(7).fill({}), maxPlayers: 10 })).toBe(true);
   expect(canOfferFiller({ players: ['p'], guests: Array(9).fill({}), maxPlayers: 10 })).toBe(false);
 });
+
+test('waitlisted guests neither reach the 70 percent floor nor fill actual seats', () => {
+  const waiting = Array(5).fill({ waitlisted: true });
+  expect(canOfferFiller({ players: Array(6).fill('p'), guests: waiting, maxPlayers: 10 })).toBe(false);
+  expect(canOfferFiller({ players: Array(7).fill('p'), guests: waiting, maxPlayers: 10 })).toBe(true);
+  expect(canOfferFiller({ players: Array(9).fill('p'), guests: [{}, ...waiting], maxPlayers: 10 })).toBe(false);
+});
 test.each([-WINDOW, 0, WINDOW])('confirmed registration blocks at offset %i', offset => {
   expect(hasFillerRegistrationConflict('me', target, [{ ...registration, startsAt: target.startsAt + offset }], now)).toBe(true);
 });

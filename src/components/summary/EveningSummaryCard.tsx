@@ -77,7 +77,7 @@ export const EveningSummaryCard = forwardRef<View, Props>(function EveningSummar
     </View>
     <LinearGradient colors={['#2877FF', '#1459DE']} style={s.hero}>
       <Pitch /><Text style={s.heroLabel}>{m.scoreEstimated ? 'ציון מחושב משוער' : 'ציון המחזור'}</Text><Text style={s.score}>{m.score.toFixed(1)}</Text>
-      {m.scoreRank === 1 && m.scoreTotal != null && m.scoreTotal >= 1 && m.rounds > 0 ?
+      {(m.scoreModel === 'shared-v1' ? m.scoreAwardWinner === true : m.scoreRank === 1) && m.scoreTotal != null && m.scoreTotal >= 1 && m.rounds > 0 ?
         <View style={s.topPlayerRow}>
           <Text style={s.topPlayer}>אתה מצטיין המחזור!</Text>
           <Text style={s.topPlayerCrown} accessible={false}>👑</Text>

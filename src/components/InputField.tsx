@@ -128,7 +128,6 @@ export function InputField({
         >
           <Animated.View style={[styles.field, designed && formFieldStyle, fieldAnimStyle]}>
             <Text
-              numberOfLines={1}
               style={[
                 styles.input,
                 // Display (tap) variant is a <Text>, not a TextInput: under

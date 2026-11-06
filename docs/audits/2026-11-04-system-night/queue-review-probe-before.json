@@ -1,0 +1,7 @@
+{
+  "scenario": "800 immediate registration outcomes while local storage never completes",
+  "pending": 1051,
+  "limit": 500,
+  "exceeded": true,
+  "productionDataAccess": false
+}

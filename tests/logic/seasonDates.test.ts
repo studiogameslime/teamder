@@ -136,6 +136,18 @@ describe('the rollover lands on the club midnight, not on UTC', () => {
     expect(todayIn(TZ, Date.UTC(2027, 6, 15, 21, 30))).toBe('2027-07-16');
     expect(todayIn(TZ, Date.UTC(2027, 6, 15, 20, 30))).toBe('2027-07-15');
   });
+
+  it('both occurrences of 01:30 on the autumn clock change stay inside the same final season day', () => {
+    const first = Date.parse('2026-10-25T01:30:00+03:00');
+    const second = Date.parse('2026-10-25T01:30:00+02:00');
+    const hour = new Intl.DateTimeFormat('he-IL',{timeZone:TZ,hour:'2-digit',minute:'2-digit',hour12:false});
+    expect(second-first).toBe(3_600_000);
+    expect(hour.format(first)).toBe(hour.format(second));
+    for (const at of [first, second]) {
+      expect(todayIn(TZ,at)).toBe('2026-10-25');
+      expect(isSeasonOver('2026-10-25',todayIn(TZ,at))).toBe(false);
+    }
+  });
 });
 
 describe('small helpers', () => {

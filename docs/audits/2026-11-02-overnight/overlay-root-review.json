@@ -1,0 +1,486 @@
+{
+  "reviewedAt": "2026-11-03T00:08:52.287Z",
+  "count": 25,
+  "sourceComponentFixtures": true,
+  "fullProductFlows": false,
+  "records": [
+    {
+      "kind": "player_menu",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/27-player_menu.png",
+      "sha256": "3a5b2a550b4b512c687cb796d6f4a333d7b1de9e53182e63b2c07a9200e8f7e8",
+      "observed": "נראה פקד פתיחת תפריט שחקן מעל הבית. התפריט עצמו אינו פתוח ואין ראיה לפריטיו.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "התפריט אינו מוצג ללא לחיצה ומדידת עוגן, ולכן פריטיו אינם מכוסים.",
+      "componentSources": [
+        {
+          "name": "MeasurablePressable",
+          "path": "src/components/match/PlayerActionMenu.tsx"
+        },
+        {
+          "name": "PlayerActionMenu",
+          "path": "src/components/match/PlayerActionMenu.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "availability_nudge",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/28-availability_nudge.png",
+      "sha256": "11db48ec04829942cbe2c606e5deb51935b35f54e027a691c5cbbfaff928ad4d",
+      "observed": "חלון הסבר לזמינות, שלוש תועלות, פעולה ראשית ואחר כך. הטקסט קריא והכיווניות תקינה.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "אין שינוי זמינות או מעבר למסך העריכה.",
+      "componentSources": [
+        {
+          "name": "AvailabilityNudgeModal",
+          "path": "src/components/AvailabilityNudgeModal.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "winner",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/29-winner.png",
+      "sha256": "dacb88bc0a167765907c36c2feec4664ff2cfde3307cde55f53cedfcaa9c52db",
+      "observed": "שתי קבוצות עם שני ניצחונות מול ניצחון אחד, ואישור מושבת. שמות הדמו באריחים מתקצרים; אין ראיית בחירת מנצחת.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "אין בחירת מנצחת או רישום תוצאה.",
+      "componentSources": [
+        {
+          "name": "WinnerPickerModal",
+          "path": "src/components/match/WinnerPickerModal.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "equipment",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/30-equipment.png",
+      "sha256": "307c7f2503d348b77c519aaba43ee34d9380bca08d1b23405c7f90c658ce89b8",
+      "observed": "רשימת מחזיקי ציוד, כדור אחד וחולצות מסומנים, שמירה ודילוג. נצפו שמונת השחקנים הראשונים בלבד.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "אין סימון נוסף, דילוג או שמירה.",
+      "componentSources": [
+        {
+          "name": "EquipmentHandoffModal",
+          "path": "src/components/match/EquipmentHandoffModal.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "chat_terms",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/31-chat_terms.png",
+      "sha256": "5f7c6ffcbce49f800e40f2133329548c5f59d5a5b27339710c24e47e7b1f24e7",
+      "observed": "מלל תנאי השיחה והסכמה או ביטול קריאים. לא נשמרה הסכמה.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "אין הסכמה או שמירת קבלה.",
+      "componentSources": [
+        {
+          "name": "ChatTermsModal",
+          "path": "src/components/chat/ChatTermsModal.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "notification",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/32-notification.png",
+      "sha256": "0145fa8deaae5c91f93a91e192b2e33411f1c0c6250eafad76fd8033d95e11d9",
+      "observed": "הסבר התראות ופעולות אישור או לא עכשיו. לא נפתחה הרשאת מערכת.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "אין בקשת הרשאה למערכת או החלטת משתמש.",
+      "componentSources": [
+        {
+          "name": "NotificationEducationSheet",
+          "path": "src/components/notifications/NotificationEducationSheet.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "notification_blocked",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/33-notification_blocked.png",
+      "sha256": "0682c70d6356bfc9257e053d98847e3286cefd551254e164566f2d8ccab6af8c",
+      "observed": "נוסח חסימת התראות מפנה להגדרות. לא שונתה הרשאה.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "אין פתיחת הגדרות או שינוי הרשאה.",
+      "componentSources": [
+        {
+          "name": "NotificationEducationSheet",
+          "path": "src/components/notifications/NotificationEducationSheet.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "issue_card",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/34-issue_card.png",
+      "sha256": "26c6eee9e57ab6013396b32c8fd481e22ec23c3dea31fccb1de4de426efcf439",
+      "observed": "כרטיס צהוב ושדה פירוט ריק עם שמירה וביטול. לא הוזן ולא נשמר כרטיס.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "אין הקלדה או שמירת כרטיס.",
+      "componentSources": [
+        {
+          "name": "IssueCardSheet",
+          "path": "src/components/community/IssueCardSheet.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "conflict",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/35-conflict.png",
+      "sha256": "659f2dabaa811745549120534a410a41cd1a1674d1d93db215562544fb7c57b7",
+      "observed": "שלוש פעולות נפרדות והתנגשות של חצי שעה. התאריך הוא דוגמת מארח קבועה, ללא ביטול הרשמה.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "אין ביטול הרשמה או ניווט למחזור האחר.",
+      "componentSources": [
+        {
+          "name": "RegistrationConflictModal",
+          "path": "src/components/games/RegistrationConflictModal.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "season_confirm",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/36-season_confirm.png",
+      "sha256": "da4a86a8901369c18747e0da24e7d16dad5df85a1f23a04ced04bfe73499fdaa",
+      "observed": "8 מחזורים קיימים ויעד12. ההסבר על חמישה מחזורים וחלון24שעות מוצג במלואו, ללא שינוי עונה.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "אין סגירה או פתיחה של עונה.",
+      "componentSources": [
+        {
+          "name": "SeasonConfirmSheet",
+          "path": "src/components/community/SeasonConfirmSheet.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "chemistry_error",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/37-chemistry_error.png",
+      "sha256": "6d196abd0dd8e43eedc0a9cf186d2647a622dc6461ff007da9af218571d5120a",
+      "observed": "נוסח כשל וניסיון חוזר מוצגים בצד ימין. רכיב שליפת הצמדים אינו מורכב כאן.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "רכיב ChemistrySection השולף צמדים אינו מורכב כאן; אין ניסיון חוזר אמיתי.",
+      "componentSources": [
+        {
+          "name": "DraggableMenuSheet",
+          "path": "src/components/DraggableMenuSheet.tsx"
+        },
+        {
+          "name": "ChemistryLoadNotice",
+          "path": "src/components/chemistry/ChemistrySection.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "campaign",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/38-campaign.png",
+      "sha256": "62c4403a8888a386f984817f89cf4862fa29bf9a320c2bff6e6c2c23ca89d7aa",
+      "observed": "חלון הודעה רגיל עם כותרת, מלל ושתי פעולות. הטקסט מוגדר כדוגמת בדיקה מקומית.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "רכיב תצוגה בלבד; אין טעינת קמפיין, מדידת מסירה, קישור, לחיצה או גלילה.",
+      "componentSources": [
+        {
+          "name": "NativeCampaignView",
+          "path": "src/components/joryio/NativeCampaignView.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "campaign_custom",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/39-campaign_custom.png",
+      "sha256": "4cf5f530df1930f847675ca99097ebd2ec7d1b1aa70ed44c119ca77778972733",
+      "observed": "אותו תוכן בצבע ירוק ורדיוס מותאם, עם ניגוד קריא. אין מסירת קמפיין.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "רכיב תצוגה בלבד; אין טעינת קמפיין, מדידת מסירה, קישור, לחיצה או גלילה.",
+      "componentSources": [
+        {
+          "name": "NativeCampaignView",
+          "path": "src/components/joryio/NativeCampaignView.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "campaign_banner",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/40-campaign_banner.png",
+      "sha256": "4dd87d58e0c2117a0d221cd202caaf6800a820e00291c083d5bbce3bc614d145",
+      "observed": "כרזה תחתונה ובה מלל ושתי פעולות בלי חיתוך. לא נבדקה לחיצה או טעינה.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "רכיב תצוגה בלבד; אין טעינת קמפיין, מדידת מסירה, קישור, לחיצה או גלילה.",
+      "componentSources": [
+        {
+          "name": "NativeCampaignView",
+          "path": "src/components/joryio/NativeCampaignView.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "campaign_long",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/41-campaign_long.png",
+      "sha256": "7062434b4cd0cce1c2e19a08684fbd7c53bee4212869ed2ef5d7267b34c33b8c",
+      "observed": "תוכן ארוך מציג את פסקאות1עד10 וכפתורי תחתית. יתר24הפסקאות והגלילה לא נבדקו.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "רכיב תצוגה בלבד; אין טעינת קמפיין, מדידת מסירה, קישור, לחיצה או גלילה.",
+      "componentSources": [
+        {
+          "name": "NativeCampaignView",
+          "path": "src/components/joryio/NativeCampaignView.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "celebration",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/42-celebration.png",
+      "sha256": "7a2ac374f254efa7403d04bd8812e5836d36e86efb854152b581f8fcc590f404",
+      "observed": "נראה הישג שערים בדרגת כסף, סף20 ועוד80לזהב. תמונה אחת אינה ראיה להנפשה רציפה או להקניית הישג.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": false,
+      "fixtureLimitation": "צילום בודד אינו מוכיח רציפות אנימציה או הקניית הישג.",
+      "componentSources": [
+        {
+          "name": "AchievementCelebration",
+          "path": "src/components/AchievementCelebration.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "guide",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/43-guide.png",
+      "sha256": "60611f1b8e76c8a3eca45a900f00b6474314b260bf1ed7a27d0a5a65e4c98927",
+      "observed": "מדריך הבית עם דמות וכפתור המשך וחץ שמאלה. הכותרת והמלל קריאים, ללא אימות שמירת סיום.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "אין בדיקת תנאי הופעה בכניסה או שמירת השלמת המדריך.",
+      "componentSources": [
+        {
+          "name": "HomeGuideOverlay",
+          "path": "src/components/home/HomeGuideOverlay.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "review",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/44-review.png",
+      "sha256": "fc33a5535c68fd887ad997a88bc35a90df413e5de8df5f226dd54cf0cb12b894",
+      "observed": "סיכום לפני יצירה עם15שחקנים,3קבוצות,5על5 ופתיחת הרשמה מתוזמנת. לא הורחבו כל ההגדרות.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "אין הרחבת כל הפרטים או יצירת מחזור.",
+      "componentSources": [
+        {
+          "name": "SafeModal",
+          "path": "src/components/SafeModal.tsx"
+        },
+        {
+          "name": "SpringSheet",
+          "path": "src/components/anim/SpringSheet.tsx"
+        },
+        {
+          "name": "RoundReviewSheet",
+          "path": "src/components/games/RoundReviewSheet.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "review_busy",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/45-review_busy.png",
+      "sha256": "fc9fa64798fc2bf23e37042f6ae1f99cde107ab64cec1c1b601a48d653e174c7",
+      "observed": "אותה סקירה עם מחוון המתנה בכפתור האישור. אין בבדיקה זו בקשה אמיתית או בדיקת חזרה בזמן בקשה.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "זהו מצב עסוק קבוע, ללא בקשה או הוכחה לחסימת לחיצה וחזרה.",
+      "componentSources": [
+        {
+          "name": "SafeModal",
+          "path": "src/components/SafeModal.tsx"
+        },
+        {
+          "name": "SpringSheet",
+          "path": "src/components/anim/SpringSheet.tsx"
+        },
+        {
+          "name": "RoundReviewSheet",
+          "path": "src/components/games/RoundReviewSheet.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "confirm",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/46-confirm.png",
+      "sha256": "94323f699f5f511891b382e8c59a91a09617bf511725e098a5feab583c8589ff",
+      "observed": "חלון אזהרה עם הבנתי וחזרה. שני הלחצנים קריאים. נעילת בקשה נבדקה בנפרד במארח ההמתנה.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "אין אישור, ביטול או בקשה מושהית.",
+      "componentSources": [
+        {
+          "name": "ConfirmDialog",
+          "path": "src/components/ConfirmDialog.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "destructive",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/47-destructive.png",
+      "sha256": "cc8d4f979840448e90623947154d7a6b02c1900234019cd4661b26d8b68c100d",
+      "observed": "תיבת הסכמה לא מסומנת ואישור ביטול מושבת. לא בוטלה הרשמה; נעילה וסמנטיקה נבדקו בנפרד.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "אין שינוי הסכמה, בקשה, ביטול הרשמה או בדיקת נעילה.",
+      "componentSources": [
+        {
+          "name": "ConfirmDestructiveModal",
+          "path": "src/components/ConfirmDestructiveModal.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "filter",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/48-filter.png",
+      "sha256": "5082c7bf18a4588d010a631d1b683bc8c95ccddd374809e17593d7337747ab31",
+      "observed": "בחירת היום ומחר, אזור ורדיוס25, שני מסננים ופורמט עם פעולה להצגת12תוצאות. רק אזור הגלילה הראשוני נצפה.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "אין שינוי סינון, בקשת מיקום או פתיחת מפה.",
+      "componentSources": [
+        {
+          "name": "GameFilterSheet",
+          "path": "src/components/GameFilterSheet.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "score",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/49-score.png",
+      "sha256": "a94fdfd6b3565bdd1c9a7736b82b930ee20532096370f223441b2f3daa38b6fd",
+      "observed": "הסבר ציון6עד10, ניצחונות, שערים ובישולים והגבלות החישוב מופיעים במלואם. אין אימות חישוב נוסף מתוך הצילום.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "רק האזור הראשוני, ללא גלילה או חישוב ציון נוסף.",
+      "componentSources": [
+        {
+          "name": "EveningScoreInfoSheet",
+          "path": "src/components/summary/EveningScoreInfoSheet.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "cover",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/50-cover.png",
+      "sha256": "f26f7daa8e905d7c89cdc8f7e0ca0406584c2e3d3464053776355fdffd3e6356",
+      "observed": "גלריית תמונות ושער העלאה מוצגים היטב ללא עיוות. לא נבדקה בחירה חדשה, גלילה או ספריית המכשיר.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "אין בחירה חדשה, גלילה או גישה לספריית תמונות.",
+      "componentSources": [
+        {
+          "name": "CoverImagePicker",
+          "path": "src/components/community/CoverImagePicker.tsx"
+        }
+      ]
+    },
+    {
+      "kind": "goal_confirm",
+      "image": "artifacts/overnight-2026-11-02/overlay-final/51-goal_confirm.png",
+      "sha256": "72060b9c9eb30a8c7e63986d269115dde611ed21565c242f690c6cc57f456666",
+      "observed": "חלון מחיקת גול עם מחק וביטול נצפה בלבד. פעולות המארח סוגרות חלון ואינן שירות מחיקה.",
+      "visualReviewed": true,
+      "scope": "full native image viewed at readable size",
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "treeFresh": true,
+      "fixtureLimitation": "אין מחיקת גול. הענף יופעל אחרון כי החלון חי בחנות כללית.",
+      "componentSources": [
+        {
+          "name": "AppDialogHost",
+          "path": "src/components/AppDialog.tsx"
+        },
+        {
+          "name": "appAlert",
+          "path": "src/components/AppDialog.tsx"
+        }
+      ]
+    }
+  ]
+}

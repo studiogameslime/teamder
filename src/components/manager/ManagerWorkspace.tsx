@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {BackHandler, Pressable, TextInput, View} from 'react-native';
+import {ActivityIndicator, BackHandler, Pressable, TextInput, View} from 'react-native';
 import type {ManagerData} from '@/services/managerDashboardService';
 import type {User} from '@/types';
 import {managerActiveCards, managerNewcomers, managerPlayerHistory, managerRetention, managerRoster, uniqueManagerAttention, managerPlayerRating} from '@/utils/managerWorkspace';
@@ -25,12 +25,21 @@ interface Props {
   onSeason: () => void; onHistory: () => void; onEdit: () => void; onPageChange: () => void;
   onBackChange: (back: (() => void) | null) => void;
   renderTrend: (points: ScorePoint[], direction: 'up' | 'down' | 'neutral') => React.ReactNode;
+  onScoresNeeded?: (needed: boolean) => void;
+  scoresLoading?: boolean;
+  scoresFailed?: boolean;
+  scoresRefreshRequired?: boolean;
+  onRetryScores?: () => void;
 }
 export function ManagerWorkspace(props: Props) {
   const {data, now, viewerId} = props;
   const [trail, setTrail] = useState<{panel: Panel; userId?: string}[]>([{panel: props.initialPlayer ? 'player' : 'overview', userId: props.initialPlayer ?? undefined}]);
   const [filter, setFilter] = useState<'attention' | 'cards' | 'all'>('attention'), [search, setSearch] = useState(''), [expanded, setExpanded] = useState(false);
   const page = trail[trail.length - 1];
+  useEffect(() => {
+    props.onScoresNeeded?.(page.panel === 'player');
+    return () => props.onScoresNeeded?.(false);
+  }, [page.panel, props.onScoresNeeded]);
   useEffect(() => {if (props.initialPlayer) setTrail([{panel: 'overview'}, {panel: 'player', userId: props.initialPlayer}]);}, [props.initialPlayer]);
   const open = (panel: Panel, userId?: string) => {setTrail(v => [...v, {panel, userId}]); setExpanded(false); props.onPageChange();};
   const back = () => {setTrail(v => v.length > 1 ? v.slice(0, -1) : [{panel: 'overview'}]); props.onPageChange();};
@@ -71,6 +80,7 @@ export function ManagerWorkspace(props: Props) {
   const currentRating = page.userId ? managerPlayerRating(data.group, page.userId) : null;
   const member = roster.overview.members.find(m => m.userId === page.userId);
   const series = page.userId ? ratingSeries(data.group, data.games.filter(g => g.startsAt >= now - 90 * 86400000), data.scores).find(s => s.userId === page.userId) : undefined;
+  const scoresLoading = props.scoresLoading || !!props.onScoresNeeded && page.panel === 'player' && data.scoresIncomplete && !props.scoresFailed;
   const playerCards = cards.filter(e => e.userId === page.userId);
   const retention = page.panel === 'retention' ? managerRetention(data.group, data.games, now, data.truncated) : null;
   const pending = new Set((next?.pending ?? []).filter(id => !next?.players.includes(id)));
@@ -95,10 +105,10 @@ export function ManagerWorkspace(props: Props) {
         <Link title={expanded ? 'הצג פחות' : 'הצג את כל הרשימה'} onPress={() => setExpanded(v => !v)}/><Label style={u.sub}>הפסקה בהרשמה אינה הוכחה לעזיבה או לחוסר מחויבות.</Label>
       </Box><Link title="להשתלבות חברים חדשים" onPress={() => open('newcomers')}/><Link title="למצב העונה" onPress={() => open('season')}/></>}
     {page.panel === 'player' && currentPlayer && <>
-      <Box><View style={u.row}><UserAvatar user={currentPlayer} size={54}/><View style={{flex: 1, gap: 5}}><Label style={{fontSize: 20, fontWeight: '800'}}>{currentPlayer.name}</Label>{typeof data.group.joinedAt?.[currentPlayer.id] === 'number' && <Label style={u.sub}>חבר מועדון מ-{date(data.group.joinedAt[currentPlayer.id])}</Label>}<Label style={u.sub}>{next ? `למחזור הקרוב: ${states[registrationState(next, currentPlayer.id)]}` : 'אין מחזור עתידי ברישומים שנטענו'}</Label></View></View><Metrics items={[{value: member ? `${member.count}/${member.sample}` : 'אין נתון', label: 'הרשמות במחזורים זכאים'}, {value: data.group.internalRating ? (currentRating === null ? 'טרם נקבע' : currentRating.toFixed(1)) : 'לא פעיל', label: 'דירוג מנהל מתוך 5'}, {value: series?.points.at(-1)?.score.toFixed(1) ?? 'אין ציון', label: 'ציון אחרון מתוך 10'}]}/></Box>
+      <Box><View style={u.row}><UserAvatar user={currentPlayer} size={54}/><View style={{flex: 1, gap: 5}}><Label style={{fontSize: 20, fontWeight: '800'}}>{currentPlayer.name}</Label>{typeof data.group.joinedAt?.[currentPlayer.id] === 'number' && <Label style={u.sub}>חבר מועדון מ-{date(data.group.joinedAt[currentPlayer.id])}</Label>}<Label style={u.sub}>{next ? `למחזור הקרוב: ${states[registrationState(next, currentPlayer.id)]}` : 'אין מחזור עתידי ברישומים שנטענו'}</Label></View></View><Metrics items={[{value: member ? `${member.count}/${member.sample}` : 'אין נתון', label: 'הרשמות במחזורים זכאים'}, {value: data.group.internalRating ? (currentRating === null ? 'טרם נקבע' : currentRating.toFixed(1)) : 'לא פעיל', label: 'דירוג מנהל מתוך 5'}, {value: series?.points.at(-1)?.score.toFixed(1) ?? (scoresLoading ? 'בטעינה' : props.scoresFailed ? 'לא נטען' : 'אין ציון'), label: 'ציון אחרון מתוך 10'}]}/></Box>
       <Box title="הרשמות אחרונות" icon="calendar-outline">{managerPlayerHistory(data.group, data.games, currentPlayer.id, now).map(r => <Detail key={r.game.id} label={`מחזור ${date(r.game.startsAt)}`} value={states[r.state]} warning={r.state !== 'registered'}/>)}<Label style={u.sub}>עד חמשת המחזורים האחרונים הזכאים, מהישן לחדש. הרשמה אינה אישור הגעה.</Label></Box>
       <Box title="ציוד וכרטיסים" icon="shield-checkmark-outline"><Detail label="ציוד נוכחי" value={roster.gear.filter(g => g.userId === currentPlayer.id).map(g => g.kind === 'ball' ? 'כדור' : 'גופיות').join(', ') || 'ללא ציוד רשום'}/>{data.group.cardsEnabled && (data.equipmentUnavailable ? <Label style={u.sub}>רישומי הכרטיסים לא נטענו.</Label> : playerCards.length ? playerCards.map(e => {const exp = effectiveExpiry(e, e.type === 'red' ? data.group.redCardValidityDays : data.group.yellowCardValidityDays);return <Detail key={e.id} label={e.type === 'red' ? 'כרטיס אדום, חוסם הרשמה' : 'כרטיס צהוב, ללא חסימה'} value={exp === null ? 'ללא מועד פקיעה' : `עד ${date(exp)}`} warning={e.type === 'red'}/>;}) : <Label style={u.sub}>אין כרטיס פעיל ברישומים שנטענו.</Label>)}<Link title="לציר האירועים המלא" onPress={() => props.onTimeline(currentPlayer.id)}/></Box>
-      <Box title="מגמת ציונים" icon="trending-up-outline">{series ? <><Label style={u.sub}>{series.points.length} ציונים זמינים ב-90 ימים, לא בהכרח רצופים</Label>{props.renderTrend(series.points, 'neutral')}</> : <Label style={u.sub}>אין ציונים זמינים בתקופה. ציון חסר אינו אפס.</Label>}{data.group.internalRating && <Link title="ערוך דירוג מנהל" onPress={() => props.onRate(currentPlayer)}/>}<Link title="לציונים ולמגמות של כל הסגל" onPress={props.onRatings}/></Box>
+      <Box title="מגמת ציונים" icon="trending-up-outline">{scoresLoading&&<View style={u.row}><ActivityIndicator color={c.blue}/><Label style={u.sub}>טוענים את ציוני המחזורים בתקופה</Label></View>}{props.scoresFailed&&<><Label style={u.sub}>{props.scoresRefreshRequired?'נתוני העונה השתנו. יש לרענן את לוח המנהל.':'חלק מהציונים לא נטענו. הנתונים הזמינים מוצגים.'}</Label>{props.onRetryScores&&<Link title="נסה שוב" onPress={props.onRetryScores}/>}</>}{series ? <><Label style={u.sub}>{series.points.length} ציונים זמינים ב-90 ימים, לא בהכרח רצופים</Label>{props.renderTrend(series.points, 'neutral')}</> : !scoresLoading&&!props.scoresFailed ? <Label style={u.sub}>אין ציונים זמינים בתקופה. ציון חסר אינו אפס.</Label> : null}{data.group.internalRating && <Link title="ערוך דירוג מנהל" onPress={() => props.onRate(currentPlayer)}/>}<Link title="לציונים ולמגמות של כל הסגל" onPress={props.onRatings}/></Box>
     </>}
     {page.panel === 'newcomers' && <><Box title="השתלבות חברים חדשים" icon="person-add-outline"><Label style={u.sub}>הצטרפו ב-30 הימים האחרונים עם תאריך מתועד</Label><Metrics items={[{value: newcomers.rows.length, label: 'הצטרפו'}, {value: newcomers.first, label: 'הרשמה ראשונה'}, {value: newcomers.repeat, label: 'הרשמה חוזרת'}]}/><Label style={u.sub}>הרשמה למחזור שהתקיים. השלבים מצטברים.</Label></Box><Box title="חברים חדשים והזדמנויות להירשם" icon="people-outline">{!newcomers.rows.length ? <Label style={u.sub}>אין מצטרפים חדשים עם מועד הצטרפות מתועד בתקופה.</Label> : newcomers.rows.map(n => person(n.userId, `הצטרף ב-${date(n.joinedAt)}, התקיימו מאז ${n.opportunities} מחזורים`, n.completed >= 2 ? 'נרשם שוב' : n.completed ? 'הרשמה ראשונה' : n.next ? 'רשום למחזור הבא' : 'טרם נרשם', !n.completed && !n.next && n.opportunities > 0))}<Label style={u.sub}>אין השלמת מועד הצטרפות חסר מתאריך יצירת החשבון. הרשמה אינה אישור נוכחות.</Label></Box><Link title="להמשכיות לאורך זמן" onPress={() => open('retention')}/></>}
     {page.panel === 'activity' && <ManagerClubInsights data={data} viewerId={viewerId} now={now} onRound={props.onRound} onApprovals={props.onApprovals} onRate={props.onRate} onResolved={props.onResolved} showAttention={false}/>}

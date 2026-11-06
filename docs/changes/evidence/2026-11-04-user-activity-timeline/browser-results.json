@@ -1,0 +1,28 @@
+{
+  "native": false,
+  "fixtureData": true,
+  "results": [
+    {
+      "width": 320,
+      "overflow": false,
+      "sourceRendered": true
+    },
+    {
+      "width": 390,
+      "overflow": false,
+      "sourceRendered": true
+    },
+    {
+      "width": 430,
+      "overflow": false,
+      "sourceRendered": true
+    }
+  ],
+  "retainedOnFailure": true,
+  "empty": true,
+  "disabled": true,
+  "staleOwnerAnswerRejected": true,
+  "pollingPreservesExpandedVisit": true,
+  "inactiveStopsPolling": true,
+  "errors": []
+}

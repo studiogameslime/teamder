@@ -1,5 +1,6 @@
 // All Hebrew strings used in the app, centralized so future i18n is trivial.
 // Keep keys in English (camelCase); values in Hebrew.
+import { RATING_NEUTRAL } from '@/utils/rating';
 
 // Hebrew's 1-form. "1 משחקונים" is the same mistake as "1 חודשים", and it
 // reaches the screen far more often than it looks: a young season crowns its
@@ -1258,7 +1259,7 @@ export const he = {
     `ערב קשה ל${teamAfterL} — ${losses} הפסדים`,
   roundSummaryPair: 'הצמד של הערב',
   roundSummaryPairText: (a: string, b: string, goals: number) =>
-    `${iso(a)} ו${iso(b)} — ${goals} שערים נוצרו ביניהם`,
+    `${iso(a)} ${prefixName('ו', b)} — ${goals} שערים נוצרו ביניהם`,
   // Same bidi trap as pairCardAssistLeg — words, not arrows.
   roundSummaryPairLeg: (from: string, to: string, n: number) =>
     `${iso(from)} בישל ל${iso(to)} · ${n}`,
@@ -1381,7 +1382,7 @@ export const he = {
   wizardAutoTeamsToggle: 'תזמון יצירת כוחות אוטומטיים',
   wizardAutoTeamsRequiresRating: 'כדי להפעיל תזמון כוחות, יש להפעיל דירוג פנימי בהגדרות המועדון.',
   wizardAutoTeamsHint:
-    'במועד שתבחר, המערכת תחלק את הנרשמים לקבוצות מאוזנות (לפי הדירוג הפנימי או באקראי — לבחירתך), וכל שחקן יקבל פוש עם הקבוצה שלו. אפשר לערוך אחר כך. שחקן ללא דירוג פנימי ייחשב בדירוג ממוצע.\n\nשים לב: אם כבר קבעת כוחות ידנית (בכל שיטה — ידני, דירוג או אקראי) — התזמון לא ירוץ ולא ישנה אותם.',
+    `במועד שתבחר, המערכת תחלק את הנרשמים לקבוצות מאוזנות (לפי הדירוג הפנימי או באקראי - לבחירתך), וכל שחקן יקבל פוש עם הקבוצה שלו. אפשר לערוך אחר כך. שחקן ללא דירוג פנימי ייחשב בדירוג בסיס של ${RATING_NEUTRAL} מתוך 5.\n\nשים לב: אם כבר קבעת כוחות ידנית (בכל שיטה - ידני, דירוג או אקראי) - התזמון לא ירוץ ולא ישנה אותם.`,
   wizardAutoTeamsLabel: 'מועד יצירת הכוחות',
   wizardAutoTeamsMethodLabel: 'שיטת החלוקה',
   wizardAutoTeamsBeforeKickoff: 'מועד יצירת הכוחות חייב להיות לפני תחילת המחזור',
@@ -2205,14 +2206,14 @@ export const he = {
     'משתמשים חדשים בלי היסטוריה לא נכנסים לפול בכל מקרה.',
 
   // Admin filler approval section (MatchDetailsScreen).
-  fillerSectionTitle: 'מועמדים למילוי',
+  fillerSectionTitle: 'בקשות להצטרף למחזור',
   fillerSectionSubtitle:
-    'שחקנים מחוץ למועדון שמעוניינים למלא את החסר. אישור יכניס אותם לרוסטר.',
+    'שחקנים מחוץ למועדון שביקשו לשחק במחזור הזה. אם אין מקום, אישור יוסיף אותם לרשימת ההמתנה.',
   fillerApprove: 'אישור',
   fillerDecline: 'דחייה',
   fillerApproveSuccess: 'השחקן נוסף למחזור',
   fillerApproveStale:
-    'המקום כבר התמלא או שהמחזור נסגר',
+    'הבקשה כבר אינה ממתינה לאישור או שהמחזור נסגר',
   fillerDeclineConfirmTitle: 'דחיית מועמדות',
   fillerDeclineConfirmBody: (name: string) =>
     `לדחות את ${name}? לא תוכל לבחור בו שוב למילוי המחזור הזה.`,
@@ -4962,7 +4963,7 @@ export const he = {
   // Split-method picker (first step of חלוקת כוחות).
   draftMethodTitle: 'איך לחלק כוחות?',
   draftMethodAuto: 'אוטומטי לפי דירוג',
-  draftMethodAutoSub: 'איזון לפי הדירוג הפנימי. שחקן ללא דירוג ייחשב ממוצע.',
+  draftMethodAutoSub: `איזון לפי הדירוג הפנימי. שחקן ללא דירוג ייחשב ${RATING_NEUTRAL} מתוך 5.`,
   draftMethodManual: 'ידני לפי קפטנים',
   draftMethodManualSub: 'בחרו קפטנים והגרילו תור-תור',
   draftMethodRandom: 'אקראי',
@@ -4973,8 +4974,8 @@ export const he = {
   autoBalanceTeamsOption: (n: number) => `${n} קבוצות`,
   autoBalanceUnrated: (n: number) =>
     n === 1
-      ? 'שחקן אחד ללא דירוג פנימי שובץ לפי דירוג ממוצע'
-      : `${n} שחקנים ללא דירוג פנימי שובצו לפי דירוג ממוצע`,
+      ? `שחקן אחד ללא דירוג פנימי שובץ לפי דירוג בסיס ${RATING_NEUTRAL}`
+      : `${n} שחקנים ללא דירוג פנימי שובצו לפי דירוג בסיס ${RATING_NEUTRAL}`,
   autoBalanceError: 'יצירת הכוחות האוטומטיים נכשלה, נסו שוב',
   autoBalanceReady: 'הכוחות אוזנו לפי הדירוג הפנימי — אפשר לערוך לפני שמירה',
   autoBalanceNotifyPlayers: 'שלח התראה לשחקנים',

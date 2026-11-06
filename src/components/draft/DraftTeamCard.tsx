@@ -129,7 +129,7 @@ export function DraftTeamCard({
         ) : (
           <View style={[styles.teamDot, { backgroundColor: tColor }]} />
         )}
-        <Text style={[styles.teamName, { color: tColor }]}>{tLabel}</Text>
+        <Text style={[styles.teamName, { color: teamTextColor(index, asTeams) }]}>{tLabel}</Text>
         {typeof teamRating === 'number' ? (
           <View style={styles.ratingBadge}>
             <Ionicons name="star" size={11} color={colors.primary} />

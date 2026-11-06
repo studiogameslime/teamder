@@ -96,15 +96,18 @@ async function readStatsSource<T>(source: 'games' | 'pairs', userId: UserId, rea
 export const playerStatsService = {
   async compute(
     userId: UserId,
-    ctx: { goals?: number; assists?: number; onBase?: (summary: PlayerStatsSummary) => void; onHighlights?: (highlights: PersonalHighlights) => void; isCurrent?: () => boolean; recentHighlightsOnly?: boolean } = {},
+    ctx: { goals?: number; assists?: number; totals?: Promise<{ goals?: number; assists?: number }>; onBase?: (summary: PlayerStatsSummary) => void; onHighlights?: (highlights: PersonalHighlights) => void; isCurrent?: () => boolean; recentHighlightsOnly?: boolean } = {},
   ): Promise<PlayerStatsSummary> {
-    const goals = Math.max(0, ctx.goals ?? 0);
-    const assists = Math.max(0, ctx.assists ?? 0);
+    let goals = Math.max(0, ctx.goals ?? 0);
+    let assists = Math.max(0, ctx.assists ?? 0);
     if (!userId) return emptySummary(goals, assists);
     // Mock: synthesize a plausible summary so the profile stats screen renders
     // with data (attendedGames > 0 flips the `hasData` gate) instead of the
     // empty state — lets the penalty tiles + numbers show in the emulator demo.
     if (USE_MOCK_DATA) {
+      const totals = await ctx.totals;
+      goals = Math.max(0, totals?.goals ?? goals);
+      assists = Math.max(0, totals?.assists ?? assists);
       return {
         ...emptySummary(goals, assists),
         attendedGames: 28,
@@ -116,7 +119,9 @@ export const playerStatsService = {
     }
 
     // Independent sources start together; failure stays a failure of its source.
-    const [snap, [asA, asB]] = await Promise.all([
+    // Fresh lifetime totals are independent of attendance/pair reads. Resolve
+    // them together instead of putting an extra user read before all queries.
+    const [snap, [asA, asB], totals] = await Promise.all([
       readStatsSource('games', userId, () => getDocs(
         query(col.games(), where('participantIds', 'array-contains', userId)),
       )),
@@ -124,7 +129,10 @@ export const playerStatsService = {
         getDocs(query(col.pairStats(), where('a', '==', userId))),
         getDocs(query(col.pairStats(), where('b', '==', userId))),
       ])),
+      ctx.totals,
     ]);
+    goals = Math.max(0, totals?.goals ?? goals);
+    assists = Math.max(0, totals?.assists ?? assists);
 
     // ── Games scan: attendance + co-attendance per teammate ──────────────
     let attendedGames = 0;

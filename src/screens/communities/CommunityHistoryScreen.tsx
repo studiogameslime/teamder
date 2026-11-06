@@ -6,14 +6,14 @@ import { ChangeMotion } from '@/components/anim/ChangeMotion';
 // on CommunityDetails, but as a dedicated, scrollable screen.
 
 import React, { useEffect, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { CommunityHistoryRow } from '@/components/match/CommunityHistoryRow';
-import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { ClubHistorySkeleton } from '@/components/loading/CentralSkeletons';
 import { gameService } from '@/services/gameService';
 import { colors, radius, spacing, typography } from '@/theme';
 import { useUserStore } from '@/store/userStore';
@@ -71,10 +71,7 @@ export function CommunityHistoryScreen() {
         ))}
       </View>
       {games === null ? (
-        <View style={styles.center}>
-          <SoccerBallLoader />
-          <Text style={styles.muted}>{he.communityStatsLoading}</Text>
-        </View>
+        <ScrollView contentContainerStyle={styles.list}><ClubHistorySkeleton /></ScrollView>
       ) : error ? (
         <View style={styles.center}>
           <Text style={styles.muted}>{he.historyLoadError}</Text>

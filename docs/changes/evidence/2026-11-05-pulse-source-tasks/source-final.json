@@ -1,0 +1,16 @@
+{
+  "pulse/src/services/taskConversion.ts": "76efa8fa27ce7e5bc9fb7b82890f0111848fe8f7f6b2434d46fa9828cad9711c",
+  "pulse/src/components/ConvertToTaskButton.tsx": "db55eb7c5808c28e595e085d4921aaae5ae42f09acf54b84e6ad7dc9e44382f0",
+  "pulse/src/services/workItems.ts": "828b551693092a34205777709879e29a1fbe2835ed5c21a9cdd33fb6dd52323d",
+  "pulse/src/services/workBoard.ts": "f9515d23130a45c40a1cb708896b001128d62ce880cfcac2ba93a32bdf56820d",
+  "pulse/src/services/tasksService.ts": "f1f4f6c1328ff23035cf12a2cd05efceffefc5c899c8a62cd510f366d919b774",
+  "pulse/src/services/reportsService.ts": "0617686c1d416df9e34f78ab1035fa17f6073842afce8883db7502b84c11c3a0",
+  "pulse/src/screens/TasksScreen.tsx": "557c7079a6bdfc72620c292c09593e57bceb11db196992b7fb1ae0b7702119a3",
+  "pulse/src/screens/ReportsScreen.tsx": "d6e873d5be4db6cd8d995f7a65284e101187dc544d7f0ef4f27e2f741085d0cd",
+  "pulse/src/screens/DevInboxScreen.tsx": "01fa2bf6de11717eba14178d21a65a0196eac3e4cea12222b27511465f9e13a9",
+  "pulse/src/screens/ErrorDetailScreen.tsx": "6947a567b9ef6535d25daa56acc0fa50abd5fd275f35ff682f8dc46d5eceae37",
+  "pulse/src/components/TeamderChatSheet.tsx": "552b343d4ca473b2e93c9c09913ae90e61008bb088cd55a13f449b2a229401bc",
+  "tests/logic/pulseTaskConversion.test.ts": "84b9256901472ac24937a4f68f1e03c6c5d8849027d3632810699f0b0a35a236",
+  "tests/logic/pulseSuggestionWork.test.ts": "0170abc3818813ba7baf3e83265edcb44d53c0ce8db99943e97d72aa1e999ec6",
+  "tests/logic/pulseNativePreviewInterop.test.ts": "c6163af298b6371c5844e19088e9bedcf86aaf8b9f094834daf9dcf7ec007c8c"
+}

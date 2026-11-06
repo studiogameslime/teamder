@@ -1,0 +1,277 @@
+{
+  "scope": "ממצאים תחומים מהביקורת, ללא טענה שכל מצב מוצר אפשרי הורץ",
+  "updatedAt": "2026-11-03",
+  "findings": [
+    {
+      "id": "D01",
+      "title": "סמנטיקת תיבת אישור",
+      "implemented": true,
+      "verification": [
+        "מבחני מקור",
+        "מצב מסומן בעץ נגישות מקורי"
+      ],
+      "source": "src/components/ConfirmDestructiveModal.tsx"
+    },
+    {
+      "id": "D02",
+      "title": "סגירה ואישור כפול בזמן בקשה",
+      "implemented": true,
+      "verification": [
+        "מבחני מקור",
+        "שני חלונות מקור נשארו אחרי חזרת אנדרואיד בזמן הבטחה מקומית"
+      ],
+      "source": "src/components/ConfirmDialog.tsx"
+    },
+    {
+      "id": "D03",
+      "title": "חלופת תמונת רשת שנכשלה",
+      "implemented": true,
+      "verification": [
+        "מבחני כתובת ישנה וחדשה",
+        "צילום מקור לפני ואחרי"
+      ],
+      "source": "src/components/Avatar.tsx"
+    },
+    {
+      "id": "D04",
+      "title": "נגישות השלמה אוטומטית",
+      "implemented": true,
+      "verification": [
+        "מבחני מקור",
+        "בחירת עיר מתוך הצעות מקומיות באנדרואיד"
+      ],
+      "source": "src/components/AutocompleteInput.tsx"
+    },
+    {
+      "id": "D05",
+      "title": "ניגוד טקסט אזהרה",
+      "implemented": true,
+      "verification": [
+        "יחס ניגוד מול לבן 6.47 במקום 3.76",
+        "צילום מקור לפני ואחרי"
+      ],
+      "source": "src/components/Button.tsx"
+    },
+    {
+      "id": "D06",
+      "title": "קיצור תוויות ארוכות בשתי פעולות",
+      "implemented": false,
+      "status": "unconfirmed-production-instance",
+      "decision": "נראה במארח רכיבים עם תווית ארוכה. לא הוכחה תקרית בתווית מוצר פעילה ולכן לא שונו מידות גורפות.",
+      "source": "src/components/Button.tsx"
+    },
+    {
+      "id": "D07",
+      "title": "תפקיד נגיש לפעולות כותרת",
+      "implemented": true,
+      "verification": [
+        "מבחני מקור",
+        "כותרות מקור במסכים המרונדרים"
+      ],
+      "limitation": "אין בדיקת קורא מסך אנושי",
+      "source": "src/components/ScreenHeader.tsx"
+    },
+    {
+      "id": "D08",
+      "title": "סגירת חלון חשבון בזמן בקשה",
+      "implemented": true,
+      "verification": [
+        "שבע בדיקות מקור",
+        "חזרת אנדרואיד אינה סוגרת מצב המתנה מדומה",
+        "השדה והביטול חסומים בעץ המקורי"
+      ],
+      "limitation": "לא הופעלה מחיקה ולא נקרא שירות חשבון",
+      "source": "src/components/profile/DeleteAccountSheet.tsx"
+    },
+    {
+      "id": "R01",
+      "title": "11 התנגשויות בחוזה הכיווניות",
+      "implemented": true,
+      "verification": [
+        "מבחני חוזה",
+        "צילומי מסכים בכיווניות מקורית"
+      ],
+      "limitation": "הכותרות כבר נראו מימין לפני השינוי. זהו איחוד חוזה ולא תיקון יישור שמאלי שנצפה.",
+      "sources": [
+        "src/screens/games/GamesListScreen.tsx",
+        "src/screens/profile/AvailabilityEditScreen.tsx",
+        "src/components/games/AreaDemandCard.tsx",
+        "src/components/games/NearbyClubsSection.tsx"
+      ]
+    },
+    {
+      "id": "R02",
+      "title": "יישור שמות ימים",
+      "implemented": true,
+      "verification": [
+        "מבחני חוזה",
+        "צילום זמינות פעילה עם שמות הימים לאחר התיקון"
+      ],
+      "source": "src/screens/profile/AvailabilityEditScreen.tsx"
+    },
+    {
+      "id": "R03",
+      "title": "תחילית לשם לועזי בסיכום צמד",
+      "implemented": true,
+      "verification": [
+        "מבחני מחרוזת ובידוד",
+        "צילום מחרוזת המקור עם שם לועזי ושני שמות עבריים במארח מקומי"
+      ],
+      "source": "src/i18n/he.ts",
+      "limitation": "מחרוזת מקור במארח רכיבים, ללא טענה לסיכום מחזור מלא במצב הזה."
+    },
+    {
+      "id": "R04",
+      "title": "יחיד ורבים במועדונים משותפים",
+      "implemented": true,
+      "verification": [
+        "10 בדיקות עברית קיימות",
+        "כרטיס שחקן במכשיר מציג מועדון אחד משותף"
+      ],
+      "source": "src/components/social/SocialPlayerProfile.tsx"
+    },
+    {
+      "id": "F01",
+      "title": "תוצאת הזמנות חלקית אחרי יצירת מחזור",
+      "implemented": true,
+      "verification": [
+        "77 בדיקות יצירה וחידוש וקבלות",
+        "יצירת מחזור דמו דרך שלושת השלבים עם הזמנה מקומית אחת שאושרה ואחת שנכשלה; המחזור נשמר והוצג",
+        "הודעת המקור נצפתה במארח נפרד לאחר בדיקת היצירה בדמו"
+      ],
+      "sources": [
+        "src/services/gameCreation.ts",
+        "src/screens/games/GameCreateScreen.tsx",
+        "src/services/actionResumers.ts"
+      ],
+      "limitation": "צילום ההודעה אינו צילום רגע היצירה ואין אימות מסירת הזמנות."
+    },
+    {
+      "id": "F02",
+      "title": "בועת עזרה מעל פעולות במסכים משניים",
+      "implemented": true,
+      "verification": [
+        "מדיניות נראות לכל שמות המסלול",
+        "33 מסכים משניים נבדקו ללא חפיפה"
+      ],
+      "limitation": "במסכי השורש נשארת בועה שניתן לסגור, ולעיתים היא חופפת לחלק מכרטיס שניתן לגלילה.",
+      "source": "src/utils/supportBubbleVisibility.ts"
+    },
+    {
+      "id": "F03",
+      "title": "הצעת פעימות כשאין מקום",
+      "implemented": true,
+      "verification": [
+        "25 בדיקות תפוסה ותזמון וכשל והחלפת חשבון ומחזור",
+        "צילום מסך מלא עם פעולה מושבתת והסבר להזמנה ידנית"
+      ],
+      "source": "src/screens/games/AvailablePlayersScreen.tsx",
+      "limitation": "החלפת ההקשר נבדקה במבחני רכיב. אין טענה ששוחזרה אותה תחרות דרך ניווט במכשיר."
+    },
+    {
+      "id": "F04",
+      "title": "ספירת שער הפעימות בשרת שונה מספירת הסגל",
+      "implemented": false,
+      "status": "open-domain-discrepancy",
+      "decision": "נשמרו שני המונים, והלקוח חוסם פעולה כאשר אחד מהם חוסם. אין שינוי שרת או הרשאות.",
+      "exampleA": "8 רשומים, אורח פעיל אחד ומקום קידום אחד לקיבולת10: המסך מלא ושער השרת עדיין פנוי.",
+      "exampleB": "8 רשומים, אורח פעיל ואורח ממתין לקיבולת10: למסך מקום אחד ושער השרת מלא.",
+      "source": "functions/src/fillerRules.ts"
+    },
+    {
+      "id": "R05",
+      "title": "אזהרת יציאה שאינה מתאימה לזמינות",
+      "implemented": true,
+      "verification": [
+        "הנוסח השגוי נצפה במכשיר לפני השינוי",
+        "נוסף גוף אזהרה מקומי לשינוי זמינות",
+        "אזהרת היציאה לאחר התיקון נפתחה ונצפתה במכשיר ללא שמירה"
+      ],
+      "source": "src/screens/profile/AvailabilityEditScreen.tsx"
+    },
+    {
+      "id": "D09",
+      "title": "כותרות קבוצות בהירות על כרטיס לבן",
+      "implemented": true,
+      "verification": [
+        "כרטיסי מקור רגילים של הלבנים והצהובים נצפו לפני ואחרי במכשיר",
+        "יחסי ניגוד מול לבן: לבנים מ-1.24 ל-10.35, צהובים מ-1.92 ל-5.14",
+        "31 בדיקות קיימות של כרטיס וזהות קבוצה עברו"
+      ],
+      "source": "src/components/draft/DraftTeamCard.tsx",
+      "limitation": "מארח רכיבי מקור ולא מסך חלוקה מלא בצבעים האלה. אין שינוי בחלוקה או בבחירת הצבע."
+    },
+    {
+      "id": "F05",
+      "title": "סגירת התנגשות בזמן ביטול הרשמה",
+      "implemented": true,
+      "verification": [
+        "לפני התיקון חזרת אנדרואיד סגרה את חלון המקור בזמן cancelBusy",
+        "אחרי התיקון חזרה ורקע השאירו את חלון המקור פתוח בהמתנה",
+        "שש בדיקות נעילה, אירוע ישן, כשל ושחרור עברו"
+      ],
+      "source": "src/components/games/RegistrationConflictModal.tsx",
+      "limitation": "המתנה מקומית ללא ביטול הרשמה, הצטרפות או קריאת שירות."
+    },
+    {
+      "id": "F06",
+      "title": "שמירת אזהרת יציאה עם טיוטה ישנה או בלי תיקוף",
+      "implemented": true,
+      "verification": [
+        "35 בדיקות חדשות עברו עבור ערכים עדכניים, תיקוף, שמירה וניווט וניסיון חוזר",
+        "במכשיר שם מועדון ריק וזמינות ללא אזור נחסמו לאחר שמור מאזהרת היציאה",
+        "מחסומי שירות מקומיים הראו אפס קריאות בשני המקרים ושוחזרו בסיום"
+      ],
+      "sources": [
+        "src/hooks/useUnsavedChangesGuard.ts",
+        "src/screens/groups/GroupWizardForm.tsx",
+        "src/screens/games/GameWizardForm.tsx",
+        "src/screens/tabs/ProfileEditScreen.tsx"
+      ],
+      "limitation": "לא נשמרו פרופיל או מועדון אמיתיים. שמירת ערכים תקינים עדכניים נבדקה בשירותים מדומים."
+    },
+    {
+      "id": "D10",
+      "title": "בחירת שער וסגירה בזמן העלאה וסמנטיקת הבחירה",
+      "implemented": true,
+      "verification": [
+        "שש בדיקות נעילה וכשל וסמנטיקה עברו",
+        "לפני התיקון בחירה מקומית c02 סגרה את הבורר בזמן uploading",
+        "לאחר התיקון בחירה וחזרת אנדרואיד נחסמו ו-c01 נשאר מסומן"
+      ],
+      "source": "src/components/community/CoverImagePicker.tsx",
+      "limitation": "הבטחת העלאה מקומית בלבד, ללא ספריית מכשיר, קובץ או שינוי שער במועדון."
+    },
+    {
+      "id": "F07",
+      "title": "הצגת כשל וטעינה כשיא מחזור חסר",
+      "implemented": true,
+      "verification": [
+        "שמונה בדיקות של טעינה וכשל וריק ושימור וגבולות ותשובה מאוחרת עברו",
+        "מצבי טעינה וכשל שונים נצפו במארח מקור לפני ואחרי",
+        "ניסיון חוזר נלחץ במכשיר וחזר לכשל המקומי הצפוי"
+      ],
+      "source": "src/components/summary/SeasonClubSummary.tsx",
+      "limitation": "החישוב ומכני העונה לא שונו. הקריאות והמספרים במארח מקומיים בלבד."
+    }
+  ],
+  "testingLimitations": [
+    "הצלחת דיווח במצב הדגמה אינה הוכחת שמירה.",
+    "הצלחת הזמנת מועדון במצב הדגמה אינה הוכחת מסירה.",
+    "אין בדיקת שרת ייצור, אייפון או קורא מסך אנושי.",
+    "פעילות גופנית מושבתת וסדר שוערים אינו מסלול פעיל, ולכן אינם יכולות לפרסום."
+  ],
+  "toolingFixes": [
+    {
+      "id": "T01",
+      "title": "חיבור כפול בהכנת נתוני בדיקת הרשאות",
+      "implemented": true,
+      "source": "tests/rules/scheduled-withdrawal.test.mjs",
+      "verification": [
+        "כל 360 בדיקות ההרשאות עברו בסדרה לאחר שימוש בחיבור אחד לכל הקשר",
+        "קובץ הכללים, קובצי התלויות וכל הציפיות נשארו ללא שינוי"
+      ],
+      "limitation": "בחבילה קיימת בדיקה היסטורית המדמה הצעת כלל בזיכרון; אינה הוכחה להרשאה פעילה."
+    }
+  ]
+}

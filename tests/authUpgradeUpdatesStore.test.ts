@@ -94,6 +94,7 @@ describe('refreshing the store from the session', () => {
   });
 
   it('replaces the guest with the account that is now signed in', async () => {
+    authState.currentUser.uid = REAL.id;
     getCurrentUser.mockResolvedValue(REAL);
     await useUserStore.getState().refreshFromSession();
     const s = useUserStore.getState();
@@ -106,6 +107,7 @@ describe('refreshing the store from the session', () => {
   // A guest object carries `onboardingCompleted: true`, so without the refresh
   // the navigator cannot tell a brand-new account it owes a profile.
   it('lets a brand-new account be recognised as owing a profile', async () => {
+    authState.currentUser.uid = FRESH.id;
     getCurrentUser.mockResolvedValue(FRESH);
     expect(useUserStore.getState().hasCompletedOnboarding()).toBe(true); // the guest lie
     await useUserStore.getState().refreshFromSession();
@@ -204,10 +206,12 @@ describe('the contextual auth sheet handler', () => {
 });
 
 test('authenticated refresh refuses a guest or another account profile',async()=>{
+ authState.currentUser.uid='expected';
  for(const value of [GUEST,REAL]){
   getCurrentUser.mockResolvedValue(value);
   await expect(useUserStore.getState().refreshFromSession('expected')).rejects.toThrow();
   expect(useUserStore.getState().currentUser).toBeNull();expect(useUserStore.getState().profileRestoreFailed).toBe(true);
  }
+ authState.currentUser.uid=REAL.id;
  getCurrentUser.mockResolvedValue(REAL);await useUserStore.getState().refreshFromSession('u-real');expect(useUserStore.getState().profileRestoreFailed).toBe(false);
 });

@@ -1,0 +1,35 @@
+{
+  "verified": true,
+  "head": "06417f6132f4c7636aaee25574354ed7722966b9",
+  "sourceFilesUnchanged": 1361,
+  "phone": {
+    "version": "1.1.76",
+    "code": 308,
+    "sha256": "ddbca960b3c4cc82a246ef82b355a00dc4c4b01173a57c40756c34306e29ecd9",
+    "usageEnabled": true,
+    "embeddedRevision": "648c4cef31ef29e52a1dd6c2"
+  },
+  "pulse": {
+    "version": "1.0.105",
+    "code": 112,
+    "sha256": "b9d20727c9b9ef86cb045df00f1b43e2b99821b8b23cb7a2d29d2eb8db569bf2",
+    "signatureMatchesPrevious": true
+  },
+  "bundledSources": {
+    "phone": {
+      "App.tsx": "726e2e943b368aba02bc6e8ee4b1de119dbf78d987e2b06658f2d3962349d575",
+      "src/services/usageActivity.ts": "13fece77c1427dcc4d41b49a5eeb0336eac7b065f6565ab20836ee823dd8a23f",
+      "src/services/usageActivityQueue.ts": "16e0fd0906dd0e1c699d9aa3229037ce13894438628e2a5c04c71b552c12f514",
+      "src/utils/usageActivity.ts": "1050e9df529b3d4ccc4a08dd1372e34ce67e2116c2f10d31f1ce02e3a8c801ac",
+      "src/screens/communities/CommunityDetailsScreen.tsx": "aee9a09fc0b0c42049d18a21fbefe9bbf10fb3190a2fe7636e7200e4871719fc"
+    },
+    "pulse": {
+      "src/services/adminTransport.ts": "d7c6277726b3422ecdfea29e53f01f1dd2c3e89e7994051a7af79b0ea5e40d0d",
+      "src/services/usageActivity.ts": "4cdd527126fcfbbc27ec3933fcdafe2acca227a99316cdfbae5f530335eb9ca6",
+      "src/screens/UserDetailScreen.tsx": "9d57ecb8fc78f5805eec54762a567aa8421bfc9e887e1a5535c91290f1c6241a",
+      "src/components/UserUsageTimeline.tsx": "91678e38f56747286ec6f424ebff3cc8e7da257cd374df0253e28dd225f44481",
+      "src/services/taskConversion.ts": "76efa8fa27ce7e5bc9fb7b82890f0111848fe8f7f6b2434d46fa9828cad9711c",
+      "src/screens/TasksScreen.tsx": "557c7079a6bdfc72620c292c09593e57bceb11db196992b7fb1ae0b7702119a3"
+    }
+  }
+}

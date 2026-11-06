@@ -1,0 +1,717 @@
+{
+  "schemaVersion": 1,
+  "reviewedAtUtc": "2026-11-02 22:05:30 UTC",
+  "scope": "15 צילומי מסכי מקור, בדיקה חזותית בלבד",
+  "environment": {
+    "platform": "android",
+    "rtl": true,
+    "mock": true,
+    "evidenceSource": "הצהרת הסוכן הראשי וקובצי צילום האימולטור",
+    "viewport": {
+      "width": 1080,
+      "height": 2400
+    }
+  },
+  "method": "כל תמונה נפתחה בנפרד ב-view_image עם detail original ונקראה בגודל מלא. אין הסקת לחיצות או רגרסיה מתמונה.",
+  "summary": {
+    "screensReviewed": 15,
+    "contentViewportsReviewed": 13,
+    "loadingOnlyScreens": 1,
+    "indeterminateBlankScreens": 1,
+    "confirmedVisualIssueTypes": 2,
+    "verificationGapTypes": 2,
+    "criticalNewIssues": 0,
+    "functionallyVerifiedScreens": 0,
+    "regressionCompleteScreens": 0
+  },
+  "globalLimitations": [
+    "צילום הוא חלק גלוי אחד של המסך, ללא הוכחה לכל מצבי הגלילה, חלונות, מקלדת או תפקידים.",
+    "לא בוצעו פעולות עסקיות או לחיצות במסגרת הסקירה הזאת.",
+    "שמות ומספרים הם נתוני ההדגמה המוצגים, ולא אימות שירות או חישוב.",
+    "אין לסמן מסך כבדיקת אימולטור מלאה או כרגרסיה שהושלמה על סמך רשומות אלה."
+  ],
+  "screens": [
+    {
+      "name": "CommunitiesCreate",
+      "state": "שלב הפרטים בטופס יצירת מועדון ריק",
+      "observations": [
+        "שני שלבים מוצגים מימין לשמאל, פרטים פעיל ומתקדם בהמתנה.",
+        "שדות שם ותיאור המועדון, עיר ותחילת פרטי הקשר נראים בכרטיסים לבנים.",
+        "המשך מושבת ולפניו תזכורת למילוי שם המועדון ועיר."
+      ],
+      "issues": [
+        {
+          "id": "NV01",
+          "severity": "low",
+          "description": "בועת העזרה חופפת לקצה הימני של כפתור ההמשך המושבת."
+        }
+      ],
+      "limitations": [
+        "רק חלקו העליון של שלב הפרטים נראה. לא נבדקו הקלדה, הצעות עיר, מקלדת, שלב מתקדם או יצירה."
+      ],
+      "evidence": {
+        "name": "CommunitiesCreate",
+        "file": "artifacts/overnight-2026-11-02/census/CommunitiesCreate.png",
+        "bytes": 205070,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "8ce03911282c396dd7d01e2c983a7f849088f7d2c4453976bbb15d9c7f4ecfe9"
+      },
+      "status": "Issues identified",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false,
+      "verificationGaps": []
+    },
+    {
+      "name": "GameCreate",
+      "state": "שלב הפרטים ביצירת מחזור למועדון קיים",
+      "observations": [
+        "מוצגים שלושה שלבים ויעד המועדון חמישי כדורגל.",
+        "התאריך המוצג הוא 05.11.2026 בשעה 20:00. המיקום ריק ומסומן חובה.",
+        "אפשרויות משטח אספלט, סינטטי ודשא מופיעות בשורה. ההמשך מושבת עם תזכורת למיקום."
+      ],
+      "issues": [
+        {
+          "id": "NV01",
+          "severity": "low",
+          "description": "בועת העזרה חופפת לקצה הימני של כפתור ההמשך."
+        }
+      ],
+      "limitations": [
+        "שלבי החוקים והמתקדם, בחירת תאריך ומקום, גלילה ויצירת מחזור לא נבדקו בתמונה."
+      ],
+      "evidence": {
+        "name": "GameCreate",
+        "file": "artifacts/overnight-2026-11-02/census/GameCreate.png",
+        "bytes": 216302,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "bc38bbddddf3693850e9f7d02d4d6460108d31271c27c53eb9127c5e5ad614ee"
+      },
+      "status": "Issues identified",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false,
+      "verificationGaps": []
+    },
+    {
+      "name": "GameCreateQuick",
+      "state": "שלב הפרטים ביצירת מחזור חד פעמי",
+      "observations": [
+        "מופיע הסבר שמדובר במחזור חד פעמי ושאפשר להקים מועדון קבוע בהמשך.",
+        "מוצגים שם מחזור אופציונלי, תאריך ושעה, מיקום חובה ותחילת בחירת משטח.",
+        "ההמשך מושבת משום שהמיקום לא מולא."
+      ],
+      "issues": [
+        {
+          "id": "NV01",
+          "severity": "low",
+          "description": "בועת העזרה חופפת לאזור הימני של פעולת ההמשך התחתונה."
+        }
+      ],
+      "limitations": [
+        "לא נבדקו שלבים נוספים, מילוי, אימות שדות או יצירה. תחתית אזור המשטח מחוץ לחלק הגלוי."
+      ],
+      "evidence": {
+        "name": "GameCreateQuick",
+        "file": "artifacts/overnight-2026-11-02/census/GameCreateQuick.png",
+        "bytes": 220712,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "67a5eec7558ca46b2796b19ce107cb19fcfe6fab0fc0e67819c264e98b14836a"
+      },
+      "status": "Issues identified",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false,
+      "verificationGaps": []
+    },
+    {
+      "name": "DraftSetup",
+      "state": "בחירת שיטת חלוקת כוחות לפני בחירה",
+      "observations": [
+        "כרטיס נתוני הכוחות מציג 9 רשומים, 2 קבוצות ו-5 על 5.",
+        "פעולת עריכת הכוחות הקיימים מופיעה בנפרד מבחירת שיטה.",
+        "כוחות אוטומטיים מושבתים עם הסבר להפעלת דירוג פנימי. בחירת קפטנים נראית זמינה, והמשך חלוקה עדיין מושבת."
+      ],
+      "issues": [
+        {
+          "id": "NV01",
+          "severity": "low",
+          "description": "בועת העזרה חופפת לקצה הימני של כפתור החלוקה המושבת."
+        }
+      ],
+      "limitations": [
+        "לא נבחרה שיטה. האפשרויות שמתחת לקצה הגלוי, עריכת חלוקה ותוצאות השיטות לא נבדקו."
+      ],
+      "evidence": {
+        "name": "DraftSetup",
+        "file": "artifacts/overnight-2026-11-02/census/DraftSetup.png",
+        "bytes": 201027,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "ef3da38eea044619b4ef5c761131b3fb538a08d5e90c08c8fd0c6c1f1531dfbc"
+      },
+      "status": "Issues identified",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false,
+      "verificationGaps": []
+    },
+    {
+      "name": "ManualAllocationThree",
+      "state": "תצוגת הדגמה של חלוקה ידנית לשלוש קבוצות",
+      "observations": [
+        "מוצגים שלושה שחקנים שטרם שובצו וחיפוש שחקן.",
+        "האדומים מציגים 6 מתוך 7 ושישה כרטיסי שחקן, עם הוסף למקום החסר. תחילת הכחולים נראית בהמשך.",
+        "התחתית מציגה שנותרו שלושה לשיבוץ, שמירת טיוטה והסבר על טיוטה חלקית."
+      ],
+      "issues": [
+        {
+          "id": "NV01",
+          "severity": "low",
+          "description": "בועת העזרה חופפת לצד הימני של שמירת הטיוטה."
+        },
+        {
+          "id": "NV02",
+          "severity": "low",
+          "description": "הכותרת הארוכה הכוללת תצוגת דמו אינה נראית בשלמותה. הכותרת מוגבלת להדגמה ולכן אין מכאן הוכחה לחיתוך כותרת הייצור."
+        }
+      ],
+      "limitations": [
+        "רק הקבוצה הראשונה ותחילת השנייה נראות. לא נבדקו גרירה, בחירת שחקנים, שמירת טיוטה או פרסום."
+      ],
+      "evidence": {
+        "name": "ManualAllocationThree",
+        "file": "artifacts/overnight-2026-11-02/census/ManualAllocationThree.png",
+        "bytes": 257554,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "d1f4ff369d3a0a0ef2d34c7ef5a1a124b51aea2da765b77f8bb8cdba868616fb"
+      },
+      "status": "Issues identified",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false,
+      "verificationGaps": []
+    },
+    {
+      "name": "ManualAllocationFour",
+      "state": "תצוגת הדגמה של חלוקה ידנית לארבע קבוצות ריקות",
+      "observations": [
+        "מוצגים 25 שחקנים שטרם שובצו, שישה כרטיסים ראשונים וקישור להצגת כולם.",
+        "האדומים מציגים 0 מתוך 7 עם הוספת שחקנים, ותחילת הכחולים הריקים נראית.",
+        "בתחתית מופיעים 25 שחקנים שלא שובצו ושמירת טיוטה חלקית."
+      ],
+      "issues": [
+        {
+          "id": "NV01",
+          "severity": "low",
+          "description": "בועת העזרה חופפת לצד הימני של שמירת הטיוטה."
+        },
+        {
+          "id": "NV02",
+          "severity": "low",
+          "description": "הכותרת הכוללת את תוספת תצוגת הדמו אינה נראית בשלמותה. אין הוכחה למצב כותרת הייצור."
+        }
+      ],
+      "limitations": [
+        "ארבע הקבוצות אינן נראות במלואן. הרחבת המאגר, חלוקה מרובה וטיוטה לא הופעלו."
+      ],
+      "evidence": {
+        "name": "ManualAllocationFour",
+        "file": "artifacts/overnight-2026-11-02/census/ManualAllocationFour.png",
+        "bytes": 233555,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "e686b066e34b3aa58d69a8937fa702f3d38bae342fbf141961682e5db9e9c278"
+      },
+      "status": "Issues identified",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false,
+      "verificationGaps": []
+    },
+    {
+      "name": "DraftBoard",
+      "state": "שלב בחירת שחקנים בבחירת קפטנים",
+      "observations": [
+        "מוצג שלב 3 מתוך 3 עם רצף תמונות בחירה אופקי.",
+        "האדומים והכחולים כוללים קפטן אחד כל אחד, אלין ודניאל בהתאמה.",
+        "רשימת השחקנים הזמינים מציגה שמות, אווטארים ופעולת בחר בצד השני."
+      ],
+      "issues": [
+        {
+          "id": "NV01",
+          "severity": "medium",
+          "description": "בועת העזרה מכסה חלק מתמונות השחקנים בשורות התחתונות. בצילום היא חופפת לאזורי נדב ורון."
+        }
+      ],
+      "limitations": [
+        "לא בוצעה בחירה, חזרה, גלילה או השלמת חלוקה. רצף הבחירות האופקי נראה חלקית בלבד."
+      ],
+      "evidence": {
+        "name": "DraftBoard",
+        "file": "artifacts/overnight-2026-11-02/census/DraftBoard.png",
+        "bytes": 323370,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "74831289f17058649ea819623c6ea765f41e74a54d74463e2aa44d4ed88c29ef"
+      },
+      "status": "Issues identified",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false,
+      "verificationGaps": []
+    },
+    {
+      "name": "SavedDraftBoard",
+      "state": "חלוקה קיימת של עשרה שחקנים לשתי קבוצות",
+      "observations": [
+        "מוצגים 10 שחקנים ושתי קבוצות, חמישה שמות ותמונות בכל קבוצה.",
+        "הכותרות האדומים והכחולים בצבעי הקבוצות ומופיעות בכרטיסים לבנים.",
+        "פעולות לפרטי המחזור ועריכת הכוחות נראות בתחתית."
+      ],
+      "issues": [
+        {
+          "id": "NV01",
+          "severity": "low",
+          "description": "בועת העזרה חופפת לקצה הימני של פעולת עריכת הכוחות והמסגרת שלה."
+        }
+      ],
+      "limitations": [
+        "לא נבדקו עריכה, מעבר לפרטי מחזור, שמות ארוכים או מספר שחקנים אחר."
+      ],
+      "evidence": {
+        "name": "SavedDraftBoard",
+        "file": "artifacts/overnight-2026-11-02/census/SavedDraftBoard.png",
+        "bytes": 280363,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "59b7701adb47da24ad2f310523378e113c223e88a7abd76fe76568ef2654143c"
+      },
+      "status": "Issues identified",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false,
+      "verificationGaps": []
+    },
+    {
+      "name": "RoundAddMembers",
+      "state": "הוספת שחקנים למחזור מלא ללא בחירה",
+      "observations": [
+        "כרטיס ליגת השכונה מציג היום 21:41, 10 מתוך 10 רשומים, 0 מקומות פנויים ו-0 נבחרו.",
+        "מוצגים חיפוש חברי מועדון ושורות עם תיבות סימון ריקות.",
+        "מופיע הסבר ששחקנים נוספים נכנסים להמתנה כשההרכב מלא, והפעולה מושבתת עד בחירה."
+      ],
+      "issues": [
+        {
+          "id": "NV01",
+          "severity": "low",
+          "description": "בועת העזרה חופפת לקצה הימני של הפעולה המושבתת בתחתית."
+        }
+      ],
+      "limitations": [
+        "לא נבחר שחקן ולא נבדקו רישום, המתנה, שינוי קיבולת או פעולת החיפוש. המספרים הם מה שמוצג, ללא אימות חישוב."
+      ],
+      "evidence": {
+        "name": "RoundAddMembers",
+        "file": "artifacts/overnight-2026-11-02/census/RoundAddMembers.png",
+        "bytes": 279151,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "0469a8429b96561263d3aa22581e481f082d8ab4d3692a8ea183ec9b5e906984"
+      },
+      "status": "Issues identified",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false,
+      "verificationGaps": []
+    },
+    {
+      "name": "CommunitiesFeed",
+      "state": "כותרות אזורי גילוי ומועדונים ללא כרטיסים גלויים בצילום",
+      "observations": [
+        "מופיעים אזור מותג כחול, מועדון חדש, חיפוש, סינון ופעמון.",
+        "מופיעות הכותרות המועדונים שלי ומועדונים שאפשר להצטרף אליהם.",
+        "מתחת לכותרות נראים אזורים ריקים גדולים, ללא כרטיס, מצב ריק או טעינה קריאה."
+      ],
+      "issues": [],
+      "verificationGaps": [
+        {
+          "id": "NV03",
+          "description": "לא ניתן לקבוע מתמונה אחת אם האזורים הריקים הם מצב ביניים של טעינה, מצב נתוני ההדגמה או תקלה. נדרש צילום אחרי התייצבות וקריאת מצב ההרצה.",
+          "visualContentGapResolved": true,
+          "resolvedByScreenshot": "artifacts/overnight-2026-11-02/native-final/CommunitiesFeed.png",
+          "resolutionLimit": "תוכן נראה בצילום מאוחר. אין הוכחת תקינות תפקודית או כל מצבי המסך."
+        }
+      ],
+      "limitations": [
+        "אין הוכחה לתוכן המועדונים, למצב ריק יציב או לתוצאות חיפוש. הבועה אינה מכסה תוכן קיים בצילום זה."
+      ],
+      "evidence": {
+        "name": "CommunitiesFeed",
+        "file": "artifacts/overnight-2026-11-02/census/CommunitiesFeed.png",
+        "bytes": 505632,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "c492179bf1c28f91e7d666ca04152f58fdaf01c335096d07d86db90830b5f370"
+      },
+      "status": "Inspected",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false
+    },
+    {
+      "name": "CommunityDetails",
+      "state": "פרטי מועדון חמישי כדורגל בלשונית מידע",
+      "observations": [
+        "תמונת כותרת, שם, תל אביב ומונה 23 שחקנים מופיעים בבירור. נראית פעולת החלפת תמונת רקע.",
+        "לשוניות מידע, שחקנים וסטטיסטיקות מסודרות מימין לשמאל.",
+        "נתוני המועדון מציגים 23 שחקנים, 910 גולים, 42 מחזורים ו-328 משחקים, עם יחידות נפרדות. תחילת הטבלה והבחירה מצטבר נראות."
+      ],
+      "issues": [
+        {
+          "id": "NV01",
+          "severity": "low",
+          "description": "בועת העזרה חופפת לצד הימני של בורר הטבלה וראש עמודת השחקן באזור התחתון."
+        }
+      ],
+      "limitations": [
+        "המספרים נצפו בלבד ולא חושבו מחדש. לשוניות אחרות, תפריט, תמונה, שיחה, טבלה בגלילה ותפקידים אחרים לא נבדקו."
+      ],
+      "evidence": {
+        "name": "CommunityDetails",
+        "file": "artifacts/overnight-2026-11-02/census/CommunityDetails.png",
+        "bytes": 1146447,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "680ea99f621c574cd171904511ab34b90efd09700d7f95d9c234560805778814"
+      },
+      "status": "Issues identified",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false,
+      "verificationGaps": []
+    },
+    {
+      "name": "CommunityDetailsPublic",
+      "state": "פרטי מועדון ציבורי שאינו פתוח לצפייה בסגל ובנתונים",
+      "observations": [
+        "מוצגים שישי בוקר חיפה, העיר חיפה ו-24 שחקנים.",
+        "מידע פעילה, שחקנים וסטטיסטיקות מסומנות במנעול. תיאור המועדון מופיע בכרטיס נפרד.",
+        "כרטיס המחזור הקרוב מציג מחר, יום רביעי 04.11, 07:30, גרין הוקי, 10/12 שחקנים, 6 על 6 ומשטח סינטטי."
+      ],
+      "issues": [
+        {
+          "id": "NV01",
+          "severity": "low",
+          "description": "בועת העזרה חופפת לאזור המדדים הימני של כרטיס המחזור הקרוב."
+        }
+      ],
+      "limitations": [
+        "לא נלחצו לשוניות נעולות או פעולה תחתונה. לא נבדקו הצטרפות, הרשמה, סגל, ניווט למגרש או חשבון אורח."
+      ],
+      "evidence": {
+        "name": "CommunityDetailsPublic",
+        "file": "artifacts/overnight-2026-11-02/census/CommunityDetailsPublic.png",
+        "bytes": 1315616,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "83d7fc98ff763b397501e3b46e93029c2f548e41fa64673bf3feccd9a7d77bb3"
+      },
+      "status": "Issues identified",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false,
+      "verificationGaps": []
+    },
+    {
+      "name": "CommunityEdit",
+      "state": "שלב הפרטים בהגדרות מועדון קיים",
+      "observations": [
+        "מוצגים שני שלבים ושדות מאוכלסים עבור חמישי כדורגל.",
+        "תיאור המועדון נפרס לשתי שורות, העיר תל אביב ומספר הטלפון נראה עם פלוס משמאל למספר.",
+        "כפתור המשך פעיל וקריא. אין חפיפת סמל עם תוכן שדה בחלק הגלוי."
+      ],
+      "issues": [
+        {
+          "id": "NV01",
+          "severity": "low",
+          "description": "בועת העזרה חופפת לחלק הימני של כפתור ההמשך הפעיל."
+        }
+      ],
+      "limitations": [
+        "לא נבדקו הקלדה, שינוי עיר, מקלדת, שלב מתקדם, שמירה או שגיאת שמירה."
+      ],
+      "evidence": {
+        "name": "CommunityEdit",
+        "file": "artifacts/overnight-2026-11-02/census/CommunityEdit.png",
+        "bytes": 207572,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "6321f5989052597cacefd5ff2d7dcf42d16b6100b7150da4ce8327496f6e5e71"
+      },
+      "status": "Issues identified",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false,
+      "verificationGaps": []
+    },
+    {
+      "name": "CommunityPlayers",
+      "state": "סגל מועדון במצב הכל ללא חיפוש",
+      "observations": [
+        "המסננים מציגים הכל 23, מנהלים 1 ושחקנים 22.",
+        "שורות הסגל מציגות תמונה ושם מימין ותפריט שלוש נקודות בצד השני. לדניאל תווית מנהל.",
+        "אצל אורי נראים כרטיס צהוב עם 2 וכרטיס אדום עם 1. יתר השורות הגלויות קריאות ומופרדות."
+      ],
+      "issues": [
+        {
+          "id": "NV01",
+          "severity": "medium",
+          "description": "בועת העזרה חופפת לתמונות השחקנים בחלק התחתון, ובצילום מכסה חלק מאווטארים ליד אסף ובן."
+        }
+      ],
+      "limitations": [
+        "לא בוצעו חיפוש, סינון, תפריט שחקן, שינוי הרשאה, כרטיס או גלילה. אין אימות למוני הכרטיסים מול הנתונים."
+      ],
+      "evidence": {
+        "name": "CommunityPlayers",
+        "file": "artifacts/overnight-2026-11-02/census/CommunityPlayers.png",
+        "bytes": 279924,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "536dfaab0d636181126ad0726cbb9f914d340494bb5d89716c6925ecffb5fcbe"
+      },
+      "status": "Issues identified",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false,
+      "verificationGaps": []
+    },
+    {
+      "name": "ManagerDashboard",
+      "state": "טעינת לוח המנהל בזמן פעילות סביבת הפיתוח",
+      "observations": [
+        "מוצגים כותרת לוח מנהל ותמונת חדר הלבשה.",
+        "במרכז נראים מחוון וטקסט טוען את נתוני המועדון.",
+        "בחלק העליון מופיע פס סביבת פיתוח עם Downloading."
+      ],
+      "issues": [],
+      "verificationGaps": [
+        {
+          "id": "NV04",
+          "description": "הצילום מציג טעינה בלבד, ומעורבת בו שכבת הורדת סביבת הפיתוח. נדרש צילום תוכן מאוחר לפני קביעה שהמסך והמקטעים שלו נסקרו.",
+          "visualContentGapResolved": true,
+          "resolvedByScreenshot": "artifacts/overnight-2026-11-02/native-final/ManagerDashboard.png",
+          "resolutionLimit": "תוכן נראה בצילום מאוחר. אין הוכחת תקינות תפקודית או כל מצבי המסך."
+        }
+      ],
+      "limitations": [
+        "לא נצפו כרטיסי ניהול, ציוד, דירוגים או מידע לאחר טעינה. אין הוכחה לתקלה מתמשכת מהצילום הזה."
+      ],
+      "evidence": {
+        "name": "ManagerDashboard",
+        "file": "artifacts/overnight-2026-11-02/census/ManagerDashboard.png",
+        "bytes": 351720,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "0835b3db9cf83936b6aa00bdf8c9f5f3919c615481d5013eb4f4ba002606f0c1"
+      },
+      "status": "Inspected",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false
+    }
+  ],
+  "followupReviewedAtUtc": "2026-11-02 22:14:43 UTC",
+  "followupMethod": "לפי דיווח הסוכן הראשי, נפתחו מסכי מקור לאחר resetRoot עם פרמטרים נקיים והמתנה של 4.5 שניות. חמש התמונות נפתחו שוב ב-view_image בגודל original. אין שינוי ניווט מוצר או בדיקת לחיצה בסקירה.",
+  "followupScreens": [
+    {
+      "name": "CommunitiesFeed",
+      "state": "רשימת מועדונים אחרי איפוס שורש והמתנה",
+      "observations": [
+        "כרטיס חמישי כדורגל מציג תל אביב, 23 שחקנים, מנהל וחבר במועדון.",
+        "באזור הגילוי מופיע שלישי ספורטק ברעננה עם 32 שחקנים, פעולת בקשת הצטרפות וצפייה במועדון; נראה גם חלק מכרטיס מועדון בירושלים.",
+        "האזור שהיה ריק בצילום הראשון מציג כעת כרטיסים ממשיים."
+      ],
+      "issues": [
+        {
+          "id": "NV01",
+          "severity": "medium",
+          "description": "בועת העזרה חופפת לחלק משם המועדון, העיר ומונה השחקנים בכרטיס התחתון הגלוי."
+        }
+      ],
+      "resolves": [
+        "NV03"
+      ],
+      "limitations": [
+        "פער התוכן הגלוי נפתר. מצב טעינה, מצב ריק אמיתי, חיפוש, סינון ובקשת הצטרפות לא נבדקו תפקודית."
+      ],
+      "evidence": {
+        "name": "CommunitiesFeed",
+        "file": "artifacts/overnight-2026-11-02/native-final/CommunitiesFeed.png",
+        "bytes": 1299849,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "85d089185a7337f0f1f44a1cabb85bedd98d12d44356c27e7f1c0563d0bf935a"
+      },
+      "status": "Issues identified",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false,
+      "verificationGaps": []
+    },
+    {
+      "name": "ManagerDashboard",
+      "state": "לוח מנהל טעון, לשונית סקירה",
+      "observations": [
+        "הכותרת מציגה כדורגל אנשים טובים, ולשוניות סקירה, דירוגים וציוד.",
+        "כרטיס מה דורש טיפול מציג חמישה נושאים: בקשה אחת למחזור הקרוב, מחזיק ציוד אחד ועוד שלושה נושאים.",
+        "המחזור הקרוב מציג 4.11 בשעה 22:10, שישה רשומים מתוך20, 14 מקומות פנויים ואחד בהמתנה. המילוי הגרפי נראה כשלושים אחוז.",
+        "פס הורדת סביבת הפיתוח ומחוון הטעינה מהצילום הקודם אינם מופיעים."
+      ],
+      "issues": [],
+      "resolves": [
+        "NV04"
+      ],
+      "limitations": [
+        "פער טעינת הסקירה נפתר. לשוניות הדירוגים והציוד, נושאים מורחבים, קישורים, מונים מול נתונים ופעולות ניהול לא נבדקו."
+      ],
+      "evidence": {
+        "name": "ManagerDashboard",
+        "file": "artifacts/overnight-2026-11-02/native-final/ManagerDashboard.png",
+        "bytes": 477948,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "257ed7fcb63b44edcac672343fd0b0199748755f266085b464aa64b05afc4a03"
+      },
+      "status": "Inspected",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false,
+      "verificationGaps": []
+    },
+    {
+      "name": "CommunityHistory",
+      "state": "היסטוריית מחזורים, מסנן הכל",
+      "observations": [
+        "מוצגים מסנני הכל ושיחקתי ושלושה כרטיסי מחזור.",
+        "שני כרטיסים מסומנים שיחקתי ואחד לא שיחקתי; תאריך, שם מועדון ומגרש קריאים.",
+        "מוצגים שחקנים, מספר משחקים ושערים ובישולים עם אפס או סימן חסר במצבים השונים. תג הפורמט מופיע בנפרד."
+      ],
+      "issues": [],
+      "resolves": [],
+      "limitations": [
+        "זהו צילום נוסף בקבוצת הסקירה, ללא צילום קודם בבעלות הסוכן להשוואה. לא נבדקו סינון, פתיחת מחזור, גלילה או התאמת היחידות והנתונים לשירות."
+      ],
+      "evidence": {
+        "name": "CommunityHistory",
+        "file": "artifacts/overnight-2026-11-02/native-final/CommunityHistory.png",
+        "bytes": 180233,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "9fc0526bf7bae0bd61ff628734fe3b45563e160d5f49f001d34340928b471b2d"
+      },
+      "status": "Inspected",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false,
+      "verificationGaps": []
+    },
+    {
+      "name": "CommunitiesMap",
+      "state": "מפת המועדונים עם סמנים ואשכול",
+      "observations": [
+        "מוצגים כותרת, חיפוש לפי עיר או שם מועדון, פקד מיקום וסינון.",
+        "המפה נטענת עם סמנים חלולים ומלאים ואשכול הנושא3 באזור המרכז.",
+        "מקרא מבחין בין חבר במועדון ולא חבר. כפתורי התקרבות והתרחקות נראים בצד השמאלי."
+      ],
+      "issues": [],
+      "resolves": [],
+      "limitations": [
+        "זהו צילום נוסף בקבוצת הסקירה. לא נבדקו מחוות מפה, מיקום, הרשאת מיקום, סינון, חיפוש, פתיחת סמן או דיוק הקואורדינטות. תוכן מפת הבסיס מגיע מספק המפה."
+      ],
+      "evidence": {
+        "name": "CommunitiesMap",
+        "file": "artifacts/overnight-2026-11-02/native-final/CommunitiesMap.png",
+        "bytes": 1232797,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "acc5736c33b694225ab78c4712c0cc70628e1ace7e4bcbef3cd9b7b67f876093"
+      },
+      "status": "Inspected",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false,
+      "verificationGaps": []
+    },
+    {
+      "name": "AddMembers",
+      "state": "הוספת שחקנים למחזור מלא, גם תחת תווית מסלול AddMembers",
+      "observations": [
+        "כותרת הוספת שחקנים למחזור וכרטיס ליגת השכונה מופיעים.",
+        "מוצגים10 מתוך10 רשומים, אפס מקומות פנויים ואפס נבחרו, חיפוש ותיבות סימון.",
+        "הסבר ההמתנה וכפתור בחרו שחקנים לרישום נראים בשלמותם. בועת עזרה אינה נראית בתמונה זו."
+      ],
+      "issues": [],
+      "resolves": [],
+      "verificationGaps": [
+        {
+          "id": "NV05",
+          "description": "הצילום תחת AddMembers מציג שוב את מצב הוספת השחקנים למחזור. אם היעד הוא הוספה למועדון, התמונה אינה מוכיחה שהמצב הזה נפתח."
+        }
+      ],
+      "limitations": [
+        "התוכן תואם לסוג המצב שנראה קודם ב-RoundAddMembers. היעדר הבועה בתמונה זו אינו תיקון קוד או הוכחה שלא תכסה במצב אחר. לא נבחרו או נוספו שחקנים."
+      ],
+      "evidence": {
+        "name": "AddMembers",
+        "file": "artifacts/overnight-2026-11-02/native-final/AddMembers.png",
+        "bytes": 250314,
+        "width": 1080,
+        "height": 2400,
+        "sha256": "8496c8f2ef91aef83b1d4bac60b3e780b8000c262674b310a3f67b7fd91b927d"
+      },
+      "status": "Inspected",
+      "visualScreenshotReviewed": true,
+      "functionalVerified": false,
+      "regressionVerified": false,
+      "emulatorVerificationCompleted": false
+    }
+  ],
+  "followupSummary": {
+    "additionalScreenshotReviews": 5,
+    "totalScreenshotReviews": 20,
+    "distinctRouteLabelsReviewed": 18,
+    "priorVisualContentGapsResolved": [
+      "NV03",
+      "NV04"
+    ],
+    "openTargetVariantGap": "NV05",
+    "criticalNewIssues": 0,
+    "functionalVerifiedScreens": 0,
+    "regressionCompleteScreens": 0
+  }
+}

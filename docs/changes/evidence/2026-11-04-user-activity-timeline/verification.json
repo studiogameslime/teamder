@@ -1,0 +1,109 @@
+{
+  "at": "2026-11-04T11:38:30.072117+00:00",
+  "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+  "workingTreeChanges": true,
+  "testSuites": 631,
+  "tests": 7072,
+  "typechecks": {
+    "typecheck-verified.log": true,
+    "server-typecheck-verified.log": true,
+    "pulse-typecheck-verified.log": true
+  },
+  "browser": {
+    "native": false,
+    "fixtureData": true,
+    "results": [
+      {
+        "width": 320,
+        "overflow": false,
+        "sourceRendered": true
+      },
+      {
+        "width": 390,
+        "overflow": false,
+        "sourceRendered": true
+      },
+      {
+        "width": 430,
+        "overflow": false,
+        "sourceRendered": true
+      }
+    ],
+    "retainedOnFailure": true,
+    "empty": true,
+    "disabled": true,
+    "staleOwnerAnswerRejected": true,
+    "pollingPreservesExpandedVisit": true,
+    "inactiveStopsPolling": true,
+    "errors": []
+  },
+  "releaseLog": {
+    "at": "2026-11-04T11:38:29.964710+00:00",
+    "localOnly": true,
+    "collectionEnabled": false,
+    "deployed": false,
+    "entries": [
+      {
+        "id": "usage-activity-collection-2026-11-04",
+        "readBackVerified": true,
+        "version": "next"
+      },
+      {
+        "id": "usage-activity-registration-2026-11-04",
+        "readBackVerified": true,
+        "version": "next"
+      },
+      {
+        "id": "usage-activity-timeline-2026-11-04",
+        "readBackVerified": true,
+        "version": "next",
+        "shotId": "JXoGdRHjnIjfB27Y87Ls",
+        "shotReadBackVerified": true,
+        "jpegSha256": "0eb598fdb1a046ce7e39fea9d83793069b55acb293c0806b1e1b3d243045e97f"
+      }
+    ]
+  },
+  "productionUsageCollectionEnabled": false,
+  "deployed": false,
+  "built": false,
+  "nativeDeviceVerified": false,
+  "demoDatabaseVerified": false,
+  "pulseItemId": null,
+  "pulseStatusUpdated": false,
+  "sourceHashMode": "text-lf",
+  "sourceHashes": {
+    "App.tsx": "726e2e943b368aba02bc6e8ee4b1de119dbf78d987e2b06658f2d3962349d575",
+    "src/utils/usageActivity.ts": "4bd825e001957899a77156af34dae8248898e90bffa61cf0bd45845a4d2a11f5",
+    "src/services/usageActivityQueue.ts": "52ae04b4a0169cdef1a4bacc2af807fe2d71d5fac590cb486f65120dbf8120c8",
+    "src/services/usageActivity.ts": "6325b830976cc255091eee302f9bb6a24091d4986d953acae9878c22aecb4011",
+    "src/hooks/useUsageSection.ts": "e2a1ae4b9c099883aba6919186475bd4314568370adb650310a94e05edf66c06",
+    "src/services/userService.ts": "9057091b05cd8e911fb37966fa4ea2ee8fad37021bb65b8915dc57d8a813086a",
+    "src/services/gameService.ts": "aae4ebdf3875f2d69473ab346b7e2620c9fc245717628ea7c0ab3a2c6b9db265",
+    "src/screens/communities/CommunityDetailsScreen.tsx": "aee9a09fc0b0c42049d18a21fbefe9bbf10fb3190a2fe7636e7200e4871719fc",
+    "src/screens/communities/ManagerDashboardScreen.tsx": "e359d4d641312ef557a1504ec860c64711abd99d6f99d9d01c64b3b4d21b462f",
+    "src/screens/games/MatchDetailsScreen.tsx": "63b58f624f0678a7c4a59610cc7d44210d128680cd082503cae07bdb29f02f45",
+    "functions/src/usageActivity.ts": "4b26b5ec7fc913c244037487b8d9853923b359fea372af060abe4ce76d84685b",
+    "functions/src/usageActivityCatalog.ts": "4bd825e001957899a77156af34dae8248898e90bffa61cf0bd45845a4d2a11f5",
+    "functions/src/index.ts": "99b92e805ba5b112559d91aa172466c85a9a9d12c008fe4eed3c8c2b212964eb",
+    "pulse/src/services/usageActivity.ts": "4cdd527126fcfbbc27ec3933fcdafe2acca227a99316cdfbae5f530335eb9ca6",
+    "pulse/src/services/usageActivityCatalog.ts": "4bd825e001957899a77156af34dae8248898e90bffa61cf0bd45845a4d2a11f5",
+    "pulse/src/components/UserUsageTimeline.tsx": "91678e38f56747286ec6f424ebff3cc8e7da257cd374df0253e28dd225f44481",
+    "pulse/src/screens/UserDetailScreen.tsx": "9d57ecb8fc78f5805eec54762a567aa8421bfc9e887e1a5535c91290f1c6241a",
+    "firestore.indexes.json": "7e628cdc7f345c3fb22126458e285eb9680596b287505a57707c6b00787f7924",
+    "scripts/error-catch-audit.cjs": "fc78482add0a7615aaa08f1ce385010307e68955179e14943f3a05007213fd6c",
+    "tests/logic/usageActivityQueue.test.ts": "f75447201e93ef78a52d6150d837344d04c995e175ddf7e7aa32e877e71ae09d",
+    "tests/logic/usageActivityServer.test.ts": "7be0ee380b48a8cf7e5ab9ea60f5c9e245cbd739d5f4014a0180bb4baf78aab2",
+    "tests/logic/usageActivityRead.test.ts": "aec9e14f14b2f090663a457187c5c6b201e61a72cef4a9a3272f9da131e6a560",
+    "tests/logic/usageActivityIsolation.test.ts": "5aaba5899fee84861025e01ce1ae6ce45a71578f157f64a741c43aef98ae81b7",
+    "tests/logic/pulseCurrentJoinDispatch.test.ts": "3e73db8ff40d0727d0d9275c3dc368f32a5df2166236ba2993565e03ea005f3d",
+    "tests/logic/joinConfirmationAnalytics.test.ts": "6601b85d103796fc5a1a1face8f051f8becec9b64fff9420c7e9ebbe3dbb14ae"
+  },
+  "featureDocumentation": {
+    "featurePairs": 88,
+    "stateFailures": [],
+    "existingMissingLinks": 107,
+    "currentMissingLinks": 107,
+    "newMissingLinks": [],
+    "nonMissingFailures": []
+  }
+}

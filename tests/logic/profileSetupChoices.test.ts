@@ -11,7 +11,7 @@ function runHandler(name: string, ctx: any) {
 }
 function context() {
   return { user: { id: 'u1', photoUrl: 'previous.jpg' }, name: '  שם לדוגמה  ', photoUrl: undefined, avatarId: 'a22', canSave: true,
-    inFlight: { current: false }, mounted: { current: true }, setBusy: jest.fn(), setUploading: jest.fn(), setPhotoUrl: jest.fn(), setAvatarId: jest.fn(),
+    inFlight: { current: false }, mounted: { current: true }, setBusy: jest.fn(), setUploading: jest.fn(), setPhotoPhase: jest.fn(), setPhotoUrl: jest.fn(), setAvatarId: jest.fn(),
     useUserStore: { getState: () => ({ currentUser: { id: 'u1' } }) },
     updateProfile: jest.fn().mockResolvedValue(undefined), deleteUserPhoto: jest.fn().mockResolvedValue(undefined), pickAndUploadAvatar: jest.fn(),
     logEvent: jest.fn(), AnalyticsEvent: {}, appAlert: jest.fn(), he: { error: 'שגיאה', profileSaveError: 'לא נשמר', profilePhotoUploadFailed: 'לא הועלה' }, __DEV__: false, console,
@@ -26,7 +26,7 @@ test('avatar save explicitly clears photoUrl, trims name, and cleans photo only 
   const c = context(); const save = runHandler('handleSave', c);
   await Promise.all([save(), save()]);
   expect(c.updateProfile).toHaveBeenCalledTimes(1);
-  expect(c.updateProfile).toHaveBeenCalledWith({ name: 'שם לדוגמה', photoUrl: undefined, avatarId: 'a22' });
+  expect(c.updateProfile).toHaveBeenCalledWith({ name: 'שם לדוגמה', photoUrl: undefined, avatarId: 'a22' }, 'u1');
   expect(c.deleteUserPhoto.mock.invocationCallOrder[0]).toBeGreaterThan(c.updateProfile.mock.invocationCallOrder[0]);
 });
 test('failed profile save preserves uploaded file and makes retry available', async () => {

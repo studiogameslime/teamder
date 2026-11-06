@@ -1,4 +1,4 @@
-import { observeCaughtError } from '../services/errorObservation';
+import { observeCaughtError, observeSettledErrors } from '../services/errorObservation';
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert, Share, Modal, RefreshControl, ScrollView } from 'react-native';
 import { RtlTextInput as TextInput } from '../components/RtlTextInput';
@@ -41,6 +41,8 @@ export function SourcesScreen() {
   const [links, setLinks] = useState<FsDoc[]>([]);
   const [report, setReport] = useState<AcquisitionReport | null>(null);
   const [loadingReport, setLoadingReport] = useState(true);
+  const [readErrors,setReadErrors]=useState({links:false,report:false});
+  const reportRequest=useRef(0);
 
   const [detailLink, setDetailLink] = useState<FsDoc | null>(null);
   const [stats, setStats] = useState<LinkStats | null>(null);
@@ -85,16 +87,19 @@ export function SourcesScreen() {
   // `force` bypasses the 5-min cache — used by pull-to-refresh so live click
   // counts (which change server-side as people scan) show immediately.
   const reload = async (force = false) => {
+    const request=++reportRequest.current;
     setLoadingReport(true);
-    try {
-      const [l, r] = await Promise.all([
-        listAdLinks(force).catch((caughtErrorffc252d2b6: unknown) => { observeCaughtError(caughtErrorffc252d2b6, {"source":"pulse/src/screens/SourcesScreen.tsx","handler":"reload","site":"SourcesScreen:ffc252d2b6"}); return []; }),
-        fetchAcquisitionReport().catch((caughtError8cd2a19c15: unknown) => { observeCaughtError(caughtError8cd2a19c15, {"source":"pulse/src/screens/SourcesScreen.tsx","handler":"reload","site":"SourcesScreen:8cd2a19c15"}); return null; }),
-      ]);
-      setLinks(l); setReport(r);
-    } finally { setLoadingReport(false); }
+    const [l,r]=observeSettledErrors(await Promise.allSettled([listAdLinks(force),fetchAcquisitionReport()]),
+      {source:'pulse/src/screens/SourcesScreen.tsx',handler:'reload',site:'SourcesScreen:reloadSettled'});
+    if(request!==reportRequest.current)return;
+    if(l.status==='fulfilled')setLinks(l.value);
+    else observeCaughtError(l.reason, {"source":"pulse/src/screens/SourcesScreen.tsx","handler":"reload","site":"SourcesScreen:ffc252d2b6"});
+    if(r.status==='fulfilled')setReport(r.value);
+    else observeCaughtError(r.reason, {"source":"pulse/src/screens/SourcesScreen.tsx","handler":"reload","site":"SourcesScreen:8cd2a19c15"});
+    setReadErrors({links:l.status==='rejected',report:r.status==='rejected'});
+    setLoadingReport(false);
   };
-  useEffect(() => { reload(); }, []);
+  useEffect(() => { void reload(); return ()=>{++reportRequest.current;}; }, []);
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = async () => {
@@ -160,10 +165,11 @@ export function SourcesScreen() {
       {/* report */}
       <Text style={s.section}>דוח לפי מקור</Text>
       <Card>
-        {loadingReport ? (
+        {readErrors.report ? <Text accessibilityRole="alert" style={s.readError}>לא ניתן לעדכן את דוח המקורות כרגע.</Text> : null}
+        {loadingReport && !report ? (
           <ActivityIndicator color={colors.primary} style={{ paddingVertical: 16 }} />
         ) : !report || report.rows.length === 0 ? (
-          <Text style={s.empty}>אין עדיין נתוני ייחוס</Text>
+          readErrors.report ? null : <Text style={s.empty}>אין עדיין נתוני ייחוס</Text>
         ) : (
           <>
             <View style={[s.trow, s.thead]}>
@@ -198,8 +204,9 @@ export function SourcesScreen() {
         <Text style={[s.section, { marginTop: 0, marginBottom: 0 }]}>הקישורים שיצרת</Text>
         {links.length > 0 ? <Text style={s.linksCount}>{links.length}</Text> : null}
       </View>
+      {readErrors.links ? <Text accessibilityRole="alert" style={s.readError}>לא ניתן לעדכן את רשימת הקישורים כרגע.</Text> : null}
       {links.length === 0 ? (
-        <Card><Text style={s.empty}>אין עדיין</Text></Card>
+        loadingReport ? <ActivityIndicator color={colors.primary} /> : readErrors.links ? null : <Card><Text style={s.empty}>אין עדיין</Text></Card>
       ) : links.map((l) => {
         const ic = sourceIcon(String(l.source ?? ''));
         const url = String(l.url ?? buildAdLink(String(l.source), l.campaign as string, l.gameId as string));
@@ -281,6 +288,7 @@ const fr = StyleSheet.create({
 });
 
 const s = StyleSheet.create({
+  readError: {color:colors.amber,fontSize:13,textAlign:RTL_LABEL_ALIGN,marginVertical:4},
   section: { direction: 'rtl' as const, color: colors.text, fontSize: 15, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, marginTop: 12, marginBottom: 6 },
   input: { direction: 'rtl' as const, color: colors.text, fontSize: 14, textAlign: RTL_LABEL_ALIGN, backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 10 },
   miniLbl: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, fontWeight: '700', textAlign: RTL_LABEL_ALIGN, marginTop: 2 },

@@ -1,14 +1,16 @@
 // "סטטיסטיקות" — the evening's own numbers.
 //
-// Every figure here comes from ONE authoritative document: `roundSummaries/
+// Summary figures come from ONE authoritative document: `roundSummaries/
 // {gameId}`, sealed once by the Cloud Function that closes the evening. The
-// tab computes nothing. That is deliberate — the same numbers are quoted in
+// tab does not recompute those totals. The penalty card reads the saved kick
+// history separately, without changing any summary/goal counters. The same numbers are quoted in
 // the personal summary and in the club's records, and a second derivation on
 // the phone is how two screens end up disagreeing about the same night.
 //
 // Reference layout, top to bottom:
 //   סיכום מחזור אישי  (a link, not a section)
 //   המחזור במספרים    stats.rounds / goals / assists / shootouts
+//   פנדלים במחזור     saved roundHistory attempts, by phase and role
 //   כוכבי המחזור      leaders.*
 //   הקבוצות במחזור    teamHighlights.best / worst
 //   הצמד של הערב      pairHighlight
@@ -16,11 +18,13 @@
 //   טבלת המחזור       GameChampionship  ← last, per the brief
 
 import React from 'react';
+import { RoundStatisticsSkeleton } from '@/components/loading/CentralSkeletons';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { UserAvatar } from '@/components/UserAvatar';
 import { GameChampionship } from '@/components/match/GameChampionship';
+import { RoundPenaltiesSection } from '@/components/match/RoundPenaltiesSection';
 import { TabScroll, TabSectionTitle, TabEmpty } from '@/components/match/tabs/MatchTabShell';
 import { summaryLines } from '@/utils/roundSummaryLines';
 import { teamName, teamColor } from '@/components/match/rotationView';
@@ -104,6 +108,7 @@ export function MatchStatsTab({
             body={he.gdStatsEmptyBody}
           />
         )}
+        {game.status === 'finished' ? <RoundPenaltiesSection gameId={game.id} refreshKey={championshipRefreshKey} userOf={userOf} /> : null}
       </TabScroll>
     );
   }
@@ -161,6 +166,9 @@ export function MatchStatsTab({
 
       <TabSectionTitle icon="grid" text={he.gdStatsNumbersTitle} />
       <ClubStatsSummary games={s.rounds} goals={s.goals} assists={s.assists} shootouts={s.shootouts} />
+
+      {game.status === 'finished' ? <RoundPenaltiesSection gameId={game.id} refreshKey={championshipRefreshKey}
+        expectedRounds={s.rounds} expectedShootouts={s.shootouts} userOf={userOf} /> : null}
 
       {stars.length > 0 ? <>
         <TabSectionTitle icon="trophy-outline" text={he.gdStatsStarsTitle} />
@@ -259,6 +267,7 @@ function SummaryReadNotice({ status, refreshing = false, onRetry }: {
   onRetry?: () => void;
 }) {
   const loading = status === 'loading';
+  if (loading && !refreshing) return <RoundStatisticsSkeleton />;
   return (
     <View style={styles.readNotice} testID="match-stats-read-notice" accessibilityLiveRegion="polite">
       {loading ? <ActivityIndicator color={colors.primary} /> : (

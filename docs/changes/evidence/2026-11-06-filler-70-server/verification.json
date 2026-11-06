@@ -1,0 +1,175 @@
+{
+  "verifiedAt": "2026-11-06T07:09:15.781306+00:00",
+  "targets": {
+    "cronEvery15Min": {
+      "state": "ACTIVE",
+      "revision": "cronevery15min-00033-baz",
+      "oldRevision": "cronevery15min-00032-kul",
+      "runtime": "nodejs22",
+      "configurationPreserved": true,
+      "allTrafficOnLatestRevision": true,
+      "exactSourceMatch": true,
+      "sourceFiles": 110,
+      "updateTime": "2026-11-06T07:08:24.758257865Z"
+    },
+    "fillerPulseTask": {
+      "state": "ACTIVE",
+      "revision": "fillerpulsetask-00012-sef",
+      "oldRevision": "fillerpulsetask-00011-qiv",
+      "runtime": "nodejs22",
+      "configurationPreserved": true,
+      "allTrafficOnLatestRevision": true,
+      "exactSourceMatch": true,
+      "sourceFiles": 110,
+      "updateTime": "2026-11-06T07:08:26.303214294Z"
+    },
+    "startGameFillerPulse": {
+      "state": "ACTIVE",
+      "revision": "startgamefillerpulse-00011-zif",
+      "oldRevision": "startgamefillerpulse-00010-voy",
+      "runtime": "nodejs22",
+      "configurationPreserved": true,
+      "allTrafficOnLatestRevision": true,
+      "exactSourceMatch": true,
+      "sourceFiles": 110,
+      "updateTime": "2026-11-06T07:08:23.816191373Z"
+    }
+  },
+  "packageSha256": "6101be2a2043aeef900883501ee5f76ab07d428290ad524b68072d14cf05e2a8",
+  "sourceScope": "occupancy only; registration-conflict filtering not deployed",
+  "unchangedOtherFunctions": true,
+  "configurationPreserved": true,
+  "runtime": "nodejs22",
+  "runtimeUpgradeExplicitlyApproved": true,
+  "tests": {
+    "ready": true,
+    "runtime22ExplicitlyApproved": true,
+    "clientTypecheckPassed": true,
+    "serverTypecheckPassed": true,
+    "fullSuite": {
+      "suites": 647,
+      "tests": 7206,
+      "passed": 7204,
+      "failed": 2,
+      "log": "jest.log"
+    },
+    "resolvedFailures": {
+      "suites": 3,
+      "tests": 66,
+      "passed": true,
+      "log": "focused.log",
+      "details": "Updated the assertion for waiting-guest occupancy. The separate balance performance limit passed on rerun without a product change."
+    },
+    "allSuitesCoveredByPassingRuns": true,
+    "packageExecutionChecks": {
+      "passed": true,
+      "checks": 72,
+      "log": "package-validation.json"
+    },
+    "isolatedPackageTypes": {
+      "newErrors": 0,
+      "baselineAndPreparedHaveSameError": true,
+      "dependencyMismatch": "The local Firebase Admin 13 types reject one unchanged baseline write; the deployment archive retains the original Firebase Admin 12 lockfile."
+    },
+    "productionErrorReview": {
+      "latest": 40,
+      "related": 0,
+      "log": "errors-triage.json"
+    },
+    "sourceScope": "Occupancy floor and free capacity only, with active guests. No registration-conflict deployment. Only the required Node.js 22 runtime change accompanies the source patch."
+  },
+  "runtimeObservation": {
+    "observedAt": "2026-11-06T07:11:13.428390+00:00",
+    "rows": [
+      {
+        "target": "cronEvery15Min",
+        "revision": "cronevery15min-00033-baz",
+        "entries": 8,
+        "errorEntries": 0
+      },
+      {
+        "target": "fillerPulseTask",
+        "revision": "fillerpulsetask-00012-sef",
+        "entries": 8,
+        "errorEntries": 0
+      },
+      {
+        "target": "startGameFillerPulse",
+        "revision": "startgamefillerpulse-00011-zif",
+        "entries": 12,
+        "errorEntries": 2
+      }
+    ],
+    "errors": 2,
+    "realNotificationsSentForTest": 0
+  },
+  "runtimeTriage": {
+    "errorEntries": 2,
+    "protocolRejectionsBeforeBusinessHandler": 2,
+    "unexpectedBusinessErrors": 0,
+    "correlations": [
+      {
+        "trace": "projects/soccer-app-52b6b/traces/34e382a6f66ba3dc5a2795b96dcfd567",
+        "requests": [
+          {
+            "method": "GET",
+            "status": 400
+          }
+        ]
+      },
+      {
+        "trace": "projects/soccer-app-52b6b/traces/7b8ac392fb64901aeec200a73b5b5345",
+        "requests": [
+          {
+            "method": "GET",
+            "status": 400
+          }
+        ]
+      }
+    ]
+  },
+  "releaseLogReadBackVerified": true,
+  "limits": {
+    "realPushTest": false,
+    "newDeviceTest": false,
+    "alreadyCreatedNotificationsCancelled": false,
+    "concurrentRegistrationLock": false,
+    "unrelatedLocalChangesDeployed": false,
+    "pulseItemId": null,
+    "pulseUpdated": false
+  },
+  "finalLiveReadBack": {
+    "checkedAt": "2026-11-06T10:00:37.602953+00:00",
+    "targets": {
+      "cronEvery15Min": {
+        "revision": "cronevery15min-00033-baz",
+        "sourceUnchanged": true,
+        "active": true
+      },
+      "fillerPulseTask": {
+        "revision": "fillerpulsetask-00012-sef",
+        "sourceUnchanged": true,
+        "active": true
+      },
+      "startGameFillerPulse": {
+        "revision": "startgamefillerpulse-00011-zif",
+        "sourceUnchanged": true,
+        "active": true
+      }
+    }
+  },
+  "documentation": {
+    "updatedFeatureDrift": [],
+    "statusRemaining": 4,
+    "baselineFailures": 214,
+    "remainingFailures": 115,
+    "newFailures": [
+      "rounds/match-rounds: תיעוד השתנה: rounds/match-rounds.md",
+      "rounds/match-rounds: תיעוד השתנה: rounds/match-rounds.simple.md",
+      "rounds/penalties: תיעוד השתנה: rounds/penalties.md",
+      "rounds/penalties: תיעוד השתנה: rounds/penalties.simple.md",
+      "statistics/club-leaders-and-table: תיעוד השתנה: statistics/club-leaders-and-table.md",
+      "statistics/club-leaders-and-table: תיעוד השתנה: statistics/club-leaders-and-table.simple.md"
+    ]
+  }
+}

@@ -2,6 +2,9 @@ package com.studiogameslime.soccerapp.widget
 
 /** Pure transaction decision, exercised directly on the JVM and on Android. */
 object WidgetTimerModel {
+    // The watch may send a command up to a minute old; the phone worker has another minute to apply it.
+    private const val RECEIPT_WINDOW_MS = 180_000L
+    private const val MAX_RECEIPTS = 512
     class Changed : IllegalStateException("המשחק התחלף. רעננו את הווידגט ונסו שוב")
     class NotController : IllegalStateException("רק יוצר המחזור יכול לשלוט מהווידגט")
 
@@ -12,7 +15,17 @@ object WidgetTimerModel {
         if (rotation != null && game["lastCommittedRoundId"] == expectedRound.removePrefix("rotation:")) throw Changed()
         @Suppress("UNCHECKED_CAST")
         val live = game["liveMatch"] as? Map<String, Any?> ?: throw Changed()
-        if (command.isNotBlank() && live["lastWidgetCommandId"] == command) return null
+        val receipts = (live["widgetCommandReceipts"] as? Map<*, *>)?.entries?.mapNotNull { (id, at) ->
+            if (id is String && id.length in 1..128 && at is Number && at.toLong() >= now - RECEIPT_WINDOW_MS) id to at.toLong() else null
+        }?.toMap()?.toMutableMap() ?: mutableMapOf()
+        val previous = live["lastWidgetCommandId"] as? String
+        if (command.isNotBlank() && (previous == command || receipts.containsKey(command))) return null
+        val receipt = if (command.isNotBlank()) {
+            if (previous != null && previous.length in 1..128 && previous !in receipts) receipts[previous] = now
+            if (receipts.size >= MAX_RECEIPTS) throw IllegalStateException("נרשמו יותר מדי פעולות שעון. נסו שוב בהמשך")
+            receipts[command] = now
+            mapOf("lastWidgetCommandId" to command, "widgetCommandReceipts" to receipts)
+        } else emptyMap()
         val running = live["timerRunning"] == true
         val acc = ((live["timerAccumulatedMs"] as? Number)?.toLong() ?: 0).coerceAtLeast(0)
         val started = (live["timerLastStartedAt"] as? Number)?.toLong() ?: 0
@@ -20,7 +33,7 @@ object WidgetTimerModel {
         val fields = mutableMapOf<String, Any?>()
         when (action) {
             "start" -> {
-                if (running) return null
+                if (running) return receipt.ifEmpty { null }
                 fields["timerRunning"] = true
                 fields["timerLastStartedAt"] = now
                 fields["timerAccumulatedMs"] = acc
@@ -28,7 +41,7 @@ object WidgetTimerModel {
                 fields["timerEvents"] = events
             }
             "pause" -> {
-                if (!running) return null
+                if (!running) return receipt.ifEmpty { null }
                 fields["timerRunning"] = false
                 fields["timerLastStartedAt"] = null
                 fields["timerAccumulatedMs"] = acc + if (started > 0) (now - started).coerceAtLeast(0) else 0
@@ -40,7 +53,7 @@ object WidgetTimerModel {
                     (live["goals"] as? List<*>)?.isNotEmpty() != true &&
                     (live["inPlayPenalties"] as? List<*>)?.isNotEmpty() != true &&
                     ((live["scoreA"] as? Number)?.toLong() ?: 0) == 0L &&
-                    ((live["scoreB"] as? Number)?.toLong() ?: 0) == 0L) return null
+                    ((live["scoreB"] as? Number)?.toLong() ?: 0) == 0L) return receipt.ifEmpty { null }
                 fields.putAll(mapOf("timerRunning" to false, "timerLastStartedAt" to null,
                     "timerAccumulatedMs" to 0L, "timerEvents" to emptyList<Any>(), "scoreA" to 0L, "scoreB" to 0L,
                     "goals" to emptyList<Any>(), "inPlayPenalties" to emptyList<Any>()))
@@ -62,7 +75,7 @@ object WidgetTimerModel {
             fields["activeIntervals"] = (live["activeIntervals"] as? List<*> ?: emptyList<Any>()) + mapOf("s" to started, "e" to now)
         }
         fields["timerControlledBy"] = uid
-        if (command.isNotBlank()) fields["lastWidgetCommandId"] = command
+        fields.putAll(receipt)
         return fields
     }
 }

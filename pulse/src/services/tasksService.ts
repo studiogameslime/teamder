@@ -16,7 +16,7 @@ import { observeCaughtError } from './errorObservation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { has } from '../capabilities';
-import { listAll, patchDoc, deleteDoc } from './firestoreRest';
+import { listAll, getDoc, patchDoc, deleteDoc } from './firestoreRest';
 import { cached, invalidate } from './cache';
 import { readClaude, type ClaudeCompletion } from './claudeWork';
 
@@ -43,6 +43,10 @@ export interface Task {
   /** The originating feedback doc id — lets a task point back at its source
    *  and stops the ingester creating the same task twice. */
   sourceId: string;
+  sourceType?: 'feedback' | 'support_message';
+  sourcePath?: string;
+  sourceConversationId?: string;
+  sourceMessageId?: string;
   /** Who filed it. Empty for tasks typed here. Kept so a report isn't a dead
    *  end — without an id there's no way back to the person who reported. */
   reporterId: string;
@@ -115,6 +119,10 @@ function toTask(d: Record<string, unknown> & { id: string }): Task {
     images: asStrings(d.images),
     screen: str(d.screen),
     sourceId: str(d.sourceId),
+    ...(d.sourceType === 'feedback' || d.sourceType === 'support_message' ? {
+      sourceType: d.sourceType, sourcePath: str(d.sourcePath),
+      sourceConversationId: str(d.sourceConversationId), sourceMessageId: str(d.sourceMessageId),
+    } : {}),
     reporterId: str(d.reporterId),
     reporterName: str(d.reporterName),
     createdAt: Number(d.createdAt ?? 0),
@@ -147,6 +155,12 @@ export async function listTasks(force = false): Promise<Task[]> {
   if (!has.firebase()) return [];
   const tasks = await cached(CACHE_KEY, listTasksUncached, { force });
   return tasks;
+}
+
+export async function getTask(id: string): Promise<Task | null> {
+  if (!id || /[\/\\\x00-\x1f]/.test(id)) throw new Error('TASK_ID_INVALID');
+  const row = await getDoc(`tasks/${encodeURIComponent(id)}`);
+  return row ? toTask(row) : null;
 }
 
 async function listTasksUncached(): Promise<Task[]> {

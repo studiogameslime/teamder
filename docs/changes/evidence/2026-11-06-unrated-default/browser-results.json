@@ -1,0 +1,85 @@
+{
+  "native": false,
+  "backend": false,
+  "adapters": [
+    "native primitives",
+    "icons",
+    "shirts",
+    "format label",
+    "team palette"
+  ],
+  "results": [
+    {
+      "phase": "before",
+      "width": 320,
+      "expected": "3",
+      "labelBox": {
+        "x": 35,
+        "y": 853,
+        "width": 206,
+        "height": 42
+      },
+      "overflow": false
+    },
+    {
+      "phase": "before",
+      "width": 390,
+      "expected": "3",
+      "labelBox": {
+        "x": 35,
+        "y": 768,
+        "width": 276,
+        "height": 42
+      },
+      "overflow": false
+    },
+    {
+      "phase": "before",
+      "width": 600,
+      "expected": "3",
+      "labelBox": {
+        "x": 35,
+        "y": 774.5,
+        "width": 486,
+        "height": 21
+      },
+      "overflow": false
+    },
+    {
+      "phase": "after",
+      "width": 320,
+      "expected": "2.5",
+      "labelBox": {
+        "x": 35,
+        "y": 853,
+        "width": 206,
+        "height": 42
+      },
+      "overflow": false
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "expected": "2.5",
+      "labelBox": {
+        "x": 35,
+        "y": 768,
+        "width": 276,
+        "height": 42
+      },
+      "overflow": false
+    },
+    {
+      "phase": "after",
+      "width": 600,
+      "expected": "2.5",
+      "labelBox": {
+        "x": 35,
+        "y": 774.5,
+        "width": 486,
+        "height": 21
+      },
+      "overflow": false
+    }
+  ]
+}

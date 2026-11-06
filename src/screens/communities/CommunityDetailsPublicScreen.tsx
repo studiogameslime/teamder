@@ -21,7 +21,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { PublicClubSkeleton } from '@/components/loading/CentralSkeletons';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -182,8 +182,8 @@ export function CommunityDetailsPublicScreen() {
   if (loading || (group !== null && group.id !== groupId)) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        <ScreenHeader title={he.loading} />
-        <SoccerBallLoader size={40} style={{ marginTop: spacing.lg }} />
+        <ScreenHeader title="פרטי המועדון" />
+        <ScrollView><PublicClubSkeleton /></ScrollView>
       </SafeAreaView>
     );
   }

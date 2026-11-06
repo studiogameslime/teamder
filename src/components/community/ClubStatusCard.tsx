@@ -16,6 +16,7 @@ export interface ClubStatusLeader {
   value: number; unit: string; suffix?: string;
 }
 export interface ClubStatusData {
+  compactTies?: boolean;
   clubName: string; scope: string;
   goals: number; assists: number; games: number; evenings: number;
   leaders: ClubStatusLeader[];
@@ -31,7 +32,7 @@ export const ClubStatusCard = forwardRef<View, ClubStatusData>(function ClubStat
     </View>
     <View style={s.shareBody}>
       <ClubStatsSummary goals={data.goals} assists={data.assists} games={data.games} evenings={data.evenings} />
-      {data.leaders.length ? <><Text style={s.shareHeading}>תארי המועדון</Text><ClubStatsAwards leaders={data.leaders} /></> : null}
+      {data.leaders.length ? <><Text style={s.shareHeading}>תארי המועדון</Text><ClubStatsAwards leaders={data.leaders} compactTies={data.compactTies} /></> : null}
       <View style={s.footer}><Text style={s.shareFooter}>כדורגל של חברים</Text><Text style={s.shareFooter}>{date}</Text></View>
     </View>
   </View>;

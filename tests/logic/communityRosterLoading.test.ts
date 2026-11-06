@@ -131,6 +131,27 @@ test('a partial refresh keeps confirmed statistics and cards instead of replacin
   await render().reload();expect(render().failed).toBe(false);
 });
 
+test('the roster becomes usable while statistics/cards are pending and each detail arrives independently', async () => {
+  const slowStats = deferred(), slowCards = deferred();
+  stats.mockReturnValue(slowStats.promise); cards.mockReturnValue(slowCards.promise);
+  render(); rt.effects(); await flush();
+  expect(render()).toMatchObject({ initialLoading: false, loading: true, group: { id: 'club' }, members: [{ id: 'player', name: 'שחקן' }], stats: null, cardCounts: {} });
+  slowCards.resolve({ player: { yellow: 2 } }); await flush();
+  expect(render()).toMatchObject({ loading: true, stats: null, cardCounts: { player: { yellow: 2 } } });
+  slowStats.resolve({ player: { gamesPlayed: 7 } }); await flush();
+  expect(render()).toMatchObject({ loading: false, stats: { player: { gamesPlayed: 7 } }, cardCounts: { player: { yellow: 2 } } });
+});
+
+test('late optional admin details cannot reappear after the viewer changes', async () => {
+  const slowStats = deferred(), slowCards = deferred();
+  stats.mockReturnValueOnce(slowStats.promise); cards.mockReturnValueOnce(slowCards.promise);
+  render(); rt.effects(); await flush();
+  const viewer = { id: 'player', isGuest: false };
+  render('club', viewer); rt.effects(); await flush();
+  slowStats.resolve({ player: { gamesPlayed: 999 } }); slowCards.resolve({ player: { yellow: 99 } }); await flush();
+  expect(render('club', viewer)).toMatchObject({ loading: false, stats: { player: { gamesPlayed: 3 } }, cardCounts: {} });
+});
+
 function skeletonModule(reduced: () => boolean) {
   const repeat = jest.fn(value => value), cancel = jest.fn();
   const module = { exports: {} as any };
@@ -175,7 +196,7 @@ test('the shared skeleton pulse stops for reduced motion and decorative blocks a
   expect(tree.props.children[0].props.importantForAccessibility).toBe('no-hide-descendants');
   reduced = false; draw(); rt.effects(); expect(module.repeat).toHaveBeenCalledTimes(1);
   reduced = true; tree = draw(); rt.effects();
-  expect(draw().props.children[0].props.style[1].opacity).toBe(1);
+  expect(Object.assign({}, ...draw().props.children[0].props.style).opacity).toBe(1);
   const cancellations = module.cancel.mock.calls.length; rt.unmount();
   expect(module.cancel.mock.calls.length).toBeGreaterThan(cancellations);
 });

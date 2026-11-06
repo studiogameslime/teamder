@@ -1,0 +1,135 @@
+{
+  "native": [
+    {
+      "scenario": "open",
+      "n": 5,
+      "beforeMedianMs": 1746,
+      "afterMedianMs": 1349,
+      "savedMs": 397,
+      "shorterPercent": 22.7,
+      "beforeRange": [
+        1341,
+        4509
+      ],
+      "afterRange": [
+        1308,
+        1550
+      ]
+    },
+    {
+      "scenario": "typed",
+      "n": 5,
+      "beforeMedianMs": 2479,
+      "afterMedianMs": 1230,
+      "savedMs": 1249,
+      "shorterPercent": 50.4,
+      "beforeRange": [
+        2344,
+        4517
+      ],
+      "afterRange": [
+        1159,
+        1542
+      ]
+    },
+    {
+      "scenario": "card",
+      "n": 5,
+      "beforeMedianMs": 2176,
+      "afterMedianMs": 895,
+      "savedMs": 1281,
+      "shorterPercent": 58.9,
+      "beforeRange": [
+        1607,
+        4575
+      ],
+      "afterRange": [
+        776,
+        908
+      ]
+    },
+    {
+      "scenario": "recruit",
+      "n": 5,
+      "beforeMedianMs": 6480,
+      "afterMedianMs": 2070,
+      "savedMs": 4410,
+      "shorterPercent": 68.1,
+      "beforeRange": [
+        6256,
+        15590
+      ],
+      "afterRange": [
+        1688,
+        2339
+      ]
+    }
+  ],
+  "clientSdk": [
+    {
+      "scenario": "open",
+      "n": 7,
+      "beforeMedianMs": 1026,
+      "afterMedianMs": 1124,
+      "savedMs": -98,
+      "shorterPercent": -9.6,
+      "beforeRange": [
+        964,
+        1234
+      ],
+      "afterRange": [
+        1015,
+        4958
+      ]
+    },
+    {
+      "scenario": "name",
+      "n": 7,
+      "beforeMedianMs": 1792,
+      "afterMedianMs": 793,
+      "savedMs": 999,
+      "shorterPercent": 55.7,
+      "beforeRange": [
+        1696,
+        1930
+      ],
+      "afterRange": [
+        746,
+        1187
+      ]
+    },
+    {
+      "scenario": "card",
+      "n": 7,
+      "beforeMedianMs": 1114,
+      "afterMedianMs": 641,
+      "savedMs": 473,
+      "shorterPercent": 42.5,
+      "beforeRange": [
+        993,
+        7163
+      ],
+      "afterRange": [
+        592,
+        2790
+      ]
+    },
+    {
+      "scenario": "recruit",
+      "n": 7,
+      "beforeMedianMs": 6021,
+      "afterMedianMs": 1552,
+      "savedMs": 4469,
+      "shorterPercent": 74.2,
+      "beforeRange": [
+        5657,
+        18167
+      ],
+      "afterRange": [
+        1361,
+        5215
+      ]
+    }
+  ],
+  "afterSummaryMedianMs": 835
+}

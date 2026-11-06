@@ -1,0 +1,573 @@
+{
+  "now": 1793793600000,
+  "viewerId": "admin",
+  "initialPlayer": "a",
+  "data": {
+    "group": {
+      "id": "club",
+      "name": "מועדון ההדגמה",
+      "adminIds": [
+        "admin"
+      ],
+      "playerIds": [
+        "admin",
+        "a",
+        "b"
+      ],
+      "internalRating": true,
+      "adminRatings": {
+        "admin": 3.5,
+        "a": 4,
+        "b": 3
+      },
+      "joinedAt": {
+        "admin": 1778241600000,
+        "a": 1778241600000,
+        "b": 1792756800000
+      },
+      "ballHolderIds": [
+        "a"
+      ],
+      "jerseysHolderIds": [
+        "b"
+      ],
+      "cardsEnabled": false,
+      "seasons": {
+        "enabled": true,
+        "currentId": "s1",
+        "currentNo": 1,
+        "startedAt": 1786017600000,
+        "playedRounds": 5,
+        "roundsAtStart": 0,
+        "cadence": {
+          "type": "rounds",
+          "targetRounds": 24
+        },
+        "count": 0
+      }
+    },
+    "users": [
+      {
+        "id": "admin",
+        "name": "דניאל כהן",
+        "createdAt": 1778241600000,
+        "avatarId": "a22"
+      },
+      {
+        "id": "a",
+        "name": "אבי לוי",
+        "createdAt": 1778241600000,
+        "avatarId": "a07"
+      },
+      {
+        "id": "b",
+        "name": "רועי ישראלי",
+        "createdAt": 1792756800000,
+        "avatarId": "a25"
+      }
+    ],
+    "games": [
+      {
+        "id": "round-0",
+        "groupId": "club",
+        "title": "מחזור הדגמה",
+        "status": "finished",
+        "endedBy": "admin",
+        "startsAt": 1790769600000,
+        "seasonId": "s1",
+        "players": [
+          "admin",
+          "a"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      },
+      {
+        "id": "round-1",
+        "groupId": "club",
+        "title": "מחזור הדגמה",
+        "status": "finished",
+        "endedBy": "admin",
+        "startsAt": 1791374400000,
+        "seasonId": "s1",
+        "players": [
+          "admin",
+          "a"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      },
+      {
+        "id": "round-2",
+        "groupId": "club",
+        "title": "מחזור הדגמה",
+        "status": "finished",
+        "endedBy": "admin",
+        "startsAt": 1791979200000,
+        "seasonId": "s1",
+        "players": [
+          "admin",
+          "a"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      },
+      {
+        "id": "round-3",
+        "groupId": "club",
+        "title": "מחזור הדגמה",
+        "status": "finished",
+        "endedBy": "admin",
+        "startsAt": 1792584000000,
+        "seasonId": "s1",
+        "players": [
+          "admin",
+          "a",
+          "b"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      },
+      {
+        "id": "round-4",
+        "groupId": "club",
+        "title": "מחזור הדגמה",
+        "status": "finished",
+        "endedBy": "admin",
+        "startsAt": 1793188800000,
+        "seasonId": "s1",
+        "players": [
+          "admin",
+          "a",
+          "b"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      },
+      {
+        "id": "next",
+        "groupId": "club",
+        "title": "המחזור הקרוב",
+        "status": "open",
+        "startsAt": 1793966400000,
+        "players": [
+          "admin",
+          "b"
+        ],
+        "pending": [
+          "a"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      }
+    ],
+    "scores": {
+      "round-0": {
+        "admin": 6.5,
+        "a": 6,
+        "b": 7.2
+      },
+      "round-1": {
+        "admin": 6.9,
+        "a": 6.5,
+        "b": 7.2
+      },
+      "round-2": {
+        "admin": 7.3,
+        "a": 7,
+        "b": 7.2
+      },
+      "round-3": {
+        "admin": 7.7,
+        "a": 7.5,
+        "b": 7.2
+      },
+      "round-4": {
+        "admin": 8.1,
+        "a": 8,
+        "b": 7.2
+      }
+    },
+    "events": [],
+    "truncated": false,
+    "scoresIncomplete": false,
+    "equipmentUnavailable": false
+  },
+  "loadingData": {
+    "group": {
+      "id": "club",
+      "name": "מועדון ההדגמה",
+      "adminIds": [
+        "admin"
+      ],
+      "playerIds": [
+        "admin",
+        "a",
+        "b"
+      ],
+      "internalRating": true,
+      "adminRatings": {
+        "admin": 3.5,
+        "a": 4,
+        "b": 3
+      },
+      "joinedAt": {
+        "admin": 1778241600000,
+        "a": 1778241600000,
+        "b": 1792756800000
+      },
+      "ballHolderIds": [
+        "a"
+      ],
+      "jerseysHolderIds": [
+        "b"
+      ],
+      "cardsEnabled": false,
+      "seasons": {
+        "enabled": true,
+        "currentId": "s1",
+        "currentNo": 1,
+        "startedAt": 1786017600000,
+        "playedRounds": 5,
+        "roundsAtStart": 0,
+        "cadence": {
+          "type": "rounds",
+          "targetRounds": 24
+        },
+        "count": 0
+      }
+    },
+    "users": [
+      {
+        "id": "admin",
+        "name": "דניאל כהן",
+        "createdAt": 1778241600000,
+        "avatarId": "a22"
+      },
+      {
+        "id": "a",
+        "name": "אבי לוי",
+        "createdAt": 1778241600000,
+        "avatarId": "a07"
+      },
+      {
+        "id": "b",
+        "name": "רועי ישראלי",
+        "createdAt": 1792756800000,
+        "avatarId": "a25"
+      }
+    ],
+    "games": [
+      {
+        "id": "round-0",
+        "groupId": "club",
+        "title": "מחזור הדגמה",
+        "status": "finished",
+        "endedBy": "admin",
+        "startsAt": 1790769600000,
+        "seasonId": "s1",
+        "players": [
+          "admin",
+          "a"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      },
+      {
+        "id": "round-1",
+        "groupId": "club",
+        "title": "מחזור הדגמה",
+        "status": "finished",
+        "endedBy": "admin",
+        "startsAt": 1791374400000,
+        "seasonId": "s1",
+        "players": [
+          "admin",
+          "a"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      },
+      {
+        "id": "round-2",
+        "groupId": "club",
+        "title": "מחזור הדגמה",
+        "status": "finished",
+        "endedBy": "admin",
+        "startsAt": 1791979200000,
+        "seasonId": "s1",
+        "players": [
+          "admin",
+          "a"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      },
+      {
+        "id": "round-3",
+        "groupId": "club",
+        "title": "מחזור הדגמה",
+        "status": "finished",
+        "endedBy": "admin",
+        "startsAt": 1792584000000,
+        "seasonId": "s1",
+        "players": [
+          "admin",
+          "a",
+          "b"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      },
+      {
+        "id": "round-4",
+        "groupId": "club",
+        "title": "מחזור הדגמה",
+        "status": "finished",
+        "endedBy": "admin",
+        "startsAt": 1793188800000,
+        "seasonId": "s1",
+        "players": [
+          "admin",
+          "a",
+          "b"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      },
+      {
+        "id": "next",
+        "groupId": "club",
+        "title": "המחזור הקרוב",
+        "status": "open",
+        "startsAt": 1793966400000,
+        "players": [
+          "admin",
+          "b"
+        ],
+        "pending": [
+          "a"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      }
+    ],
+    "scores": {},
+    "events": [],
+    "truncated": false,
+    "scoresIncomplete": true,
+    "equipmentUnavailable": false
+  },
+  "partialData": {
+    "group": {
+      "id": "club",
+      "name": "מועדון ההדגמה",
+      "adminIds": [
+        "admin"
+      ],
+      "playerIds": [
+        "admin",
+        "a",
+        "b"
+      ],
+      "internalRating": true,
+      "adminRatings": {
+        "admin": 3.5,
+        "a": 4,
+        "b": 3
+      },
+      "joinedAt": {
+        "admin": 1778241600000,
+        "a": 1778241600000,
+        "b": 1792756800000
+      },
+      "ballHolderIds": [
+        "a"
+      ],
+      "jerseysHolderIds": [
+        "b"
+      ],
+      "cardsEnabled": false,
+      "seasons": {
+        "enabled": true,
+        "currentId": "s1",
+        "currentNo": 1,
+        "startedAt": 1786017600000,
+        "playedRounds": 5,
+        "roundsAtStart": 0,
+        "cadence": {
+          "type": "rounds",
+          "targetRounds": 24
+        },
+        "count": 0
+      }
+    },
+    "users": [
+      {
+        "id": "admin",
+        "name": "דניאל כהן",
+        "createdAt": 1778241600000,
+        "avatarId": "a22"
+      },
+      {
+        "id": "a",
+        "name": "אבי לוי",
+        "createdAt": 1778241600000,
+        "avatarId": "a07"
+      },
+      {
+        "id": "b",
+        "name": "רועי ישראלי",
+        "createdAt": 1792756800000,
+        "avatarId": "a25"
+      }
+    ],
+    "games": [
+      {
+        "id": "round-0",
+        "groupId": "club",
+        "title": "מחזור הדגמה",
+        "status": "finished",
+        "endedBy": "admin",
+        "startsAt": 1790769600000,
+        "seasonId": "s1",
+        "players": [
+          "admin",
+          "a"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      },
+      {
+        "id": "round-1",
+        "groupId": "club",
+        "title": "מחזור הדגמה",
+        "status": "finished",
+        "endedBy": "admin",
+        "startsAt": 1791374400000,
+        "seasonId": "s1",
+        "players": [
+          "admin",
+          "a"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      },
+      {
+        "id": "round-2",
+        "groupId": "club",
+        "title": "מחזור הדגמה",
+        "status": "finished",
+        "endedBy": "admin",
+        "startsAt": 1791979200000,
+        "seasonId": "s1",
+        "players": [
+          "admin",
+          "a"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      },
+      {
+        "id": "round-3",
+        "groupId": "club",
+        "title": "מחזור הדגמה",
+        "status": "finished",
+        "endedBy": "admin",
+        "startsAt": 1792584000000,
+        "seasonId": "s1",
+        "players": [
+          "admin",
+          "a",
+          "b"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      },
+      {
+        "id": "round-4",
+        "groupId": "club",
+        "title": "מחזור הדגמה",
+        "status": "finished",
+        "endedBy": "admin",
+        "startsAt": 1793188800000,
+        "seasonId": "s1",
+        "players": [
+          "admin",
+          "a",
+          "b"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      },
+      {
+        "id": "next",
+        "groupId": "club",
+        "title": "המחזור הקרוב",
+        "status": "open",
+        "startsAt": 1793966400000,
+        "players": [
+          "admin",
+          "b"
+        ],
+        "pending": [
+          "a"
+        ],
+        "waitlist": [],
+        "maxPlayers": 12,
+        "matches": []
+      }
+    ],
+    "scores": {
+      "round-4": {
+        "admin": 8.1,
+        "a": 8,
+        "b": 7.2
+      }
+    },
+    "events": [],
+    "truncated": false,
+    "scoresIncomplete": true,
+    "equipmentUnavailable": false
+  },
+  "states": {
+    "overview": {
+      "tab": "club",
+      "loading": false
+    },
+    "ratingsLoading": {
+      "tab": "ratings",
+      "scoreRead": {
+        "loading": true,
+        "failed": false
+      }
+    },
+    "playerLoading": {
+      "initialPlayer": "a",
+      "scoresLoading": true,
+      "scoresFailed": false
+    },
+    "playerFailure": {
+      "initialPlayer": "a",
+      "scoresLoading": false,
+      "scoresFailed": true
+    }
+  }
+}

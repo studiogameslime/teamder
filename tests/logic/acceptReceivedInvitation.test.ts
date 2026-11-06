@@ -9,6 +9,7 @@ function fixture() {
   const requestJoinGame = jest.fn(async () => ({bucket:'players'}));
   const exports: any = {};
   const modules: Record<string, any> = {
+    '@/utils/receivedInvitations': require('../../src/utils/receivedInvitations'),
     '@/store/userStore': {useUserStore:{getState:()=>({currentUser:user})}},
     '@/store/groupStore': {useGroupStore:{getState:()=>({requestJoinById})}},
     './gameService': {gameService:{requestJoinGame}}, './staleSession': {StaleSessionError},
@@ -17,6 +18,11 @@ function fixture() {
   return {accept:exports.acceptReceivedInvitation, requestJoinById, requestJoinGame, setUser:(value:any)=>{user=value;}};
 }
 const invite=(type='inviteToGame',status='available')=>({id:'notice',type,targetId:'target',status});
+test('an open invitation that expires before the tap never starts a join',async()=>{
+  const f=fixture();
+  await expect(f.accept({...invite(),payload:{expiresAt:Date.now()-1}},'me')).rejects.toThrow('INVITATION_UNAVAILABLE');
+  expect(f.requestJoinGame).not.toHaveBeenCalled();
+});
 test.each(['players','waitlist','pending'])('round acceptance uses canonical join result %s without predicting membership',async bucket=>{
   const f=fixture();f.requestJoinGame.mockResolvedValue({bucket});
   expect(await f.accept(invite(),'me')).toEqual({type:'session',id:'target',isMember:bucket!=='pending',status:bucket});

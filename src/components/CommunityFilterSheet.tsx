@@ -19,6 +19,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Pressable,
   ScrollView,
+  useWindowDimensions,
   StyleSheet,
   Text,
   View,
@@ -117,6 +118,7 @@ export function CommunityFilterSheet({
   nearbyLatLng,
 }: Props) {
   const [bigMapOpen, setBigMapOpen] = useState(false);
+  const { fontScale } = useWindowDimensions();
   // Whether the app ALREADY holds foreground location permission. When it
   // does we drop the "אפשר גישה למיקום" framing (there's nothing to grant)
   // and show a plain enable control instead. Read non-prompting on open.
@@ -217,7 +219,7 @@ export function CommunityFilterSheet({
             </View>
             <View style={styles.nearbyCard}>
               <View style={styles.nearbyRow}>
-                <View style={styles.nearbyContent}>
+                <View style={[styles.nearbyContent, { flexBasis: 150 * fontScale }]}>
                   {filters.nearby ? (
                     <>
                       <View style={styles.nearbyActiveTop}>
@@ -483,6 +485,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.h3,
+    flexShrink: 1,
     color: colors.text,
     fontWeight: '800',
   },
@@ -503,6 +506,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...typography.body,
+    flexShrink: 1,
     color: colors.text,
     fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
@@ -518,10 +522,11 @@ const styles = StyleSheet.create({
   },
   nearbyRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: spacing.md,
   },
-  nearbyContent: { flex: 1, gap: 6 },
+  nearbyContent: { flexGrow: 1, flexShrink: 1, gap: 6 },
   nearbyPinWrap: {
     width: 64,
     height: 64,
@@ -553,7 +558,8 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: spacing.sm,
     paddingHorizontal: spacing.lg,
-    height: 46,
+    minHeight: 46,
+    paddingVertical: spacing.xs,
     borderRadius: radius.pill,
     borderWidth: 1.5,
     borderColor: colors.primary,
@@ -561,11 +567,14 @@ const styles = StyleSheet.create({
   },
   nearbyAllowText: {
     ...typography.body,
+    flexShrink: 1,
+    textAlign: 'center',
     color: colors.primary,
     fontWeight: '800',
   },
   nearbyActiveTitle: {
     ...typography.body,
+    flexShrink: 1,
     color: colors.text,
     fontWeight: '700',
     textAlign: RTL_LABEL_ALIGN,

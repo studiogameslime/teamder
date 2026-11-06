@@ -1,5 +1,6 @@
 import { observeCaughtError } from './src/utils/errorObservation';
 import { userService } from '@/services/userService';
+import { startUsageActivity, recordUsageScreen } from '@/services/usageActivity';
 import { recordAppVersionPresence } from '@/services/appVersionPresence';
 import { resolveIncomingInvite, startInviteRecovery } from '@/services/incomingInvite';
 import { finishEntryBootstrap } from '@/services/entryBootstrap';
@@ -230,6 +231,7 @@ import {
   navigateAppDestination,
 } from '@/navigation/navigationRef';
 import { parseAppLink, type AppDestination } from '@/utils/appLinks';
+import { shouldHideSupportBubble } from '@/utils/supportBubbleVisibility';
 import { recordRole } from '@/services/roleService';
 import { useAndroidBack } from '@/navigation/useAndroidBack';
 import { he } from '@/i18n/he';
@@ -708,6 +710,8 @@ export default function App() {
 
   const applyUpdateResult = applyStoreUpdate;
 
+  useEffect(() => startUsageActivity(), []);
+
   // Wait for account hydration so a different signed-in account cannot claim
   // another account's update. A new native binary is observed after restart.
   useEffect(() => {
@@ -1012,6 +1016,7 @@ export default function App() {
             ? navigationRef.getCurrentRoute()
             : null;
           if (r) {
+            recordUsageScreen(r);
             setActiveRouteName(r.name);
             currentScreenRef.current = r.name;
             crumbNav(r.name,r.params);
@@ -1021,6 +1026,7 @@ export default function App() {
         onStateChange={() => {
           if (!navigationRef.isReady()) return;
           const route = navigationRef.getCurrentRoute();
+          if (route) recordUsageScreen(route);
           const next = route?.name;
           if (next) setActiveRouteName(next);
           if(route)crumbNav(route.name,route.params);
@@ -1068,7 +1074,7 @@ export default function App() {
         <BannerHost />
         {/* Global: a device screenshot slides up a pre-filled bug report. */}
         <ScreenshotReportSheet />
-        <SupportChatHost active={splashDone && updateKind !== 'force' && !whatsNewOpen} hideBubble={activeRouteName === 'LiveMatch'} />
+        <SupportChatHost active={splashDone && updateKind !== 'force' && !whatsNewOpen} hideBubble={shouldHideSupportBubble(activeRouteName)} />
         {/* Joryio in-app campaigns. INSIDE the navigator so a message's
             deep-link button resolves against the same routing as any other
             link; above it there is no navigation to hand the URL to. */}

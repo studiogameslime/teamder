@@ -1,0 +1,55 @@
+{
+  "at": "2026-11-05T09:08:29.824466+00:00",
+  "jest": {
+    "suites": 645,
+    "passed": 7182,
+    "failed": 0
+  },
+  "serverTests": {
+    "passed": 48,
+    "failed": 0
+  },
+  "typechecks": {
+    "root": true,
+    "pulse": true,
+    "server": true
+  },
+  "functionsVerified": 7,
+  "indexesReady": 3,
+  "rolloutAccounts": 3,
+  "sourceFilesUnchanged": 1361,
+  "bundledSourceProofs": 11,
+  "liveEvents": 4,
+  "liveDuplicateSafe": true,
+  "livePulseProxyRead": true,
+  "qaAdminReadDenied": true,
+  "phone": {
+    "version": "1.1.76",
+    "code": 308,
+    "track": "internal",
+    "readBackVerified": true
+  },
+  "pulse": {
+    "version": "1.0.105",
+    "code": 112,
+    "downloadReadBackVerified": true
+  },
+  "productionTrackChanged": false,
+  "firestoreRulesChanged": false,
+  "adminAccessChanged": false,
+  "newInvocationPermissions": "collection callable and private scheduler endpoints only",
+  "retentionJobRan": true,
+  "releaseLogEntriesReadBack": 2,
+  "nativeInstalled": false,
+  "iosBuilt": false,
+  "pulseItemId": null,
+  "pulseStatusUpdated": false,
+  "committed": false,
+  "pushed": false,
+  "featureStatusFailures": [],
+  "documentation": {
+    "stateFailures": 0,
+    "existingMissingEvidenceLinks": 107,
+    "newFailures": 0
+  }
+}

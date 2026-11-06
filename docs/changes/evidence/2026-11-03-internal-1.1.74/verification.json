@@ -1,0 +1,177 @@
+{
+  "version": "1.1.74",
+  "androidCode": 306,
+  "track": "internal",
+  "google": {
+    "at": "2026-11-03T17:44:14.602236+00:00",
+    "version": "1.1.74",
+    "code": 306,
+    "internalVerified": true,
+    "productionUnchanged": true,
+    "otherTracksUnchanged": true,
+    "bundleHashMatches": true,
+    "bundle": {
+      "versionCode": 306,
+      "sha1": "c5ea6775a4494450ce0cbf3a6a1af50a2456f94b",
+      "sha256": "9c1c7f96be447ba3185a063fe297ef48d50e52fdcbdeb5b91cd8f61b39665319"
+    },
+    "tracks": {
+      "production": [
+        {
+          "name": "1.1.72",
+          "versionCodes": [
+            "304"
+          ],
+          "releaseNotes": [
+            {
+              "language": "iw-IL",
+              "text": "שיפורים בכניסה ובהרשמה, בקשות לשיחה אישית ובחירת פרטיות, תיקוני סגלים ופרסום קבוצות, איזון כוחות ושיפורי יציבות."
+            }
+          ],
+          "status": "completed"
+        }
+      ],
+      "beta": [],
+      "alpha": [
+        {
+          "name": "27 (0.2.10)",
+          "versionCodes": [
+            "27"
+          ],
+          "status": "completed"
+        }
+      ],
+      "internal": [
+        {
+          "name": "1.1.74",
+          "versionCodes": [
+            "306"
+          ],
+          "releaseNotes": [
+            {
+              "language": "iw-IL",
+              "text": "טעינה המותאמת לתוכן המסך, הסברים ופעולות במצבים ריקים, שמירת מידע בזמן כשל, סימון שינויי מועד ומיקום וחיווי ברור להעלאות ולשמירה."
+            }
+          ],
+          "status": "completed"
+        }
+      ],
+      "wear:beta": [],
+      "wear:internal": [
+        {
+          "name": "1.0.32",
+          "versionCodes": [
+            "1029"
+          ],
+          "releaseNotes": [
+            {
+              "language": "iw-IL",
+              "text": "מדידה אישית מהשעון עם התחלה ועצירה ידנית, סנכרון פרטי לטלפון ותמיכה במדדי מהירות כשהשעון מספק אותם. שיפורי יציבות במדידה ובסנכרון ועדכון הסבר הפרטיות."
+            }
+          ],
+          "status": "completed"
+        }
+      ],
+      "wear:production": [
+        {
+          "name": "1.0.30",
+          "versionCodes": [
+            "1027"
+          ],
+          "status": "completed"
+        }
+      ]
+    }
+  },
+  "binary": {
+    "sourceCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "sourceFilesUnchanged": 1157,
+    "phoneVersion": "1.1.74/306",
+    "phoneUploadCertificateVerified": true,
+    "phoneBundleValidated": true,
+    "sportsPermissionsAbsent": true,
+    "sportsServicesAbsent": true,
+    "feedbackBannerPresent": [
+      "base/res/drawable-mdpi-v4/assets_feedback_promptfootballbanner.png"
+    ],
+    "feedbackPromptInBundle": true,
+    "roundChangeMemoryInBundle": true,
+    "productionPromoted": false
+  },
+  "source": {
+    "baseCommit": "06417f6132f4c7636aaee25574354ed7722966b9",
+    "dirtyTree": true,
+    "sourceFiles": 1157,
+    "sourceArchiveSha256": "377b58140c2cc92970377f893c10182b354c6b05d791da9ae39fa543a52f7232",
+    "version": "1.1.74",
+    "versionCode": 306,
+    "committed": false,
+    "pushed": false
+  },
+  "tests": {
+    "version": "1.1.74",
+    "fullSuitePassed": true,
+    "tests": 6864,
+    "testSuites": 614,
+    "clientTypesPassed": true,
+    "serverTypesPassed": true,
+    "rulesTests": 360,
+    "backendTests": 38,
+    "rulesChanged": false
+  },
+  "diagnostic": {
+    "embeddedRevision": "f17149ac73965a408e63b622",
+    "calculatedRevision": "f17149ac73965a408e63b622",
+    "revisionMatches": true,
+    "buildId": "internal-1.1.74-306-local"
+  },
+  "journal": {
+    "version": "1.1.74",
+    "code": 306,
+    "assignedItems": 40,
+    "beforeCount": 464,
+    "afterCount": 464,
+    "prunedVersionKeys": [],
+    "phoneVersionFloor": "1.1.72",
+    "productionTrackChanged": false,
+    "serverDeployed": false,
+    "proofsPreservedAndReadBackVerified": 40,
+    "readBackVerified": true
+  },
+  "scope": {
+    "version": "1.1.74",
+    "code": 306,
+    "track": "internal",
+    "serverFunctionsChangedSince305": [],
+    "activeCompatibilityRulesVerified": true,
+    "rulesSourceUnchangedSince305": true,
+    "socialPrivacyAlreadyDeployed": true,
+    "unrelatedRosterFixNotDeployed": true,
+    "productionPromotion": false,
+    "triage": {
+      "newErrors": [
+        {
+          "id": "e1f8f67b4dc221a9be126005cb083e89",
+          "operation": "caught:nearby:67bb320a28",
+          "assessment": "דיווח על מיקום לא זמין. לא נמצא כאן כשל בנייה או שינוי שרת נדרש. נשאר פתוח ללא תיקון במסגרת ההפצה."
+        }
+      ],
+      "newCodeFixes": 0
+    }
+  },
+  "submission": {
+    "queuedSubmissionCanceled": true,
+    "cancellationReadBackVerified": true,
+    "directInternalCommitVerified": true
+  },
+  "deviceInstallVerified": false,
+  "iosBuilt": false,
+  "committed": false,
+  "pushed": false,
+  "documentation": {
+    "pairs": 37,
+    "failures": 116,
+    "inheritedFailures": 116,
+    "newFailures": []
+  }
+}

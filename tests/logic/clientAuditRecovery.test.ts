@@ -39,7 +39,9 @@ test('profile read failure preserves Firebase account without a cached user', as
 
 test('member equipment changes preserve other admins changes and report actual changes', async () => {
   const server = { ballHolderIds: ['a'], jerseysHolderIds: ['b'] };
+  const event = jest.fn();
   const service = load('src/services/groupService.ts', {
+    '@/services/analyticsService': { logEvent: event, AnalyticsEvent: { ClubEquipmentChanged: 'changed' } },
     '@/firebase/config': { USE_MOCK_DATA: false, getFirebase: () => ({ db: {} }) },
     '@/data/mockUsers': { mockGroup: { id: 'g' }, mockOtherGroup: { id: 'h' } },
     '@/firebase/firestore': { docs: { group: (id: string) => id } },
@@ -52,6 +54,10 @@ test('member equipment changes preserve other admins changes and report actual c
   expect(result.ballChanged).toBe(true);
   const repeated = await service.setPlayerEquipment('g', 'a', { ball: false, jerseys: true });
   expect(repeated.ballChanged).toBe(false); expect(repeated.jerseysChanged).toBe(false);
+  expect(event.mock.calls).toEqual([
+    ['changed', { ballChanged: true, jerseysChanged: false }],
+    ['changed', { ballChanged: true, jerseysChanged: true }],
+  ]);
 });
 
 test('chat read and scroll effects see a new message in a full 100-message sliding window', () => {
@@ -194,7 +200,7 @@ test('statistics clears previous account data even when the next account read fa
  const file=ast('src/screens/profile/StatisticsScreen.tsx');const effect=find(file,n=>ts.isCallExpression(n)&&n.expression.getText(file)==='useFocusEffect') as ts.CallExpression;
  let stats:any={attendedGames:99},pen:any={penTaken:20},people:any={old:{id:'old'}},failed=false;
  const ctx={targetId:'new',ownerKey:'new:new',otherPlayer:false,setRestricted(){},statsOwnerRef:{current:'old:old'},localUser:{id:'new'},setStats:(s:any)=>{stats=s;},setPen:(s:any)=>{pen=s;},setPeople:(s:any)=>{people=s;},setFailed:(s:boolean)=>{failed=s;},setLoading(){},setHighlightsLoading(){},logError(){},userService:{getUserById:async()=>{throw Error('offline');}}};
- expression((effect.arguments[0] as ts.CallExpression).arguments[0].getText(file),ctx)();await new Promise(setImmediate);
+ expression((effect.arguments[0] as ts.CallExpression).arguments[0].getText(file),{...ctx,playerStatsService:{compute:async(_uid:string,options:any)=>{await options.totals;throw Error('unreachable');}}})();await new Promise(setImmediate);
  expect(stats).toBeNull();expect(pen).toBeNull();expect(people).toEqual({});expect(failed).toBe(true);
 });
 

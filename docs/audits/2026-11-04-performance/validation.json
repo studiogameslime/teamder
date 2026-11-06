@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-04",
+  "scope": "local implementation and controlled/browser verification; no deployment or native device latency measurement",
+  "typecheck": {
+    "passed": true,
+    "command": "node node_modules/typescript/bin/tsc --noEmit"
+  },
+  "jest": {
+    "passed": true,
+    "suites": 622,
+    "tests": 6957,
+    "command": "node node_modules/jest/bin/jest.js --runInBand",
+    "logSha256": "03ec7c352f53e2861d7ccfdbeaded745afe817242b9c2e76b2513e575fef2980"
+  },
+  "featureStatus": {
+    "failures": 0,
+    "refreshedPairs": 59
+  },
+  "documentation": {
+    "existingFailures": 107,
+    "newFailures": 0
+  },
+  "browser": {
+    "regions": 8,
+    "widthChecks": 24,
+    "native": false
+  },
+  "releaseLog": {
+    "readBackVerified": 10,
+    "uniqueProofs": 4,
+    "deployed": false
+  }
+}

@@ -21,6 +21,7 @@ import { useGroupStore } from '@/store/groupStore';
 import { friendsService } from '@/services/friendsService';
 import { groupService } from '@/services/groupService';
 import { gameService } from '@/services/gameService';
+import { decideFiller } from '@/services/fillerReview';
 import { getInboxRequests, approveAllFriends, approveAllForGroup, approveAllForGame, type InboxRequests } from '@/services/requestsService';
 import { requestInboxRows, type InboxRow } from '@/utils/requestInboxView';
 import { logError } from '@/services/errorLog';
@@ -43,7 +44,8 @@ export function RequestsScreen() {
   const [groupId, setGroupId] = useState(initialGroupId);
   const [byName, setByName] = useState(false);
   const [picker, setPicker] = useState<'club' | 'sort' | null>(null);
-  const [data, setData] = useState<InboxRequests>(EMPTY);
+  const [snapshot, setData] = useState<{ owner: string; inbox: InboxRequests } | null>(null);
+  const data = me && !me.isGuest && snapshot?.owner === me.id ? snapshot.inbox : EMPTY;
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -56,7 +58,7 @@ export function RequestsScreen() {
   const load = useCallback(async () => {
     const version = ++loadVersion.current;
     if (!me || me.isGuest) {
-      setData(EMPTY);
+      setData(null);
       setLoadFailed(false);
       setLoading(false);
       setRefreshing(false);
@@ -65,8 +67,8 @@ export function RequestsScreen() {
     try {
       const next = await getInboxRequests(me.id);
       if (version !== loadVersion.current) return;
-      setData(next);
-      setLoadFailed(false);
+      setData({ owner: me.id, inbox: next });
+      setLoadFailed(next.partial === true);
     } catch (err) {
     observeCaughtError(err, {"source":"src/screens/RequestsScreen.tsx","handler":"RequestsScreen","site":"RequestsScreen:c031cf55de"});
       if (version !== loadVersion.current) return;
@@ -124,6 +126,9 @@ export function RequestsScreen() {
           if (approve) await groupService.approveMember(row.targetId, row.userId);
           else await groupService.rejectMember(row.targetId, row.userId);
         }
+      } else if (row.kind === 'filler') {
+        const result = await decideFiller(row.targetId, row.userId, approve);
+        if (result.data?.bucket === 'waitlist') toast.info(he.requestsApprovedToWaitlist);
       } else if (approve) {
         const result = await gameService.approveGameJoin(row.targetId, row.userId);
         if (result?.bucket === 'waitlist') toast.info(he.requestsApprovedToWaitlist);
@@ -135,6 +140,11 @@ export function RequestsScreen() {
       logError('RequestsScreen.act', err, {
         key: row.key
       });
+      if (row.kind === 'filler' && (err as { code?: string })?.code === 'functions/failed-precondition') {
+        toast.info('הבקשה כבר אינה ממתינה לאישור');
+        await load();
+        return;
+      }
       const full = (err as {
         code?: string;
       })?.code === 'GROUP_FULL';
@@ -196,14 +206,14 @@ export function RequestsScreen() {
           <View pointerEvents="none" style={styles.pitch}><Svg width={130} height={110} viewBox="0 0 130 110"><Rect x={5} y={5} width={120} height={100} rx={5} fill="none" stroke="#C4DCFF" /><Line x1={5} y1={55} x2={125} y2={55} stroke="#C4DCFF" /><Circle cx={65} cy={55} r={18} fill="none" stroke="#C4DCFF" /><Rect x={38} y={5} width={54} height={18} fill="none" stroke="#C4DCFF" /></Svg></View>
           <Text style={styles.heroTitle}>נכנסים לקבוצה</Text>
           <Text style={styles.heroHint}>מאשרים שחקנים וממשיכים לשחק יחד</Text>
-          <View style={styles.count}><Ionicons name="time-outline" size={15} color="#97580C" /><Text style={styles.countText}>{rows.length} בקשות ממתינות{loadFailed ? ' · טרם עודכנו' : ''}</Text></View>
+          <View style={styles.count}><Ionicons name="time-outline" size={15} color="#97580C" /><Text style={styles.countText}>{loadFailed ? `הרשימה חלקית. בקשות שהוצגו: ${rows.length}` : rows.length === 1 ? 'בקשה אחת ממתינה' : `${rows.length} בקשות ממתינות`}</Text></View>
         </LinearGradient>
         <View style={styles.filters}>
           <Pressable accessibilityRole="button" accessibilityLabel="סינון לפי מועדון" onPress={() => setPicker('club')} style={[styles.filter, styles.clubFilter]}>
             <Ionicons name="shirt-outline" size={18} color={colors.primary} /><Text numberOfLines={1} style={styles.filterLabel}>{selectedClub ?? 'כל המועדונים'}</Text><Ionicons name="chevron-down" size={15} color={colors.primary} />
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="מיון בקשות" onPress={() => setPicker('sort')} style={styles.filter}>
-            <Ionicons name="swap-vertical-outline" size={18} color={colors.primary} /><Text numberOfLines={1} style={styles.filterLabel}>{byName ? 'לפי שם השחקן' : 'סדר הרשימה'}</Text><Ionicons name="chevron-down" size={15} color={colors.primary} />
+            <Ionicons name="swap-vertical-outline" size={18} color={colors.primary} /><Text numberOfLines={1} style={styles.filterLabel}>{byName ? 'לפי שם השחקן' : 'מהחדש לישן'}</Text><Ionicons name="chevron-down" size={15} color={colors.primary} />
           </Pressable>
         </View>
         {loadFailed ? <Pressable accessibilityRole="button" onPress={() => void load()} style={styles.error}><Text style={styles.errorText}>לא ניתן לעדכן את הבקשות. לחצו לניסיון חוזר</Text></Pressable> : null}
@@ -211,7 +221,7 @@ export function RequestsScreen() {
       item,
       index
     }) => {
-      const first = !byName && (index === 0 || rows[index - 1].kind !== item.kind || rows[index - 1].targetId !== item.targetId);
+      const first = item.kind !== 'filler' && !byName && (index === 0 || rows[index - 1].kind !== item.kind || rows[index - 1].targetId !== item.targetId);
       const count = rows.filter(r => r.kind === item.kind && r.targetId === item.targetId).length;
       return <>
           {first && count > 1 ? <View style={styles.sectionHead}><Text numberOfLines={1} style={styles.sectionTitle}>{item.context}</Text><Pressable disabled={!!busy} onPress={() => approveTarget(item)} style={styles.bulk}><Text style={styles.bulkText}>{he.requestsApproveAll}</Text></Pressable></View> : null}
@@ -234,7 +244,7 @@ export function RequestsScreen() {
             }} key={String(value)} style={styles.option} onPress={() => {
               setByName(value);
               setPicker(null);
-            }}><Text style={styles.optionText}>{value ? 'לפי שם השחקן' : 'סדר הרשימה המקורי'}</Text>{byName === value ? <Ionicons name="checkmark" size={22} color={colors.primary} /> : null}</Pressable>)}</ScrollView>
+            }}><Text style={styles.optionText}>{value ? 'לפי שם השחקן' : 'מהבקשות החדשות לישנות'}</Text>{byName === value ? <Ionicons name="checkmark" size={22} color={colors.primary} /> : null}</Pressable>)}</ScrollView>
         </View>
       </View>
     </SafeModal>

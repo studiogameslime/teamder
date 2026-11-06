@@ -198,7 +198,8 @@ test.each([false, true])('the first goal before clock creation stays ready, retr
   const x = serviceFixture(mock);
   x.state.status = 'open'; delete x.state.liveMatch;
   const goal = { id: 'before-clock', team: 'B', scorerId: 'b', assisterId: 'b2', assistStatus: 'player', minute: 1, expectedRoundId: 'round-one' };
-  await x.service.recordGoal('g', goal); await x.service.recordGoal('g', goal);
+  expect(await x.service.recordGoal('g', goal)).toBe(true);
+  expect(await x.service.recordGoal('g', goal)).toBe(false);
   expect(x.state.status).toBe('open');
   expect(x.state.liveMatch).toMatchObject({ phase: 'roundReady', scoreA: 0, scoreB: 1, timerRunning: false, timerAccumulatedMs: 0, timerEvents: [], goalTally: { b: 1 } });
   expect(x.state.liveMatch.goals).toHaveLength(1);

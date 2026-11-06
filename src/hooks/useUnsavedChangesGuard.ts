@@ -48,6 +48,11 @@ export function useUnsavedChangesGuard({
   const saving = savingRef ?? internalSaving;
   const dirtyRef = useRef(isDirty);
   dirtyRef.current = isDirty;
+  // Listeners are installed once, but edits, copy and an externally supplied
+  // saving ref may all change while the screen stays mounted. Read them at
+  // event/button time, including a dialog opened before the latest render.
+  const latest = useRef({ saving, onSave, title, body });
+  latest.current = { saving, onSave, title, body };
 
   useEffect(() => {
     const unsub = (nav as unknown as {
@@ -56,9 +61,9 @@ export function useUnsavedChangesGuard({
         h: (e: { preventDefault: () => void; data: { action: unknown } }) => void,
       ) => () => void;
     }).addListener('beforeRemove', (e) => {
-      if (!dirtyRef.current || saving.current) return;
+      if (!dirtyRef.current || latest.current.saving.current) return;
       e.preventDefault();
-      appAlert(title ?? he.profileEditUnsavedTitle, body ?? he.profileEditUnsavedBody, [
+      appAlert(latest.current.title ?? he.profileEditUnsavedTitle, latest.current.body ?? he.profileEditUnsavedBody, [
         {
           text: he.profileEditUnsavedDiscard,
           style: 'destructive',
@@ -71,7 +76,7 @@ export function useUnsavedChangesGuard({
         {
           text: he.profileEditUnsavedSave,
           onPress: async () => {
-            await onSave();
+            await latest.current.onSave();
           },
         },
         { text: he.cancel, style: 'cancel' },
@@ -87,11 +92,11 @@ export function useUnsavedChangesGuard({
   // same confirm dialog and only leaves on discard / after a successful save.
   useEffect(() => {
     const unregister = registerTabLeaveGuard({
-      isDirty: () => dirtyRef.current && !saving.current,
+      isDirty: () => dirtyRef.current && !latest.current.saving.current,
       confirmLeave: (proceed) => {
         appAlert(
-          title ?? he.profileEditUnsavedTitle,
-          body ?? he.profileEditUnsavedBody,
+          latest.current.title ?? he.profileEditUnsavedTitle,
+          latest.current.body ?? he.profileEditUnsavedBody,
           [
             {
               text: he.profileEditUnsavedDiscard,
@@ -101,7 +106,7 @@ export function useUnsavedChangesGuard({
             {
               text: he.profileEditUnsavedSave,
               onPress: async () => {
-                await onSave();
+                await latest.current.onSave();
               },
             },
             { text: he.cancel, style: 'cancel' },

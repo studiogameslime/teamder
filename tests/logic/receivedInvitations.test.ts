@@ -28,10 +28,12 @@ test.each(['groupInvitation','inviteToGame'])('accepted %s disappears without re
 });
 
 test('club invitation is independent of navigation, but limited to its target, status and expiry',()=>{
-  const rows=receivedInvitations([invite('club','groupInvitation','me',{groupId:'club',expiresAt:200},10)],'me');
-  expect(hasClubInvitation(rows,'club',100)).toBe(true);
-  expect(hasClubInvitation(rows,'other',100)).toBe(false);
-  expect(hasClubInvitation(rows,'club',200)).toBe(false);
+  const now=Date.now(), expiry=now+60000;
+  const rows=receivedInvitations([invite('club','groupInvitation','me',{groupId:'club',expiresAt:expiry},10)],'me');
+  expect(hasClubInvitation(rows,'club',now)).toBe(true);
+  expect(hasClubInvitation(rows,'other',now)).toBe(false);
+  expect(hasClubInvitation(rows,'club',expiry)).toBe(false);
+  expect(receivedInvitations([invite('legacy','inviteToGame','me',{gameId:'round',expiresAt:now-10},10)],'me')[0].status).toBe('expired');
   for(const status of ['joined','expired','unavailable'] as const)
     expect(hasClubInvitation([{...rows[0],status}],'club',100)).toBe(false);
   expect(hasClubInvitation([{...rows[0],payload:{managerApproved:false}}],'club',100)).toBe(false);

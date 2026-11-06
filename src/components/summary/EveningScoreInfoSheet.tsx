@@ -10,7 +10,14 @@ const factors = [
   { icon: 'git-network-outline', title: 'בישולים', text: 'גם הבישולים נמדדים ביחס להיסטוריה של המועדון.', color: '#7D29CF', bg: '#F2EAFE' },
 ] as const;
 
-export function EveningScoreInfoSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+const sharedFactors = [
+  { ...factors[0], text: 'ניצחון שווה נקודה ותיקו ללא הכרעה חצי נקודה.' },
+  { ...factors[1], text: 'כל שער שווה חצי נקודה.' },
+  { ...factors[2], text: 'כל בישול שווה 0.4 נקודה.' },
+  { icon: 'shield-checkmark-outline', title: 'שער נקי', text: 'כל משחק ללא ספיגה שווה 0.1 נקודה לכל שחקני הקבוצה.', color: '#2469F4', bg: '#E8F0FF' },
+] as const;
+
+export function EveningScoreInfoSheet({ visible, onClose, shared = false }: { visible: boolean; onClose: () => void; shared?: boolean }) {
   return <DraggableMenuSheet visible={visible} onClose={onClose}>
     <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
       <View style={s.heading}>
@@ -21,11 +28,14 @@ export function EveningScoreInfoSheet({ visible, onClose }: { visible: boolean; 
       <View style={s.range}><Text style={s.rangeTitle}>ציון המחזור שלך</Text>
         <Text style={s.rangeValue}>6 עד 10</Text></View>
       <Text style={s.section}>מה משפיע על הציון?</Text>
-      {factors.map(f => <View key={f.title} style={s.factor}>
+      {(shared ? sharedFactors : factors).map(f => <View key={f.title} style={s.factor}>
         <View style={[s.icon, { backgroundColor: f.bg }]}><Ionicons name={f.icon} size={23} color={f.color} /></View>
         <View style={s.flex}><Text style={s.factorTitle}>{f.title}</Text><Text style={s.body}>{f.text}</Text></View>
       </View>)}
-      <Text style={s.extra}>במועדון חדש משתמשים ביעדי ברירת מחדל. כשיש מעורבות בפנדלים, גם היא משפיעה.</Text>
+      <Text style={s.extra}>{shared
+        ? 'מחברים את הנקודות ומחלקים במספר המשחקים ששיחקת. את המדד ממירים לציון לפי רף אחיד למועדון, המבוסס על עשרת המחזורים הקודמים ומוקפא בתחילת המחזור. במועדון חדש רף הפתיחה הוא 1.4.'
+        : 'במועדון חדש משתמשים ביעדי ברירת מחדל. כשיש מעורבות בפנדלים, גם היא משפיעה.'}</Text>
+      {shared ? <Text style={s.extra}>הבקעה בהכרעת פנדלים או עצירה מוסיפות 0.35 נקודה, והחמצה מפחיתה 0.175. ההשפעה הכוללת מוגבלת לחיבור או להפחתה של 0.7 נקודה לפני החלוקה במשחקים. פנדל שהובקע במהלך המשחק נספר כשער רגיל בלבד. אפשר לקבל 10 גם ללא פנדלים, ולעולם לא עוברים את 10.</Text> : null}
       <View style={s.note}><Ionicons name="information-circle-outline" size={22} color="#2469F4" />
         <Text style={[s.body, s.flex]}>הציון מבוסס על הנתונים שתועדו. הגנה, מסירות ומאמץ אינם נמדדים כאן, ולכן הוא אינו הערכה מלאה של היכולת שלך.</Text></View>
       <View style={s.ranking}><Text style={s.factorTitle}>הציון והטבלה במועדון</Text>

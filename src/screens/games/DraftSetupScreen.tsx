@@ -22,6 +22,7 @@ import {
 } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { DraftSetupSkeleton } from '@/components/loading/DraftSetupSkeleton';
 import { PressableScale } from '@/components/PressableScale';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Button } from '@/components/Button';
@@ -66,6 +67,10 @@ export function DraftSetupScreen() {
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
   const currentUser = useUserStore((s) => s.currentUser);
   const myCommunities = useGroupStore((s) => s.groups);
+  // Profile/photo updates and unrelated club snapshots must not refetch the
+  // round or reset the selected split. Admin changes still recheck access.
+  const adminScope = JSON.stringify(myCommunities.filter(c =>
+    !!currentUser && c.adminIds.includes(currentUser.id)).map(c => c.id).sort());
 
   const [game, setGame] = useState<Game | null>(null);
   const [loadingGame,setLoadingGame]=useState(true);
@@ -132,11 +137,10 @@ export function DraftSetupScreen() {
         // — not just the menu entry — so a non-manager who reaches it via a
         // stale nav state or deep link is bounced out instead of editing.
         if (g) {
-          const grp = myCommunities.find((c) => c.id === g.groupId);
           const isAdmin =
             !!currentUser &&
             (g.createdBy === currentUser.id ||
-              (!!grp && grp.adminIds.includes(currentUser.id)));
+              (JSON.parse(adminScope) as string[]).includes(g.groupId));
           if (!isAdmin) {
             toast.info(he.draftAdminOnly);
             if (nav.canGoBack()) nav.goBack();
@@ -165,7 +169,7 @@ export function DraftSetupScreen() {
       alive = false;
       setLoadingGame(true);
     };
-  }, [gameId, hydratePlayers, currentUser, myCommunities, nav, params.resumeManual, params.editExisting,retryLoad]));
+  }, [gameId, hydratePlayers, currentUser?.id, currentUser?.isGuest, adminScope, nav, params.resumeManual, params.editExisting,retryLoad]));
 
   // Draftable roster = registered players (uid → name/avatar from the
   // store) PLUS per-game guests (name only; avatar falls back to a
@@ -247,10 +251,10 @@ export function DraftSetupScreen() {
   const captainsOk = numTeams === expectedCaptains && !noPlayersLeft
     && captainIds.every(id => participants.some(player => player.id === id));
   const canContinue = captainsOk && method !== null;
-  const colorCount = splitMode === 'auto' || splitMode === 'random' ? autoNumTeams : editSavedTeams ? game?.draftTeams?.teams.length || expectedCaptains : expectedCaptains;
+  const colorCount = game?.rotation && game.draftTeams ? game.draftTeams.teams.length : splitMode === 'auto' || splitMode === 'random' ? autoNumTeams : editSavedTeams ? game?.draftTeams?.teams.length || expectedCaptains : expectedCaptains;
   const colorTeams = draftColorTeams(game, colorCount);
   const colorKeys = Object.fromEntries(colorTeams.map(t => [t.index, t.colorKey]));
-  const canEditColors = !!game && !game.rotation && game.status !== 'finished' && game.status !== 'cancelled';
+  const canEditColors = !!game && game.status !== 'finished' && game.status !== 'cancelled';
   const colorEditor = <TeamColorPicker teamIndex={colorIndex} teams={colorTeams} onClose={() => setColorIndex(null)} onSave={async next => {
     if (!game) throw new Error('GAME_NOT_FOUND');
     const saved = await gameService.saveDraftTeamColors(game.id, next, colorKeys);
@@ -421,7 +425,15 @@ export function DraftSetupScreen() {
     returnRouteKey,
   ]);
 
-  if(loadingGame || openingExisting || loadFailed || !game || game.id!==gameId) return <SafeAreaView style={styles.root} edges={['top','bottom']}><ScreenHeader title={he.draftTitle}/><View style={{flex:1,alignItems:'center',justifyContent:'center',padding:24,gap:16}}>{loadFailed ? <><Text style={{color:colors.text,textAlign:'center'}}>לא הצלחנו לטעון את נתוני הכוחות</Text><Button title={he.retry} onPress={()=>setRetryLoad(value=>value+1)}/></> : <><ActivityIndicator color={colors.primary}/><Text style={{color:colors.textMuted,textAlign:'center'}}>טוענים את נתוני הכוחות</Text></>}</View></SafeAreaView>;
+  if (loadingGame || openingExisting || loadFailed || !game || game.id !== gameId) return (
+    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <ScreenHeader title={he.draftTitle} />
+      {loadFailed ? <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 }}>
+        <Text style={{ color: colors.text, textAlign: 'center' }}>לא הצלחנו לטעון את נתוני הכוחות</Text>
+        <Button title={he.retry} onPress={() => setRetryLoad(value => value + 1)} />
+      </View> : <ScrollView><DraftSetupSkeleton /></ScrollView>}
+    </SafeAreaView>
+  );
 
   if (previewCount && game && currentUser) {
     const {mockPlayers}=require('@/data/mockData') as typeof import('@/data/mockData');

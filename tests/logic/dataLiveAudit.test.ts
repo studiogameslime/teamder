@@ -101,8 +101,9 @@ describe.each([false,true])('live shootout roster contract (mock %s)', mock => {
     expect(x.state.liveMatch.shootout.kicks).toHaveLength(0);
   });
   test('a lost acknowledgement retries one event; reusing its id for changed data fails',async()=>{
-    const x=liveWorld(mock);await x.service.recordShootoutKick('audit',attempt());
-    await x.service.recordShootoutKick('audit',attempt());
+    const x=liveWorld(mock);
+    expect(await x.service.recordShootoutKick('audit',attempt())).toBe(true);
+    expect(await x.service.recordShootoutKick('audit',attempt())).toBe(false);
     expect(x.state.liveMatch.shootout.kicks).toHaveLength(1);
     await expect(x.service.recordShootoutKick('audit',attempt({outcome:'save'}))).rejects.toThrow('SHOOTOUT_CHANGED');
     await expect(x.service.recordShootoutKick('audit',attempt({keeperId:'1:1'}))).rejects.toThrow('SHOOTOUT_CHANGED');

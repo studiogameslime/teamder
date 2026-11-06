@@ -46,6 +46,43 @@ function unreadSetup() {
   return { auth, observations, seen, failed, stop, logError };
 }
 
+function dmRequestSetup() {
+  const auth={currentUser:{uid:'dm-owner'}};
+  const observations:Observation[]=[];
+  const observeCaughtError=jest.fn(), seen=jest.fn(),failed=jest.fn();
+  const subscribe=actualMethod('src/services/dmRequestService.ts','subscribe',{
+    USE_MOCK_DATA:false,getFirebase:()=>({auth,db:{}}),
+    useUserStore:{getState:()=>({currentUser:auth.currentUser?{id:auth.currentUser.uid}:null})},
+    collection:()=> 'requests',subscribeUserSession,
+    observedListener:(handler:(error:unknown)=>void,origin:unknown)=>(error:unknown)=>{observeCaughtError(error,origin);handler(error);},
+    onSnapshot:(_ref:unknown,next:Observation['next'],fail:Observation['fail'])=>{const row={next,fail,stop:jest.fn()};observations.push(row);return row.stop;},
+  });
+  const stop=subscribe('dm-owner',seen,failed);
+  return {auth,observations,observeCaughtError,seen,failed,stop};
+}
+
+test.each(['cleanup','account','suspended'])('DM request failures from %s cannot be logged against the current session',mode=>{
+  const x=dmRequestSetup();let release=()=>{};
+  if(mode==='cleanup')x.stop();
+  if(mode==='account')x.auth.currentUser={uid:'new-owner'};
+  if(mode==='suspended')release=suspendUserSessionListeners('dm-owner');
+  try {
+    x.observations[0].fail!(Object.assign(Error('denied'),{code:'permission-denied'}));
+    x.observations[0].next({docs:[]});
+    expect(x.observeCaughtError).not.toHaveBeenCalled();
+    expect(x.failed).not.toHaveBeenCalled();expect(x.seen).not.toHaveBeenCalled();
+  } finally {x.stop();release();}
+});
+
+test('an active DM request permission failure stays visible and never becomes a successful empty inbox',()=>{
+  const x=dmRequestSetup(),error=Object.assign(Error('denied'),{code:'permission-denied'});
+  try {
+    x.observations[0].fail!(error);
+    expect(x.observeCaughtError).toHaveBeenCalledWith(error,expect.objectContaining({handler:'subscribe'}));
+    expect(x.failed).toHaveBeenCalledWith(error);expect(x.seen).not.toHaveBeenCalled();
+  } finally {x.stop();}
+});
+
 test('unread permission failure for the active account is handled and reported without erasing confirmed data', () => {
   const x = unreadSetup();
   try {

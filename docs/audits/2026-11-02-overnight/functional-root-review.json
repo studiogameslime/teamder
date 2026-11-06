@@ -1,0 +1,197 @@
+{
+  "reviewedAt": "2026-11-03T01:15:06.634Z",
+  "records": [
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/games-empty-rtl-after.png",
+      "sha256": "fd6a33dae16c370b6971e6d350d129011f21809c739a9883325af9f3f8a12ed6",
+      "observed": "מסך מלא וריק. הכותרות, כרטיסי ההסבר והפעולה נמצאים מימין, בלי חיתוך טקסט. הבועה נשארת במסך שורש ונמצאת באזור הריק.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/availability-enabled-days-after.png",
+      "sha256": "0ff043e288ad865e3ac0f3955c61385056ddebc49cfb9f0a29bac11bb42841d0",
+      "observed": "זמינות מופעלת. תוויות הימים בצד ימין וטורי בוקר, צהריים וערב קריאים. כפתור שמירת ההעדפות קבוע מעל הלשוניות.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/availability-home-area-warning-after.png",
+      "sha256": "b3e90767f83534d1bce0313295c049060c1719efaeae357e644001cbeddacfc0",
+      "observed": "חלון האזהרה מסביר שנדרש אזור בית, בטקסט קריא ובפעולת הבנתי אחת. אין שינוי שמור.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/player-card-singular-after.png",
+      "sha256": "52909d8d523c51aeebca1a85a2a736e1cd2da3bf1e0dd88f2ae5db0088665072",
+      "observed": "כרטיס השחקן מציג 12 מחזורים משותפים ומועדון אחד משותף בלשון יחיד.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/availability-unsaved-copy-after.png",
+      "sha256": "62b85e347bbc80d205ff960a79b33a7d2fafbd12f23e5db21a33ec6c79c99be4",
+      "observed": "חלון היציאה מתייחס לשינוי זמינות שלא נשמר. שלוש הפעולות מוצגות במלואן.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/bidi-source-native.png",
+      "sha256": "eb7d6fe82c1984d84ef973f675a499d2ac3f35697f7beb5477efc62f6ead768a",
+      "observed": "מחרוזת המקור עם Eliran ועם שני שמות עבריים מופיעה במארח מקור. התחילית צמודה לשם והמספר נשאר קריא. זה אינו מסך סיכום מלא.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/personal-summary-share-outcome.png",
+      "sha256": "167d4619d8aa5e4088ea64bc4e2f0eb17889f534a5ddf7e88c742ca222c6b5e4",
+      "observed": "חלון השיתוף המקורי של אנדרואיד מציג תמונת סיכום. לא נבחר נמען. המלל באנגלית שייך למערכת ולא לאפליקציה.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/profile-setup-expanded-source-host.png",
+      "sha256": "2275576672fb5e28a3aeaecae0824648428fa6231176d6b5fbcd8f4a6cc1d065",
+      "observed": "מארח מסך ההגדרה מציג כותרת, תמונת דמו, העלאת תמונה ובחירת דמות במגוון. אין טענה ליצירת חשבון או שמירת פרופיל.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/create-partial-toast.png",
+      "sha256": "258839a22529e7c44455d7a080aba3b1409a78bdc443621a69cd6941de98802e",
+      "observed": "הודעת המקור גלויה במלואה ומסבירה שהמחזור נוצר אבל לא כל ההזמנות נשלחו. זה צילום מארח נפרד לאחר בדיקת יצירה בדמו, ואינו צילום רגע היצירה.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/conflict-busy-before.png",
+      "sha256": "4bffe51f0e463638d3c91feacaa047d8bb41bc728db0566a49cc68e7afedf7c2",
+      "observed": "חלון ההתנגשות מציג המתנה ושלוש פעולות מושבתות לפני התיקון. ההמתנה מדומה.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/conflict-busy-before-back-closed.png",
+      "sha256": "92ce816171620a26f10e502c7e7725561298a9b61783694f42997d141b845a47",
+      "observed": "לאחר חזרת אנדרואיד לפני התיקון נשאר המארח בלי החלון, ומתועד שנסגר בזמן ההמתנה.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/conflict-busy-after-back-blocked.png",
+      "sha256": "aa9a70e3b545d543a2981705176caf48c1e0e4b7b75e604267312cd6b1a1c0d7",
+      "observed": "לאחר התיקון החלון נותר בהמתנה אחרי חזרת אנדרואיד ורקע. שום הרשמה לא בוטלה.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/draft-team-contrast-before.png",
+      "sha256": "dab2c253904394784e5f2abd57185d1c03c7b5e5fa10faa44e3817fa8840f408",
+      "observed": "כותרת הלבנים כמעט נעלמת על הלבן וכותרת הצהובים בהירה. אלה כרטיסי מקור רגילים.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/draft-team-contrast-after.png",
+      "sha256": "47ea951f669cce1f9cd41b5eb09214ec59a087612d28006cc6b82374d1ae6cdf",
+      "observed": "באותם כרטיסי מקור כותרת הלבנים כהה והצהובים חומה, בעוד הנקודות והמסגרות נשארו בצבע המקורי.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/secondary-community-invalid-exit-before.png",
+      "sha256": "ff49785bf4d80b6bda22ab3e798bdde0872c204587a6e7806456315b3ee5d206",
+      "observed": "שם מועדון ריק, המשך מושבת ואזהרת יציאה לפני תיקון השמירה. שמור לא נלחץ לפני כדי להימנע מקריאת שירות.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/community-invalid-exit-save-after.png",
+      "sha256": "3dd33065d651e1f032a2588fd50667307832992c47529e1a505422347b972d4a",
+      "observed": "לאחר שמור באזהרה נשמרת טיוטת השם הריק בשלב הפרטים, עם המשך מושבת והסבר חובה.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/availability-invalid-exit-save-after.png",
+      "sha256": "326dcf0877a3021343ebedaba647b2a80fe34da5e912c088bc4120747a08f481",
+      "observed": "לאחר שמור באזהרה מוצג חלון דרישת אזור הבית. הטיוטה לא נשלחה לשירות.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/cover-upload-before.png",
+      "sha256": "0474fd31c2c3703a121fd9d319fbd1805710ad7403cf58ad6e5f079983f955c0",
+      "observed": "מארח בורר מקור מציג המתנה מקומית בגלריה עם c01 נבחר, לפני נעילת פעולות הבחירה והסגירה.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/cover-upload-before-closed-confirmed.png",
+      "sha256": "bcb9501a7724976f12dde0d5c4cfe5031351cd5796dde7c834eef6ebdeb30db9",
+      "observed": "המארח מציג בחירה מקומית c02 ושהבורר נסגר בזמן העלאה מדומה. אין העלאה או שינוי מועדון.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/cover-upload-after.png",
+      "sha256": "a9c4c096ddd525a75a4b41f0b41f5aad35b6e14ba437dbbe1f0c362aea4a6bd1",
+      "observed": "גלריה וסגירה מעומעמות ומושבתות בזמן העלאה מדומה. c01 נשאר נבחר אחרי ניסיון לבחור תא נוסף וחזרת אנדרואיד.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/season-record-loading-before.png",
+      "sha256": "944126a21e56d834c4098759289f11e288df6ba56e2e2dd6cfe800ed80765db7",
+      "observed": "במהלך בקשה מושהית מופיע אין נתון מתועד לפני התיקון. מספרי המועדון האחרים הם דמו.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/season-record-error-before.png",
+      "sha256": "e154cd692182f11905b869ba73f2a4d89c45ba489446a019323d0d4a0920d80b",
+      "observed": "גם בכשל מקומי מופיע אין נתון מתועד לפני התיקון.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/season-record-loading-after.png",
+      "sha256": "edba532079d1fb2ff4ac3ec4d0ee79b9ed8b275fba98d8d628f1cc1dda1b5e7b",
+      "observed": "לאחר התיקון מופיע טוענים את שיא המחזור במקום טענת היעדר נתון.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    },
+    {
+      "image": "artifacts/overnight-2026-11-02/functional-native/season-record-error-after.png",
+      "sha256": "179e44069e27f6cbf19a46108d5b406ba24bc01019322d89dcd5e1839b476c4c",
+      "observed": "לאחר התיקון מופיעים כשל טעינה ונסה שוב, בלי חפיפה בין טקסטי מקור. כפתור סיום הבדיקה שייך למארח.",
+      "visualReviewed": true,
+      "scope": "full image viewed at readable size",
+      "functionalClaim": false
+    }
+  ]
+}

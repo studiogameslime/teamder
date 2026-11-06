@@ -1,12 +1,16 @@
 import { joinDiagnosticId } from '../utils/joinDiagnosticId';
+import type { RoundTieResolution } from '@/types';
 import { runDiagnosticOperation } from './diagnosticJournal';
 import { observeCaughtError, observedListener, observeSettledErrors } from '../utils/errorObservation';
+import { beginUsageRegistration } from './usageActivity';
 import { isTransientReadError } from './readRetry';
 
 
 import { seasonScheduleBoundary } from '@/utils/seasonPolicy';
 import { httpsCallable } from '@/services/diagnosticCallable';
 import { waitForJoinResult } from '@/utils/joinRequestResult';
+import { enqueueGameJoin } from './enqueueGameJoin';
+import { decideSpotOffer } from '../../functions/src/spotOfferDecision';
 import { creationPayload } from '@/services/creationAttempt';
 import { assertCreationOwner } from '@/services/creationOwner';
 import { validateDraftRoster } from '@/utils/draftIntegrity';
@@ -49,7 +53,6 @@ import {
   orderBy,
   query,
   runTransaction,
-  serverTimestamp,
   startAfter,
   setDoc,
   updateDoc,
@@ -2996,7 +2999,7 @@ export const gameService = {
     return out.sort((a, b) => a.startsAt - b.startsAt);
   },
 
-  async getUpcomingGamesForGroup(groupId: GroupId): Promise<Game[]> {
+  async getUpcomingGamesForGroup(groupId: GroupId, requireAccess = false): Promise<Game[]> {
     const now = Date.now();
     const isUpcomingStatus = (s: string | undefined) =>
       s === 'open' || s === 'scheduled';
@@ -3023,7 +3026,7 @@ export const gameService = {
       );
     } catch (err) {
     observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getUpcomingGamesForGroup","site":"gameService:1e443dca0d"});
-      if (isPermissionDenied(err)) return []; // deleted group / non-member
+      if (!requireAccess && isPermissionDenied(err)) return []; // deleted group / non-member
       logError('getUpcomingGamesForGroup', err, { groupId });
       if (__DEV__) {
         console.warn('[gameService] getUpcomingGamesForGroup failed', err);
@@ -4509,8 +4512,8 @@ export const gameService = {
       ownGoal?: boolean;
       minute: number;
     },
-  ): Promise<void> {
-    if (!gameId) return;
+  ): Promise<boolean> {
+    if (!gameId) return false;
     // Collision-proof id: `g_<ms>_<n>` collided when two goals landed in the
     // same ms at the same array length (two rapid taps / two devices), which
     // then made removeGoal delete EVERY goal sharing that id. A random suffix
@@ -4567,18 +4570,18 @@ export const gameService = {
     };
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
-      if (!m || m.status === 'finished' || m.status === 'cancelled') { if (opts.expectedRoundId) throw new Error('המשחק אינו זמין להזנת גול'); return; }
-      if (isRetry(m.liveMatch?.goals ?? [])) return;
+      if (!m || m.status === 'finished' || m.status === 'cancelled') { if (opts.expectedRoundId) throw new Error('המשחק אינו זמין להזנת גול'); return false; }
+      if (isRetry(m.liveMatch?.goals ?? [])) return false;
       if (opts.expectedRoundId && (!m.rotation || roundCommitKey(m.rotation) !== opts.expectedRoundId)) throw new Error('המשחק התחלף. יש להזין את הגול במשחק המתאים.');
       if (m.rotation && m.lastCommittedRoundId === roundCommitKey(m.rotation)) {
         throw new Error('המשחק כבר נשמר. יש להמתין למעבר למשחק הבא.');
       }
       validatePlayers(m);
       if (!m.liveMatch) {
-        if (!opts.expectedRoundId) return;
+        if (!opts.expectedRoundId) return false;
         m.liveMatch = firstGoalLive;
         m.updatedAt = Date.now();
-        return;
+        return true;
       }
       m.liveMatch.goals = [...(m.liveMatch.goals ?? []), goal];
       if (opts.team === 'A') m.liveMatch.scoreA += 1; else m.liveMatch.scoreB += 1;
@@ -4588,27 +4591,27 @@ export const gameService = {
         m.liveMatch.goalTally = t;
       }
       m.updatedAt = Date.now();
-      return;
+      return true;
     }
     // Read and write under the same transaction. The server clears the live
     // board atomically with the stats/latch; a goal racing that commit either
     // wins first (the commit must retry) or retries here and is rejected.
-    await runTransaction(getFirebase().db, async (tx) => {
+    return runTransaction(getFirebase().db, async (tx) => {
       const ref = doc(getFirebase().db, 'games', gameId);
       const snap = await tx.get(ref);
-      if (!snap.exists()) { if (opts.expectedRoundId) throw new Error('המשחק אינו זמין להזנת גול'); return; }
+      if (!snap.exists()) { if (opts.expectedRoundId) throw new Error('המשחק אינו זמין להזנת גול'); return false; }
       const cur = snap.data();
-      if (cur.status === 'finished' || cur.status === 'cancelled') { if (opts.expectedRoundId) throw new Error('המשחק אינו זמין להזנת גול'); return; }
-      if (isRetry(cur.liveMatch?.goals ?? [])) return;
+      if (cur.status === 'finished' || cur.status === 'cancelled') { if (opts.expectedRoundId) throw new Error('המשחק אינו זמין להזנת גול'); return false; }
+      if (isRetry(cur.liveMatch?.goals ?? [])) return false;
       if (opts.expectedRoundId && (!cur.rotation || roundCommitKey(cur.rotation) !== opts.expectedRoundId)) throw new Error('המשחק התחלף. יש להזין את הגול במשחק המתאים.');
       if (cur.rotation && cur.lastCommittedRoundId === roundCommitKey(cur.rotation)) {
         throw new Error('המשחק כבר נשמר. יש להמתין למעבר למשחק הבא.');
       }
       validatePlayers(cur as Game);
       if (!cur.liveMatch) {
-        if (!opts.expectedRoundId) return;
+        if (!opts.expectedRoundId) return false;
         tx.update(ref, { liveMatch: firstGoalLive, updatedAt: Date.now() });
-        return;
+        return true;
       }
       tx.update(ref, {
       'liveMatch.goals': arrayUnion(goal),
@@ -4618,6 +4621,7 @@ export const gameService = {
       ...(tallyId ? { [`liveMatch.goalTally.${tallyId}`]: increment(1) } : {}),
       updatedAt: Date.now(),
       });
+      return true;
     });
   },
 
@@ -4901,7 +4905,7 @@ export const gameService = {
   async recordShootoutKick(
     gameId: string,
     opts: { team: 'A' | 'B'; kickerId: UserId; keeperId: UserId; scored: boolean; id?: string; outcome?: import('@/types').PenaltyOutcome; expectedKickCount?: number; expectedRoundId?: string },
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (!gameId || !opts.kickerId || !opts.keeperId) throw new Error('SHOOTOUT_CLOSED');
     const kick = {
       id: opts.id ?? `pk_${Date.now()}_${Math.floor(Math.random() * 1e9).toString(36)}`,
@@ -4934,27 +4938,25 @@ export const gameService = {
       const m =
         mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
       if (!m?.liveMatch?.shootout) throw new Error('SHOOTOUT_CLOSED');
-      if (m?.liveMatch?.shootout) {
-        if (!isRetry(m.liveMatch.shootout.kicks ?? [])) {
-          validateTurn(m);
-          m.liveMatch.shootout.kicks = [...(m.liveMatch.shootout.kicks ?? []), kick];
-          if (m.liveMatch.shootout.nextTeam) m.liveMatch.shootout.nextTeam = opts.team === 'A' ? 'B' : 'A';
-          m.liveMatch.shootout[keeperField] = opts.keeperId;
-        }
-        m.updatedAt = Date.now();
-      }
-      return;
+      if (isRetry(m.liveMatch.shootout.kicks ?? [])) return false;
+      validateTurn(m);
+      m.liveMatch.shootout.kicks = [...(m.liveMatch.shootout.kicks ?? []), kick];
+      if (m.liveMatch.shootout.nextTeam) m.liveMatch.shootout.nextTeam = opts.team === 'A' ? 'B' : 'A';
+      m.liveMatch.shootout[keeperField] = opts.keeperId;
+      m.updatedAt = Date.now();
+      return true;
     }
     const { db } = getFirebase();
-    await runTransaction(db, async (tx) => {
+    return runTransaction(db, async (tx) => {
       const ref = docs.game(gameId);
       const snap = await tx.get(ref);
       const cur = snap.data();
       const so = cur?.liveMatch?.shootout;
-      if (isRetry(so?.kicks ?? [])) return;
+      if (isRetry(so?.kicks ?? [])) return false;
       validateTurn(cur as Game);
       if (!so || cur?.status === 'finished' || cur?.status === 'cancelled') throw new Error('SHOOTOUT_CLOSED');
       tx.update(ref, { 'liveMatch.shootout.kicks': [...(so.kicks ?? []), kick], ...(so.nextTeam ? {'liveMatch.shootout.nextTeam': opts.team === 'A' ? 'B' : 'A'} : {}), [`liveMatch.shootout.${keeperField}`]: opts.keeperId, updatedAt: Date.now() });
+      return true;
     });
   },
 
@@ -5071,9 +5073,9 @@ export const gameService = {
     rot: import('@/types').MatchRotation,
     draft: DraftTeamsResult,
     winnerSide: 'A' | 'B' | null,
-    tieResolution?: 'bothOut' | 'veteranOut',
+    tieResolution?: RoundTieResolution,
     alternativeDecision?: {fingerprint:string;emptySeries:boolean},
-  ): Promise<{ winnerSide: 'A' | 'B' | null; tieResolution?: 'bothOut' | 'veteranOut' }> {
+  ): Promise<{ winnerSide: 'A' | 'B' | null; tieResolution?: RoundTieResolution }> {
     const [idxA, idxB] = rot.playing;
     // On-field rosters — the EFFECTIVE lineup (loan-adjusted), guests INCLUDED.
     // A guest is a full player in the cycle, so they must appear in the
@@ -5088,7 +5090,9 @@ export const gameService = {
       try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { httpsCallable } = require('@/services/diagnosticCallable');
-        const response = await httpsCallable(getFirebase().functions, lm.inPlayPenalties?.length ? 'commitRoundStatsWithInPlayPenalties' : 'commitRoundStats')({
+        const explicitDraw = tieResolution === 'stayA' || tieResolution === 'stayB' || tieResolution === 'keepPlaying';
+        // A separate endpoint fails before writing against an older server.
+        const response = await httpsCallable(getFirebase().functions, explicitDraw ? 'commitRoundStatsWithDrawRotation' : lm.inPlayPenalties?.length ? 'commitRoundStatsWithInPlayPenalties' : 'commitRoundStats')({
           gameId,
           // Idempotency key for the server's double-commit latch.
           //
@@ -5142,7 +5146,7 @@ export const gameService = {
         if ((response.data as { protocol?: number })?.protocol !== 2) {
           throw new Error('שמירת המשחק דורשת עדכון שרת. יש לנסות שוב לאחר העדכון.');
         }
-        const result = response.data as { winnerSide?: 'A' | 'B' | 'tie'; tieResolution?: 'bothOut' | 'veteranOut' | null; alternativeDecisionFingerprint?:string };
+        const result = response.data as { winnerSide?: 'A' | 'B' | 'tie'; tieResolution?: RoundTieResolution | null; alternativeDecisionFingerprint?:string };
         if (result.winnerSide !== 'A' && result.winnerSide !== 'B' && result.winnerSide !== 'tie') {
           throw new Error('לא התקבלה תוצאה שמורה תקינה. יש לנסות שוב.');
         }
@@ -5180,7 +5184,7 @@ export const gameService = {
             throw new Error('המשחק כבר נשמר עם הכרעה אחרת. יש לפתוח את המצב המעודכן.');
           }
           return {winnerSide:prior.winnerSide==='tie'?null:prior.winnerSide,
-            tieResolution:prior.alternativeTieResolution as 'bothOut'|'veteranOut'|undefined};
+            tieResolution:prior.alternativeTieResolution as RoundTieResolution|undefined};
         } else if (!m || alternativeRoundFingerprint(m)!==alternativeDecision.fingerprint) {
           throw new Error('המשחק, ההרכבים או התוצאה השתנו. יש לבדוק את המצב המעודכן לפני הסיום.');
         }
@@ -5221,6 +5225,7 @@ export const gameService = {
         inPlayPenalties: lm.inPlayPenalties ?? [],
         at: Date.now(),
       });
+      if (savedRound.roundId === roundCommitKey(rot) && !prior) Object.assign(savedRound,{tieResolution});
       if (alternativeDecision) Object.assign(savedRound,{alternativeDecisionFingerprint:alternativeDecision.fingerprint,alternativeTieResolution:tieResolution});
       if (m) { m.lastCommittedRoundId = savedRound.roundId; m.updatedAt = Date.now(); }
       if (m?.liveMatch) {
@@ -5231,7 +5236,7 @@ export const gameService = {
         m.liveMatch.shootout = undefined;
       }
       return { winnerSide: savedRound.winnerSide === 'tie' ? null : savedRound.winnerSide,
-        tieResolution:(savedRound as typeof savedRound & {alternativeTieResolution?:'bothOut'|'veteranOut'}).alternativeTieResolution??tieResolution };
+        tieResolution:(savedRound as typeof savedRound & {tieResolution?:RoundTieResolution;alternativeTieResolution?:RoundTieResolution}).tieResolution??(savedRound as typeof savedRound & {alternativeTieResolution?:RoundTieResolution}).alternativeTieResolution??tieResolution };
     }
   },
 
@@ -5341,7 +5346,7 @@ export const gameService = {
     gameId: string,
     _userId: string,
     manualWinnerSide?: 'A' | 'B',
-    tieResolution?: 'bothOut' | 'veteranOut',
+    tieResolution?: RoundTieResolution,
     committedOnly = false,
     nonPenaltyDecision?: ShootoutDecisionContext,
     expectedDecision?: RoundDecisionContext,
@@ -5393,6 +5398,10 @@ export const gameService = {
     const rot = g?.rotation;
     const draft = g?.draftTeams;
     if (!g || !lm || !rot || !draft || g.status === 'finished' || g.status === 'cancelled') return null;
+    if ((tieResolution === 'stayA' || tieResolution === 'stayB' || tieResolution === 'keepPlaying') &&
+        (lm.scoreA !== lm.scoreB || lm.shootout && !nonPenaltyDecision)) {
+      throw new Error('התוצאה או הפנדלים השתנו. יש לפתוח מחדש את בחירת הסיום.');
+    }
     if (committedOnly && g.lastCommittedRoundId !== roundCommitKey(rot)) return null;
     const [idxA, idxB] = rot.playing;
     let winnerSide: 'A' | 'B' | null =
@@ -5406,6 +5415,10 @@ export const gameService = {
     if (isTie && !tieMode) return { outcome: null };
 
     const committedRoundId = roundCommitKey(rot);
+    if (isTie && tieMode) {
+      // Validate the preview before any result/statistics are committed.
+      recordTieSkeleton(draft.teams, rot, playersPerTeamFor(g.format), effFillMode(g, draft), tieMode);
+    }
     const alternativeDecision = nonPenaltyDecision && (lm.shootout || nonPenaltyDecision.alternativeFingerprint) ? {
       fingerprint:nonPenaltyDecision.alternativeFingerprint??alternativeRoundFingerprint(g),
       emptySeries:JSON.parse(nonPenaltyDecision.fingerprint)?.[3]?.length===0,
@@ -6347,7 +6360,8 @@ export const gameService = {
   ): Promise<{ bucket: 'players' | 'waitlist' | 'pending' }> {
     const tappedAt = serverNow();
     const requestCorrelation=joinDiagnosticId(gameId,userId,tappedAt);
-    return runDiagnosticOperation('join_round',{gameId,joinTappedAt:tappedAt},async()=>{
+    const finishUsage = beginUsageRegistration(gameId, requestCorrelation);
+    return runDiagnosticOperation<{ bucket: 'players' | 'waitlist' | 'pending' }>('join_round',{gameId,joinTappedAt:tappedAt},async()=>{
     // Capture the tap timestamp FIRST — before any await — so network latency
     // on the pre-checks below never shifts a user's place in line.
     const requestStartedAt = Date.now();
@@ -6464,31 +6478,23 @@ export const gameService = {
     // no delay. The server reconciler does the authoritative fair seating.
     const { db } = getFirebase();
     const reqRef = doc(db, 'games', gameId, 'joinRequests', userId);
-    // After the reconciler seats a user it leaves their request doc behind in
-    // state 'assigned'. If that user later LEAVES and re-joins, a plain setDoc
-    // would be an UPDATE of the existing doc — which the rules forbid
-    // (`allow update: if false`; the reconciler owns transitions), so the
-    // re-join failed with permission-denied. Delete any stale doc first so the
-    // setDoc below is always a fresh CREATE (self-delete + self-create are both
-    // allowed). No-op when there's nothing to delete.
-    await deleteDoc(reqRef).catch((caughtError2dfbce48c9: unknown) => { observeCaughtError(caughtError2dfbce48c9, {"source":"src/services/gameService.ts","handler":"requestJoinGame","site":"gameService:2dfbce48c9"}); return undefined; });
-    await setDoc(reqRef, {
-      uid: userId,
-      tappedAt,
-      requestedAt: serverTimestamp(),
-      state: 'queued',
-    });
+    const queued = await enqueueGameJoin(db, gameId, userId, tappedAt);
+    if (queued !== 'listen' && queued !== 'created') return { bucket: queued };
     // `fair` says HOW the place was allocated (the tap-ordered queue);
     // `source` says WHERE the user tapped from. Different questions.
     const requestMs = Math.max(0, Date.now() - requestStartedAt);
     logEvent(AnalyticsEvent.GameJoinRequested, { gameId, fair: true, source, requestMs });
-    const result = await waitForJoinResult((next, fail) => onSnapshot(reqRef, snap => {
-      if (snap.exists()) next(snap.data());
+    let createdRegistration = false;
+    const result = await waitForJoinResult((next, fail) => onSnapshot(reqRef, { includeMetadataChanges: true }, snap => {
+      if (!snap.exists() || snap.metadata.fromCache || snap.metadata.hasPendingWrites) return;
+      const receipt = snap.data();
+      createdRegistration = queued === 'created' && receipt.registrationCreated === true && receipt.tappedAt === tappedAt;
+      next(receipt);
     }, observedListener(fail, {"source":"src/services/gameService.ts","handler":"requestJoinGame","site":"gameService.ts:snapshot:6270"})), () => getFirebase().auth.currentUser?.uid === userId);
-    logEvent(AnalyticsEvent.GameJoined, { gameId, fair: true, source, bucket: result.bucket, requestMs, totalMs: Math.max(0, Date.now() - requestStartedAt) });
+    if (createdRegistration) logEvent(AnalyticsEvent.GameJoined, { gameId, fair: true, source, bucket: result.bucket, requestMs, totalMs: Math.max(0, Date.now() - requestStartedAt) });
     return result;
   
-    },requestCorrelation);
+    },requestCorrelation).then(result => { finishUsage(result.bucket); return result; }, error => { observeCaughtError(error, {source:'src/services/gameService.ts',handler:'requestJoinGame',site:'usage:registration'}); finishUsage('failed'); throw error; });
   },
 
   /**
@@ -7215,6 +7221,8 @@ export const gameService = {
         typeof g.startsAt === 'number' &&
         Date.now() > g.startsAt - g.cancelDeadlineHours * 60 * 60 * 1000;
       const wasInPlayers = g.players.includes(userId);
+      const wasParticipant = wasInPlayers || g.waitlist.includes(userId) || (g.pending ?? []).includes(userId);
+      if (!wasParticipant && g.pendingPromotion?.uid !== userId) return;
       g.players = g.players.filter((id) => id !== userId);
       g.waitlist = g.waitlist.filter((id) => id !== userId);
       g.pending = (g.pending ?? []).filter((id) => id !== userId);
@@ -7248,7 +7256,7 @@ export const gameService = {
       g.participantIds = Array.from(
         new Set([...g.players, ...g.waitlist, ...(g.pending ?? [])]),
       );
-      g.cancellations = { ...(g.cancellations ?? {}), [userId]: Date.now() };
+      if (wasParticipant) g.cancellations = { ...(g.cancellations ?? {}), [userId]: Date.now() };
       g.updatedAt = Date.now();
       // Silent-failure guard: a cancel must REMOVE the user from every
       // roster array. If they linger in any, the cancel didn't take.
@@ -7279,7 +7287,7 @@ export const gameService = {
         // notification (count + names) instead of producing N pushes.
         notificationsService.notifyPlayerCancelled({ gameId });
       }
-      logEvent(AnalyticsEvent.GameCancelled, {
+      if (wasParticipant) logEvent(AnalyticsEvent.GameCancelled, {
         gameId,
         promoted: false,
         offered: !!offeredUid,
@@ -7306,14 +7314,7 @@ export const gameService = {
     try {
       result = await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
-      if (!snap.exists())
-        return {
-          offeredUid: null as string | null,
-          title: '',
-          startsAt: 0,
-          createdBy: '',
-          wasInPlayers: false,
-        };
+      if (!snap.exists()) return null;
       const data = snap.data();
       const wasInPlayers = (data.players ?? []).includes(userId);
       const players = (data.players ?? []).filter(
@@ -7360,6 +7361,7 @@ export const gameService = {
         wasInPlayers ||
         (data.waitlist ?? []).includes(userId) ||
         (data.pending ?? []).includes(userId);
+      if (!wasParticipant && data.pendingPromotion?.uid !== userId) return null;
       const cancellations = wasParticipant
         ? {
             ...((data.cancellations as Record<string, number> | undefined) ?? {}),
@@ -7417,6 +7419,7 @@ export const gameService = {
         title: data.title ?? '',
         createdBy: typeof data.createdBy === 'string' ? data.createdBy : '',
         wasInPlayers,
+        wasParticipant,
         isLate,
         startsAt: typeof data.startsAt === 'number' ? data.startsAt : 0,
         deadlineHours:
@@ -7450,6 +7453,7 @@ export const gameService = {
     // are now emitted server-side by onGameRosterChanged when the freed seat is
     // detected — a cross-user roster write isn't permitted from the canceller's
     // client (audit #4/#5).
+    if (!result?.wasParticipant) return;
     if (result.wasInPlayers && result.createdBy && result.createdBy !== userId) {
       notificationsService.notifyPlayerCancelled({ gameId });
     }
@@ -7734,41 +7738,29 @@ export const gameService = {
    * clears the offer, and chains a fresh offer to the new head if
    * there's still capacity and people waiting.
    */
-  async _resolveSpotOffer(gameId: string, userId: UserId, decision: 'confirm' | 'pass'): Promise<void> {
+  async _resolveSpotOffer(gameId: string, userId: UserId, decision: 'confirm' | 'pass'): Promise<boolean> {
     if (USE_MOCK_DATA) {
       const game = mockGamesV2.find(g => g.id === gameId);
       if (!game) throw new Error('GAME_NOT_FOUND');
-      if (decision === 'confirm' && game.players.includes(userId)) return;
-      if (game.pendingPromotion?.uid !== userId) {
-        if (decision === 'pass') return;
-        throw new Error('STALE_OFFER');
-      }
-      if (game.status !== 'open' && game.status !== 'locked' && game.status !== 'scheduled') throw new Error('GAME_NOT_OPEN');
-      if (!game.waitlist.includes(userId)) throw new Error('STALE_OFFER');
-      if (decision === 'confirm') {
-        if (game.players.length + activeGuestCount(game.guests) >= game.maxPlayers) throw new Error('GROUP_FULL');
-        game.players = [...game.players, userId];
-      }
-      game.waitlist = game.waitlist.filter(uid => uid !== userId);
-      game.pendingPromotion = game.waitlist.length > 0 && game.players.length + activeGuestCount(game.guests) < game.maxPlayers
-        ? { uid: game.waitlist[0], offeredAt: Date.now() } : null;
-      game.participantIds = [...new Set([...game.players, ...game.waitlist, ...(game.pending ?? [])])];
-      game.updatedAt = Date.now();
-      return;
+      const result = decideSpotOffer(game, userId, decision, Date.now());
+      if (result.changed) Object.assign(game, result.patch);
+      return result.changed;
     }
     const { auth, functions } = getFirebase();
     if (auth.currentUser?.uid !== userId) throw new Error('STALE_SESSION');
     // The server validates the offer owner/capacity and chains the next offer
     // atomically. No client permission change or write on behalf of a stranger.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('@/services/diagnosticCallable');
-    await httpsCallable(functions, 'resolveSpotOffer')({ gameId, decision });
+    const { httpsCallable } = require('@/services/diagnosticCallable') as typeof import('@/services/diagnosticCallable');
+    const reply = await httpsCallable<{ gameId: string; decision: string }, { changed?: boolean }>(functions, 'resolveSpotOffer')({ gameId, decision });
+    return reply.data?.changed === true;
   },
 
   async confirmSpotOffer(gameId: string, userId: UserId): Promise<void> {
     try {
-      await this._resolveSpotOffer(gameId, userId, 'confirm');
-      logEvent(AnalyticsEvent.WaitlistPromoted, { gameId, promotedUserId: userId, viaOfferConfirm: true });
+      if (await this._resolveSpotOffer(gameId, userId, 'confirm')) {
+        logEvent(AnalyticsEvent.WaitlistPromoted, { gameId, promotedUserId: userId, viaOfferConfirm: true });
+      }
     } catch (error) {
     observeCaughtError(error, {"source":"src/services/gameService.ts","handler":"confirmSpotOffer","site":"gameService:2494985273"});
       logError('confirmSpotOffer', error, { gameId, userId });
@@ -7779,8 +7771,9 @@ export const gameService = {
   /** Resolve the caller's own existing offer; the server notifies the next head. */
   async passSpotOffer(gameId: string, userId: UserId): Promise<void> {
     try {
-      await this._resolveSpotOffer(gameId, userId, 'pass');
-      logEvent(AnalyticsEvent.SpotOfferDecided, { gameId, decision: 'passed' });
+      if (await this._resolveSpotOffer(gameId, userId, 'pass')) {
+        logEvent(AnalyticsEvent.SpotOfferDecided, { gameId, decision: 'passed' });
+      }
     } catch (error) {
     observeCaughtError(error, {"source":"src/services/gameService.ts","handler":"passSpotOffer","site":"gameService:e9b2e76d69"});
       logError('passSpotOffer', error, { gameId, userId });

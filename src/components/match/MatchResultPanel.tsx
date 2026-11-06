@@ -6,7 +6,7 @@ import { teamColor, teamName } from './rotationView';
 import type { DraftTeamsResult, LiveMatchState, MatchRotation } from '@/types';
 
 /** The same team identity and score layout in both end-of-match dialogs. */
-export function MatchResultPanel({ draftTeams, rotation, live, caption, trophy = false, compact = false, heading, teamDetails, compactIdentity = false }: {
+export function MatchResultPanel({ draftTeams, rotation, live, caption, trophy = false, compact = false, heading, teamDetails, compactIdentity = false, emphasizedSide }: {
   draftTeams: DraftTeamsResult;
   rotation: MatchRotation;
   live: LiveMatchState;
@@ -16,6 +16,7 @@ export function MatchResultPanel({ draftTeams, rotation, live, caption, trophy =
   heading?: string;
   teamDetails?: (side: 'A' | 'B') => React.ReactNode;
   compactIdentity?: boolean;
+  emphasizedSide?: 'A' | 'B';
 }) {
   return <View style={[s.result, compact && s.compactResult]} pointerEvents="none">
     <View style={StyleSheet.absoluteFillObject} pointerEvents="none" accessible={false}>
@@ -24,7 +25,7 @@ export function MatchResultPanel({ draftTeams, rotation, live, caption, trophy =
     </View>
     {heading ? <Text style={s.heading}>{heading}</Text> : null}
     <View style={[s.row, compact && s.compactRow]}>
-      {rotation.playing.map((index, side) => <View key={index} style={s.side}>
+      {rotation.playing.map((index, side) => <View key={index} style={[s.side, emphasizedSide === (side === 0 ? 'A' : 'B') && s.leadingSide]}>
           <View style={compactIdentity ? s.identityRow : s.identityStack}>
           <TeamShirtIllustration color={teamColor(index,draftTeams.teams)} width={compactIdentity ? 28 : compact ? 34 : 42}/>
           <Text style={[s.name, compact && s.compactName, compactIdentity && s.identityName]} numberOfLines={compact ? 2 : 1} maxFontSizeMultiplier={compact ? 1.15 : undefined}>{teamName(index,draftTeams.teams)}</Text>
@@ -34,14 +35,18 @@ export function MatchResultPanel({ draftTeams, rotation, live, caption, trophy =
         </View>
       )}
     </View>
-    {caption ? <View style={s.captionRow}>
-      <Text style={[s.caption, compact && s.compactCaption]} maxFontSizeMultiplier={compact ? 1.15 : undefined}>{caption}</Text>
-      {trophy && <Ionicons name="trophy-outline" size={24} color="#F8FAFC"/>}
+    {caption ? <View style={[s.captionRow, emphasizedSide && s.leadingCaption]}>
+      {trophy && emphasizedSide && <Ionicons name="trophy" size={24} color="#713F12"/>}
+      <Text style={[s.caption, compact && s.compactCaption, emphasizedSide && s.leadingCaptionText]} maxFontSizeMultiplier={compact ? 1.15 : undefined}>{caption}</Text>
+      {trophy && !emphasizedSide && <Ionicons name="trophy-outline" size={24} color="#F8FAFC"/>}
     </View> : null}
   </View>;
 }
 
 const s=StyleSheet.create({
+  leadingSide:{borderWidth:2,borderColor:'#FDE68A',backgroundColor:'rgba(255,255,255,0.14)',borderRadius:14,paddingVertical:8},
+  leadingCaption:{backgroundColor:'#FEF3C7',borderRadius:12,paddingHorizontal:10,paddingVertical:10},
+  leadingCaptionText:{color:'#713F12',textShadowRadius:0,fontSize:20},
   heading:{fontSize:12,fontWeight:'800',color:'#FFFFFF',textAlign:'center'},
   identityRow:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5,alignSelf:'stretch'},
   identityStack:{alignItems:'center',gap:4},identityName:{flexShrink:1},

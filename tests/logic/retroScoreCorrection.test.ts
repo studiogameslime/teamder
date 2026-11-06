@@ -121,10 +121,24 @@ test.each([['guest:x','b'],['a','guest:x'],['guest:x','guest:y']])('guest correc
  for(const id of ['guest:x','guest:y'])w.put('gamePlayerStats/g__'+id,{gameId:'g',userId:id,isGuest:true,goals:0,assists:0,rounds:1});
  const request={...w.request(),data:{...w.request().data,scorerId:scorer,assisterId:assister}};
  await w.add(request);await w.add(request);
+ const isGuestScorer=scorer.startsWith('guest:');
+ expect(w.rows.get('communityStats/c').goals).toBe(isGuestScorer?0:1);
+ expect(w.rows.get('communityStats/c').guestGoals??0).toBe(isGuestScorer?1:0);
  expect(w.rows.get('gamePlayerStats/g__'+scorer).goals).toBe(1);expect(w.rows.get('gamePlayerStats/g__'+assister).assists).toBe(1);
  expect(w.rows.get('roundSummaries/g').stats).toMatchObject({goals:1,assists:1});
  for(const id of ['guest:x','guest:y']){expect(w.rows.has('users/'+id)).toBe(false);expect(w.rows.has('communityPlayerStats/c__'+id)).toBe(false);expect(w.rows.has('eveningStandings/g__'+id)).toBe(false);}
  await w.remove(request);await w.remove(request);expect(w.rows.get('gamePlayerStats/g__'+scorer).goals).toBe(0);expect(w.rows.get('gamePlayerStats/g__'+assister).assists).toBe(0);expect(w.rows.get('communityStats/c').goals).toBe(0);
+ expect(w.rows.get('communityStats/c').guestGoals??0).toBe(0);
+});
+
+test('undoing a guest correction made before separate guest credit reverses only the original counter',async()=>{
+ const w=world();
+ w.put('games/g/retroGoals/legacy',{scorerId:'guest:x',assisterId:null});
+ w.put('gamePlayerStats/g__guest:x',{gameId:'g',userId:'guest:x',goals:1,isGuest:true});
+ w.put('communityStats/c',{goals:7,guestGoals:3});
+ await w.remove(w.request('legacy'));
+ expect(w.rows.get('communityStats/c')).toMatchObject({goals:6,guestGoals:3});
+ expect(w.rows.get('gamePlayerStats/g__guest:x').goals).toBe(0);
 });
 
 test('a fabricated or waitlisted guest cannot receive a retro correction',async()=>{

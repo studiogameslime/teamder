@@ -95,10 +95,10 @@ export function SeasonsSettings({ groupId, seasons, onChanged, onDirtyChange }: 
       logEvent(AnalyticsEvent.SeasonsEnabled, { groupId });
     });
     if (confirm === 'close') void run('מסיימים את העונה…', async () => {
-      await seasonService.endNow(groupId, seasonExpected(seasons)); logEvent(AnalyticsEvent.SeasonEndedEarly, { groupId });
+      await seasonService.endNow(groupId, seasonExpected(seasons));
     });
     if (confirm === 'disable') void run('מסיימים את העונה ומכבים עונות…', async () => {
-      await seasonService.disable(groupId, seasonExpected(seasons)); logEvent(AnalyticsEvent.SeasonsDisabled, { groupId });
+      await seasonService.disable(groupId, seasonExpected(seasons));
     });
   };
   const short = (seasons?.playedRounds ?? 0) < MIN_SEASON_ROUNDS;

@@ -85,6 +85,8 @@ export interface WorkItem {
   count: number;
   chatMessageId?: string;
   sourceReportId?: string;
+  sourceChat?: { userId: string; conversationId: string; messageId: string };
+  linkedTaskId?: string;
   /**
    * May Claude act on this item without asking first?
    *
@@ -118,6 +120,7 @@ export type WorkKind =
   | 'feature'
   | 'error'
   | 'report'
+  | 'suggestion'
   | 'idea'
   | 'chat';
 
@@ -127,6 +130,7 @@ export const KIND_LABEL: Record<WorkKind, string> = {
   feature: 'פיצ׳ר',
   error: 'שגיאה',
   report: 'דיווח QA',
+  suggestion: 'הצעת משתמש',
   idea: 'רעיון',
   chat: 'צ׳אט',
 };
@@ -137,6 +141,7 @@ export const KIND_ICON: Record<WorkKind, string> = {
   feature: 'sparkles',
   error: 'warning',
   report: 'chatbubble-ellipses',
+  suggestion: 'bulb-outline',
   idea: 'bulb',
   chat: 'mail-unread',
 };
@@ -145,6 +150,7 @@ export const KIND_ICON: Record<WorkKind, string> = {
 export const KIND_ORDER: WorkKind[] = [
   'error',
   'report',
+  'suggestion',
   'bug',
   'feature',
   'ui',
@@ -205,7 +211,7 @@ export const DONE_LIMIT = 20;
  * (`images`, `image`, `claudeImages`). See the note at the top of the file.
  */
 const LIST_FIELDS: Record<Exclude<WorkStream, 'chat'>, readonly string[]> = {
-  task: ['title', 'notes', 'category', 'status', 'priority', 'source', 'sourceId', 'screen',
+  task: ['title', 'notes', 'category', 'status', 'priority', 'source', 'sourceId', 'sourceType', 'sourcePath', 'sourceConversationId', 'sourceMessageId', 'screen',
     'reporterId', 'reporterName', 'createdAt', 'doneAt', 'reviewReason',
     'claudeStatus', 'claudeNote', 'claudeAt', 'unresolved', 'unresolvedAt', 'unresolvedReason', 'unresolvedNextStep'],
   error: ['title', 'operation', 'lastCode', 'status', 'count', 'firstSeen', 'lastSeen',
@@ -256,6 +262,10 @@ function taskFromDoc(d: FsDoc): Task {
     images: [], // projected away — fetched on expand
     screen: str(d.screen),
     sourceId: str(d.sourceId),
+    ...(d.sourceType === 'feedback' || d.sourceType === 'support_message' ? {
+      sourceType: d.sourceType, sourcePath: str(d.sourcePath),
+      sourceConversationId: str(d.sourceConversationId), sourceMessageId: str(d.sourceMessageId),
+    } : {}),
     reporterId: str(d.reporterId),
     reporterName: str(d.reporterName),
     createdAt: Number(d.createdAt ?? 0),
@@ -290,11 +300,13 @@ function ideaFromDoc(d: FsDoc): IdeaItem {
   };
 }
 
-function fromTask(t: Task): WorkItem {
+export function workItemFromTask(t: Task): WorkItem {
   return {
     key: `task:${t.id}`,
     stream: 'task',
-    sourceReportId: t.source === 'teamder' && t.sourceId && !t.sourceId.includes('/') ? t.sourceId : undefined,
+    sourceReportId: t.sourceType !== 'support_message' && t.source === 'teamder' && t.sourceId && !t.sourceId.includes('/') ? t.sourceId : undefined,
+    sourceChat: t.sourceType === 'support_message' && t.reporterId && t.sourceConversationId && t.sourceMessageId
+      ? { userId: t.reporterId, conversationId: t.sourceConversationId, messageId: t.sourceMessageId } : undefined,
     // A task's own category IS its kind — bug / design / feature are three
     // different jobs that happen to share a collection.
     kind: t.category === 'ui' ? 'ui' : t.category === 'feature' ? 'feature' : 'bug',
@@ -358,7 +370,7 @@ function fromReport(d: FsDoc): WorkItem {
   return {
     key: `report:${d.id}`,
     stream: 'report',
-    kind: 'report',
+    kind: d.type === 'suggestion' ? 'suggestion' : 'report',
     id: d.id,
     docPath: `feedback/${d.id}`,
     title: firstLine(message) || 'דיווח משתמש',
@@ -376,7 +388,7 @@ function fromReport(d: FsDoc): WorkItem {
     reporterName: typeof d.userName === 'string' ? d.userName : '',
     count: 1,
     claudeMayAct: true,
-    hint: d.fixRequested === true ? 'סומן לתיקון' : '',
+    hint: d.type === 'suggestion' ? 'הצעת משתמש. אפשר להפוך למשימה.' : d.fixRequested === true ? 'סומן לתיקון' : '',
   };
 }
 
@@ -514,7 +526,7 @@ export async function listWorkSnapshot(force = false, onProgress?: (items: WorkI
   }).catch((caughtError9674678c43: unknown) => {
     observeCaughtError(caughtError9674678c43, {"source":"pulse/src/services/workItems.ts","handler":"receive","site":"workItems:9674678c43"}); failedStreams.push(stream); });
   await Promise.all([
-    receive(0, 'task', lean('task', force), d => ({ ...fromTask(taskFromDoc(d)), unresolved: readUnresolvedWork(d), reviewReason: typeof d.reviewReason === 'string' ? d.reviewReason : '' })),
+    receive(0, 'task', lean('task', force), d => ({ ...workItemFromTask(taskFromDoc(d)), unresolved: readUnresolvedWork(d), reviewReason: typeof d.reviewReason === 'string' ? d.reviewReason : '' })),
     receive(1, 'error', lean('error', force), d => ({ ...fromError(d), unresolved: readUnresolvedWork(d), reviewReason: typeof d.reviewReason === 'string' ? d.reviewReason : '' })),
     receive(2, 'report', lean('report', force), d => ({ ...fromReport(d), unresolved: readUnresolvedWork(d), reviewReason: typeof d.reviewReason === 'string' ? d.reviewReason : '' })),
     receive(3, 'feature', lean('feature', force), d => fromFeature(featureFromDoc(d))),
@@ -532,7 +544,9 @@ export async function listWork(force = false, onProgress?: (items: WorkItem[]) =
 }
 
 function trimWork(items: WorkItem[]): WorkItem[] {
-  const all = sortWork(items);
+  const links = new Map(items.filter(i => i.stream === 'task' && i.sourceReportId).map(i => [i.sourceReportId!, i.id]));
+  const all = sortWork(items.map(i => i.stream === 'report' && links.has(i.id)
+    ? { ...i, linkedTaskId: links.get(i.id), claudeMayAct: false, hint: 'קיימת משימה מקושרת. המקור נשמר לעיון.' } : i));
   // Every open item, and only the most recent closed ones — see DONE_LIMIT.
   const done = all
     .filter((i) => i.state === 'done')
@@ -551,7 +565,7 @@ function trimWork(items: WorkItem[]): WorkItem[] {
  */
 export async function loadItemImages(
   item: WorkItem,
-): Promise<{ images: string[]; claudeImages: string[] }> {
+): Promise<{ images: string[]; claudeImages: string[]; sourceText?: string; sourceCreatedAt?: number }> {
   if (!item.docPath) return { images: [], claudeImages: [] };
   if (MOCK_WORK || !has.firebase()) {
     return { images: item.images, claudeImages: item.claude?.images ?? [] };
@@ -564,6 +578,7 @@ export async function loadItemImages(
   return {
     images: [...new Set([...list(d.images), ...list(d.image), ...list(source?.images), ...list(source?.image)])],
     claudeImages: list(d.claudeImages),
+    ...(typeof d.sourceText === 'string' ? { sourceText: d.sourceText, sourceCreatedAt: Number(d.sourceCreatedAt) || 0 } : {}),
   };
 }
 

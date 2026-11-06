@@ -18,6 +18,23 @@ import { AppState } from 'react-native';
 import { parseReferrerInvite } from '@/utils/referrerInvite';
 const CREATED = Date.now();
 const originalFetch = globalThis.fetch;
+test('an explicit invitation opened during the install recovery storage read keeps priority', async () => {
+  let readStarted!: () => void, finishRead!: () => void;
+  const started = new Promise<void>(resolve => { readStarted = resolve; });
+  const delayed = jest.spyOn(storage, 'getPendingInvite').mockImplementationOnce(() => {
+    readStarted();
+    return new Promise(resolve => { finishRead = () => resolve(null); });
+  });
+  try {
+    const install = resolveIncomingInvite('teamder://session/old-install', 'deferred_deep_link');
+    await started;
+    const direct = await resolveIncomingInvite('teamder://session/chosen-round');
+    await receivePendingInvite(direct!);
+    finishRead();
+    expect(await install).toBeNull();
+    expect(await readPendingAction()).toMatchObject({kind:'open_game',targetId:'chosen-round'});
+  } finally { delayed.mockRestore(); }
+});
 test('fresh-user ticket registration and resolution are ordered even when concurrent', async () => {
   mockDisk.set('footy.invite.unresolved', JSON.stringify({url:'https://teamderfc.web.app/i/code',origin:'deep_link'}));
   await Promise.all([storage.registerFreshInviteUser('new-user', CREATED), storage.markInviteAttributionResolved('https://teamderfc.web.app/i/code')]);

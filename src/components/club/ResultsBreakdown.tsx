@@ -208,7 +208,6 @@ export function ResultsBreakdown({
         <Text style={{ color: '#687797', fontSize: 11, textAlign: 'center' }}>{a.label}</Text><Text style={{ color: '#687797', fontSize: 10 }}>{pctOf(a.value)}%</Text>
       </View>)}</View>
       <Text style={styles.insight}>{totalRounds} משחקים שנמדדו</Text>
-      {scoreless > 0 ? <Text style={styles.insight}>{he.clubResultsScoreless(scoreless, pctOf(scoreless))}</Text> : null}
     </View>;
   }
 

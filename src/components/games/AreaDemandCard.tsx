@@ -236,7 +236,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '900',
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
     flex: 1,
   },
   radiusChip: {
@@ -273,13 +272,11 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '900',
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
   rowSub: {
     ...typography.caption,
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
   cta: {
     alignSelf: 'flex-start',
@@ -306,7 +303,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
   pressed: { opacity: 0.85 },
   promptCard: { padding: spacing.md, gap: spacing.xs, alignItems: 'flex-start' },
@@ -320,7 +316,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
   promptBtn: {
     marginTop: spacing.xs,

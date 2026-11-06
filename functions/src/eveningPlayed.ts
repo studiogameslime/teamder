@@ -244,6 +244,28 @@ export function didEveningHappen(
   return eveningPlayState(game) === 'happened';
 }
 
+/** Position of a particular evening in the club's played history. The caller
+ * supplies this club's games up to kickoff. IDs break simultaneous kickoffs
+ * consistently, regardless of query or seal order. Never guess a position
+ * if the target itself is absent or did not happen. */
+export function playedEveningOrdinal(
+  docs: ReadonlyArray<{ id: string; data(): PlayableEvening & { startsAt?: unknown } }>,
+  gameId: string,
+  at: number,
+): number | null {
+  if (!Number.isFinite(at) || at <= 0) return null;
+  let count = 0;
+  let found = false;
+  for (const doc of docs) {
+    const game = doc.data();
+    const start = game.startsAt;
+    if (typeof start !== 'number' || !Number.isFinite(start) || start <= 0 || !didEveningHappen(game)) continue;
+    if (start < at || (start === at && doc.id <= gameId)) count++;
+    if (start === at && doc.id === gameId) found = true;
+  }
+  return found ? count : null;
+}
+
 /** An evening waiting on an admin's word. */
 export function needsPlayVerification(
   game: PlayableEvening | null | undefined,

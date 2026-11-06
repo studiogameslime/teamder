@@ -1,6 +1,6 @@
 import { observedListener, observeCaughtError } from '../utils/errorObservation';
 
-import { hydrateClubAdminRatings } from './clubAdminRatings';
+import { hydrateClubAdminRatings, invalidateClubAdminRatingRead } from './clubAdminRatings';
 import { seriesService } from './seriesService';
 import { assertCreationOwner } from './creationOwner';
 import { readPlayerIdentities } from './publicPlayerService';
@@ -972,7 +972,7 @@ export const groupService = {
       g.updatedAt = Date.now();
       return result;
     }
-    return runTransaction(getFirebase().db, async (tx) => {
+    const saved = await runTransaction(getFirebase().db, async (tx) => {
       const ref = docs.group(groupId);
       const snap = await tx.get(ref);
       if (!snap.exists()) throw new Error('setPlayerEquipment: group not found');
@@ -980,6 +980,10 @@ export const groupService = {
       tx.update(ref, { ballHolderIds: result.ballHolderIds, jerseysHolderIds: result.jerseysHolderIds, updatedAt: Date.now() });
       return result;
     });
+    if (saved.ballChanged || saved.jerseysChanged) {
+      logEvent(AnalyticsEvent.ClubEquipmentChanged, { ballChanged: saved.ballChanged, jerseysChanged: saved.jerseysChanged });
+    }
+    return saved;
   },
 
   async approveMember(groupId: GroupId, userId: UserId): Promise<Group> {
@@ -1229,7 +1233,12 @@ export const groupService = {
       throw new Error('setAdminRating: caller is not a coach');
     }
     const { httpsCallable } = require('@/services/diagnosticCallable');
-    await httpsCallable(getFirebase().functions, 'setClubAdminRating')({ groupId, playerId, rating: clear ? null : rating });
+    invalidateClubAdminRatingRead(groupId);
+    try {
+      await httpsCallable(getFirebase().functions, 'setClubAdminRating')({ groupId, playerId, rating: clear ? null : rating });
+    } finally {
+      invalidateClubAdminRatingRead(groupId);
+    }
 
   },
 

@@ -1,0 +1,11 @@
+{
+  "baselineFailures": 107,
+  "finalFailures": 110,
+  "concurrentSourceDrift": [
+    "rounds/available-players: מקור השתנה: tests/logic/availablePlayersPulseCapacity.test.tsx",
+    "rounds/match-rounds: מקור השתנה: tests/logic/matchStatsReadState.test.tsx",
+    "statistics/club-leaders-and-table: מקור השתנה: tests/logic/matchStatsReadState.test.tsx"
+  ],
+  "releaseEntryReadBack": true,
+  "proofReadBack": true
+}

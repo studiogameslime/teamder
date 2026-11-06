@@ -7,7 +7,8 @@
 /**
  * How many spots on the pitch are actually taken.
  *
- * ⚠️ Registered players PLUS guests. The filler matcher counted only
+ * ⚠️ Registered players PLUS active guests. Waitlisted guests hold no seat.
+ * The filler matcher counted only
  * `players`, so a game filled entirely with guests read as empty: it passed
  * the "already full" test, passed the shortage threshold, and announced a gap
  * of twenty. `runSendShortageWarnings` had always counted guests — the filler
@@ -17,7 +18,9 @@ export function occupancyOf(g: {
   players?: string[];
   guests?: unknown[];
 }): number {
-  return (g.players?.length ?? 0) + (g.guests?.length ?? 0);
+  const activeGuests = (g.guests as ({ waitlisted?: boolean } | null)[] | undefined)
+    ?.filter(guest => !guest?.waitlisted).length ?? 0;
+  return (g.players?.length ?? 0) + activeGuests;
 }
 
 /** Integer arithmetic keeps exactly 70% eligible, without rounding down. */

@@ -1,0 +1,496 @@
+{
+  "schemaVersion": 1,
+  "preparedAt": "2026-11-03T00:00:01.175Z",
+  "reviewer": "design_audit",
+  "componentFilePopulation": 302,
+  "codeReadComponentFiles": 63,
+  "dedicatedDesignReviewFiles": 27,
+  "focusedMountOrDisplayReadFiles": 16,
+  "notCodeReadByThisReviewer": 239,
+  "inventoryOnlyIsNotReview": true,
+  "codeReadDoesNotMeanEveryStateVerified": true,
+  "excludedThemeFiles": [
+    "src/theme/colors.ts",
+    "src/theme/spacing.ts",
+    "src/theme/typography.ts",
+    "src/theme/overlays.ts"
+  ],
+  "renderEvidence": {
+    "fullScreenSnapshotsReviewedByThisReviewer": 35,
+    "fullScreenReview": "docs/audits/2026-11-02-overnight/native-final-design.json",
+    "fullScreenSnapshotsDoNotGiveAllNestedComponentCount": true,
+    "previousHostSubjectsPersonallyViewed": [
+      "src/components/Avatar.tsx",
+      "src/components/Button.tsx",
+      "src/components/profile/DeleteAccountSheet.tsx",
+      "src/components/games/RegistrationConflictModal.tsx"
+    ],
+    "previousHostEvidence": [
+      "artifacts/overnight-2026-11-02/polish-before-rtl.png",
+      "artifacts/overnight-2026-11-02/delete-busy-before.png",
+      "artifacts/overnight-2026-11-02/functional-native/conflict-busy-after-back-blocked.png"
+    ],
+    "centralHostAndInteractionEvidence": "הסוכן הראשי מרכז ראיות מארחים ולחיצות נוספות. אין לחבר מספרים בלי איחוד נתיבי המקור.",
+    "overlayReview": "docs/audits/2026-11-02-overnight/overlay-design-review.json",
+    "overlayIsSeparateFromFullScreenReview": true,
+    "finalAdditionalNativeSubjectsPersonallyViewed": [
+      "src/components/community/CoverImagePicker.tsx",
+      "src/components/summary/SeasonClubSummary.tsx"
+    ],
+    "finalAdditionalNativeEvidence": [
+      "artifacts/overnight-2026-11-02/functional-native/cover-upload-after.png",
+      "artifacts/overnight-2026-11-02/functional-native/season-record-loading-after.png",
+      "artifacts/overnight-2026-11-02/functional-native/season-record-error-after.png"
+    ]
+  },
+  "files": [
+    {
+      "name": "Button",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/Button.tsx",
+      "sha256AtReceipt": "9bcbe4456858b65638f6df2326a42559d27a6c0314722c6a63bf8ecb7cbcdf2b"
+    },
+    {
+      "name": "InputField",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/InputField.tsx",
+      "sha256AtReceipt": "d363d54065331f3fc71a119c7558ad6af6fb3cd7d31c3caae9805e97ccb63b46"
+    },
+    {
+      "name": "AutocompleteInput",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/AutocompleteInput.tsx",
+      "sha256AtReceipt": "ea348890b9302901f32a31c63e8b83656eeeeb861ae04e36bfdf066a694b7fa4"
+    },
+    {
+      "name": "EmptyState",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/EmptyState.tsx",
+      "sha256AtReceipt": "22b2543327ee1079482b243b05eabb347e1de3dde591afcec4abd3c4510beca9"
+    },
+    {
+      "name": "NoticeCard",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/NoticeCard.tsx",
+      "sha256AtReceipt": "19969313b7c40f4ac7262d51162d760578a0e733136caeb92a8b911be2396c6f"
+    },
+    {
+      "name": "ConfirmDialog",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/ConfirmDialog.tsx",
+      "sha256AtReceipt": "1519b755a48412824c0503a023057ca106f02558a34cc3ce086b4056babb077d"
+    },
+    {
+      "name": "ConfirmDestructiveModal",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/ConfirmDestructiveModal.tsx",
+      "sha256AtReceipt": "32b85d16adddbd60a93c5dd9bc4ed9215e3f78afca5e4d52836888944d288684"
+    },
+    {
+      "name": "PressableScale",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/PressableScale.tsx",
+      "sha256AtReceipt": "4254b16b31d9c93751090892f5d6825544fb41b50b415f11f797d379e0aacb79"
+    },
+    {
+      "name": "Card",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/Card.tsx",
+      "sha256AtReceipt": "0cad4a95e4c2122e56fa24473c704c01e5030154b1a698f4b7c31667be560019"
+    },
+    {
+      "name": "Avatar",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/Avatar.tsx",
+      "sha256AtReceipt": "c2e04af1765f164376af2dc579a70d1bb753e86a09d51efc165ce2d3ab8f2c35"
+    },
+    {
+      "name": "UserAvatar",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/UserAvatar.tsx",
+      "sha256AtReceipt": "7000dd63ff44cfb7be171a4a4d2eb88831fd048b946c737c549a34c041bfb8c0"
+    },
+    {
+      "name": "Badge",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/Badge.tsx",
+      "sha256AtReceipt": "55fd30762136a3045fe5c846032216bea7305c012df2877d2bd6adfb70dbfb88"
+    },
+    {
+      "name": "ScreenHeader",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/ScreenHeader.tsx",
+      "sha256AtReceipt": "0704b16727dd463fa5b1478ff5b30075a7e626e4dd38c35b25ed4a6c4a90fb68"
+    },
+    {
+      "name": "InfoTip",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/InfoTip.tsx",
+      "sha256AtReceipt": "341d0da59d0988e36e9e526b6660a4408bdb27a9c95bb34428553b6ffeae028f"
+    },
+    {
+      "name": "ErrorBoundary",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/ErrorBoundary.tsx",
+      "sha256AtReceipt": "cedc399bfb0338e2f45a4e454ad5bf8ed83c5f2d5eba78fdc9bd939aeb48d8c0"
+    },
+    {
+      "name": "SafeModal",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/SafeModal.tsx",
+      "sha256AtReceipt": "9702ae750b3d55048dcfa26c803c900cb552cab3cf0ad8bd74645063663dd48a"
+    },
+    {
+      "name": "SpringSheet",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/anim/SpringSheet.tsx",
+      "sha256AtReceipt": "39b0eee61e56c7080fd49c68c5fa2292baeba84b3fd51b1e8955b15471a25b95"
+    },
+    {
+      "name": "CountUp",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/anim/CountUp.tsx",
+      "sha256AtReceipt": "cce4b5c100cf6cd01baea92f82e7b93e9a8eb80192f1c5e4ce96af36d2197aa0"
+    },
+    {
+      "name": "PlayerCountBar",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/PlayerCountBar.tsx",
+      "sha256AtReceipt": "9c633477348c6635b75af86883a73bd1726686f38c2060d1a74ffdcc6cee0402"
+    },
+    {
+      "name": "Shimmer",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/anim/Shimmer.tsx",
+      "sha256AtReceipt": "dd855fadba24e60d3786973664423c3440d78680697f4c859a3c078fb0865fc8"
+    },
+    {
+      "name": "AnimatedTabIcon",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/anim/AnimatedTabIcon.tsx",
+      "sha256AtReceipt": "55d9ade0c82e972b3eb028be8dc8651c028ea7917df6d27903b30eedee0f1517"
+    },
+    {
+      "name": "AnimatedWeatherIcon",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/anim/AnimatedWeatherIcon.tsx",
+      "sha256AtReceipt": "d9b4526cf19421c8723638edb64f656396ce70a5e39715e097290b34efc45cbd"
+    },
+    {
+      "name": "FormTheme",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/forms/FormTheme.ts",
+      "sha256AtReceipt": "99eaed4cd65cf79f4884e685d9e386cc76b22887629699ee0d2c6c4fc0364a53"
+    },
+    {
+      "name": "DmRequestsInbox",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/chat/DmRequestsInbox.tsx",
+      "sha256AtReceipt": "d5c2cd10e583a418656a9ef672993003e7e3803c0933cf8b33523a456cf9b871"
+    },
+    {
+      "name": "DmRequestBanner",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/chat/DmRequestBanner.tsx",
+      "sha256AtReceipt": "4ef0bc8ce0bfaa96b483498b7fb44ad04eba2d2ac34b3de48c2131f0d113b533"
+    },
+    {
+      "name": "DeleteAccountSheet",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/profile/DeleteAccountSheet.tsx",
+      "sha256AtReceipt": "15e1771e2a72ac43a7959a9b424b43d7b54ee0bac929b313ce01d3f231f7c250"
+    },
+    {
+      "name": "IssueCardSheet",
+      "scope": "ביקורת עיצוב ייעודית",
+      "evidence": "docs/audits/2026-11-02-overnight/design.md",
+      "path": "src/components/community/IssueCardSheet.tsx",
+      "sha256AtReceipt": "b778de74a55be527a6478b3ccc2eee0123053136617091f3ae84f9212a5adfaf"
+    },
+    {
+      "name": "HomePersonalStats",
+      "scope": "קריאת קוד ממוקדת של תנאי ההרכבה, תופעות לוואי או אזור התצוגה הרלוונטי. אין טענה לקריאת כל שורה בקובץ.",
+      "evidence": "מיפוי חלונות המקור ובדיקת תנאי בטיחות לפני הכנת overlay-inventory.json",
+      "path": "src/components/home/HomePersonalStats.tsx",
+      "sha256AtReceipt": "97c686c92d82b904727d05b7227cff59c1faab13a12f67f7524a2a9c955da639"
+    },
+    {
+      "name": "HomeProfileOverview",
+      "scope": "קריאת קוד ממוקדת של תנאי ההרכבה, תופעות לוואי או אזור התצוגה הרלוונטי. אין טענה לקריאת כל שורה בקובץ.",
+      "evidence": "מיפוי חלונות המקור ובדיקת תנאי בטיחות לפני הכנת overlay-inventory.json",
+      "path": "src/components/home/HomeProfileOverview.tsx",
+      "sha256AtReceipt": "034f36e61dbf11330a078f1696898cdfa055d257a81845201c846a4ffd4c01e6"
+    },
+    {
+      "name": "HomeGuideOverlay",
+      "scope": "קריאת קוד ממוקדת של תנאי ההרכבה, תופעות לוואי או אזור התצוגה הרלוונטי. אין טענה לקריאת כל שורה בקובץ.",
+      "evidence": "מיפוי חלונות המקור ובדיקת תנאי בטיחות לפני הכנת overlay-inventory.json",
+      "path": "src/components/home/HomeGuideOverlay.tsx",
+      "sha256AtReceipt": "5e70496a8ebb62ab049e207b4c9e7ee1e0e866a3578af3bb7082f59aee37a419"
+    },
+    {
+      "name": "NotificationEducationSheet",
+      "scope": "קריאת קוד ממוקדת של תנאי ההרכבה, תופעות לוואי או אזור התצוגה הרלוונטי. אין טענה לקריאת כל שורה בקובץ.",
+      "evidence": "מיפוי חלונות המקור ובדיקת תנאי בטיחות לפני הכנת overlay-inventory.json",
+      "path": "src/components/notifications/NotificationEducationSheet.tsx",
+      "sha256AtReceipt": "ac7b10256c11237f4344c1569948b11d3e99de6b57f0a1eeda13ccc0b270ff6c"
+    },
+    {
+      "name": "ChatTermsModal",
+      "scope": "קריאת קוד ממוקדת של תנאי ההרכבה, תופעות לוואי או אזור התצוגה הרלוונטי. אין טענה לקריאת כל שורה בקובץ.",
+      "evidence": "מיפוי חלונות המקור ובדיקת תנאי בטיחות לפני הכנת overlay-inventory.json",
+      "path": "src/components/chat/ChatTermsModal.tsx",
+      "sha256AtReceipt": "a004ac2b44159259bf2553b75e94f2bf526f06ec15902ff368025bc8af62614a"
+    },
+    {
+      "name": "AchievementCelebration",
+      "scope": "קריאת קוד ממוקדת של תנאי ההרכבה, תופעות לוואי או אזור התצוגה הרלוונטי. אין טענה לקריאת כל שורה בקובץ.",
+      "evidence": "מיפוי חלונות המקור ובדיקת תנאי בטיחות לפני הכנת overlay-inventory.json",
+      "path": "src/components/AchievementCelebration.tsx",
+      "sha256AtReceipt": "bf135dfa247abb1c220a46c911cfaa9dc61fb195e1846ee02181fd15cf00092e"
+    },
+    {
+      "name": "GameFilterSheet",
+      "scope": "קריאת קוד ממוקדת של תנאי ההרכבה, תופעות לוואי או אזור התצוגה הרלוונטי. אין טענה לקריאת כל שורה בקובץ.",
+      "evidence": "מיפוי חלונות המקור ובדיקת תנאי בטיחות לפני הכנת overlay-inventory.json",
+      "path": "src/components/GameFilterSheet.tsx",
+      "sha256AtReceipt": "fc003e29c92ac2965984f09668e20c5b838798820eeefcb1fe9584f0a620f828"
+    },
+    {
+      "name": "BalancedFillModal",
+      "scope": "קריאת קוד ממוקדת של תנאי ההרכבה, תופעות לוואי או אזור התצוגה הרלוונטי. אין טענה לקריאת כל שורה בקובץ.",
+      "evidence": "מיפוי חלונות המקור ובדיקת תנאי בטיחות לפני הכנת overlay-inventory.json",
+      "path": "src/components/match/BalancedFillModal.tsx",
+      "sha256AtReceipt": "9128e0c3f77173c05c5ce889f266346e434d4d11d21e9fd110c571f738fbe54f"
+    },
+    {
+      "name": "NativeCampaignView",
+      "scope": "קריאת קוד ממוקדת של תנאי ההרכבה, תופעות לוואי או אזור התצוגה הרלוונטי. אין טענה לקריאת כל שורה בקובץ.",
+      "evidence": "מיפוי חלונות המקור ובדיקת תנאי בטיחות לפני הכנת overlay-inventory.json",
+      "path": "src/components/joryio/NativeCampaignView.tsx",
+      "sha256AtReceipt": "858fc0d0fd81d587a215de0efb36576f10bf799ea41b45fa1e0399b74eaad80c"
+    },
+    {
+      "name": "RetroGoalsSheet",
+      "scope": "קריאת קוד ממוקדת של תנאי ההרכבה, תופעות לוואי או אזור התצוגה הרלוונטי. אין טענה לקריאת כל שורה בקובץ.",
+      "evidence": "מיפוי חלונות המקור ובדיקת תנאי בטיחות לפני הכנת overlay-inventory.json",
+      "path": "src/components/match/RetroGoalsSheet.tsx",
+      "sha256AtReceipt": "da76f394ff1c1c8372130219c4898242e72ff7895494e7bf85908b34c5ece6a4"
+    },
+    {
+      "name": "CommunityStatsTable",
+      "scope": "קריאת קוד ממוקדת של תנאי ההרכבה, תופעות לוואי או אזור התצוגה הרלוונטי. אין טענה לקריאת כל שורה בקובץ.",
+      "evidence": "מיפוי חלונות המקור ובדיקת תנאי בטיחות לפני הכנת overlay-inventory.json",
+      "path": "src/components/community/CommunityStatsTable.tsx",
+      "sha256AtReceipt": "45d0fb7c328be8c945a44bf684b4d09bf7322c0c46fd37c68e6a53b32f9080fe"
+    },
+    {
+      "name": "DateTimeFields",
+      "scope": "קריאת קוד ממוקדת של תנאי ההרכבה, תופעות לוואי או אזור התצוגה הרלוונטי. אין טענה לקריאת כל שורה בקובץ.",
+      "evidence": "מיפוי חלונות המקור ובדיקת תנאי בטיחות לפני הכנת overlay-inventory.json",
+      "path": "src/components/DateTimeFields.tsx",
+      "sha256AtReceipt": "075f8352cf8987dfd35db4d5ca0b5e985279607a6562087f343cb0d964691556"
+    },
+    {
+      "name": "DidYouKnowCard",
+      "scope": "קריאת קוד ממוקדת של תנאי ההרכבה, תופעות לוואי או אזור התצוגה הרלוונטי. אין טענה לקריאת כל שורה בקובץ.",
+      "evidence": "מיפוי חלונות המקור ובדיקת תנאי בטיחות לפני הכנת overlay-inventory.json",
+      "path": "src/components/home/DidYouKnowCard.tsx",
+      "sha256AtReceipt": "230620965eb356519d66a9efbce78fcc4724b0f929e9f8f1c13a6b492712adfe"
+    },
+    {
+      "name": "MatchStatsTab",
+      "scope": "קריאת קוד ממוקדת של תנאי ההרכבה, תופעות לוואי או אזור התצוגה הרלוונטי. אין טענה לקריאת כל שורה בקובץ.",
+      "evidence": "מיפוי חלונות המקור ובדיקת תנאי בטיחות לפני הכנת overlay-inventory.json",
+      "path": "src/components/match/tabs/MatchStatsTab.tsx",
+      "sha256AtReceipt": "5b1284efb6efa5c8ffe182427732a0c3923e9548e5f76cd2cd12f599aa4fd3c1"
+    },
+    {
+      "name": "PlayerAvailabilitySummary",
+      "scope": "קריאת קוד ממוקדת של תנאי ההרכבה, תופעות לוואי או אזור התצוגה הרלוונטי. אין טענה לקריאת כל שורה בקובץ.",
+      "evidence": "מיפוי חלונות המקור ובדיקת תנאי בטיחות לפני הכנת overlay-inventory.json",
+      "path": "src/components/social/PlayerAvailabilitySummary.tsx",
+      "sha256AtReceipt": "6df4f593a0d209642a9809786bfc3a092da514fc13d7923a0b9cfde9cdae7288"
+    },
+    {
+      "name": "ChemistrySection",
+      "scope": "קריאת קוד ממוקדת של תנאי ההרכבה, תופעות לוואי או אזור התצוגה הרלוונטי. אין טענה לקריאת כל שורה בקובץ.",
+      "evidence": "מיפוי חלונות המקור ובדיקת תנאי בטיחות לפני הכנת overlay-inventory.json",
+      "path": "src/components/chemistry/ChemistrySection.tsx",
+      "sha256AtReceipt": "4140013eef649aeb15b428f19505f90e7b91cf48243c81eeee5ab890ad469d1b"
+    },
+    {
+      "name": "FormDesign",
+      "scope": "התקדמות שלבי טופס, שמירת מפתחות בקיבוץ שדות ותנועה מצומצמת. כל המימוש, שורות1עד118",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/forms/FormDesign.tsx",
+      "sha256AtReceipt": "9258cc0cd55c8877e79ce887af830a0533a738c163dc826091bb902d0d8a9a51"
+    },
+    {
+      "name": "FormSectionHeader",
+      "scope": "יישור כותרת טופס וסדר ילדים. כל המימוש, שורות1עד52",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/FormSectionHeader.tsx",
+      "sha256AtReceipt": "43f73810c1ad88d18bc00b2947de950fbd23d05c47ba8180fd012fc490dd0beb"
+    },
+    {
+      "name": "NewClubSeasons",
+      "scope": "טיוטת עונות, מתגים, תאריכים ומגבלות מספריות. כל המימוש והסגנונות, שורות1עד286",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/community/NewClubSeasons.tsx",
+      "sha256AtReceipt": "2afd5bf6ef54fcb62bc83230ccf9dad931ddadf2113a9ab3c960a5606f197c11"
+    },
+    {
+      "name": "SeasonsSettings",
+      "scope": "טעינת היסטוריה, בחירת יעד, בקשות שינוי ושחזור פעולה. תנאי טעינה, טיפול בקשה והפקדים, שורות1עד190",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/community/SeasonsSettings.tsx",
+      "sha256AtReceipt": "7e01e7d23a4cdf3f5bf8b6a390f86e6b50a7233c7610b3b8d710f3ad5803d74c"
+    },
+    {
+      "name": "SeasonTargetControls",
+      "scope": "גבולות הצעדן ומצבי בחירה והשבתה. כל המימוש, שורות1עד42",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/community/SeasonTargetControls.tsx",
+      "sha256AtReceipt": "2c0831456699be645bda25a54a401b0d096cf45a52b5d8b22ce833a6ae580c9e"
+    },
+    {
+      "name": "SeasonConfirmSheet",
+      "scope": "הסבר התוכנית ואפשרויות היסטוריה, נעילת דגל חיצוני. כל המימוש וגבולות הפריסה, שורות1עד168",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/community/SeasonConfirmSheet.tsx",
+      "sha256AtReceipt": "ed9ff887c407238a07fa102a8f89c1311e1d23d69010d038e4a54ea29062edc5"
+    },
+    {
+      "name": "CoverImagePicker",
+      "scope": "תמונות מובנות, העלאה והסכמה לבחירת שער. תנאי ההצגה והפעולות, שורות1עד125, וצרכן התמונות ב-CommunityDetailsScreen",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/community/CoverImagePicker.tsx",
+      "sha256AtReceipt": "2c9f3f9b564cd85c80111e7855dd39d44f86c7eab4fa8030221b387104269773",
+      "beforeFixSourceSha256": "05527bdbdedd81624e863f5c9295f28cdacc3bcbed7e7baa094cf3fac9490178",
+      "followupEvidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json"
+    },
+    {
+      "name": "ManageEquipmentSheet",
+      "scope": "טיוטת מחזיקי כדור וגופיות, השבתה וסגירה בשמירה. לוגיקה ופקדים, שורות1עד135; צרכן בשורות664עד674",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/community/ManageEquipmentSheet.tsx",
+      "sha256AtReceipt": "634cdf79c045ae86c21038e8101b75edccbf4b9972bde996fb4ca6129edfede1"
+    },
+    {
+      "name": "FormatStepper",
+      "scope": "הקלדת מספר חלקי, אישור ערך, צעדים ותפוסה. כל המימוש והסגנונות, שורות1עד284",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/games/FormatStepper.tsx",
+      "sha256AtReceipt": "1e4bcb6c55a56c7e0a3df2495e83367628ca230aad001096b7c6ea47339e724a"
+    },
+    {
+      "name": "RegistrationConflictModal",
+      "scope": "דגל ביטול, אירועי סגירה ישנים וצרכן הרשימה. כל תנאי הפעולה והצרכן. המקור לאחר התיקון מוקפא.",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/games/RegistrationConflictModal.tsx",
+      "sha256AtReceipt": "dd4061548dca01cc971e2bba18ad4ec2ac72a554a83efb5fb65b2c8c20e9b403"
+    },
+    {
+      "name": "CommunityFilterSheet",
+      "scope": "הפרדת סינון, הרשאת מיקום, מפת רדיוס וסינון נתונים. לוגיקה, תצוגה וחישוב הסינון, שורות1עד459; לא נסקרו כל סגנונות המשך הקובץ",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/CommunityFilterSheet.tsx",
+      "sha256AtReceipt": "c64ce3f70e6998a48e11e825c825b33274b6190e59a6259ff4f8fa4f2bba7683"
+    },
+    {
+      "name": "EveningSummaryCard",
+      "scope": "הפרדת משחקון ממחזור, תוצאות, כיסוי ורכיב שיתוף. ממשק הרכיב, חישובי תצוגה וסגנונות, שורות1עד179",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/summary/EveningSummaryCard.tsx",
+      "sha256AtReceipt": "b91c156bccb0713a73e0c422fd8ceb48f6a0ccec32a191b1c72a3777378d9662"
+    },
+    {
+      "name": "SeasonShareCard",
+      "scope": "כרטיס ייצוא, מכנים, כיסוי משחקונים ושמות. בחירת נתונים, מימוש הכרטיס וסגנונות, שורות1עד331",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/summary/SeasonShareCard.tsx",
+      "sha256AtReceipt": "965caeb0c6a252c488e2687677e534303fb0033b99ff23b2a75e614575988593"
+    },
+    {
+      "name": "SeasonClubSummary",
+      "scope": "תארים, תחום עונה ושיא מחזור פורה. מימוש הרכיבים, אפקט קריאה ותצוגת נתונים, שורות1עד182",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/summary/SeasonClubSummary.tsx",
+      "sha256AtReceipt": "f4b33a332bac59266b38f1eaf3d3dcfb881342d5553d2422b31b418fc57d9d45",
+      "beforeFixSourceSha256": "0b7e371728d919407272e8342175268ee76da8629dced626cefad7b18d88bb15",
+      "followupEvidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json"
+    },
+    {
+      "name": "SeasonScopeBar",
+      "scope": "בחירת תחום נתונים, מצב פתוח וסימון פעיל. כל המימוש והסגנונות, שורות1עד166",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/stats/SeasonScopeBar.tsx",
+      "sha256AtReceipt": "07f41f51b6120e80fc4a7d399baef1ae61804fa42127e9f3e5146176a4b3c812"
+    },
+    {
+      "name": "StatsGrid",
+      "scope": "חוזה ארבעה נתונים וכרטיסים נשלטים. כל המימוש, שורות1עד59",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/profile/StatsGrid.tsx",
+      "sha256AtReceipt": "931b095f6fd78e44d4fc432c79f477edc750b8807630e737273194b2de5db476"
+    },
+    {
+      "name": "CommunityStatsGrid",
+      "scope": "ערכי נתונים מוכנים ורשת שני טורים. כל המימוש והסגנונות, שורות1עד137",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/community/CommunityStatsGrid.tsx",
+      "sha256AtReceipt": "1a47c913cf4dd99c5115c6f39c8e51a1634070fd73b8f0c57f8c99a7c9a0da05"
+    },
+    {
+      "name": "ChampionshipTable",
+      "scope": "פתרון זהויות שחקנים, חישוב ציון וניווט. כל המימוש, שורות1עד155, וחיפוש צרכנים",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/community/ChampionshipTable.tsx",
+      "sha256AtReceipt": "2fb7de84e7390427e8c6768b440149872eea0fa2b3971c421b931c9a4d2dc96c"
+    },
+    {
+      "name": "FillerPickerModal",
+      "scope": "המלצות, מספר נבחרים, רשימה ריקה ותוצאה שמורה. לוגיקה ופקדי רשימה ואישור, שורות1עד151",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/match/FillerPickerModal.tsx",
+      "sha256AtReceipt": "c96acfbf4b6fa96e3ef98b070f57fea0086b645be9c663dc2b046b703cfeb999"
+    },
+    {
+      "name": "RoundReviewSheet",
+      "scope": "חוזה שדות סיכום, כתובת, הרחבה ואזור פעולות. כל המימוש, שורות1עד138, מסירה לבעלות הראשי",
+      "evidence": "docs/audits/2026-11-02-overnight/component-code-expansion.json",
+      "path": "src/components/games/RoundReviewSheet.tsx",
+      "sha256AtReceipt": "ece1fb3e9b44a8567f2fcf2befe4e379d6d52e90d0252a2878662343a7684fff"
+    }
+  ],
+  "initialCodeReadComponentFiles": 43,
+  "expandedFocusedReadFiles": 20,
+  "updatedAt": "2026-11-03T00:34:17.352Z"
+}

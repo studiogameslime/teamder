@@ -1,0 +1,32 @@
+{
+  "projectId": "demo-navigation-night-mw3522q6",
+  "fullRules": true,
+  "endpoint": "127.0.0.1:8195",
+  "checks": [
+    {
+      "scenario": "admin revoked before next save",
+      "before": "allowed",
+      "after": "permission-denied"
+    },
+    {
+      "scenario": "old client partial update",
+      "userPrivacyPreserved": true,
+      "unknownGameFieldPreserved": true
+    },
+    {
+      "scenario": "old client full replacement",
+      "privacyFieldRemains": false,
+      "newFieldRemains": false
+    },
+    {
+      "scenario": "revoked admin sends stale invitation action",
+      "result": "permission-denied",
+      "checkedInsideTransaction": true
+    },
+    {
+      "scenario": "departed club member retains own waitlist offer",
+      "accepted": true,
+      "interpretation": "current backend preserves independent waitlist rights; policy decision required"
+    }
+  ]
+}

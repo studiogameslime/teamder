@@ -1,0 +1,69 @@
+{
+  "reviewedAt": "2026-11-03T00:43:55.298Z",
+  "records": [
+    {
+      "file": "src/components/draft/DraftTeamCard.tsx",
+      "sha256": "d7038909f178f120ae2da07fe7352952645668e949251c6b991ead3b71ac2de4",
+      "sourceRead": true,
+      "targeted": true,
+      "scope": "ענפי סיכום, השלמה ולוח רגיל; תוויות, גודל סגל, הקפטן, כיוון, לחיצה וזהות צבע. נמצא ותוקן D09 בענף הרגיל בלבד.",
+      "limitation": "נראו שני כרטיסי מקור לפני ואחרי; אין מכך בדיקת כל גודל סגל או כל הענפים במכשיר.",
+      "allStatesVerified": false
+    },
+    {
+      "file": "src/components/match/MatchStatusCTACard.tsx",
+      "sha256": "f21fecb7fe5b4be936d372e4d2e714be8d7c6f60d0326d9960e3bf5c44d113a6",
+      "sourceRead": true,
+      "targeted": true,
+      "scope": "תנאי join/cancel/admin/blocked/none, המתנה ראשית, פעולת משנה, טקסט עזר ורעד. ה-hook ברכיב נפרד וללא hook אחרי return מוקדם.",
+      "limitation": "קריאת קוד בלבד ברכיב זה; אין בדיקת רציפות הנפשה או כל שילוב פעולת משנה.",
+      "allStatesVerified": false
+    },
+    {
+      "file": "src/components/match/PlayerRecruitmentActions.tsx",
+      "sha256": "8a19fe71cbd9cc460736d4c49846842db1895b694ba1f49aeef6333e26cfd830",
+      "sourceRead": true,
+      "targeted": true,
+      "scope": "בניית רשימת פעולות רק מתוך callbacks, תוויות נגישות, כיוון ומפריד התחלתי. תפקיד ההרשאות נשאר אצל הצרכן לפי חוזה הרכיב.",
+      "limitation": "אין פעולת צירוף, הזמנה או אורח ברכיב עצמו במסגרת הסקירה.",
+      "allStatesVerified": false
+    },
+    {
+      "file": "src/components/draft/TeamColorEditor.tsx",
+      "sha256": "cca07e0be38fad01c0b731b45ba92287e2293c1c28e3ca0987eb61424de839d5",
+      "sourceRead": true,
+      "targeted": true,
+      "scope": "תצוגת פלטה, זיהוי צבע תפוס, החלפת צבעים, שמירה מושהית, מללי כשל וחסימת פעולות לפי busy.",
+      "limitation": "לא נשמר צבע ולא שוחזרה תחרות בקשות ברכיב זה; קריאת קוד אינה הוכחת נעילה מול אירוע ישן.",
+      "allStatesVerified": false
+    },
+    {
+      "file": "src/components/match/OpeningTeamsPanel.tsx",
+      "sha256": "be75738a9d1f7c5f6c995aa4b0ee569976d9f64253af4cfaf79d38a69866c034",
+      "sourceRead": true,
+      "targeted": true,
+      "scope": "סקירה ממוקדת של בחירת שתי קבוצות, סדר המתנה, שחקנים שיצאו, השלמות, לוח קריאה בלבד, נגישות בחירה וצבעים.",
+      "limitation": "לא הופעלו תחילת משחק או שינוי פתיחה; לא נטענת בדיקה מלאה של כל לוגיקת הפלטה מהסקירה הממוקדת.",
+      "allStatesVerified": false
+    },
+    {
+      "file": "src/components/GameFilterSheet.tsx",
+      "sha256": "fc003e29c92ac2965984f09668e20c5b838798820eeefcb1fe9584f0a620f828",
+      "sourceRead": true,
+      "targeted": true,
+      "scope": "סקירה ממוקדת של קריאת הרשאה ללא בקשה, binding של יום ופורמט, שומר תוצאה מאוחרת, כותרת, גלילה ותחתית. עיגול הכותרת הריק הוא spacer לא לחיץ.",
+      "limitation": "צילום החלון מכסה את התצוגה הראשונית בלבד; אין בקשת מיקום או בדיקת כל המסננים.",
+      "allStatesVerified": false
+    },
+    {
+      "file": "src/components/games/RoundReviewSheet.tsx",
+      "sha256": "ece1fb3e9b44a8567f2fcf2befe4e379d6d52e90d0252a2878662343a7684fff",
+      "sourceRead": true,
+      "targeted": true,
+      "scope": "ערכי סיכום, מועד הרשמה, כתובת, הרחבה וכפתורי תחתית. כפתור חזרה disabled בזמן busy למרות צבעו הכחול.",
+      "limitation": "מצב המתנה קבוע במארח הוא תצוגה בלבד; לא בוצעה בקשת יצירה נוספת.",
+      "allStatesVerified": false
+    }
+  ],
+  "count": 7
+}

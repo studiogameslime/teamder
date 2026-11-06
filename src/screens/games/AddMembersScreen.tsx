@@ -48,33 +48,62 @@ export function AddMembersScreen() {
   const reserve = route.params.reserve === true;
   const me = useUserStore((s) => s.currentUser);
   const myCommunities = useGroupStore((s) => s.groups);
+  // Candidate identities depend on membership/roles, not club names, photos
+  // or the identity of the refreshed store objects.
+  const loadScope = JSON.stringify([
+    gameId, me?.id ?? null, me?.isGuest === true, reserve,
+    myCommunities.map(group => [
+      group.id,
+      [...new Set(group.adminIds ?? [])].sort(),
+      [...new Set(group.playerIds ?? [])].sort(),
+    ]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+  ]);
+  const currentLoadScope = useRef(loadScope);
+  currentLoadScope.current = loadScope;
 
-  const [game, setGame] = useState<Game | null>(null);
-  const [members, setMembers] = useState<User[]>([]);
+  const [dataScope, setDataScope] = useState<string | null>(null);
+  const [rawGame, setGame] = useState<Game | null>(null);
+  const [rawMembers, setMembers] = useState<User[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
+  const [rawLoading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const inFlight = useRef(false);
   const [query, setQuery] = useState('');
   const [availableIds, setAvailableIds] = useState<Set<string>>(new Set());
+  const game = dataScope === loadScope ? rawGame : null;
+  const members = dataScope === loadScope ? rawMembers : [];
+  const loading = rawLoading || dataScope !== loadScope;
   const filteredMembers = useMemo(() => members.filter(u => u.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())), [members, query]);
 
   useEffect(() => {
-    if (!gameId || !me) return;
+    const [scopeGameId, ownerId, guest, reserveMode, memberships] = JSON.parse(loadScope) as [
+      string, string | null, boolean, boolean, Array<[string, string[], string[]]>,
+    ];
     let alive = true;
+    const isCurrent = () => {
+      const account = useUserStore.getState().currentUser;
+      return alive && currentLoadScope.current === loadScope && account?.id === ownerId &&
+        (account.isGuest === true) === guest;
+    };
+    setDataScope(loadScope);
+    setGame(null);
+    setMembers([]);
+    setSelected(new Set());
+    setAvailableIds(new Set());
+    if (!scopeGameId || !ownerId) { setLoading(false); return; }
     (async () => {
       setLoading(true);
       try {
-        const g = await gameService.getGameById(gameId).catch((caughtError236c7003ab: unknown) => { observeCaughtError(caughtError236c7003ab, {"source":"src/screens/games/AddMembersScreen.tsx","handler":"AddMembersScreen","site":"AddMembersScreen:236c7003ab"}); return null; });
-        if (!alive) return;
+        const g = await gameService.getGameById(scopeGameId).catch((caughtError236c7003ab: unknown) => { if (isCurrent()) observeCaughtError(caughtError236c7003ab, {"source":"src/screens/games/AddMembersScreen.tsx","handler":"AddMembersScreen","site":"AddMembersScreen:236c7003ab"}); return null; });
+        if (!isCurrent()) return;
         setGame(g);
         if (!g) {
           setMembers([]);
           return;
         }
-        const grp = myCommunities.find((c) => c.id === g.groupId);
+        const grp = memberships.find(([id]) => id === g.groupId);
         const memberIds = Array.from(
-          new Set([...(grp?.playerIds ?? []), ...(grp?.adminIds ?? [])]),
+          new Set([...(grp?.[2] ?? []), ...(grp?.[1] ?? [])]),
         );
         // Exclude anyone already in the roster (players/waitlist/pending).
         // Normally we also hide the admin themselves ("למה אני מופיע פה?"), but
@@ -87,26 +116,27 @@ export function AddMembersScreen() {
           ...(g.pending ?? []),
         ]);
         const toLoad = memberIds.filter(
-          (id) => !inRoster.has(id) && (reserve || id !== me?.id),
+          (id) => !inRoster.has(id) && (reserveMode || id !== ownerId),
         );
         const profiles = await Promise.all(
           toLoad.map((id) => userService.getUserById(id).catch((caughtError591865f3c0: unknown) => { observeCaughtError(caughtError591865f3c0, {"source":"src/screens/games/AddMembersScreen.tsx","handler":"AddMembersScreen","site":"AddMembersScreen:591865f3c0"}); return null; })),
         );
-        if (!alive) return;
+        if (!isCurrent()) return;
         setMembers(
           profiles.filter((u): u is User => !!u).sort((a, b) => a.name.localeCompare(b.name, 'he')),
         );
       } catch (err) {
+        if (!isCurrent()) return;
     observeCaughtError(err, {"source":"src/screens/games/AddMembersScreen.tsx","handler":"AddMembersScreen","site":"AddMembersScreen:31cd171528"});
-        logError('AddMembersScreen.load', err, { gameId });
+        logError('AddMembersScreen.load', err, { gameId: scopeGameId });
       } finally {
-        if (alive) setLoading(false);
+        if (isCurrent()) setLoading(false);
       }
     })();
     return () => {
       alive = false;
     };
-  }, [gameId, me?.id, me?.isGuest, myCommunities, reserve]);
+  }, [loadScope]);
 
   // Only server-confirmed matches receive an availability badge. A failed or
   // capped lookup leaves the badge absent; it never claims unavailability.
@@ -115,10 +145,10 @@ export function AddMembersScreen() {
     setAvailableIds(new Set());
     if (!game) return;
     userService.findAvailablePlayers({ gameId: game.id, day: new Date(game.startsAt).getDay(), excludeIds: [] })
-      .then(users => { if (alive) setAvailableIds(new Set(users.map(u => u.id))); })
+      .then(users => { if (alive && currentLoadScope.current === loadScope) setAvailableIds(new Set(users.map(u => u.id))); })
       .catch(err => { observeCaughtError(err, {"source":"src/screens/games/AddMembersScreen.tsx","handler":"AddMembersScreen","site":"AddMembersScreen:5b29fb8d16"}); return logError('AddMembersScreen.availability', err, { gameId }); });
     return () => { alive = false; };
-  }, [game?.id, game?.startsAt]);
+  }, [game?.id, game?.startsAt, loadScope]);
 
   const spotsLeft = useMemo(() => {
     if (!game || !game.maxPlayers) return Infinity;

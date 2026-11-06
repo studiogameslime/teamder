@@ -4,6 +4,8 @@ import path from 'path';
 import vm from 'vm';
 import ts from 'typescript';
 import { eveningScoreServer } from '../../functions/src/eveningScoreCore';
+import * as sharedScore from '../../functions/src/sharedEveningScore';
+import {freezeSharedScoreCalibration} from '../../functions/src/sharedScoreCalibration';
 import { computeMovement } from '../../functions/src/eveningMovement';
 import { assertSeasonOpenForGame } from '../../functions/src/seasonLock';
 
@@ -88,7 +90,7 @@ function finishWorld(stage: 'attendance' | 'standings' | 'summary' | 'pairs' | u
     if (!failed && paths.includes(target)) { failed = true; return true; }
     return false;
   });
-  const context: any = { module: { exports: {} }, db: w.db, admin, eveningScoreServer, computeMovement,
+  const context: any = { ...sharedScore,freezeSharedScoreCalibration,module: { exports: {} }, db: w.db, admin, eveningScoreServer, computeMovement,
     wasHappened: false, isHappened: true,
     after: { groupId: 'club', players: ['a'], startsAt: 100, status: 'finished' },
     event: { params: { gameId: 'g' }, data: { after: { ref: w.ref('games/g') } } },

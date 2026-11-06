@@ -20,7 +20,7 @@ function setup() {
   let current: typeof user | null = user;
   const context: any = { user, canSave: true, busy: false, uploading: false, name: ' שם נבחר ', city: '', photoUrl: undefined, avatarId: 'a06',
     inFlight: { current: false }, mounted: { current: true }, uploadedPhotoRef: { current: false }, prefilledRef: { current: true }, pendingKind: 'join_game',
-    setBusy: jest.fn(), setUploading: jest.fn(), setPhotoUrl: jest.fn(), setAvatarId: jest.fn(),
+    setBusy: jest.fn(), setUploading: jest.fn(), setPhotoPhase: jest.fn(), setPhotoUrl: jest.fn(), setAvatarId: jest.fn(),
     pickAndUploadAvatar: jest.fn(), deleteUserPhoto: jest.fn().mockResolvedValue(undefined),
     complete: jest.fn().mockResolvedValue(undefined), geocodeCity: jest.fn().mockResolvedValue(null),
     useUserStore: { getState: () => ({ currentUser: current }) },

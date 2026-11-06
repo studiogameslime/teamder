@@ -1,5 +1,3 @@
-import { MyActivityScreen } from '@/screens/profile/MyActivityScreen';
-import { ManagerDashboardScreen } from '@/screens/communities/ManagerDashboardScreen';
 // Stack inside the Profile tab. The Profile screen is the landing; Stats,
 // History, Edit, Availability, Admin Approval, and PlayerCard are all
 // pushable from there.
@@ -17,47 +15,6 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useIsGuest } from '@/hooks/useAuthenticatedAction';
 import { homeRouteFor } from '@/navigation/homeRouting';
-import { ProfileScreen } from '@/screens/tabs/ProfileScreen';
-import { GuestHomeScreen } from '@/screens/home/GuestHomeScreen';
-import { PersonalInviteScreen } from '@/screens/invite/PersonalInviteScreen';
-import { CreateGroupScreen } from '@/screens/groups/CreateGroupScreen';
-import { CommunityDetailsPublicScreen } from '@/screens/communities/CommunityDetailsPublicScreen';
-import { EmailAuthScreen } from '@/screens/auth/EmailAuthScreen';
-import { RequestsScreen } from '@/screens/RequestsScreen';
-import { ProfileEditScreen } from '@/screens/tabs/ProfileEditScreen';
-import { AvailabilityEditScreen } from '@/screens/profile/AvailabilityEditScreen';
-import { AvailabilityWeekScreen } from '@/screens/home/AvailabilityWeekScreen';
-import { NotificationsSettingsScreen } from '@/screens/profile/NotificationsSettingsScreen';
-import { BlockedUsersScreen } from '@/screens/profile/BlockedUsersScreen';
-import { AchievementsScreen } from '@/screens/profile/AchievementsScreen';
-import { SeasonTitlesScreen } from '@/screens/profile/SeasonTitlesScreen';
-import { StatisticsScreen } from '@/screens/profile/StatisticsScreen';
-import { SocialPrivacyScreen } from '@/screens/profile/SocialPrivacyScreen';
-import { FriendsScreen } from '@/screens/profile/FriendsScreen';
-import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
-import { PlayerCompareScreen } from '@/screens/players/PlayerCompareScreen';
-import { PlayerTimelineScreen } from '@/screens/players/PlayerTimelineScreen';
-import { AdminApprovalScreen } from '@/screens/groups/AdminApprovalScreen';
-import { HistoryScreen } from '@/screens/tabs/HistoryScreen';
-import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
-import { DraftSetupScreen } from '@/screens/games/DraftSetupScreen';
-import { DraftBoardScreen } from '@/screens/games/DraftBoardScreen';
-import { EveningSummaryScreen } from '@/screens/games/EveningSummaryScreen';
-import { SeasonSummaryScreen } from '@/screens/profile/SeasonSummaryScreen';
-import { MatchRoundsScreen } from '@/screens/games/MatchRoundsScreen';
-import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
-import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
-import { AddMembersScreen } from '@/screens/games/AddMembersScreen';
-import { GameEditScreen } from '@/screens/games/GameEditScreen';
-import { GameCreateScreen } from '@/screens/games/GameCreateScreen';
-import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
-import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsScreen';
-import { CommunityEditScreen } from '@/screens/communities/CommunityEditScreen';
-import { CommunityPlayersScreen } from '@/screens/communities/CommunityPlayersScreen';
-import { CommunityStatsScreen } from '@/screens/communities/CommunityStatsScreen';
-import { CommunityHistoryScreen } from '@/screens/communities/CommunityHistoryScreen';
-import { ReferralsListScreen } from '@/screens/profile/ReferralsListScreen';
-import { FeedbackScreen } from '@/screens/FeedbackScreen';
 
 export type ProfileStackParamList = {
   /** Option A Home — the guest's landing. See the note on the navigator. */
@@ -175,6 +132,8 @@ export type ProfileStackParamList = {
       };
 };
 
+// Screen modules are evaluated only when their route renders. Keep all route
+// registrations local so shared destinations preserve their back stack.
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
 /**
@@ -214,61 +173,61 @@ export function ProfileStack() {
       initialRouteName={homeRouteFor(isGuest)}
       screenOptions={{ headerShown: false }}
     >
-      <Stack.Screen name="GuestHome" component={GuestHomeScreen} />
-      <Stack.Screen name="PersonalInvite" component={PersonalInviteScreen} />
-      <Stack.Screen name="Profile" component={ProfileScreen} />
-      <Stack.Screen name="CommunitiesCreate" component={CreateGroupScreen} />
+      <Stack.Screen name="GuestHome" getComponent={() => require('@/screens/home/GuestHomeScreen').GuestHomeScreen as typeof import('@/screens/home/GuestHomeScreen').GuestHomeScreen} />
+      <Stack.Screen name="PersonalInvite" getComponent={() => require('@/screens/invite/PersonalInviteScreen').PersonalInviteScreen as typeof import('@/screens/invite/PersonalInviteScreen').PersonalInviteScreen} />
+      <Stack.Screen name="Profile" getComponent={() => require('@/screens/tabs/ProfileScreen').ProfileScreen as typeof import('@/screens/tabs/ProfileScreen').ProfileScreen} />
+      <Stack.Screen name="CommunitiesCreate" getComponent={() => require('@/screens/groups/CreateGroupScreen').CreateGroupScreen as typeof import('@/screens/groups/CreateGroupScreen').CreateGroupScreen} />
       <Stack.Screen
         name="CommunityDetailsPublic"
-        component={CommunityDetailsPublicScreen}
+        getComponent={() => require('@/screens/communities/CommunityDetailsPublicScreen').CommunityDetailsPublicScreen as typeof import('@/screens/communities/CommunityDetailsPublicScreen').CommunityDetailsPublicScreen}
       />
-      <Stack.Screen name="EmailAuth" component={EmailAuthScreen} />
-      <Stack.Screen name="AvailabilityWeek" component={AvailabilityWeekScreen} />
-      <Stack.Screen name="Requests" component={RequestsScreen} />
-      <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
-      <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} />
+      <Stack.Screen name="EmailAuth" getComponent={() => require('@/screens/auth/EmailAuthScreen').EmailAuthScreen as typeof import('@/screens/auth/EmailAuthScreen').EmailAuthScreen} />
+      <Stack.Screen name="AvailabilityWeek" getComponent={() => require('@/screens/home/AvailabilityWeekScreen').AvailabilityWeekScreen as typeof import('@/screens/home/AvailabilityWeekScreen').AvailabilityWeekScreen} />
+      <Stack.Screen name="Requests" getComponent={() => require('@/screens/RequestsScreen').RequestsScreen as typeof import('@/screens/RequestsScreen').RequestsScreen} />
+      <Stack.Screen name="ProfileEdit" getComponent={() => require('@/screens/tabs/ProfileEditScreen').ProfileEditScreen as typeof import('@/screens/tabs/ProfileEditScreen').ProfileEditScreen} />
+      <Stack.Screen name="BlockedUsers" getComponent={() => require('@/screens/profile/BlockedUsersScreen').BlockedUsersScreen as typeof import('@/screens/profile/BlockedUsersScreen').BlockedUsersScreen} />
       <Stack.Screen
         name="AvailabilityEdit"
-        component={AvailabilityEditScreen}
+        getComponent={() => require('@/screens/profile/AvailabilityEditScreen').AvailabilityEditScreen as typeof import('@/screens/profile/AvailabilityEditScreen').AvailabilityEditScreen}
       />
       <Stack.Screen
         name="NotificationsSettings"
-        component={NotificationsSettingsScreen}
+        getComponent={() => require('@/screens/profile/NotificationsSettingsScreen').NotificationsSettingsScreen as typeof import('@/screens/profile/NotificationsSettingsScreen').NotificationsSettingsScreen}
       />
-      <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
-      <Stack.Screen name="PlayerCompare" component={PlayerCompareScreen} />
-      <Stack.Screen name="PlayerTimeline" component={PlayerTimelineScreen} />
-      <Stack.Screen name="AdminApproval" component={AdminApprovalScreen} />
-      <Stack.Screen name="History" component={HistoryScreen} />
-      <Stack.Screen name="Achievements" component={AchievementsScreen} />
-      <Stack.Screen name="SeasonTitles" component={SeasonTitlesScreen} />
-      <Stack.Screen name="Statistics" component={StatisticsScreen} />
-      <Stack.Screen name="SocialPrivacy" component={SocialPrivacyScreen} />
-      <Stack.Screen name="Friends" component={FriendsScreen} />
-      <Stack.Screen name="Referrals" component={ReferralsListScreen} />
-      <Stack.Screen name="Feedback" component={FeedbackScreen} />
-      <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
+      <Stack.Screen name="PlayerCard" getComponent={() => require('@/screens/players/PlayerCardScreen').PlayerCardScreen as typeof import('@/screens/players/PlayerCardScreen').PlayerCardScreen} />
+      <Stack.Screen name="PlayerCompare" getComponent={() => require('@/screens/players/PlayerCompareScreen').PlayerCompareScreen as typeof import('@/screens/players/PlayerCompareScreen').PlayerCompareScreen} />
+      <Stack.Screen name="PlayerTimeline" getComponent={() => require('@/screens/players/PlayerTimelineScreen').PlayerTimelineScreen as typeof import('@/screens/players/PlayerTimelineScreen').PlayerTimelineScreen} />
+      <Stack.Screen name="AdminApproval" getComponent={() => require('@/screens/groups/AdminApprovalScreen').AdminApprovalScreen as typeof import('@/screens/groups/AdminApprovalScreen').AdminApprovalScreen} />
+      <Stack.Screen name="History" getComponent={() => require('@/screens/tabs/HistoryScreen').HistoryScreen as typeof import('@/screens/tabs/HistoryScreen').HistoryScreen} />
+      <Stack.Screen name="Achievements" getComponent={() => require('@/screens/profile/AchievementsScreen').AchievementsScreen as typeof import('@/screens/profile/AchievementsScreen').AchievementsScreen} />
+      <Stack.Screen name="SeasonTitles" getComponent={() => require('@/screens/profile/SeasonTitlesScreen').SeasonTitlesScreen as typeof import('@/screens/profile/SeasonTitlesScreen').SeasonTitlesScreen} />
+      <Stack.Screen name="Statistics" getComponent={() => require('@/screens/profile/StatisticsScreen').StatisticsScreen as typeof import('@/screens/profile/StatisticsScreen').StatisticsScreen} />
+      <Stack.Screen name="SocialPrivacy" getComponent={() => require('@/screens/profile/SocialPrivacyScreen').SocialPrivacyScreen as typeof import('@/screens/profile/SocialPrivacyScreen').SocialPrivacyScreen} />
+      <Stack.Screen name="Friends" getComponent={() => require('@/screens/profile/FriendsScreen').FriendsScreen as typeof import('@/screens/profile/FriendsScreen').FriendsScreen} />
+      <Stack.Screen name="Referrals" getComponent={() => require('@/screens/profile/ReferralsListScreen').ReferralsListScreen as typeof import('@/screens/profile/ReferralsListScreen').ReferralsListScreen} />
+      <Stack.Screen name="Feedback" getComponent={() => require('@/screens/FeedbackScreen').FeedbackScreen as typeof import('@/screens/FeedbackScreen').FeedbackScreen} />
+      <Stack.Screen name="MatchDetails" getComponent={() => require('@/screens/games/MatchDetailsScreen').MatchDetailsScreen as typeof import('@/screens/games/MatchDetailsScreen').MatchDetailsScreen} />
       {/* Draft Teams (חלוקת כוחות) — MatchDetails is hosted in this stack too,
           so its "קביעת כוחות" action MUST be able to navigate here, else the tap
           silently no-ops when the game was opened from the Profile/Home tab. */}
-      <Stack.Screen name="DraftSetup" component={DraftSetupScreen} />
-      <Stack.Screen name="DraftBoard" component={DraftBoardScreen} />
-      <Stack.Screen name="EveningSummary" component={EveningSummaryScreen} />
-      <Stack.Screen name="MyActivity" component={MyActivityScreen} />
-      <Stack.Screen name="SeasonSummary" component={SeasonSummaryScreen} />
-      <Stack.Screen name="MatchRounds" component={MatchRoundsScreen} />
-      <Stack.Screen name="AddMembers" component={AddMembersScreen} />
-      <Stack.Screen name="MatchPlayers" component={MatchPlayersScreen} />
-      <Stack.Screen name="AvailablePlayers" component={AvailablePlayersScreen} />
-      <Stack.Screen name="GameEdit" component={GameEditScreen} />
-      <Stack.Screen name="LiveMatch" component={LiveMatchScreen} />
-      <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />
-      <Stack.Screen name="CommunityEdit" component={CommunityEditScreen} />
-      <Stack.Screen name="CommunityPlayers" component={CommunityPlayersScreen} />
-      <Stack.Screen name="ManagerDashboard" component={ManagerDashboardScreen} />
-      <Stack.Screen name="CommunityStats" component={CommunityStatsScreen} />
-      <Stack.Screen name="CommunityHistory" component={CommunityHistoryScreen} />
-      <Stack.Screen name="GameCreate" component={GameCreateScreen} />
+      <Stack.Screen name="DraftSetup" getComponent={() => require('@/screens/games/DraftSetupScreen').DraftSetupScreen as typeof import('@/screens/games/DraftSetupScreen').DraftSetupScreen} />
+      <Stack.Screen name="DraftBoard" getComponent={() => require('@/screens/games/DraftBoardScreen').DraftBoardScreen as typeof import('@/screens/games/DraftBoardScreen').DraftBoardScreen} />
+      <Stack.Screen name="EveningSummary" getComponent={() => require('@/screens/games/EveningSummaryScreen').EveningSummaryScreen as typeof import('@/screens/games/EveningSummaryScreen').EveningSummaryScreen} />
+      <Stack.Screen name="MyActivity" getComponent={() => require('@/screens/profile/MyActivityScreen').MyActivityScreen as typeof import('@/screens/profile/MyActivityScreen').MyActivityScreen} />
+      <Stack.Screen name="SeasonSummary" getComponent={() => require('@/screens/profile/SeasonSummaryScreen').SeasonSummaryScreen as typeof import('@/screens/profile/SeasonSummaryScreen').SeasonSummaryScreen} />
+      <Stack.Screen name="MatchRounds" getComponent={() => require('@/screens/games/MatchRoundsScreen').MatchRoundsScreen as typeof import('@/screens/games/MatchRoundsScreen').MatchRoundsScreen} />
+      <Stack.Screen name="AddMembers" getComponent={() => require('@/screens/games/AddMembersScreen').AddMembersScreen as typeof import('@/screens/games/AddMembersScreen').AddMembersScreen} />
+      <Stack.Screen name="MatchPlayers" getComponent={() => require('@/screens/games/MatchPlayersScreen').MatchPlayersScreen as typeof import('@/screens/games/MatchPlayersScreen').MatchPlayersScreen} />
+      <Stack.Screen name="AvailablePlayers" getComponent={() => require('@/screens/games/AvailablePlayersScreen').AvailablePlayersScreen as typeof import('@/screens/games/AvailablePlayersScreen').AvailablePlayersScreen} />
+      <Stack.Screen name="GameEdit" getComponent={() => require('@/screens/games/GameEditScreen').GameEditScreen as typeof import('@/screens/games/GameEditScreen').GameEditScreen} />
+      <Stack.Screen name="LiveMatch" getComponent={() => require('@/screens/LiveMatchScreen').LiveMatchScreen as typeof import('@/screens/LiveMatchScreen').LiveMatchScreen} />
+      <Stack.Screen name="CommunityDetails" getComponent={() => require('@/screens/communities/CommunityDetailsScreen').CommunityDetailsScreen as typeof import('@/screens/communities/CommunityDetailsScreen').CommunityDetailsScreen} />
+      <Stack.Screen name="CommunityEdit" getComponent={() => require('@/screens/communities/CommunityEditScreen').CommunityEditScreen as typeof import('@/screens/communities/CommunityEditScreen').CommunityEditScreen} />
+      <Stack.Screen name="CommunityPlayers" getComponent={() => require('@/screens/communities/CommunityPlayersScreen').CommunityPlayersScreen as typeof import('@/screens/communities/CommunityPlayersScreen').CommunityPlayersScreen} />
+      <Stack.Screen name="ManagerDashboard" getComponent={() => require('@/screens/communities/ManagerDashboardScreen').ManagerDashboardScreen as typeof import('@/screens/communities/ManagerDashboardScreen').ManagerDashboardScreen} />
+      <Stack.Screen name="CommunityStats" getComponent={() => require('@/screens/communities/CommunityStatsScreen').CommunityStatsScreen as typeof import('@/screens/communities/CommunityStatsScreen').CommunityStatsScreen} />
+      <Stack.Screen name="CommunityHistory" getComponent={() => require('@/screens/communities/CommunityHistoryScreen').CommunityHistoryScreen as typeof import('@/screens/communities/CommunityHistoryScreen').CommunityHistoryScreen} />
+      <Stack.Screen name="GameCreate" getComponent={() => require('@/screens/games/GameCreateScreen').GameCreateScreen as typeof import('@/screens/games/GameCreateScreen').GameCreateScreen} />
     </Stack.Navigator>
   );
 }

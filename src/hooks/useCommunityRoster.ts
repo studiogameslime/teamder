@@ -41,25 +41,41 @@ export function useCommunityRoster(groupId: string, viewer: Pick<User, 'id' | 'i
       const ids = Array.from(new Set([...group.adminIds, ...group.playerIds]));
       const isAdmin = !!viewer && group.adminIds.includes(viewer.id);
       let detailsFailed = false;
-      const [members, stats, cardCounts] = await Promise.all([
-        groupService.hydrateUsers(ids),
+      let latestStats: RosterData['stats'] | undefined;
+      let latestCards: CardCountsMap | null | undefined;
+      // Names are enough to use the roster. Publish them without waiting for
+      // optional statistics/cards; the existing loading notice stays visible.
+      await Promise.all([
+        groupService.hydrateUsers(ids).then(members => {
+          if (!current()) return;
+          setSnapshot(previous => {
+            const confirmed = previous?.owner === owner ? previous.data : null;
+            return { owner, data: { group, members,
+              stats: latestStats ?? confirmed?.stats ?? null,
+              cardCounts: latestCards ?? confirmed?.cardCounts ?? EMPTY_COUNTS } };
+          });
+        }),
         gameService.getCommunityPlayerStats(group.id, ids).catch((error: unknown) => {
           detailsFailed = true;
           observeCaughtError(error, { source: 'src/hooks/useCommunityRoster.ts', handler: 'reload', site: 'rosterStats' });
           return null;
+        }).then(stats => {
+          latestStats = stats;
+          if (current() && stats !== null) setSnapshot(previous => previous?.owner === owner
+            ? { owner, data: { ...previous.data, stats } } : previous);
         }),
-        isAdmin && group.cardsEnabled
+        (isAdmin && group.cardsEnabled
           ? communityEventsService.getActiveCardCounts(group.id, group.yellowCardValidityDays, group.redCardValidityDays).catch((error: unknown) => {
             detailsFailed = true;
             observeCaughtError(error, { source: 'src/hooks/useCommunityRoster.ts', handler: 'reload', site: 'rosterCards' });
             return null;
-          }) : Promise.resolve({}),
+          }) : Promise.resolve({})).then(cardCounts => {
+            latestCards = cardCounts;
+            if (current() && cardCounts !== null) setSnapshot(previous => previous?.owner === owner
+              ? { owner, data: { ...previous.data, cardCounts } } : previous);
+          }),
       ]);
       if (current()) {
-        setSnapshot(previous => {
-          const confirmed = previous?.owner === owner ? previous.data : null;
-          return { owner, data: { group, members, stats: stats ?? confirmed?.stats ?? null, cardCounts: cardCounts ?? confirmed?.cardCounts ?? EMPTY_COUNTS } };
-        });
         setRequest({ owner, loading: false, failed: detailsFailed });
       }
     } catch (error) {

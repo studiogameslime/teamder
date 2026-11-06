@@ -76,7 +76,7 @@ test('resubscribing to club-admin inbox data does not erase already resolved pee
 const discovery=parse('src/screens/communities/PublicGroupsFeedScreen.tsx');
 const discoverEffect=find(discovery,node=>ts.isCallExpression(node)&&node.expression.getText(discovery)==='useEffect'&&node.arguments[0]?.getText(discovery).includes('groupService.listPublicGroups')) as ts.CallExpression;
 function discoveryFixture(text:string){
- const ctx:any={text,setLoading:jest.fn(),setItems:jest.fn(),groupService:{listPublicGroups:jest.fn(async()=>[]),searchPublicGroups:jest.fn(async()=>[])},logEvent:jest.fn(),AnalyticsEvent:{GroupSearch:'search'},observeCaughtError:jest.fn(),logError:jest.fn(),setTimeout,clearTimeout};
+ const ctx:any={text,resultQuery:{current:null},setLoading:jest.fn(),setLoadFailed:jest.fn(),setItems:jest.fn(),groupService:{listPublicGroups:jest.fn(async()=>[]),searchPublicGroups:jest.fn(async()=>[])},logEvent:jest.fn(),AnalyticsEvent:{GroupSearch:'search'},observeCaughtError:jest.fn(),logError:jest.fn(),setTimeout,clearTimeout};
  return {ctx,run:()=>evaluate(`(${discoverEffect.arguments[0].getText(discovery)})`,ctx)()};
 }
 

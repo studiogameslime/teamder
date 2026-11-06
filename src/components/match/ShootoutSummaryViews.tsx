@@ -18,8 +18,8 @@ export function shootoutOutcome(kick: Kick) {
   return {label: 'לא הובקע', icon: 'remove-outline' as const, ink: '#475569', bg: '#E2E8F0'};
 }
 
-export function ShootoutScorePanel({draftTeams, rotation, kicks, compact, caption, showDots = true}: {
-  draftTeams: DraftTeamsResult; rotation: MatchRotation; kicks: Kick[]; compact: boolean; caption?: string; showDots?: boolean;
+export function ShootoutScorePanel({draftTeams, rotation, kicks, compact, caption, showDots = true, emphasizedSide}: {
+  draftTeams: DraftTeamsResult; rotation: MatchRotation; kicks: Kick[]; compact: boolean; caption?: string; showDots?: boolean; emphasizedSide?: 'A' | 'B';
 }) {
   const details = (side: 'A' | 'B') => {
     const taken = kicks.filter(kick => kick.team === side);
@@ -32,7 +32,7 @@ export function ShootoutScorePanel({draftTeams, rotation, kicks, compact, captio
   };
   return <MatchResultPanel draftTeams={draftTeams} rotation={rotation}
     live={{scoreA: kicks.filter(k => k.team === 'A' && k.scored).length, scoreB: kicks.filter(k => k.team === 'B' && k.scored).length} as LiveMatchState}
-    compact={compact} compactIdentity heading="תוצאת הפנדלים" teamDetails={details} caption={caption}/>;
+    compact={compact} compactIdentity heading="תוצאת הפנדלים" teamDetails={details} caption={caption} emphasizedSide={emphasizedSide} trophy={!!emphasizedSide}/>;
 }
 
 export function ShootoutLogRow({kick, index, draftTeams, rotation, resolve, compact}: {

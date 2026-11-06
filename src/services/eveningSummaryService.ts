@@ -23,6 +23,7 @@ import { userService } from '@/services/userService';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
 import { eveningScore } from '@/utils/eveningScore';
+import { readSharedCalibration, sharedEveningScore, sharedInputFromStats } from '@/utils/sharedEveningScore';
 import {
   pickEveningTitle,
   pickEveningInsights,
@@ -143,6 +144,9 @@ export interface EveningSummaryModel {
   goals: number;
   assists: number;
   score: number;
+  scoreModel?: 'shared-v1';
+  scoreAwardEligible?: boolean;
+  scoreAwardWinner?: boolean;
   /** Local estimate when no committed standing score is available. */
   scoreEstimated?: boolean;
   title: string;
@@ -420,7 +424,9 @@ export const eveningSummaryService = {
       // score that wasn't what produced that place. The local computation
       // stays as the fallback for evenings with no standing doc (and it also
       // folds in penalties, which the server's stats rows don't carry).
-      const localScore = eveningScore({
+      const sharedCalibration = readSharedCalibration(stand?.scoreBasis) ?? readSharedCalibration(game.scoreCalibration);
+      if(sharedCalibration && row.rounds <= 0)return null;
+      const localScore = sharedCalibration ? sharedEveningScore(sharedInputFromStats(statSnap.data()),sharedCalibration.threshold) : eveningScore({
         goals: row.goals,
         assists: row.assists,
         wins: row.wins,
@@ -431,6 +437,7 @@ export const eveningSummaryService = {
       });
       const storedScore = numOrNull(stand?.score);
       const score = storedScore ?? localScore;
+      if(score === null)throw new Error('SCORE_INPUT_UNAVAILABLE');
       // Title AFTER the score: it is gated on it, so a middling evening can't
       // be crowned by a stats rule that never looked at the result.
       const t = pickEveningTitle(narrative, seed, score);
@@ -536,6 +543,7 @@ export const eveningSummaryService = {
         rank: clubRanked ? numOrNull(stand?.rank) : null,
         rankTotal: clubRanked ? numOrNull(stand?.rankTotal) : null,
         rankDelta: clubRanked && movementReal ? numOrNull(stand?.rankDelta) : null,
+        ...(sharedCalibration ? {scoreModel:'shared-v1' as const,scoreAwardEligible:stand?.scoreAwardEligible===true,scoreAwardWinner:stand?.scoreAwardWinner===true} : {}),
         scoreRank: numOrNull(stand?.scoreRank),
         scoreTotal: numOrNull(stand?.scoreTotal),
         metrics,

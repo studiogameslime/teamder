@@ -12,7 +12,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { PlayerCardSkeleton } from '@/components/loading/CentralSkeletons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useFocusEffect,
@@ -22,8 +22,6 @@ import {
 } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { SocialPlayerProfile } from '@/components/social/SocialPlayerProfile';
-import { OwnPlayerCard } from '@/components/profile/OwnPlayerCard';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { FriendActionButton } from '@/components/profile/FriendActionButton';
 import { goToDirectChat } from '@/navigation/navigationRef';
@@ -37,7 +35,7 @@ import { TrustMeter } from '@/components/TrustMeter';
 import { InfoTip } from '@/components/InfoTip';
 import { toast } from '@/components/Toast';
 import type { Group } from '@/types';
-import { userService } from '@/services';
+import { userService } from '@/services/userService';
 import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
 import type { PublicUser } from '@/firebase/firestore';
@@ -85,9 +83,16 @@ export function PlayerCardScreen() {
     }
   }, [me?.id, me?.isGuest, route.params?.userId]);
   if (me && !me.isGuest && route.params?.userId === me.id) {
+    const { OwnPlayerCard } = require('@/components/profile/OwnPlayerCard') as typeof import('@/components/profile/OwnPlayerCard');
     return <OwnPlayerCard key={me.id} user={me} />;
   }
   return <LegacyPlayerCardScreen />;
+}
+
+// The personal route need not evaluate the public profile's component tree.
+function SocialPlayerProfile(props: React.ComponentProps<typeof import('@/components/social/SocialPlayerProfile').SocialPlayerProfile>) {
+  const { SocialPlayerProfile: Screen } = require('@/components/social/SocialPlayerProfile') as typeof import('@/components/social/SocialPlayerProfile');
+  return <Screen {...props} />;
 }
 
 function LegacyPlayerCardScreen() {
@@ -275,8 +280,8 @@ function LegacyPlayerCardScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        <ScreenHeader title={he.loading} />
-        <SoccerBallLoader size={40} style={{ marginTop: spacing.lg }} />
+        <ScreenHeader title={me?.id === userId ? 'כרטיס השחקן שלי' : 'כרטיס שחקן'} />
+        <ScrollView contentContainerStyle={styles.content}><PlayerCardSkeleton variant={me?.id === userId ? 'own' : 'legacy'} /></ScrollView>
       </SafeAreaView>
     );
   }

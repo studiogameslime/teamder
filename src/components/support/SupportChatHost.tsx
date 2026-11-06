@@ -9,6 +9,7 @@ import { SafeKeyboardAvoidingView } from '@/components/SafeKeyboardAvoidingView'
 import { ContextualAuthSheet } from '@/components/auth/ContextualAuthSheet';
 import { captureFullScreenBase64 } from '@/native/screenCapture';
 import { useUserStore } from '@/store/userStore';
+import { useDockHeight } from '@/navigation/dockHeight';
 import { useSupportChat, sendSupportDraft, supportAttemptId, supportConversationId, captureSupportContext, type SupportDraft } from '@/services/supportChat';
 import { chatService } from '@/services/chatService';
 import { setActiveChat, getActiveChat } from '@/services/activeChat';
@@ -19,6 +20,7 @@ import { supportDayLabel } from '@/utils/supportTimeline';
 import { SupportFootballIcon } from './SupportFootballIcon';
 
 export function SupportChatHost({ active, hideBubble = false }: { active: boolean; hideBubble?: boolean }) {
+  const dockHeight = useDockHeight();
   const me = useUserStore(s => s.currentUser);
   const state = useSupportChat();
   const insets = useSafeAreaInsets();
@@ -105,7 +107,7 @@ export function SupportChatHost({ active, hideBubble = false }: { active: boolea
     finally { busy.current = false; if (mounted.current) setSending(false); }
   };
   return <>
-    {active && !hideBubble && uid && !state.dismissed && !visible && !capturing && !authOpen ? <View pointerEvents="box-none" style={[s.launcher, { bottom: 100 + insets.bottom }]}>
+    {active && !hideBubble && uid && !state.dismissed && !visible && !capturing && !authOpen ? <View pointerEvents="box-none" style={[s.launcher, { bottom: Math.max(100 + insets.bottom, dockHeight + 12) }]}>
       <Pressable accessibilityRole="button" accessibilityLabel="פתיחת עזרה מצוות Teamder" onPress={() => state.open(uid)} style={s.bubble}><SupportFootballIcon /></Pressable>
       <Text style={{fontSize:11,textAlign:'center',color:colors.primary,backgroundColor:colors.surface,borderRadius:7,marginTop:3}}>עזרה</Text>
       <Pressable accessibilityRole="button" accessibilityLabel="הסתרת העזרה לביקור הנוכחי" onPress={state.dismiss} hitSlop={10} style={s.dismiss}><Ionicons name="close" size={13} color={colors.textMuted} /></Pressable>

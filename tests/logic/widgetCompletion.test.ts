@@ -12,6 +12,8 @@ test('real deserializer preserves the durable command key without inventing one'
   const read=vm.runInNewContext(ts.transpileModule(`${constants}\n(${body})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,{});
   expect(read({phase:'live',lastWidgetCommandId:'a-command'}).lastWidgetCommandId).toBe('a-command');
   expect(read({phase:'live'}).lastWidgetCommandId).toBeUndefined();
+  expect(read({phase:'live',widgetCommandReceipts:{new:123,bad:'4',nan:NaN}}).widgetCommandReceipts).toEqual({new:123});
+  expect(read({phase:'live'}).widgetCommandReceipts).toBeUndefined();
 });
 
 test.each([{roundInstanceId:'stable',round:4,updatedAt:12},{round:4,updatedAt:12},{round:1}])('native fallback identity matches the phone contract: %j', rotation=>{

@@ -1,8 +1,9 @@
 import { runDiagnosticOperation } from './diagnosticJournal';
-import { retryRead } from './readRetry';
+import { isTransientReadError, retryRead } from './readRetry';
 import { observeCaughtError } from '../utils/errorObservation';
-import { readPlayerIdentity, playerReadCall } from './publicPlayerService';
+import { readPlayerIdentity, playerReadCall, invalidatePlayerIdentityReads } from './publicPlayerService';
 import { StaleSessionError } from './staleSession';
+import { resetUsageVisit, forgetUsageUser } from './usageActivity';
 import { resetOnboardingJourney } from './onboardingActivity';
 // userService — single entry point for everything user-shaped.
 // In mock mode we read from src/data/mockUsers.ts and persist a copy
@@ -12,6 +13,7 @@ import { resetOnboardingJourney } from './onboardingActivity';
 import {
   deleteField,
   getDoc,
+  getDocFromServer,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -116,7 +118,7 @@ export const userService = {
    *   /users/{uid}. Lazily creates the doc if it doesn't exist (first launch
    *   after sign-in completed before the doc was written).
    */
-  async getCurrentUser(): Promise<User | null> {
+  async getCurrentUser(options?: { requireServer?: boolean }): Promise<User | null> {
     if (USE_MOCK_DATA) {
       const json = await storage.getAuthUserJson();
       if (!json) return null;
@@ -152,7 +154,7 @@ export const userService = {
     };
     try {
       snap = await Promise.race([
-        retryRead(() => getDoc(ref), assertReadCurrent),
+        retryRead(() => options?.requireServer ? getDocFromServer(ref) : getDoc(ref), assertReadCurrent),
         new Promise<never>((_, reject) =>
           { readTimer = setTimeout(() => { readExpired = true; reject(new Error('getCurrentUser: read timeout')); }, 8000); },
         ),
@@ -161,6 +163,7 @@ export const userService = {
       if (getFirebase().auth.currentUser?.uid !== fbUser.uid) throw new StaleSessionError(fbUser.uid, getFirebase().auth.currentUser?.uid ?? '');
     observeCaughtError(err, {"source":"src/services/userService.ts","handler":"getCurrentUser","site":"userService:c2f30c2c24"});
       if (__DEV__) console.warn('[auth] getCurrentUser read timed out', err);
+      if (options?.requireServer) throw err;
       const cached = await readCachedAuthUser(fbUser.uid);
       if (getFirebase().auth.currentUser?.uid !== fbUser.uid) throw new StaleSessionError(fbUser.uid, getFirebase().auth.currentUser?.uid ?? '');
       if (cached) return cached;
@@ -837,6 +840,7 @@ export const userService = {
     const { functions } = getFirebase();
     const fn = httpsCallable(functions, 'deleteMyAccount');
     await fn({});
+    await forgetUsageUser(cur.id);
     // The Auth user is gone (token now invalid) — sign out locally + clear
     // storage so the app boots to sign-in.
     try {
@@ -853,12 +857,14 @@ export const userService = {
   async signOut(): Promise<void> {
     if (USE_MOCK_DATA) {
       resetOnboardingJourney();
+    resetUsageVisit();
       await storage.setAuthUserJson(null);
       await storage.setCurrentGroupId(null);
       return;
     }
     await signOutFirebase();
     resetOnboardingJourney();
+    resetUsageVisit();
     // Forget the person in Joryio too, and start a fresh anonymous session.
     // The fresh session is the load-bearing half: this install's anonymous
     // history belongs to whoever just left, and the next person to sign in here
@@ -875,6 +881,7 @@ export const userService = {
 
   async updateProfile(
     patch: Partial<Pick<User, 'name' | 'avatarId' | 'photoUrl' | 'position'>>,
+    expectedUid?: string,
   ): Promise<User> {
     // Strip zero-width / bidi-override (U+202E) / control chars from the display
     // name — blocks impersonation (a hidden suffix duplicating someone's name)
@@ -889,42 +896,81 @@ export const userService = {
     if (USE_MOCK_DATA) {
       const cur = await this.getCurrentUser();
       if (!cur) throw new Error('updateProfile: no current user');
+      if (expectedUid && cur.id !== expectedUid) throw new StaleSessionError(expectedUid, cur.id);
       const next: User = { ...cur, ...patch };
       await storage.setAuthUserJson(JSON.stringify(next));
       return next;
     }
+    const auth = getFirebase().auth;
+    const owner = auth.currentUser;
+    const uid = expectedUid ?? owner?.uid ?? '';
+    const assertOwner = () => {
+      if (!owner || owner.isAnonymous || owner.uid !== uid || auth.currentUser !== owner) {
+        throw new StaleSessionError(uid, auth.currentUser?.uid ?? '');
+      }
+    };
+    assertOwner();
     const cur = await this.getCurrentUser();
-    if (!cur) throw new Error('updateProfile: no current user');
+    assertOwner();
+    if (!cur || cur.id !== uid) throw new StaleSessionError(uid, cur?.id ?? '');
     const ref = docs.user(cur.id);
-    const next: User = { ...cur, ...patch };
+    let next: User = { ...cur };
     const updates: Record<string, unknown> = {};
-    if (patch.name !== undefined) updates.name = patch.name;
-    if (patch.avatarId !== undefined) updates.avatarId = patch.avatarId;
+    if (patch.name !== undefined) updates.name = next.name = patch.name;
+    if (patch.avatarId !== undefined) updates.avatarId = next.avatarId = patch.avatarId;
     // photoUrl: a present-but-empty value (switched to a built-in avatar) must
     // CLEAR the field, not be skipped — otherwise the doc keeps a photoUrl
     // pointing at a now-deleted Storage object and everyone else sees a broken
     // image. `'photoUrl' in patch` distinguishes "clear it" from "don't touch".
     if ('photoUrl' in patch) {
+      next.photoUrl = patch.photoUrl || undefined;
       updates.photoUrl = patch.photoUrl ? patch.photoUrl : deleteField();
     }
-    if (patch.position !== undefined) updates.position = patch.position;
+    if (patch.position !== undefined) updates.position = next.position = patch.position;
     if (Object.keys(updates).length > 0) {
       updates.updatedAt = Date.now();
+      invalidatePlayerIdentityReads();
       try {
         // `updates` carries a possible deleteField() sentinel (photo clear), so
         // it's a dynamic map rather than a typed Partial<User> — cast like the
         // other dynamic update-map call sites (e.g. updateGameDoc).
         await updateDoc(ref, updates as never);
       } catch (e) {
-    observeCaughtError(e, {"source":"src/services/userService.ts","handler":"updateProfile","site":"userService:27581be5bc"});
-        logError('updateProfile', e, {
-          uid: cur.id,
-          fields: Object.keys(patch || {}),
-        });
-        throw e;
+        assertOwner();
+        // A lost acknowledgement can follow a successful write. Only a fresh
+        // server read that confirms every intended field can resolve it.
+        let confirmed = false;
+        if (isTransientReadError(e)) {
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          try {
+            const observed = await Promise.race([
+              getDocFromServer(ref),
+              new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('profile confirmation timed out')), 8000); }),
+            ]);
+            const data = observed.data();
+            confirmed = !!data && data.id === uid && Object.entries(patch).every(([key, value]) =>
+              !(key in updates) || (key === 'photoUrl' && !value ? !data.photoUrl : data[key as keyof User] === value));
+            if (confirmed && data) next = data;
+          } catch (readError) {
+            // Preserve the original write error when the authoritative read is unavailable.
+            observeCaughtError(readError, { source: 'src/services/userService.ts', handler: 'updateProfile', site: 'userService:profileConfirmation' });
+          } finally {
+            if (timer) clearTimeout(timer);
+          }
+          assertOwner();
+        }
+        if (!confirmed) {
+          observeCaughtError(e, {"source":"src/services/userService.ts","handler":"updateProfile","site":"userService:27581be5bc"});
+          logError('updateProfile', e, { uid: cur.id, fields: Object.keys(patch) });
+          throw e;
+        }
+      } finally {
+        invalidatePlayerIdentityReads();
       }
     }
-    await cacheAuthUser(next);
+    assertOwner();
+    await cacheAuthUser(next, () => auth.currentUser === owner);
+    assertOwner();
     return next;
   },
 
@@ -999,12 +1045,12 @@ async function readCachedAuthUser(uid: string): Promise<User | null> {
  * key — so account A's snapshot can never surface for account B. Best-effort:
  * a cache-write failure must never break sign-in.
  */
-async function cacheAuthUser(user: User): Promise<void> {
+async function cacheAuthUser(user: User, isCurrent: () => boolean = () => getFirebase().auth.currentUser?.uid === user.id): Promise<void> {
   try {
     // Never cache a runtime-only guest — it has no /users doc to refresh from
     // and must always re-resolve from Firebase anonymous auth.
-    if (user.isGuest) return;
-    await storage.setAuthUserJson(JSON.stringify(user));
+    if (user.isGuest || !isCurrent()) return;
+    await storage.setAuthUserJson(JSON.stringify(user), isCurrent);
   } catch (err) {
     observeCaughtError(err, {"source":"src/services/userService.ts","handler":"cacheAuthUser","site":"userService:128ead61a3"});
     if (__DEV__) console.warn('[userService] cacheAuthUser failed', err);

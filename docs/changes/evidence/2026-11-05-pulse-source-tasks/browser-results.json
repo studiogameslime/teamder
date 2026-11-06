@@ -1,0 +1,123 @@
+{
+  "native": false,
+  "store": "memory",
+  "results": [
+    {
+      "phase": "before",
+      "scene": "board",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "phase": "before",
+      "scene": "reports",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "phase": "before",
+      "scene": "support",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "phase": "before",
+      "scene": "board",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "phase": "before",
+      "scene": "reports",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "phase": "before",
+      "scene": "support",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "phase": "before",
+      "scene": "board",
+      "width": 430,
+      "overflow": false
+    },
+    {
+      "phase": "before",
+      "scene": "reports",
+      "width": 430,
+      "overflow": false
+    },
+    {
+      "phase": "before",
+      "scene": "support",
+      "width": 430,
+      "overflow": false
+    },
+    {
+      "phase": "after",
+      "scene": "board",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "phase": "after",
+      "scene": "reports",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "phase": "after",
+      "scene": "support",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "phase": "after",
+      "scene": "board",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "phase": "after",
+      "scene": "reports",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "phase": "after",
+      "scene": "support",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "phase": "after",
+      "scene": "board",
+      "width": 430,
+      "overflow": false
+    },
+    {
+      "phase": "after",
+      "scene": "reports",
+      "width": 430,
+      "overflow": false
+    },
+    {
+      "phase": "after",
+      "scene": "support",
+      "width": 430,
+      "overflow": false
+    }
+  ],
+  "suggestionsSeparate": true,
+  "incomingOnly": true,
+  "conversionCreatesOne": true,
+  "repeatedConversionReuses": true,
+  "sourceUnchanged": true,
+  "readFailureRetained": true,
+  "retryRecovers": true,
+  "lateNavigationBlocked": true,
+  "errors": []
+}

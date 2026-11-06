@@ -138,3 +138,75 @@ test('acceptance cannot revive a deleted request or create a deleted user',async
   assert.equal((await user('viewer').get()).exists,false);
   assert.deepEqual((await user('target').get()).get('friends'),[]);
 });
+
+test('indexed search verifies live identity, blocks and mutual friendship, and tolerates redelivered changes',async()=>{
+  const {buildSocialDirectory,syncSocialNames}=await import('./lib/socialDirectory.js');
+  await buildSocialDirectory(db);
+  const search=(data={})=>call('searchSocialPlayers',{searchVersion:2,...data});
+  await user('viewer').update({friends:['target']});
+  assert.equal((await search({friendsOnly:true})).players.length,0);
+  await user('target').update({friends:['viewer']});
+  assert.equal((await search({friendsOnly:true})).players[0].relationship,'friends');
+  assert.equal((await search({text:'תי לו'})).players[0].id,'target');
+  await user('target').update({name:'אלון'});
+  assert.deepEqual((await search({text:'תי לו'})).players,[]);
+  await syncSocialNames(db,['target']);await syncSocialNames(db,['target']);
+  assert.equal((await search({text:'לו'})).players[0].id,'target');
+  for(const path of ['users/target/blocked/viewer','users/viewer/blocked/target']){
+    await db.doc(path).set({at:1});
+    assert.deepEqual((await search({friendsOnly:true})).players,[]);
+    assert.deepEqual((await search({text:'לו'})).players,[]);
+    await db.doc(path).delete();
+  }
+  await user('target').update({socialPrivacy:{discoverable:false}});
+  assert.deepEqual((await search({text:'לו'})).players,[]);
+  await user('target').delete();await syncSocialNames(db,['target']);
+  assert.deepEqual((await search({text:'לו'})).players,[]);
+});
+
+test('basic card omits historical statistics, summary rechecks access and full detail keeps the legacy contract',async()=>{
+  await user('target').update({socialPrivacy:{statistics:'everyone'},dmRequestPolicy:'everyone'});
+  const profile=view=>call('getSocialPlayerProfile',{userId:'target',view});
+  const basic=await profile('card');
+  assert.equal(basic.messaging,'request');assert.equal(basic.detailsPending,true);
+  assert.equal(basic.statistics,null);assert.equal(basic.cardStats,undefined);
+  const summary=await profile('summary');
+  assert.equal(summary.cardStats.goals,4);assert.equal(summary.statistics,null);
+  assert.equal((await profile(undefined)).statistics.stats.goals,4);
+  await user('target').update({socialPrivacy:{statistics:'onlyMe'}});
+  assert.equal((await profile('summary')).cardStats,null);
+  await db.doc('users/target/blocked/viewer').set({at:1});
+  await assert.rejects(profile('summary'));await assert.rejects(profile('card'));
+});
+
+test('recruitment preserves the cursor across a mixed block batch and an unfinished empty page',async()=>{
+  await db.doc('games/open').set({startsAt:Date.now()+86400000,status:'open',createdBy:'viewer',players:[]});
+  const writes=db.batch();
+  for(let i=0;i<110;i++){
+    const id='p'+String(i).padStart(3,'0');
+    writes.set(user(id),{name:'שחקן',availability:{preferredDays:[],preferredTimes:[]}});
+    if(i%3===0)writes.set(db.doc('users/'+id+'/blocked/viewer'),{at:1});
+  }
+  await writes.commit();
+  const expected=Array.from({length:110},(_,i)=>i).filter(i=>i%3!==0).map(i=>'p'+String(i).padStart(3,'0'));
+  const first=await call('findAvailableSocialPlayers',{gameId:'open'});
+  assert.deepEqual(first.players.map(p=>p.id),expected.slice(0,50));assert.equal(first.cursor,expected[49]);
+  const next=await call('findAvailableSocialPlayers',{gameId:'open',cursor:first.cursor});
+  assert.deepEqual(next.players.filter(p=>p.id.startsWith('p')).map(p=>p.id),expected.slice(50));
+  assert.equal(next.cursor,null);
+});
+
+test('two searches yielding 37 candidates retain precisely the right identities after a block changes sides',async()=>{
+  const ids=Array.from({length:38},(_,n)=>'candidate'+String(n).padStart(2,'0'));
+  const batch=db.batch();
+  batch.set(db.doc('games/evening'),{createdBy:'viewer',status:'open',startsAt:Date.now()+86400000,players:['target']});
+  for(const id of ids)batch.set(user(id),{name:'synthetic',availability:{}});
+  batch.set(db.doc('users/viewer/blocked/'+ids[0]),{at:1});await batch.commit();
+  const candidates=async()=>(await call('findAvailableSocialPlayers',{gameId:'evening'})).players.map(p=>p.id).sort();
+  assert.deepEqual(await candidates(),ids.slice(1));
+  const swap=db.batch();
+  swap.delete(db.doc('users/viewer/blocked/'+ids[0]));
+  swap.set(db.doc('users/'+ids[1]+'/blocked/viewer'),{at:2});
+  await swap.commit();
+  assert.deepEqual(await candidates(),[ids[0],...ids.slice(2)]);
+});

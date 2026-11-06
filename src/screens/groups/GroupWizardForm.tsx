@@ -180,14 +180,7 @@ export function GroupWizardForm({
     savingRef,
     title: he.groupEditUnsavedTitle,
     body: he.groupEditUnsavedBody,
-    onSave: async () => {
-      savingRef.current = true;
-      try {
-        await onSubmit(values);
-      } finally {
-        savingRef.current = false;
-      }
-    },
+    onSave: () => submit(),
   });
 
   // Parent-driven partial revert. Triggered by ticking `revertSignal`.
@@ -259,7 +252,12 @@ export function GroupWizardForm({
   };
 
   const submit = async () => {
-    if (!canSubmit) return;
+    if (!step1Valid) {
+      setStep(1);
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+      return;
+    }
+    if (!canSubmit || savingRef.current) return;
     setBusy(true);
     // Mark the save as intentional BEFORE onSubmit (which navigates back on
     // success) so the unsaved-changes guard doesn't pop "שינויים שלא נשמרו"
@@ -274,6 +272,7 @@ export function GroupWizardForm({
       if (__DEV__) console.warn('[groupWizard] submit failed', e);
       appAlert(he.error, he.groupWizardSubmitFailed);
     } finally {
+      savingRef.current = false;
       setBusy(false);
     }
   };

@@ -1,3 +1,4 @@
+import { useUsageSection } from '@/hooks/useUsageSection';
 import { ContentReveal } from '@/components/anim/ContentReveal';
 import { useConfirmedFeedback } from '@/hooks/useConfirmedFeedback';
 import { registrationFeedback } from '@/utils/registrationFeedback';
@@ -85,6 +86,8 @@ import {
   type HamburgerSection,
 } from '@/components/profile/HamburgerMenu';
 import { MatchStadiumHero } from '@/components/match/MatchStadiumHero';
+import { useRoundChanges } from '@/hooks/useRoundChanges';
+import { ReadStatusNotice, OperationStatus } from '@/components/ReadStatusNotice';
 import { DraftTeamCard } from '@/components/draft/DraftTeamCard';
 import { MatchDetailsGrid } from '@/components/match/MatchDetailsGrid';
 import { RoundGameFacts, RoundPeopleCard } from '@/components/match/RoundInfoDetails';
@@ -570,6 +573,7 @@ export function MatchDetailsScreen() {
   const nav = useNavigation<Nav>();
   const route = useRoute<Params>();
   const gameId = route.params?.gameId;
+  useUsageSection(tab, { gameId });
   // Robust back: some entry paths (home hero, a push tap, a tab-switch that
   // resets the stack) land the user on MatchDetails with NO back-stack entry,
   // so `nav.goBack()` silently does nothing and the header "‹" looks dead
@@ -743,6 +747,7 @@ export function MatchDetailsScreen() {
   // Without this the screen kept `game` null while `loading` flipped false →
   // the SoccerBallLoader spun forever with no error/retry.
   const [loadError, setLoadError] = useState(false);
+  const roundChanges = useRoundChanges(user?.id, gameId, game?.id === gameId ? game : null);
   // Conflict modal — set when joinGameV2 throws REGISTRATION_CONFLICT,
   // OR when the user taps "join" while preCheckConflict is already set.
   // Either way the same modal renders.
@@ -946,7 +951,7 @@ export function MatchDetailsScreen() {
       if (__DEV__) console.warn('[matchDetails] reload failed', err);
       // Only trip the error screen when we have NOTHING to show. A failed
       // pull-to-refresh over an already-loaded game keeps the game visible.
-      if (!game) setLoadError(true);
+      setLoadError(true);
     } finally {
       if (isCurrent()) {
         setLoading(false);
@@ -1743,7 +1748,7 @@ export function MatchDetailsScreen() {
     return (
       <ContentReveal ready={!!game} scopeKey={JSON.stringify([user?.id,gameId])} style={{flex:1}}><SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.matchDetailsTitle} />
-        <ScrollSurface contentContainerStyle={{ padding: spacing.lg }}><MatchDetailsSkeleton /></ScrollSurface>
+        <ScrollSurface><View style={{paddingHorizontal: 16}}><ReadStatusNotice scope={gameId} loading={loading} failed={false} hasData={false} onRetry={() => void reload()}/></View><MatchDetailsSkeleton /></ScrollSurface>
       </SafeAreaView></ContentReveal>
     );
   }
@@ -1755,7 +1760,7 @@ export function MatchDetailsScreen() {
     return (
       <ContentReveal ready={!!game} scopeKey={JSON.stringify([user?.id,gameId])} style={{flex:1}}><SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.matchDetailsTitle} />
-        <ScrollSurface contentContainerStyle={{ padding: spacing.lg }}><MatchDetailsSkeleton /></ScrollSurface>
+        <ScrollSurface><View style={{paddingHorizontal: 16}}><ReadStatusNotice scope={gameId} loading={loading} failed={false} hasData={false} onRetry={() => void reload()}/></View><MatchDetailsSkeleton /></ScrollSurface>
       </SafeAreaView></ContentReveal>
     );
   }
@@ -2845,7 +2850,7 @@ export function MatchDetailsScreen() {
   };
   // The average shown must be the average the SPLIT was balanced on, or the
   // screen contradicts the algorithm: unrated players (and guests without an
-  // estimate) count as the neutral middle here exactly as they do in
+  // estimate) count as NEUTRAL_RATING here exactly as they do in
   // `balanceTeams`, and legacy 1–10 values are normalised the same way. Before
   // this, unrated members were simply dropped from the average — so a team the
   // balancer had made equal could still show a lower number.
@@ -2853,7 +2858,7 @@ export function MatchDetailsScreen() {
     if (!teamRatingsVisible || playerIds.length === 0) return undefined;
     const raw = playerIds.map(ratingForRosterId);
     // Nobody on the team is rated at all → there is no meaningful number to
-    // show (a flat "3.0" for every team would be noise, not information).
+    // show (a flat default for every team would be noise, not information).
     if (!raw.some((v) => typeof v === 'number' && v > 0)) return undefined;
     const vals = raw.map((v) =>
       typeof v === 'number' && v > 0 ? normalizeRating(v) : NEUTRAL_RATING,
@@ -3018,6 +3023,8 @@ export function MatchDetailsScreen() {
           groupId={heroGroupId}
           coverLoading={!!heroGroupId && !memberHeroClub && !publicCoverResolved}
           startsAt={game.startsAt}
+          changedTime={roundChanges.time}
+          changedLocation={roundChanges.location}
           title={game.title}
           statusLabel={game.status === 'cancelled' ? 'המחזור בוטל' : game.status === 'finished' ? 'המחזור הסתיים' : isActiveGame(game) ? 'המחזור פעיל' : status === 'joined' ? 'נרשמת למחזור' : status === 'pending' ? 'ממתין לאישור' : status === 'waitlist' ? 'ברשימת המתנה' : game.status === 'scheduled' ? 'ההרשמה טרם נפתחה' : game.locked ? 'ההרשמה סגורה' : isFull ? 'הרשמה לרשימת המתנה' : 'ההרשמה פתוחה'}
           occupancy={{registered: heroOccupancy, capacity: game.maxPlayers, reserved: !!game.pendingPromotion?.uid}}
@@ -3064,6 +3071,10 @@ export function MatchDetailsScreen() {
           }
           chatUnread={chatUnread}
         />
+        <View style={{paddingHorizontal: 16}}>
+          <ReadStatusNotice scope={gameId} loading={loading || refreshing} failed={loadError} hasData onRetry={() => void reload({pullToRefresh: true})}/>
+          <OperationStatus scope={gameId} active={busy} label="ממתינים לאישור הפעולה" awaitingConfirmation/>
+        </View>
     </View>
   );
   const tabBarNode = (
@@ -3336,9 +3347,10 @@ export function MatchDetailsScreen() {
                 hides itself in all other cases, so non-admins and
                 "no fillers needed" games see no extra section. */}
             <FillerInterestsSection
-              gameId={game.id}
+              key={user?.id}
+              game={game}
               isAdmin={isAdmin}
-              acceptsFillers={game.acceptsFillers === true}
+              isClubAdmin={!!user && myCommunities.some(c => c.id === game.groupId && c.adminIds.includes(user.id))}
             />
 
             {/* "Navigate to the field" — the most common thing a person does

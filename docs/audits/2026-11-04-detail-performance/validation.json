@@ -1,0 +1,36 @@
+{
+  "date": "2026-11-04",
+  "localOnly": true,
+  "deployed": false,
+  "nativeDeviceMeasurement": false,
+  "jest": {
+    "suites": 627,
+    "tests": 7029,
+    "passed": true,
+    "serial": true,
+    "logSha256": "3cea385178b3b5e1c67e3038036a1cb5538967a6c9a60e1849188d9ae5b384a2"
+  },
+  "typecheck": {
+    "passed": true
+  },
+  "featureStatus": {
+    "failures": 0,
+    "refreshedPairs": 13
+  },
+  "documentation": {
+    "existingFailures": 107,
+    "newFailures": 0
+  },
+  "screenshots": {
+    "files": 10,
+    "viewportChecks": 30,
+    "native": false
+  },
+  "releaseLog": {
+    "records": 7,
+    "readBackVerified": true,
+    "uniqueProofs": 4,
+    "proofReferences": 6
+  },
+  "sourceHashesVerified": 13
+}

@@ -1,0 +1,1400 @@
+{
+  "method": "static source census of direct literal screen navigation",
+  "stackCount": 6,
+  "registrationCount": 154,
+  "checked": [
+    {
+      "stack": "src/navigation/AuthStack.tsx",
+      "parent": "SignIn",
+      "target": "EmailAuth",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "ChatsList",
+      "target": "Friends",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "ChatsList",
+      "target": "SocialPrivacy",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "Friends",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "PlayerCard",
+      "target": "PlayerCompare",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "PlayerCard",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "Statistics",
+      "target": "GameTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "GameCreate",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "CommunitiesTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "ManagerDashboard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "CommunityEdit",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "AdminApproval",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "CommunityHistory",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunitiesFeed",
+      "target": "CommunitiesCreate",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunitiesFeed",
+      "target": "CommunityDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunitiesFeed",
+      "target": "CommunityDetailsPublic",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "Requests",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunitiesMap",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunitiesMap",
+      "target": "CommunityDetailsPublic",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunityPlayers",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunityPlayers",
+      "target": "PlayerTimeline",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunityPlayers",
+      "target": "PlayerCompare",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "AdminApproval",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "PlayerTimeline",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "CommunityStats",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "SeasonSummary",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "CommunityHistory",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "CommunityEdit",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunityStats",
+      "target": "GameCreate",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunityStats",
+      "target": "SeasonSummary",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunityStats",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunityStats",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "CommunityHistory",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "MatchDetails",
+      "target": "GameTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "MatchDetails",
+      "target": "LiveMatch",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "MatchDetails",
+      "target": "GameEdit",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "MatchDetails",
+      "target": "MatchPlayers",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "MatchDetails",
+      "target": "DraftBoard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "MatchDetails",
+      "target": "DraftSetup",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "MatchDetails",
+      "target": "EveningSummary",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "MatchDetails",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "MatchDetails",
+      "target": "AddMembers",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "MatchDetails",
+      "target": "AvailablePlayers",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "DraftSetup",
+      "target": "DraftBoard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "DraftBoard",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "DraftBoard",
+      "target": "DraftSetup",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "MatchPlayers",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "AvailablePlayers",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "LiveMatch",
+      "target": "DraftSetup",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "LiveMatch",
+      "target": "MatchRounds",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ChatStack.tsx",
+      "parent": "History",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunitiesFeed",
+      "target": "CommunitiesCreate",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunitiesFeed",
+      "target": "CommunityDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunitiesFeed",
+      "target": "CommunityDetailsPublic",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "Requests",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunitiesMap",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunitiesMap",
+      "target": "CommunityDetailsPublic",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "GameCreate",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "CommunitiesTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "ManagerDashboard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "CommunityEdit",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "AdminApproval",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "CommunityHistory",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunityPlayers",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunityPlayers",
+      "target": "PlayerTimeline",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunityPlayers",
+      "target": "PlayerCompare",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "AdminApproval",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "PlayerTimeline",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "CommunityStats",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "SeasonSummary",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "CommunityHistory",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "CommunityEdit",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunityStats",
+      "target": "GameCreate",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunityStats",
+      "target": "SeasonSummary",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunityStats",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunityStats",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "CommunityHistory",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "PlayerCard",
+      "target": "PlayerCompare",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "PlayerCard",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "Statistics",
+      "target": "GameTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "MatchDetails",
+      "target": "GameTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "MatchDetails",
+      "target": "LiveMatch",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "MatchDetails",
+      "target": "GameEdit",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "MatchDetails",
+      "target": "MatchPlayers",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "MatchDetails",
+      "target": "DraftBoard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "MatchDetails",
+      "target": "DraftSetup",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "MatchDetails",
+      "target": "EveningSummary",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "MatchDetails",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "MatchDetails",
+      "target": "AddMembers",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "MatchDetails",
+      "target": "AvailablePlayers",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "DraftSetup",
+      "target": "DraftBoard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "DraftBoard",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "DraftBoard",
+      "target": "DraftSetup",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "MatchPlayers",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "AvailablePlayers",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "LiveMatch",
+      "target": "DraftSetup",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "LiveMatch",
+      "target": "MatchRounds",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/CommunitiesStack.tsx",
+      "parent": "History",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "GamesList",
+      "target": "GameCreate",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "GamesList",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "GamesList",
+      "target": "AvailabilityEdit",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "GamesList",
+      "target": "CommunityDetailsPublic",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "GamesList",
+      "target": "Requests",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "GamesList",
+      "target": "ProfileTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "GamesList",
+      "target": "CommunitiesTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "Requests",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "GamesMap",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "GamesMap",
+      "target": "CommunityDetailsPublic",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "MatchDetails",
+      "target": "GameTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "MatchDetails",
+      "target": "LiveMatch",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "MatchDetails",
+      "target": "GameEdit",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "MatchDetails",
+      "target": "MatchPlayers",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "MatchDetails",
+      "target": "DraftBoard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "MatchDetails",
+      "target": "DraftSetup",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "MatchDetails",
+      "target": "EveningSummary",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "MatchDetails",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "MatchDetails",
+      "target": "AddMembers",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "MatchDetails",
+      "target": "AvailablePlayers",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "LiveMatch",
+      "target": "DraftSetup",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "LiveMatch",
+      "target": "MatchRounds",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "AvailablePlayers",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "MatchPlayers",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "DraftSetup",
+      "target": "DraftBoard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "DraftBoard",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "DraftBoard",
+      "target": "DraftSetup",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "PlayerCard",
+      "target": "PlayerCompare",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "PlayerCard",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "Statistics",
+      "target": "GameTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "GameCreate",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "CommunitiesTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "ManagerDashboard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "CommunityEdit",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "AdminApproval",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "CommunityHistory",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "CommunityPlayers",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "CommunityPlayers",
+      "target": "PlayerTimeline",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "CommunityPlayers",
+      "target": "PlayerCompare",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "AdminApproval",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "PlayerTimeline",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "CommunityStats",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "SeasonSummary",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "CommunityHistory",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "CommunityEdit",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "CommunityStats",
+      "target": "GameCreate",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "CommunityStats",
+      "target": "SeasonSummary",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "CommunityStats",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "CommunityStats",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "CommunityHistory",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/GameStack.tsx",
+      "parent": "History",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "GuestHome",
+      "target": "CommunitiesCreate",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "GuestHome",
+      "target": "GameCreate",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "GuestHome",
+      "target": "AvailabilityEdit",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "GuestHome",
+      "target": "GameTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "GuestHome",
+      "target": "Profile",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "GuestHome",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "PersonalInvite",
+      "target": "CommunityDetailsPublic",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "PersonalInvite",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "PersonalInvite",
+      "target": "GuestHome",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "ProfileEdit",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "AvailabilityEdit",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "CommunitiesTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "GameTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "History",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "Statistics",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "Achievements",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "MyActivity",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "Friends",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "Referrals",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "AdminApproval",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "NotificationsSettings",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "SocialPrivacy",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "BlockedUsers",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "Feedback",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "Requests",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "SeasonSummary",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Profile",
+      "target": "AvailabilityWeek",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "AvailabilityWeek",
+      "target": "GameTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "AvailabilityWeek",
+      "target": "AvailabilityEdit",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Requests",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "PlayerCard",
+      "target": "PlayerCompare",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "PlayerCard",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "History",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Statistics",
+      "target": "GameTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Friends",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "Referrals",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "MatchDetails",
+      "target": "GameTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "MatchDetails",
+      "target": "LiveMatch",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "MatchDetails",
+      "target": "GameEdit",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "MatchDetails",
+      "target": "MatchPlayers",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "MatchDetails",
+      "target": "DraftBoard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "MatchDetails",
+      "target": "DraftSetup",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "MatchDetails",
+      "target": "EveningSummary",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "MatchDetails",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "MatchDetails",
+      "target": "AddMembers",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "MatchDetails",
+      "target": "AvailablePlayers",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "DraftSetup",
+      "target": "DraftBoard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "DraftBoard",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "DraftBoard",
+      "target": "DraftSetup",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "MatchPlayers",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "AvailablePlayers",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "LiveMatch",
+      "target": "DraftSetup",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "LiveMatch",
+      "target": "MatchRounds",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "GameCreate",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "CommunitiesTab",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "ManagerDashboard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "CommunityEdit",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "AdminApproval",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "CommunityHistory",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "CommunityDetails",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "CommunityPlayers",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "CommunityPlayers",
+      "target": "PlayerTimeline",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "CommunityPlayers",
+      "target": "PlayerCompare",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "AdminApproval",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "PlayerTimeline",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "CommunityStats",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "SeasonSummary",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "CommunityHistory",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "ManagerDashboard",
+      "target": "CommunityEdit",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "CommunityStats",
+      "target": "GameCreate",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "CommunityStats",
+      "target": "SeasonSummary",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "CommunityStats",
+      "target": "PlayerCard",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "CommunityStats",
+      "target": "MatchDetails",
+      "registered": true
+    },
+    {
+      "stack": "src/navigation/ProfileStack.tsx",
+      "parent": "CommunityHistory",
+      "target": "MatchDetails",
+      "registered": true
+    }
+  ],
+  "missing": []
+}

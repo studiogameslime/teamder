@@ -184,7 +184,9 @@ export function LiveScoreboardCard(props: Props) {
     busyRef.current = true;
     setBusy(true);
     try {
-      await gameService.recordGoal(gameId, { team, scorerId, assisterId, ownGoal, minute, ...entry, expectedRoundId: roundCommitKey(rotation) });
+      const created = await gameService.recordGoal(gameId, { team, scorerId, assisterId, ownGoal, minute, ...entry, expectedRoundId: roundCommitKey(rotation) });
+      if (!created) return;
+      logEvent(AnalyticsEvent.LiveGoalRecorded);
       logEvent(AnalyticsEvent.TeamScoreChanged, {
         gameId,
         team,

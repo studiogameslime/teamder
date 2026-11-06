@@ -1,5 +1,5 @@
 import {balanceTeams} from '@/utils/draft';
-import {balanceWithFill, recommendFill, fillAverage} from '@/utils/balancedFill';
+import {balanceWithFill, recommendFill, fillAverage, fillRating, fillComparisonText} from '@/utils/balancedFill';
 import {prepareBalancedNext, recordWinnerSkeleton, recordTieSkeleton, rosterOf, startRotationSkeleton, applyChosenFill} from '@/services/rotationEngine';
 
 const sides = [{index:0,playerIds:['a','b','c','d']},{index:1,playerIds:['e','f','g','h']}] as [{index:number;playerIds:string[]},{index:number;playerIds:string[]}];
@@ -46,7 +46,17 @@ test('equal completed matchups break ties on variety without changing sizes or b
   expect(result.flat().slice().sort()).toEqual(teams.flat().slice().sort());
   const repeat=result.reduce((sum,ids)=>sum+(weights[ids.slice().sort().join('|') as keyof typeof weights]??0),0);
   expect(repeat).toBe(0);
-  expect(result.map(t=>fillAverage(t,{}))).toEqual([3,3,3]);
+  expect(result.map(t=>fillAverage(t,{}))).toEqual([2.5,2.5,2.5]);
+});
+
+test('fill estimates and their explanation use 2.5 only for unrated players',()=>{
+  const ratings={zero:0, rated:3, low:0.5};
+  expect(fillRating('missing',ratings)).toBe(2.5);
+  expect(fillRating('zero',ratings)).toBe(2.5);
+  expect(fillRating('rated',ratings)).toBe(3);
+  expect(fillRating('low',ratings)).toBe(0.5);
+  expect(fillAverage(['missing','rated'],ratings)).toBe(2.75);
+  expect(fillComparisonText([['missing'],['rated']],ratings)).toContain('2.5 מתוך 5');
 });
 test.each(['win','tie'])('actual borrowed participants get usage before loans return (%s)',outcome=>{
   const teams=[...sides,{index:2,playerIds:['x','y','z','w']}];
@@ -65,5 +75,5 @@ test.each(['win','tie'])('actual borrowed participants get usage before loans re
   expect(teams[2].playerIds).toEqual(['x','y','z','w']);
 });
 test('unknown ratings use neutral baseline, no NaN or false zero',()=>{
-  expect(fillAverage(['a','b'],{a:NaN,b:Infinity})).toBe(3);
+  expect(fillAverage(['a','b'],{a:NaN,b:Infinity})).toBe(2.5);
 });

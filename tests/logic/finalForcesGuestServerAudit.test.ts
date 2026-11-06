@@ -22,10 +22,11 @@ function collect(node: ts.Node) {
 collect(trigger!);
 const context: any = { module: { exports: {} }, Date };
 vm.runInNewContext(ts.transpileModule(helper + '\nmodule.exports={discover:(before,after)=>{' + declarations.join('\n') +
-  ';return {rosterShrank,departed:[...departed]};},prune:pruneUidsFromTeamsSrv}', {
+  ';return {rosterShrank,departed:[...departed]};},seatFreed:(before,after)=>{' + declarations.join('\n') +
+  ';return guestSeatFreed;},prune:pruneUidsFromTeamsSrv}', {
   compilerOptions: { target: ts.ScriptTarget.ES2022 },
 }).outputText, context);
-const { discover, prune } = context.module.exports;
+const { discover, prune, seatFreed } = context.module.exports;
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
 const lineup = () => ({ players: ['member'], guests: [],
   draftTeams: { teams: [{ index: 0, playerIds: ['member', 'guest:g', 'removed'] }],
@@ -51,6 +52,23 @@ test('an old client removing a guest is discovered and pruned without any real p
 test('replacing one guest with another at equal occupancy still cleans the removed identity', () => {
   expect(discover({ players: ['member'], guests: [{ id: 'g' }] }, { players: ['member'], guests: [{ id: 'new' }] }))
     .toEqual({ rosterShrank: true, departed: ['guest:g'] });
+});
+
+test('manual guest demotion does not backfill or immediately undo the admin move', () => {
+  const before = { players: ['member'], guests: [{ id: 'g' }, { id: 'waiting', waitlisted: true }] };
+  const after = { ...before, guests: [{ id: 'waiting', waitlisted: true }, { id: 'g', waitlisted: true }] };
+  expect(seatFreed(before, after)).toBe(false);
+  expect(discover(before, after)).toEqual({ rosterShrank: false, departed: [] });
+});
+
+test('removing an active guest still backfills, while removing a waiting guest does not', () => {
+  expect(seatFreed({ guests: [{ id: 'g' }] }, { guests: [] })).toBe(true);
+  expect(seatFreed({ guests: [{ id: 'g', waitlisted: true }] }, { guests: [] })).toBe(false);
+});
+
+test('removing a waiting guest alongside a manual demotion does not count as an active departure', () => {
+  expect(seatFreed({ guests: [{ id: 'g' }, { id: 'waiting', waitlisted: true }] },
+    { guests: [{ id: 'g', waitlisted: true }] })).toBe(false);
 });
 
 test.each(['players', 'waitlist', 'pending'])('a delayed removal cannot prune a real person who rejoined %s', key => {
