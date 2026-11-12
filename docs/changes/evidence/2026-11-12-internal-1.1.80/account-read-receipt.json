@@ -1,0 +1,8 @@
+{
+  "selfProfileMatched": true,
+  "getPlayerIdentities": 200,
+  "getSocialPlayerProfile": 200,
+  "getMyPlayerReferrals": 200,
+  "getReceivedInvitations": 200,
+  "searchSocialPlayers": 200
+}

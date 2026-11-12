@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "games",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath":"groupId","order":"ASCENDING"},
+        {"fieldPath":"startsAt","order":"DESCENDING"}
+      ]
+    },
+    {
       "collectionGroup": "usageActivity",
       "queryScope": "COLLECTION",
       "fields": [

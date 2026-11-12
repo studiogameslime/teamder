@@ -1,0 +1,19 @@
+{
+  "addedOnly": {
+    "collectionGroup": "games",
+    "queryScope": "COLLECTION",
+    "fields": [
+      {
+        "fieldPath": "groupId",
+        "order": "ASCENDING"
+      },
+      {
+        "fieldPath": "startsAt",
+        "order": "DESCENDING"
+      }
+    ]
+  },
+  "otherIndexesUnchanged": 35,
+  "permissionsChanged": false,
+  "deployed": false
+}

@@ -4104,9 +4104,9 @@
       "domain": "clubs",
       "technical": "clubs/manager-dashboard.md",
       "simple": "clubs/manager-dashboard.simple.md",
-      "capturedOn": "2026-11-11",
+      "capturedOn": "2026-11-12",
       "basis": "existing-documentation-only",
-      "summary": "מומש מקומית מנגנון שמציע שינוי קטן בדירוג רק כשגם תוצאות הקבוצות ביחס לציפייה וגם ציוני השחקן מול בעלי תפקיד ודירוג דומים תומכים בכך לאורך זמן. נשמרים ציוני העבר, ונתון חסר מוצג כחסר. אפשר לקבל את ההצעה, לערוך דירוג או לציין שהוא מתאים; אין שינוי אוטומטי.",
+      "summary": "בבדיקת ההכנה להפצה נמצא שחסרה בשרת תוספת הדרושה לקריאת היסטוריית המחזורים. התוספת הוכנה וממתינה לפריסה יחד עם שירותי ההמלצות. היא אינה משנה ציונים או דירוגים קיימים.",
       "latestDatedSection": "2026-11-11",
       "recentSections": [
         "המלצות דירוג משולבות, 11.11.2026",
@@ -4121,8 +4121,8 @@
         "src/screens/communities/ManagerDashboardScreen.tsx"
       ],
       "documents": {
-        "clubs/manager-dashboard.md": "cc6cce1fb7d5edea047f743cbbd9aa0ed3977e0396614c6ab289f8e4e81520a2",
-        "clubs/manager-dashboard.simple.md": "b61dae7bc3703090ad5ff7c6d233ee16852953cde2d4fe8b9b424fa2dc0a1bd6"
+        "clubs/manager-dashboard.md": "2ce4026b7d4c0c6935525095ecf167f5c76f7cb5d0b85eb93935788efdd4155d",
+        "clubs/manager-dashboard.simple.md": "a5ab94582250d83e6973892cda6259b14e472960aa82f2e1f5ad128c72cecd04"
       },
       "sources": {
         "functions/src/clubAdminRatings.ts": "8b1fdaffb80d716e66d0a6ac7760bcf921d9c0d9ff80bf9a7ab027dfea265b51",

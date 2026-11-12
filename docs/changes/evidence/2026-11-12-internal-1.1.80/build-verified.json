@@ -1,0 +1,28 @@
+{
+  "verified": true,
+  "head": "c977d60921d3c8c4d5876ac56285f416c7b67822",
+  "sourceFilesUnchanged": 1189,
+  "phone": {
+    "version": "1.1.80",
+    "code": 312,
+    "sha256": "a91de0da2ebc2e4dd11e96862d3567c7efd7d48a615a3fd695e07e2876e02999",
+    "usageEnabled": true,
+    "embeddedRevision": "8845ce98ceef5d29c6309799",
+    "buildId": "internal-1.1.80-312-c977d60921d3"
+  },
+  "bundledSources": {
+    "src/firebase/firestore.ts": "e45013f32b0c49a6f074b58030b1ba0f207375e09ac0f425acc8381845fd65e8",
+    "src/services/gameService.ts": "547ec83b440aa32e213ee786e2caa8342df0f40005955f97a7eabbe906c37d8b",
+    "src/utils/liveRoundEdit.ts": "6713a967e1ca27025ed43f751b483e71c740537b63018accfa57427da4013d9e",
+    "src/components/match/LiveRoundEditsCard.tsx": "1ed48c68bb23eadef372a603284821a1a9ec1773283c4bd070c9307670fdb675",
+    "src/components/draft/DraftTeamCard.tsx": "7b6bcfd1a8905592a147c78eb02361de5bd2ca46812345c665d7e723fde7d2d5",
+    "src/screens/AdvancedLiveMatchScreen.tsx": "2ec4945490d92d6ac9748f318ac21b18d69e0b0a5df9a426f14f5d1bcb0334b0",
+    "src/components/match/LiveRoundEditModal.tsx": "97746a26e5a9f355d4aaa98c8387cc86c902a790ff967277c6dc1c21eaba6276",
+    "src/components/draft/DraftMethodCard.tsx": "4c43d2ab1f39346119bdc7d1347739cfaf8b7d41fe8271c3871aaf13a7508767",
+    "src/components/draft/DraftPlayerRow.tsx": "7af7722591247969af5ee49c558f0dd0c5e195ccc5fb662caffed96e2519433e",
+    "src/screens/games/DraftSetupScreen.tsx": "b2f7b70884297b7b1dc9da31d56874170fe9e5f718197a7395273d305f48cbff",
+    "src/components/manager/ManagerRatingReview.tsx": "22d5f73a64502b76eb03771610940be34a2e19cd2eea7fb035369c7e87f91a8f",
+    "src/services/ratingReviewService.ts": "3e9a83b247bfa919a7f289cf96cb5cf0ec8a59ef7eb5a7aaf96c7ab970276f23"
+  },
+  "deviceInstallVerified": false
+}
