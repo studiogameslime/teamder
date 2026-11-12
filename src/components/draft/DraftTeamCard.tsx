@@ -25,6 +25,10 @@ export interface DraftUserLite {
 interface Props {
   /** Read-only team presentation in round details; the draft editor is unchanged. */
   summary?: boolean;
+  /** Local live-round selection; omitted in the existing read-only summaries. */
+  selectedUserId?: string | null;
+  onPressTeam?: () => void;
+  userAccessibilityLabel?: (user: DraftUserLite) => string;
   completionCapacity?: number;
   index: number;
   captain: DraftUserLite;
@@ -64,6 +68,9 @@ export function DraftTeamCard({
   teamRating,
   completionCapacity,
   summary = false,
+  selectedUserId,
+  onPressTeam,
+  userAccessibilityLabel,
 }: Props) {
   // Each team carries its own colour. teamName/teamColor resolve the chosen
   // colour when there is one and the per-index default otherwise, so the branch
@@ -76,12 +83,14 @@ export function DraftTeamCard({
   if (summary) {
     const users = [captain,...members].filter(user=>!!user.id);
     const missing = Math.max(0,(completionCapacity ?? 0)-users.length);
-    return <View style={styles.summaryCard}>
-      <View style={[styles.summaryHeader,{backgroundColor:tColor+'0C'}]}>
+    const header = <>
         <TeamShirtIllustration color={tColor} width={28}/><Text style={[styles.summaryTitle,{color:teamTextColor(index,asTeams)}]}>{tLabel}</Text>
         {typeof teamRating==='number' && <View style={styles.ratingBadge} accessible accessibilityLabel={`ממוצע דירוג הקבוצה ${teamRating.toFixed(1)}`}><Text style={styles.ratingText}>{teamRating.toFixed(1)}</Text><Ionicons name="star" size={12} color={colors.primary}/></View>}
-      </View>
-      <View style={[styles.chips,styles.summaryRoster]}>{users.map(user=><Chip key={user.id} user={user} summary onPressUser={onPressUser}/>)}</View>
+      </>;
+    return <View style={[styles.summaryCard, highlight && styles.cardHighlight]}>
+      {onPressTeam ? <Pressable style={[styles.summaryHeader, styles.selectableHeader, {backgroundColor:tColor+'0C'}]} onPress={onPressTeam} accessibilityRole="button" accessibilityLabel={`בחירת ${tLabel} לשיבוץ`} accessibilityState={{selected:!!highlight}}>{header}</Pressable> :
+        <View style={[styles.summaryHeader,{backgroundColor:tColor+'0C'}]}>{header}</View>}
+      <View style={[styles.chips,styles.summaryRoster]}>{users.map(user=><Chip key={user.id} user={user} summary onPressUser={onPressUser} selected={user.id===selectedUserId} accessibilityLabel={userAccessibilityLabel?.(user)}/>)}</View>
       {missing>0 && <Text style={styles.summaryMissing}>{`${users.length} מתוך ${completionCapacity} · השלמה לפני המשחק`}</Text>}
     </View>;
   }
@@ -163,11 +172,15 @@ function Chip({
   captain,
   onPressUser,
   summary,
+  selected,
+  accessibilityLabel,
 }: {
   user: DraftUserLite;
   captain?: boolean;
   onPressUser?: (id: string) => void;
   summary?: boolean;
+  selected?: boolean;
+  accessibilityLabel?: string;
 }) {
   const body = (
     <>
@@ -185,10 +198,11 @@ function Chip({
   );
   return onPressUser ? (
     <Pressable
-      style={[styles.chip,summary && styles.summaryChip]}
+      style={[styles.chip,summary && styles.summaryChip, selected && styles.selectedChip]}
       onPress={() => onPressUser(user.id)}
       accessibilityRole="button"
-      accessibilityLabel={user.name}
+      accessibilityLabel={accessibilityLabel ?? user.name}
+      accessibilityState={selected === undefined ? undefined : { selected }}
     >
       {body}
     </Pressable>
@@ -198,6 +212,8 @@ function Chip({
 }
 
 const styles = StyleSheet.create({
+  selectableHeader: { minHeight: 44 },
+  selectedChip: { backgroundColor: colors.primaryLight, borderRadius: 12, borderWidth: 2, borderColor: colors.primary },
   summaryCard: {backgroundColor:colors.surface,borderRadius:18,borderWidth:1,borderColor:colors.border,overflow:'hidden',...shadows.card},
   summaryHeader: {flexDirection:'row',alignItems:'center',gap:7,paddingVertical:5,paddingHorizontal:12},
   summaryTitle: {flex:1,minWidth:0,fontSize:17,fontWeight:'800',textAlign:RTL_LABEL_ALIGN},

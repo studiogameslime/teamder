@@ -14,26 +14,31 @@ import urllib.request
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / 'artifacts/round-penalties-2026-11-06'
 parser = argparse.ArgumentParser()
 parser.add_argument('--release-log', action='store_true')
+parser.add_argument('--open-log', action='store_true')
+parser.add_argument('--placement', action='store_true')
 args = parser.parse_args()
+folder = 'round-penalties-position-2026-11-06' if args.placement else 'round-penalties-log-2026-11-06' if args.open_log else 'round-penalties-2026-11-06'
+OUT = ROOT / 'artifacts' / folder
 browser = json.loads((OUT / 'browser-results.json').read_text())
 assert not browser['errors'] and len(browser['results']) == 12
 commit = subprocess.run(['git', 'rev-parse', 'HEAD'], capture_output=True, text=True, check=True).stdout.strip()
 manifest_path = ROOT / 'docs/features/screenshots/manifest.json'
 manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
 new_shots = []
-for scene in ['stats-before', 'stats-after', 'kicker-details-after', 'keeper-details-after']:
-    filename = 'round-penalties-' + scene + '-2026-11-06.png'
+scenes = ['stats-before', 'stats-after'] if args.open_log or args.placement else ['stats-before', 'stats-after', 'kicker-details-after', 'keeper-details-after']
+prefix = 'round-penalties-position-' if args.placement else 'round-penalties-log-' if args.open_log else 'round-penalties-'
+for scene in scenes:
+    filename = prefix + scene + '-2026-11-06.png'
     data = (OUT / (scene + '.png')).read_bytes()
     (ROOT / 'docs/features/screenshots' / filename).write_bytes(data)
     new_shots.append({
-        'file': filename, 'source': 'artifacts/round-penalties-2026-11-06/' + scene + '.png',
+        'file': filename, 'source': 'artifacts/' + folder + '/' + scene + '.png',
         'platform': 'Web', 'environment': 'רכיבי מקור של לשונית סטטיסטיקת המחזור במתאם דפדפן עם נתוני הדגמה',
         'sourceCommit': commit, 'captured': '2026-11-06',
         'notes': ['שינויים מקומיים מעבר למקור הרשום. רוחב 390 וגופן רגיל. הצילום נפתח ונבחן.',
-                  'אווטרים, סמלים ומעטפת מותאמים לדפדפן. הטבלה התחתונה הושמטה מהמארח.',
+                  'אווטרים, סמלים ומעטפת מותאמים לדפדפן. רק כותרת אלופי המחזור מוצגת כמתאם; תוכן הטבלה אינו נבדק.' if args.placement else 'אווטרים, סמלים ומעטפת מותאמים לדפדפן. הטבלה התחתונה הושמטה מהמארח.',
                   'אין בדיקת מכשיר או נתוני ייצור. מימוש מקומי וטרם הופץ.'],
         'sha256': hashlib.sha256(data).hexdigest(),
     })
@@ -70,6 +75,12 @@ def string(value):
 
 item_id = 'round-penalties-card-2026-11-06'
 title = 'בסטטיסטיקת המחזור נוסף כרטיס פנדלים עם מעבר בין בועטים לשוערים והפרדה בין פנדלים במשחק לפנדלי הכרעה. לחיצה על שחקן מציגה את הבעיטות ותוצאותיהן; מידע חסר מסומן בלי להמציא עצירות. מקומי וטרם הופץ; אומת ברכיבי מקור בדפדפן עם נתוני הדגמה, ללא אימות מכשיר או שרת חדש.'
+if args.open_log:
+    item_id = 'round-penalties-open-log-2026-11-06'
+    title = 'כרטיס הפנדלים הוחלף ברשימת בעיטות גלויה ללא כפתורי מעבר או פתיחת פירוט. בכל שורה הבועט מימין, התוצאה באמצע והשוער משמאל, ואייקון התוצאה משמאל לטקסט. הבעיטות מופרדות לפי הסוג והמשחק; מידע חסר מסומן. מקומי וטרם הופץ; נבדקו רכיבי מקור בדפדפן עם נתוני הדגמה, ללא אימות מכשיר או שרת חדש.'
+if args.placement:
+    item_id = 'round-penalties-position-2026-11-06'
+    title = 'כרטיס הפנדלים בסטטיסטיקת המחזור הועבר מתחת למה קרה הערב ומעל אלופי המחזור. פרטי הבעיטות וסדר השחקנים נשמרו. מקומי וטרם הופץ; סדר החלקים נבדק ברכיבי מקור בדפדפן עם נתוני הדגמה וכותרת טבלה מותאמת, ללא אימות מכשיר או שרת חדש.'
 shot_id = None
 for attempt in range(3):
     original = request(BASE + '/appConfig/releaseLog')

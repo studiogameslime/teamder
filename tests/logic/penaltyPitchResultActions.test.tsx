@@ -59,7 +59,7 @@ test.each([3,5])('with %s teams tie confirmation and return remain outside the s
 test.each([
  ['penalties',he.shDecidePenalties,'onPenalties'],
  ['manual',he.shDecideManual,'onManual'],
- ['bothOut',he.shDecideBothOut,'onBothOut'],
+ ['bothOut','סיום בתיקו','onBothOut'],
 ] as const)('fixed %s confirmation still runs the selected method only once',(_choice,label,callback)=>{
  const input={...base(5),onPenalties:jest.fn(),onManual:jest.fn(),onBothOut:jest.fn()} as any;
  let tree=TieDecisionModal(input);const reserved=footer(tree,'tie-decision-actions').props.style;

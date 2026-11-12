@@ -649,7 +649,6 @@ export function GameCreateScreen() {
         { gameId, celebrate: true },
       );
     } catch (err) {
-    observeCaughtError(err, {"source":"src/screens/games/GameCreateScreen.tsx","handler":"submit","site":"GameCreateScreen:434e22020f"});
       // Overlap guard hit — show the user the existing game's title +
       // time so they understand WHY we blocked the create. Other
       // errors fall through to the wizard's generic error alert.
@@ -659,6 +658,7 @@ export function GameCreateScreen() {
         conflict?: { title: string; startsAt: number };
       };
       if (e.creationSaved) {
+        observeCaughtError(err, {source: 'src/screens/games/GameCreateScreen.tsx', handler: 'submit', site: 'GameCreateScreen:434e22020f'});
         setNotice({ title: 'המחזור נשמר', body: e.message });
         return;
       }
@@ -689,6 +689,7 @@ export function GameCreateScreen() {
         setNotice({ title: he.validationErrorTitle, body: e.message });
         return;
       }
+      observeCaughtError(err, {source: 'src/screens/games/GameCreateScreen.tsx', handler: 'submit', site: 'GameCreateScreen:434e22020f'});
       throw err;
     }
   };

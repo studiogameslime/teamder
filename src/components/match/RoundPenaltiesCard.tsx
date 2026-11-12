@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserAvatar } from '@/components/UserAvatar';
 import { colors, RTL_LABEL_ALIGN } from '@/theme';
 import { clubStatsPalette as palette } from '@/components/community/ClubStatsDashboard';
-import { eveningPenaltyPlayers, type EveningPenaltyAttempt, type PenaltyPhase, type PenaltyRole } from '@/utils/roundPenalties';
+import type { EveningPenaltyAttempt, PenaltyPhase } from '@/utils/roundPenalties';
 
 export interface RoundPenaltiesCardProps {
   attempts: EveningPenaltyAttempt[];
@@ -13,92 +13,89 @@ export interface RoundPenaltiesCardProps {
   userOf: (id: string) => { id: string; name: string; avatarId?: string; photoUrl?: string };
 }
 
-export function RoundPenaltiesCard({ attempts, hasHistory, partial, userOf }: RoundPenaltiesCardProps) {
-  const [role, setRole] = useState<PenaltyRole>('kicker');
-  const [phase, setPhase] = useState<PenaltyPhase>(() => attempts.some(a => a.phase === 'inPlay') ? 'inPlay' : 'shootout');
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const players = eveningPenaltyPlayers(attempts, phase, role);
-  const selected = attempts.filter(a => a.phase === phase);
-  const name = (id: string | null, fallback: string) => id ? userOf(id).name || fallback : fallback;
-  const outcomeText = (value: EveningPenaltyAttempt['outcome']) => value === 'goal' ? 'גול' : value === 'save' ? 'השוער עצר' : value === 'miss' ? 'החטאה' : 'לא הובקע. פירוט התוצאה לא נשמר';
+const phases: { value: PenaltyPhase; label: string; empty: string }[] = [
+  { value: 'inPlay', label: 'במהלך המשחק', empty: 'לא נרשמו פנדלים במהלך המשחק.' },
+  { value: 'shootout', label: 'פנדלי הכרעה', empty: 'לא נרשמו פנדלי הכרעה.' },
+];
+const outcomes: Record<EveningPenaltyAttempt['outcome'], {
+  text: string; icon: React.ComponentProps<typeof Ionicons>['name']; color: string;
+}> = {
+  goal: { text: 'כבש', icon: 'football-outline', color: colors.success },
+  save: { text: 'השוער עצר', icon: 'hand-left-outline', color: palette.teal },
+  miss: { text: 'החטיא', icon: 'close', color: colors.danger },
+  unknown: { text: 'לא הובקע', icon: 'help-circle-outline', color: palette.muted },
+};
 
+/** Every saved kick is visible with both participants. No filters or disclosure controls. */
+export function RoundPenaltiesCard({ attempts, hasHistory, partial, userOf }: RoundPenaltiesCardProps) {
+  const participant = (id: string | null, fallback: string) => {
+    const user = id ? userOf(id) : null;
+    return { user, name: user?.name || fallback };
+  };
   return <View style={s.card} testID="round-penalties-card">
-    <View style={s.switches}>
-      {([{ value: 'kicker', label: 'בועטים' }, { value: 'keeper', label: 'שוערים' }] as const).map(item =>
-        <Pressable key={item.value} accessibilityRole="tab" accessibilityState={{ selected: role === item.value }}
-          onPress={() => { setRole(item.value); setExpanded(null); }} style={[s.switch, role === item.value && s.active]}>
-          <Text style={[s.switchText, role === item.value && s.activeText]}>{item.label}</Text>
-        </Pressable>)}
-    </View>
-    <View style={s.phases}>
-      {([{ value: 'inPlay', label: 'במהלך המשחק' }, { value: 'shootout', label: 'פנדלי הכרעה' }] as const).map(item =>
-        <Pressable key={item.value} accessibilityRole="tab" accessibilityState={{ selected: phase === item.value }}
-          onPress={() => { setPhase(item.value); setExpanded(null); }} style={[s.phase, phase === item.value && s.phaseActive]}>
-          <Text style={[s.phaseText, phase === item.value && s.phaseTextActive]}>{item.label}</Text>
-        </Pressable>)}
-    </View>
-    <Text style={s.caption}>{phase === 'inPlay' ? 'שערי הפנדלים האלה נכללים בשערי המשחק.' : 'שערי הכרעה נספרים בפנדלים בלבד.'}</Text>
     {partial ? <Text style={s.notice}>הפירוט השמור חלקי. מוצגות רק הבעיטות שתועדו.</Text> : null}
-    {players.length ? <>
-      <View style={s.tableHead}>
-        <Text style={[s.columnLabel, s.identity]}>שחקן</Text>
-        <Text style={[s.columnLabel, s.amount]}>{role === 'kicker' ? 'הבקיע' : 'עצר'}</Text>
-        <Text style={[s.columnLabel, s.rate]}>הצלחה</Text>
-        <View style={s.chevron} />
-      </View>
-      {players.map(player => {
-        const open = expanded === player.id;
-        const displayName = name(player.id, 'שחקן לא ידוע');
-        return <View key={player.id} style={s.player}>
-          <Pressable accessibilityRole="button" accessibilityLabel={`פירוט הבעיטות של ${displayName}`}
-            accessibilityState={{ expanded: open }} onPress={() => setExpanded(open ? null : player.id)} style={s.playerRow}>
-            <View style={s.identity}>
-              <UserAvatar user={{ ...userOf(player.id), name: displayName }} size={32} />
-              <Text style={s.name}>{`\u2068${displayName}\u2069`}</Text>
-            </View>
-            <Text style={s.amount}>{player.successes} מתוך {player.attempts.length}</Text>
-            <Text style={[s.rate, player.pct === null && s.unknown]}>{player.pct === null ? 'חסר פירוט' : `\u2066${player.pct}%\u2069`}</Text>
-            <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={14} color={palette.muted} style={s.chevron} />
-          </Pressable>
-          {open ? <View style={s.details}>
-            {player.unknown ? <Text style={s.notice}>בחלק מהבעיטות הישנות לא נשמר אם היתה עצירה או החטאה. אחוז העצירה אינו מוצג.</Text> : null}
-            {player.attempts.map(attempt => <View key={attempt.key} style={s.attempt}>
-              <Text style={s.game}>משחק {attempt.gameNumber}{attempt.minute === undefined ? '' : `, דקה ${attempt.minute}`}</Text>
-              <Text style={s.opponent}>{role === 'kicker' ? `מול \u2068${name(attempt.keeperId, 'שוער לא ידוע')}\u2069` : `בעט \u2068${name(attempt.kickerId, 'בועט לא ידוע')}\u2069`}</Text>
-              <Text style={[s.result, { color: attempt.outcome === 'goal' ? colors.success : attempt.outcome === 'save' ? palette.teal : palette.muted }]}>{outcomeText(attempt.outcome)}</Text>
-            </View>)}
-          </View> : null}
-        </View>;
-      })}
-      <Text style={s.hint}>לחצו על שחקן לפירוט הבעיטות.</Text>
-    </> : <Text style={s.empty}>{!hasHistory ? 'אין פירוט פנדלים שמור למחזור הזה.' : selected.length ? role === 'keeper' ? 'לא נשמרה זהות השוער בבעיטות האלה.' : 'לא נשמרה זהות הבועט בבעיטות האלה.' : phase === 'inPlay' ? 'לא נרשמו פנדלים במהלך המשחק.' : 'לא נרשמו פנדלי הכרעה.'}</Text>}
-    {role === 'keeper' && players.length > 0 && selected.some(a => !a.keeperId) ? <Text style={s.notice}>בחלק מהבעיטות לא נשמרה זהות השוער.</Text> : null}
+    {!hasHistory ? <Text style={s.empty}>אין פירוט פנדלים שמור למחזור הזה.</Text> : phases.map((phase, phaseIndex) => {
+      const selected = attempts.filter(attempt => attempt.phase === phase.value);
+      const games = [...new Set(selected.map(attempt => attempt.gameNumber))];
+      return <View key={phase.value} style={[s.phase, phaseIndex > 0 && s.phaseDivider]}>
+        <Text style={s.phaseTitle}>{phase.label}</Text>
+        {!selected.length ? <Text style={s.empty}>{phase.empty}</Text> : games.map(gameNumber => <View key={gameNumber} style={s.game}>
+          <Text style={s.gameTitle}>משחק {gameNumber}</Text>
+          <View style={s.columns}>
+            <Text style={[s.columnLabel, s.personColumn]}>בועט</Text>
+            <Text style={[s.columnLabel, s.resultColumn]}>תוצאה</Text>
+            <Text style={[s.columnLabel, s.personColumn]}>שוער</Text>
+          </View>
+          {selected.filter(attempt => attempt.gameNumber === gameNumber).map((attempt, index) => {
+            const kicker = participant(attempt.kickerId, 'בועט לא תועד');
+            const keeper = participant(attempt.keeperId, 'שוער לא תועד');
+            const result = outcomes[attempt.outcome];
+            return <View key={attempt.key} style={[s.attempt, index > 0 && s.attemptDivider]} testID={`penalty-attempt-${attempt.key}`}
+              accessible accessibilityLabel={`משחק ${gameNumber}, בועט: ${kicker.name}, תוצאה: ${result.text}, שוער: ${keeper.name}${attempt.minute === undefined ? '' : `, דקה ${attempt.minute}`}`}>
+              <View style={s.person} testID={`penalty-kicker-${attempt.key}`}>
+                <UserAvatar user={kicker.user} size={28} />
+                <Text style={s.name}>{`\u2068${kicker.name}\u2069`}</Text>
+              </View>
+              <View style={s.resultColumn}>
+                <View style={s.resultLine}>
+                  {/* forceRTL puts the first child on the right: the icon follows
+                      the text so it is physically LEFT of it. */}
+                  <Text style={[s.resultText, { color: result.color }]} testID={`penalty-result-text-${attempt.key}`}>{result.text}</Text>
+                  <View style={s.resultIcon} testID={`penalty-result-icon-${attempt.key}`}>
+                    <Ionicons name={result.icon} size={16} color={result.color} allowFontScaling={false} />
+                  </View>
+                </View>
+                {attempt.minute === undefined ? null : <Text style={s.minute}>דקה {attempt.minute}</Text>}
+              </View>
+              <View style={s.person} testID={`penalty-keeper-${attempt.key}`}>
+                <UserAvatar user={keeper.user} size={28} />
+                <Text style={s.name}>{`\u2068${keeper.name}\u2069`}</Text>
+              </View>
+            </View>;
+          })}
+        </View>)}
+      </View>;
+    })}
+    {hasHistory && attempts.some(attempt => attempt.outcome === 'unknown') ?
+      <Text style={s.notice}>בחלק מהבעיטות הישנות לא נשמר אם היתה עצירה או החטאה.</Text> : null}
   </View>;
 }
 
 const s = StyleSheet.create({
-  card: { borderRadius: 12, borderWidth: 1, borderColor: palette.border, backgroundColor: '#FFFFFF', padding: 12, gap: 12 },
-  switches: { flexDirection: 'row', backgroundColor: '#F0F4FA', borderRadius: 10, padding: 3, gap: 4 },
-  switch: { flex: 1, minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 8 },
-  active: { backgroundColor: palette.ink }, switchText: { color: palette.muted, fontSize: 14, fontWeight: '700', textAlign: 'center' },
-  activeText: { color: '#FFFFFF' }, phases: { flexDirection: 'row', gap: 8 },
-  phase: { flex: 1, minHeight: 44, justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: palette.border, paddingHorizontal: 6, paddingVertical: 8 },
-  phaseActive: { borderColor: palette.teal, backgroundColor: '#EDF3FF' },
-  phaseText: { color: palette.muted, fontSize: 12, fontWeight: '600', textAlign: 'center' }, phaseTextActive: { color: palette.teal },
-  caption: { color: palette.muted, fontSize: 12, lineHeight: 18, textAlign: RTL_LABEL_ALIGN },
+  card: { borderRadius: 12, borderWidth: 1, borderColor: palette.border, backgroundColor: '#FFFFFF', padding: 12, gap: 16 },
+  phase: { gap: 8 }, phaseDivider: { borderTopWidth: 1, borderTopColor: palette.border, paddingTop: 16 },
+  phaseTitle: { color: palette.ink, fontSize: 18, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  game: { gap: 8 }, gameTitle: { color: palette.muted, fontSize: 13, textAlign: RTL_LABEL_ALIGN },
+  columns: { flexDirection: 'row', gap: 6, borderTopWidth: 1, borderTopColor: palette.border, paddingVertical: 4 },
+  columnLabel: { color: palette.muted, fontSize: 12, fontWeight: '600', textAlign: 'center' },
+  personColumn: { flex: 1, minWidth: 0 },
+  attempt: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 12, minHeight: 60 },
+  attemptDivider: { borderTopWidth: 1, borderTopColor: palette.border },
+  person: { flex: 1, minWidth: 0, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
+  name: { flexShrink: 1, minWidth: 0, color: palette.ink, fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  resultColumn: { width: 88, gap: 4 }, resultLine: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 4 },
+  resultText: { flexShrink: 1, fontSize: 13, fontWeight: '700', textAlign: 'center' }, resultIcon: { width: 16, flexShrink: 0, alignItems: 'center' },
+  minute: { color: palette.muted, fontSize: 11, textAlign: 'center' },
   notice: { color: '#8C5B17', fontSize: 12, lineHeight: 19, textAlign: RTL_LABEL_ALIGN },
-  tableHead: { flexDirection: 'row', alignItems: 'center', gap: 6 }, columnLabel: { color: palette.muted, fontSize: 11 },
-  player: { borderTopWidth: 1, borderTopColor: palette.border },
-  playerRow: { flexDirection: 'row', gap: 6, alignItems: 'center', minHeight: 58, paddingVertical: 10 },
-  identity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 7, textAlign: RTL_LABEL_ALIGN },
-  name: { flex: 1, minWidth: 0, color: palette.ink, fontSize: 13, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
-  amount: { width: 64, textAlign: 'center', color: palette.ink, fontSize: 12, fontWeight: '700' },
-  rate: { width: 45, textAlign: 'center', color: palette.teal, fontSize: 12, fontWeight: '700' },
-  unknown: { color: palette.muted, fontSize: 11 }, chevron: { width: 14 },
-  details: { backgroundColor: '#F7FAFC', borderRadius: 8, padding: 10, gap: 10, marginBottom: 10 },
-  attempt: { gap: 3 }, game: { color: palette.ink, fontSize: 12, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
-  opponent: { color: palette.muted, fontSize: 12, textAlign: RTL_LABEL_ALIGN },
-  result: { fontSize: 12, fontWeight: '600', textAlign: RTL_LABEL_ALIGN },
-  hint: { color: palette.muted, fontSize: 11, lineHeight: 17, textAlign: RTL_LABEL_ALIGN },
   empty: { color: palette.muted, fontSize: 13, lineHeight: 21, textAlign: RTL_LABEL_ALIGN, paddingVertical: 8 },
 });

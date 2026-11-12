@@ -36,7 +36,7 @@ jest.mock('@/services', () => ({ gameService: { getRoundHistory: jest.fn() } }))
 jest.mock('@/store/userStore', () => ({ useUserStore: Object.assign((select: any) => select({ currentUser: mockViewer ? { id: mockViewer } : null }), { getState: () => ({ currentUser: mockViewer ? { id: mockViewer } : null }) }) }));
 jest.mock('@react-navigation/native', () => ({ useFocusEffect: (callback: any) => require('react').useEffect(() => mockFocused ? callback() : undefined, [callback, mockFocused]) }));
 
-import { eveningPenaltyAttempts, eveningPenaltyPlayers } from '@/utils/roundPenalties';
+import { eveningPenaltyAttempts } from '@/utils/roundPenalties';
 import type { RoundHistoryDoc } from '@/utils/eveningStats';
 import { RoundPenaltiesCard } from '@/components/match/RoundPenaltiesCard';
 import { RoundPenaltiesSection } from '@/components/match/RoundPenaltiesSection';
@@ -58,7 +58,6 @@ const nodes = (n: any): any[] => !n || typeof n !== 'object' ? [] : Array.isArra
 const copy = (n: any): string => typeof n === 'string' || typeof n === 'number' ? String(n).replace(/[\u2066-\u2069]/g, '') : !n ? '' : Array.isArray(n) ? n.map(copy).join(' ').replace(/\s+/g, ' ').trim() : copy(n.props?.children);
 const card = (extra = {}) => { runtime.begin(); return RoundPenaltiesCard({ attempts: eveningPenaltyAttempts(history), hasHistory: true, userOf, ...extra }); };
 const section = (gameId = 'one', refreshKey = 0) => { runtime.begin(); return RoundPenaltiesSection({ gameId, refreshKey, userOf, expectedRounds: 2, expectedShootouts: 1 }); };
-const clickTab = (tree: any, label: string) => nodes(tree).find(n => n.props?.accessibilityRole === 'tab' && copy(n) === label).props.onPress();
 const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
 beforeEach(() => { runtime.reset(); read.mockReset(); mockViewer = 'viewer'; mockFocused = true; });
 
@@ -66,36 +65,39 @@ test('uses chronological saved kicks and separates in-play goals from shootout a
   const before = JSON.stringify(history), attempts = eveningPenaltyAttempts(history);
   expect(attempts[0]).toMatchObject({ gameNumber: 1, phase: 'inPlay', minute: 0 });
   expect(attempts[1]).toMatchObject({ gameNumber: 2, phase: 'shootout' });
-  expect(eveningPenaltyPlayers(attempts, 'inPlay', 'kicker')[0]).toMatchObject({ id: 'a', successes: 1, pct: 100 });
-  expect(eveningPenaltyPlayers(attempts, 'shootout', 'kicker')[0]).toMatchObject({ id: 'a', successes: 1, pct: 50 });
+  expect(attempts.filter(a => a.phase === 'inPlay')).toHaveLength(1);
+  expect(attempts.filter(a => a.phase === 'shootout')).toHaveLength(4);
   expect(JSON.stringify(history)).toBe(before);
 });
-test('includes zero-success guests, counts every faced attempt, and never invents legacy saves', () => {
+test('retains guests, explicit off-target misses and unclassified legacy non-goals', () => {
   const attempts = eveningPenaltyAttempts(history);
-  expect(eveningPenaltyPlayers(attempts, 'shootout', 'kicker').find(p => p.id === 'guest:one')).toMatchObject({ successes: 0, pct: 0 });
-  const keepers = eveningPenaltyPlayers(attempts, 'shootout', 'keeper');
-  expect(keepers.find(p => p.id === 'keeper')).toMatchObject({ successes: 1, pct: 33, unknown: 0 });
-  expect(keepers.find(p => p.id === 'keeper')?.attempts).toHaveLength(3);
-  expect(keepers.find(p => p.id === 'legacyKeeper')).toMatchObject({ successes: 0, pct: null, unknown: 1 });
+  expect(attempts.find(a => a.kickerId === 'guest:one')).toMatchObject({ keeperId: 'keeper', outcome: 'save' });
+  expect(attempts.filter(a => a.outcome === 'miss')).toHaveLength(1);
+  expect(attempts.find(a => a.keeperId === 'legacyKeeper')).toMatchObject({ outcome: 'unknown' });
 });
-test('missing keeper identities do not erase kicks or produce invented goalkeeper rows', () => {
+test('a missing keeper stays visible as unrecorded next to the known kicker and result', () => {
   const attempts = eveningPenaltyAttempts([round('1', { penalties: [{ kickerId: 'a', keeperId: null, scored: true, team: 'A' }] })]);
-  expect(eveningPenaltyPlayers(attempts, 'shootout', 'kicker')).toHaveLength(1);
-  expect(eveningPenaltyPlayers(attempts, 'shootout', 'keeper')).toEqual([]);
+  const tree = card({ attempts });
+  const row = nodes(tree).find(n => n.props?.testID === 'penalty-attempt-1:shootout:0');
+  expect(copy(row)).toContain('אלירן'); expect(copy(row)).toContain('שוער לא תועד'); expect(copy(row)).toContain('כבש');
 });
-test('phase and role tabs change counts; expanding a player shows game, opponent and result', () => {
-  let tree = card();
-  expect(copy(tree)).toContain('1 מתוך 1');
-  clickTab(tree, 'פנדלי הכרעה'); tree = card();
-  expect(copy(tree)).toContain('1 מתוך 2');
-  nodes(tree).find(n => n.props?.accessibilityLabel === 'פירוט הבעיטות של אלירן').props.onPress(); tree = card();
-  expect(copy(tree)).toContain('משחק 2'); expect(copy(tree)).toContain('מול איתן'); expect(copy(tree)).toContain('החטאה');
-  clickTab(tree, 'שוערים'); tree = card();
-  expect(copy(tree)).toContain('1 מתוך 3'); expect(copy(tree)).toContain('33%'); expect(copy(tree)).toContain('חסר פירוט');
-  expect(copy(tree)).not.toContain('משחק 2');
-  nodes(tree).find(n => n.props?.accessibilityLabel === 'פירוט הבעיטות של גל').props.onPress(); tree = card();
-  expect(copy(tree)).toContain('לא נשמר אם היתה עצירה או החטאה');
-  expect(copy(tree)).toContain('בעט אדיר');
+test('shows both phases and every paired kick without tabs, buttons, percentages or expansion', () => {
+  const tree = card();
+  expect(copy(tree)).toContain('במהלך המשחק'); expect(copy(tree)).toContain('פנדלי הכרעה');
+  expect(copy(tree)).toContain('משחק 1'); expect(copy(tree)).toContain('משחק 2'); expect(copy(tree)).toContain('דקה 0');
+  expect(nodes(tree).filter(n => n.props?.testID?.startsWith('penalty-attempt-'))).toHaveLength(5);
+  expect(nodes(tree).filter(n => n.props?.accessibilityRole === 'tab' || n.props?.accessibilityRole === 'button')).toHaveLength(0);
+  expect(copy(tree)).not.toContain('%'); expect(copy(tree)).not.toContain('לחצו');
+  const row = nodes(tree).find(n => n.props?.testID === 'penalty-attempt-2:shootout:1');
+  expect(copy(row)).toContain('אורח'); expect(copy(row)).toContain('איתן'); expect(copy(row)).toContain('השוער עצר');
+  expect(copy(tree)).toContain('לא הובקע'); expect(copy(tree)).toContain('לא נשמר אם היתה עצירה או החטאה');
+});
+test('result text precedes its icon under forceRTL and each row exposes a complete accessible summary', () => {
+  const tree = card(), row = nodes(tree).find(n => n.props?.testID === 'penalty-attempt-2:shootout:2');
+  const resultLine = nodes(row).find(n => React.Children.toArray(n.props?.children).some((child: any) => child.props?.testID === 'penalty-result-text-2:shootout:2'));
+  const children = React.Children.toArray(resultLine.props.children) as any[];
+  expect(children.map(n => n.props.testID)).toEqual(['penalty-result-text-2:shootout:2', 'penalty-result-icon-2:shootout:2']);
+  expect(row.props.accessibilityLabel).toBe('משחק 2, בועט: אלירן, תוצאה: החטיא, שוער: איתן');
 });
 test('distinguishes missing history, recorded empty category and partial history', () => {
   expect(copy(card({ attempts: [], hasHistory: false }))).toContain('אין פירוט פנדלים שמור');

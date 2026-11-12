@@ -1306,6 +1306,29 @@ export interface DraftTeam {
  *  completed (rosters reshape over the evening). Chosen on the draft screen. */
 export type FillMode = 'temporary' | 'permanent';
 
+/** Allocation revisions are operational history, never statistical matches. */
+export interface LiveRoundEditPlan {
+  activeIds: string[];
+  format: GameFormat;
+  numberOfTeams: number;
+  matchDurationMinutes: number;
+  ruleTags: string[];
+  method: 'keep' | 'rating' | 'random' | 'regular' | 'snake' | 'manual';
+  teams: DraftTeam[];
+  playing: [number, number];
+  waiting: number[];
+}
+export interface LiveRoundEditRecord {
+  id: string;
+  fromRoundId: string;
+  roundNumber: number;
+  by: string;
+  at: number;
+  plan: LiveRoundEditPlan;
+  before: Omit<LiveRoundEditPlan, 'method' | 'numberOfTeams'>;
+  after: Omit<LiveRoundEditPlan, 'method' | 'numberOfTeams'>;
+}
+
 export interface DraftTeamsResult {
   /** Opt-in: balance completed matchups and reselect temporary loans each match. */
   completionMode?: 'balanced';
@@ -1876,6 +1899,8 @@ export interface Game {
   rotation?: MatchRotation;
   /** Server marker: result is saved but the next rotation may still need confirmation. */
   lastCommittedRoundId?: string;
+  /** Atomic live edits and receipts. These do not contribute to any statistics. */
+  liveRoundEdits?: LiveRoundEditRecord[];
 
   /**
    * ms epoch — the moment when this game's registration officially

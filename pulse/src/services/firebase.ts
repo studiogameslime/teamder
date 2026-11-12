@@ -3,6 +3,7 @@ import { PLAYER_ROUND_FIELDS, playerRoundFacts } from './playerSummary';
 import { fetchAuthRecords } from './userAuth';
 import { userRecord } from './userDetails';
 import { collectionData } from './collectionData';
+import { parseJournal } from './diagnosticTimeline';
 import { pulseFetch as fetch } from './adminTransport';
 // Firebase service — reads the app's users/games/groups and derives a rich
 // set of aggregate stats for the dashboard. Falls back to mock until the
@@ -26,12 +27,35 @@ import {
   queryArrayContains,
   queryByCreatedAt,
   queryEquals,
+  queryDocumentPage, type DocumentPageCursor,
   type FsDoc,
 } from './firestoreRest';
 import { googleAccessToken } from './auth';
 import { cached, invalidate } from './cache';
 
 const DAY = 24 * 60 * 60 * 1000;
+
+// Legacy clients kept capture time only in a serialized journal. Page the
+// projection and discard that attachment before caching the player's history.
+async function playerErrorTimes(userId: string): Promise<FsDoc[]> {
+  const rows: FsDoc[] = [];
+  let cursor: DocumentPageCursor | undefined;
+  do {
+    const page = await queryDocumentPage('errors', {
+      where: {fieldFilter:{field:{fieldPath:'lastUserId'},op:'EQUAL',value:{stringValue:userId}}},
+      orderField:'__name__', direction:'ASCENDING', cursor, limit:Math.min(20, 500 - rows.length),
+      fields:['lastUserId','title','operation','category','count','lastSeen','status','lastJournal','lastContext.source','lastContext.clientCapturedAt'],
+    });
+    for (const {lastJournal, ...row} of page.rows) {
+      const received = Number(row.lastSeen);
+      const at = row.lastContext?.source === 'crashlytics' ? received :
+        (row.lastContext?.clientCapturedAt ?? (lastJournal ? parseJournal(lastJournal)?.capturedAt : undefined));
+      rows.push({...row, occurredAt: at && Number.isSafeInteger(at) && at > 0 && at <= received + 300_000 ? at : undefined});
+    }
+    cursor = page.next;
+  } while (cursor && rows.length < 500);
+  return rows;
+}
 
 // Heuristic: is this a QA / robot / seeded test account (not a real user)?
 //   • Firebase Test Lab / Play pre-launch robots → @cloudtestlabaccounts.com
@@ -449,7 +473,7 @@ async function fetchUserActivityUncached(userId: string): Promise<UserActivity> 
       read('מועדונים', queryArrayContains('groups', 'playerIds', userId, 200, ['name','creatorId','adminIds','playerIds','joinedAt','adminSince','createdAt','city','hidden','isPersonal']), [], 200),
       read('מועדונים בניהול', queryArrayContains('groups', 'adminIds', userId, 200, ['name','creatorId','adminIds','playerIds','joinedAt','adminSince','createdAt','city','hidden','isPersonal']), [], 200),
       read('דיווחים', queryEquals('feedback', 'userId', userId, 500, ['userId','message','status','type','createdAt','screen']), [] as FsDoc[], 500),
-      read('שגיאות', queryEquals('errors', 'lastUserId', userId, 500, ['lastUserId','title','operation','category','count','lastSeen','status']), [] as FsDoc[], 500),
+      read('שגיאות', playerErrorTimes(userId), [] as FsDoc[], 500),
       read('כניסות לקישור', getDoc(`inviteClicks/${userId}`), null),
       read('מוזמנים', queryEquals('users', 'invitedBy', userId), [] as FsDoc[], 500),
       read('מחזורים שנוצרו', queryEquals('games','createdBy',userId,500,PLAYER_ROUND_FIELDS), [] as FsDoc[], 500),
@@ -592,6 +616,7 @@ async function fetchUserActivityUncached(userId: string): Promise<UserActivity> 
       category: (e.category as string) || 'action',
       count: Number(e.count ?? 1),
       lastSeen: Number(e.lastSeen ?? 0),
+      occurredAt: e.occurredAt,
       // Keep resolved/in-review bugs on the user's card with their status,
       // instead of them looking identical to open ones.
       status: ((e.status as string) || 'new') as 'new' | 'reviewed' | 'resolved',

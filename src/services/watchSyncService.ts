@@ -324,7 +324,9 @@ export async function publishWatchState(
   // cached, so it's a no-op network-wise once synced this session.
   let publishingToBridge = false;
   try {
-    await syncServerClock();
+    // Clearing a previous account, or publishing an empty schedule, has no
+    // timer to anchor. In particular it must not wait for network on logout.
+    if (myGames.length > 0) await syncServerClock();
     if (!isCurrent() || seq !== publishSeq) return;
     const payload = await computeWatchPayload(myGames, viewer);
     // Out-of-order guard: two concurrent publishes (e.g. a snapshot + the

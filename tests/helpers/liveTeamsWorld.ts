@@ -4,13 +4,14 @@ import ts from 'typescript';
 import * as types from '@/types';
 import * as rotationEngine from '@/services/rotationEngine';
 import * as edit from '@/utils/liveTeamsEdit';
+import * as roundEdit from '@/utils/liveRoundEdit';
 import * as goalTally from '@/utils/goalTally';
 import * as decision from '@/utils/roundDecision';
 import * as shootout from '@/utils/shootoutDecision';
 import { rotationWriteSource } from '@/services/rotationWriteSource';
 import { stripUndefined } from '@/utils/stripUndefined';
 import { createManualDraft } from '@/utils/manualAllocation';
-import { readDraftTeams, readRotation, readLiveMatch } from '@/firebase/firestore';
+import { readDraftTeams, readRotation, readLiveMatch, readLiveRoundEdits } from '@/firebase/firestore';
 
 const source=fs.readFileSync('src/services/gameService.ts','utf8');
 const compiled=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
@@ -29,7 +30,7 @@ export function liveTeamsWorld(mock=false,initial=liveTeamsFixture()) {
   const state=structuredClone(initial),writes:any[]=[],events:any[]=[],committedHistory:any[]=[];
   let version=0,attempts=0,now=5000,beforeCommit:(()=>void)|undefined,failCommit=false,loseAck=false,exists=true;
   const mutate=(fn:(game:types.Game)=>void)=>{fn(state);version++;};
-  const converted=()=>({...structuredClone(state),draftTeams:readDraftTeams(state.draftTeams),rotation:readRotation(state.rotation),liveMatch:readLiveMatch(state.liveMatch)});
+  const converted=()=>({...structuredClone(state),draftTeams:readDraftTeams(state.draftTeams),rotation:readRotation(state.rotation),liveMatch:readLiveMatch(state.liveMatch),liveRoundEdits:readLiveRoundEdits(state.liveRoundEdits)});
   const apply=(patch:Record<string,any>)=>{
     for(const [key,value] of Object.entries(patch)){
       const path=key.split('.');let target:any=state;
@@ -66,6 +67,7 @@ export function liveTeamsWorld(mock=false,initial=liveTeamsFixture()) {
     '@/firebase/config':{USE_MOCK_DATA:mock,getFirebase:()=>({db:{},functions:{}})},'@/firebase/firestore':{docs:{game:()=> 'audit'}},
     '@/data/mockData':{mockGamesV2:[state],mockGame:{id:'other'},mockRoundHistory:committedHistory},
     '@/utils/liveTeamsEdit':edit,'@/utils/stripUndefined':{stripUndefined},'@/utils/goalTally':goalTally,
+    '@/utils/liveRoundEdit':roundEdit,
     '@/services/rotationEngine':rotationEngine,'@/services/rotationWriteSource':{rotationWriteSource},'@/utils/roundDecision':decision,
     '@/utils/shootoutDecision':shootout,'@/types':types,'@/services/serverClock':{serverNow:()=>now},'@/services/errorLog':{logError:logs,logUnexpected:logs},
     '@/firebase/authRace':{withAuthRaceRetry:(fn:any)=>fn()},

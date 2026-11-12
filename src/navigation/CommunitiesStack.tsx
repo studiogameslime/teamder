@@ -84,7 +84,7 @@ export type CommunitiesStackParamList = {
   AvailablePlayers: { gameId: string };
   AddMembers: { gameId: string };
   GameEdit: { gameId: string };
-  LiveMatch: { gameId: string };
+  LiveMatch: { gameId: string; editRound?: boolean };
   // Admin approvals are reachable from CommunityDetails' overflow
   // menu. Registering here (rather than crossing into ProfileTab)
   // keeps "back" returning to the community page that triggered it.

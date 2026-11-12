@@ -190,6 +190,7 @@ export interface UserErrorItem {
   category: string;
   count: number;
   lastSeen: number;
+  occurredAt?: number;
   status: 'new' | 'reviewed' | 'resolved';
 }
 

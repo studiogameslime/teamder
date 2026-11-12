@@ -21,6 +21,22 @@ async function locationRead<T>(read: Promise<T>, timeoutMs: number): Promise<T |
   }
 }
 
+async function nearbyPosition(location: typeof import('expo-location'), timeoutMs: number) {
+  if (!await locationRead(location.hasServicesEnabledAsync(), 1500)) return null;
+  try {
+    const fix = await locationRead(location.getCurrentPositionAsync({ accuracy: location.Accuracy.Balanced }), timeoutMs);
+    if (fix) return fix;
+  } catch (error) {
+    const code = (error as {code?: string})?.code;
+    if (code !== 'ERR_LOCATION_SETTINGS_UNSATISFIED' && code !== 'ERR_CURRENT_LOCATION_IS_UNAVAILABLE' &&
+        !(code === 'ERR_LOCATION_REQUEST_REJECTED' && /disconnect/i.test(String(error)))) {
+      observeCaughtError(error, {source: 'src/utils/nearby.ts', handler: 'nearbyPosition', site: 'nearby:position'});
+      throw error;
+    }
+  }
+  return locationRead(location.getLastKnownPositionAsync({ maxAge: 300_000, requiredAccuracy: 1000 }), 1500);
+}
+
 export interface NearbyLocation {
   /** GPS coords — the preferred input for radius (haversine) matching. */
   latLng: { lat: number; lng: number } | null;
@@ -65,7 +81,7 @@ export async function resolveLocationIfGranted(): Promise<
   try {
     const cur = await Location.getForegroundPermissionsAsync();
     if (!cur.granted) return null;
-    const pos = await locationRead(Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }), 6000);
+    const pos = await nearbyPosition(Location, 6000);
     if (!pos) return null;
     return { lat: pos.coords.latitude, lng: pos.coords.longitude };
   } catch (caughtError67bb320a28) {
@@ -105,10 +121,7 @@ export async function resolveNearbyLocation(
       if (granted) {
         // Cap the GPS fix so a slow/again-hanging sensor doesn't leave the
         // UI stuck on "locating…" — fall back to a city-only result.
-        const pos = await locationRead(
-          Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          }), 8000);
+        const pos = await nearbyPosition(Location, 8000);
         if (!pos) {
           return {
             latLng: null,

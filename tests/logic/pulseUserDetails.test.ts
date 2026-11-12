@@ -3,8 +3,8 @@ jest.mock('../../pulse/src/capabilities',()=>({has:{firebase:()=>true}}));
 jest.mock('../../pulse/src/services/cache',()=>({cached:(_k:string,fn:()=>unknown)=>fn(),invalidate:jest.fn()}));
 jest.mock('../../pulse/src/services/auth',()=>({googleAccessToken:jest.fn().mockResolvedValue('fixture')}));
 jest.mock('../../pulse/src/services/adminTransport',()=>({pulseFetch:jest.fn()}));
-jest.mock('../../pulse/src/services/firestoreRest',()=>({getDoc:jest.fn(),queryEquals:jest.fn(),queryArrayContains:jest.fn(),listAll:jest.fn()}));
-import { getDoc,queryEquals,queryArrayContains,listAll } from '../../pulse/src/services/firestoreRest';
+jest.mock('../../pulse/src/services/firestoreRest',()=>({getDoc:jest.fn(),queryEquals:jest.fn(),queryDocumentPage:jest.fn().mockResolvedValue({rows:[]}),queryArrayContains:jest.fn(),listAll:jest.fn()}));
+import { getDoc,queryEquals,queryDocumentPage,queryArrayContains,listAll } from '../../pulse/src/services/firestoreRest';
 import { fetchUserActivity } from '../../pulse/src/services/firebase';
 import { fetchUserRecords,userRecord,USER_SOURCES } from '../../pulse/src/services/userDetails';
 import { mapAuthRecord,fetchUserAuthRecord } from '../../pulse/src/services/userAuth';
@@ -29,6 +29,21 @@ test('failed relation is explicitly reported, a missing user rejects, and capped
 test.each(Object.entries(USER_SOURCES))('related source %s is bounded and scoped to the current user',async(key,spec)=>{
  await fetchUserRecords('person',key as keyof typeof USER_SOURCES);
  expect(queryEquals).toHaveBeenCalledWith(spec.collection,spec.field,'person',100);expect(listAll).not.toHaveBeenCalled();
+});
+
+test('player error history uses device capture time even when an offline batch arrives days later', async () => {
+ const received=Date.UTC(2026,10,8,12,7),captured=Date.UTC(2026,10,5,7,23);
+ const doc={lastUserId:'person',lastSeen:received};
+ const journal=JSON.stringify({schema:1,sessionId:'one',startedAt:captured-1000,capturedAt:captured,total:0,omitted:0,entries:[]});
+ const page=queryDocumentPage as jest.Mock,cursor={values:[{referenceValue:'cursor'}]};
+ page.mockResolvedValueOnce({next:cursor,rows:[{...doc,id:'legacy',lastJournal:journal},{...doc,id:'unknown'}]})
+     .mockResolvedValueOnce({rows:[{...doc,id:'new',lastContext:{clientCapturedAt:captured+500}},
+       {...doc,id:'native',lastContext:{source:'crashlytics'}},{...doc,id:'wrong-user',lastUserId:'other',lastJournal:journal}]});
+ const result=await fetchUserActivity('person',true);
+ expect(Object.fromEntries(result.errors.map(e=>[e.id,e.occurredAt]))).toEqual({legacy:captured,unknown:undefined,new:captured+500,native:received});
+ expect(result.errors.every(e=>e.lastSeen===received)).toBe(true);
+ expect(page).toHaveBeenLastCalledWith('errors',expect.objectContaining({cursor,limit:20}));
+ expect(JSON.stringify(result.errors)).not.toContain('lastJournal');
 });
 test('inspector removes credentials including token-keyed device maps, while preserving useful metadata',()=>{
  const result=userRecord({fcmTokens:['secret-value'],devices:{'secret-map-key':{appVersion:'1.2',accessToken:'secret-value'}},nested:{passwordHash:'secret-value'},image:'secret-image',custom:{field:42}});

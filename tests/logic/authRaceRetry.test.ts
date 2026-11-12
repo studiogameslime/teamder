@@ -18,7 +18,7 @@
  * when currentUser is still null, so the original guard gave up at the worst
  * possible moment.
  */
-const currentUser = { getIdToken: jest.fn() };
+const currentUser = { uid: 'owner', getIdToken: jest.fn() };
 const auth: { currentUser: unknown } = { currentUser };
 /** Handlers registered via onAuthStateChanged, so a test can restore a session
  *  mid-flight the way Firebase does on a cold start. */
@@ -46,6 +46,19 @@ beforeEach(() => {
   auth.currentUser = currentUser;
   authListeners = [];
   currentUser.getIdToken.mockReset().mockResolvedValue('token');
+});
+
+it.each(['another', null])('a denied operation cannot be replayed after its owner changes to %s', async uid => {
+  jest.useFakeTimers();
+  try {
+    const run = jest.fn().mockRejectedValueOnce(denied()).mockResolvedValue('wrong account');
+    const result = withAuthRaceRetry(run).catch(error => error);
+    await jest.advanceTimersByTimeAsync(1);
+    auth.currentUser = uid ? {...currentUser,uid} : null;
+    await jest.advanceTimersByTimeAsync(300);
+    expect(await result).toMatchObject({name:'StaleSessionError'});
+    expect(run).toHaveBeenCalledTimes(1);
+  } finally { jest.useRealTimers(); }
 });
 
 it('passes a successful read straight through, with no token refresh', async () => {

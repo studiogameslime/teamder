@@ -1,6 +1,7 @@
 import { ENFORCE_APP_CHECK } from './appCheckPolicy';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { onCall, HttpsError } from './observedFunctions';
+import { recordRatingDecision, reviewStateRef } from './ratingReviewStore';
 
 export function cleanAdminRatings(value: unknown): Record<string, number> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
@@ -28,12 +29,14 @@ export const setClubAdminRating = onCall({ enforceAppCheck: ENFORCE_APP_CHECK },
     !(rating === null || rating === 0 || (typeof rating === 'number' && Number.isFinite(rating) && rating > 0 && rating <= 5))) throw new HttpsError('invalid-argument', 'Invalid rating');
   const db = getFirestore(), ref = db.doc(`groups/${groupId}`), ratingsRef = ref.collection('private').doc('adminRatings');
   await db.runTransaction(async tx => {
-    const [clubSnap, ratingsSnap] = await Promise.all([tx.get(ref), tx.get(ratingsRef)]);
+    const [clubSnap, ratingsSnap, reviewState] = await Promise.all([tx.get(ref), tx.get(ratingsRef), tx.get(reviewStateRef(db,groupId))]);
     const club = clubSnap.data();
     if (!club || !(club.adminIds ?? []).includes(uid)) throw new HttpsError('permission-denied', 'Club admin required');
     if (!(club.playerIds ?? []).includes(playerId)) throw new HttpsError('failed-precondition', 'Player is not a member');
     const legacy = legacyClubRatingsCompat();
     const ratings = cleanAdminRatings(legacy ? club.adminRatings : ratingsSnap.exists ? ratingsSnap.data()?.ratings : club.adminRatings);
+    const previous=ratings[playerId]??null,next=rating===null||rating===0?null:rating;
+    if(previous!==next)recordRatingDecision(db,tx,groupId,reviewState.data()??{},playerId,previous,next,uid,Date.now(),'manual');
     if (rating === null || rating === 0) delete ratings[playerId]; else ratings[playerId] = rating;
     if (legacy) {
       // Stage one: old clients still read AND write this canonical field.

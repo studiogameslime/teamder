@@ -77,28 +77,23 @@ async function hydrateFromCache(): Promise<void> {
 }
 
 async function probeOnce(): Promise<{ offset: number; rtt: number } | null> {
-  try {
-    // Lazy require mirrors the rest of the app's callable call sites and
-    // avoids pulling firebase/functions into bundles that never sync.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { httpsCallable } = require('@/services/diagnosticCallable');
-    const fn = httpsCallable(getFirebase().functions, 'getServerTime', { timeout: 5000 });
-    const t0 = Date.now();
-    const res = await fn({});
-    const t1 = Date.now();
-    const serverTime = Number((res?.data as { now?: number } | undefined)?.now);
-    if (!Number.isFinite(serverTime) || serverTime <= 0) return null;
-    const rtt = t1 - t0;
-    if (rtt < 0 || rtt > MAX_PROBE_RTT_MS) return null;
-    // Assume the server stamped at the midpoint of the round-trip, so the
-    // server's clock at receipt (t1) was ~serverTime + rtt/2. Offset is
-    // that minus our local clock at t1.
-    const offset = serverTime + rtt / 2 - t1;
-    return { offset, rtt };
-  } catch (caughtErrorc6566fca82) {
-    observeCaughtError(caughtErrorc6566fca82, {"source":"src/services/serverClock.ts","handler":"probeOnce","site":"serverClock:c6566fca82"});
-    return null;
-  }
+  // Lazy require mirrors the rest of the app's callable call sites and
+  // avoids pulling firebase/functions into bundles that never sync.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { httpsCallable } = require('@/services/diagnosticCallable');
+  const fn = httpsCallable(getFirebase().functions, 'getServerTime', { timeout: 5000 });
+  const t0 = Date.now();
+  const res = await fn({});
+  const t1 = Date.now();
+  const serverTime = Number((res?.data as { now?: number } | undefined)?.now);
+  if (!Number.isFinite(serverTime) || serverTime <= 0) return null;
+  const rtt = t1 - t0;
+  if (rtt < 0 || rtt > MAX_PROBE_RTT_MS) return null;
+  // Assume the server stamped at the midpoint of the round-trip, so the
+  // server's clock at receipt (t1) was ~serverTime + rtt/2. Offset is
+  // that minus our local clock at t1.
+  const offset = serverTime + rtt / 2 - t1;
+  return { offset, rtt };
 }
 
 /**
@@ -116,10 +111,18 @@ export async function syncServerClock(force = false): Promise<number> {
 
   inFlight = (async () => {
     let best: { offset: number; rtt: number } | null = null;
+    let lastTimeout: unknown;
     for (let i = 0; i < PROBE_COUNT; i++) {
-      const sample = await probeOnce();
-      if (sample && (best == null || sample.rtt < best.rtt)) best = sample;
+      try {
+        const sample = await probeOnce();
+        if (sample && (best == null || sample.rtt < best.rtt)) best = sample;
+      } catch (error) {
+        const code = (error as {code?: string})?.code;
+        if (code === 'functions/deadline-exceeded' || code === 'deadline-exceeded') lastTimeout = error;
+        else observeCaughtError(error, {source:'src/services/serverClock.ts', handler:'probeOnce', site:'serverClock:c6566fca82'});
+      }
     }
+    if (!best && lastTimeout) observeCaughtError(lastTimeout, {source:'src/services/serverClock.ts', handler:'probeOnce', site:'serverClock:c6566fca82'});
     if (best) {
       offsetMs = best.offset;
       lastSyncAt = Date.now();

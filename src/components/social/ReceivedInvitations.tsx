@@ -15,12 +15,14 @@ import { RTL_LABEL_ALIGN } from '@/theme';
 import type { ReceivedInvitation } from '@/utils/receivedInvitations';
 import { SocialAction, socialStyles as s } from './SocialUI';
 
+import { useUnexpiredInvitations } from '@/hooks/useUnexpiredInvitations';
+
 export function ReceivedInvitations({refreshKey=0}:{refreshKey?:number}) {
   const me=useUserStore(x=>x.currentUser), epoch=useRef(0);
   const [items,setItems]=useState<ReceivedInvitation[]>([]),[busy,setBusy]=useState(true),[failed,setFailed]=useState(false),[retry,setRetry]=useState(0);
   const groups=useGroupStore(state=>state.groups);
   const membershipKey=groups.filter(g=>[...g.playerIds,...g.adminIds].includes(me?.id??'')).map(g=>g.id).sort().join('|');
-  const visibleItems=items.filter(item=>item.type!=='groupInvitation'||!groups.some(g=>g.id===item.targetId&&[...g.playerIds,...g.adminIds].includes(me?.id??'')));
+  const visibleItems=useUnexpiredInvitations(items).filter(item=>item.type!=='groupInvitation'||!groups.some(g=>g.id===item.targetId&&[...g.playerIds,...g.adminIds].includes(me?.id??'')));
   const accepting = useRef(false);
   const [acceptingId, setAcceptingId] = useState<string>();
   useFocusEffect(useCallback(()=>{

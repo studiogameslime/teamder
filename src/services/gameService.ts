@@ -15,6 +15,7 @@ import { creationPayload } from '@/services/creationAttempt';
 import { assertCreationOwner } from '@/services/creationOwner';
 import { validateDraftRoster } from '@/utils/draftIntegrity';
 import { draftColorPatch } from '@/utils/draftColors';
+import { prepareLiveRoundEdit, liveRoundEditPatch, type LiveRoundEditRequest } from '@/utils/liveRoundEdit';
 import { assertLiveTeamsEdit, liveTeamsChanged, liveTeamsEditContext, liveTeamsEditSkeleton, resetLiveForTeamChange, validateLiveTeamsFill,
   type LiveTeamsPlan, type LiveTeamsEditContext, type LiveTeamsFilled } from '@/utils/liveTeamsEdit';
 import { shootoutFingerprint, type ShootoutDecisionContext } from '@/utils/shootoutDecision';
@@ -4028,8 +4029,9 @@ export const gameService = {
     expectedSettings?: Pick<Game, 'numberOfTeams' | 'format' | 'draftTeamColors'>,
   ): Promise<void> {
     if (!gameId) return;
-    const validateRoster = (game: Pick<Game, 'players' | 'guests' | 'status' | 'numberOfTeams' | 'format' | 'draftTeams' | 'draftTeamColors'>) => {
+    const validateRoster = (game: Pick<Game, 'players' | 'guests' | 'status' | 'numberOfTeams' | 'format' | 'draftTeams' | 'draftTeamColors' | 'rotation'>) => {
       if(game.status==='finished'||game.status==='cancelled')throw new Error('ROUND_CLOSED');
+      if (game.rotation) throw new Error('במחזור שכבר התחיל יש להשתמש בעריכת המחזור ולאשר את איפוס המשחק הנוכחי.');
       if (!validateActiveRoster || !draft) return;
       if (expectedSettings && JSON.stringify(game.draftTeamColors ?? {}) !== JSON.stringify(expectedSettings.draftTeamColors ?? {})) throw new Error('DRAFT_COLORS_CHANGED');
       validateDraftRoster(draft, game, expectedSettings);
@@ -5731,6 +5733,43 @@ export const gameService = {
     if (!game) throw new Error('המחזור לא נמצא');
     assertLiveTeamsEdit(game, expected);
     return { draft: game.draftTeams!, skeleton: liveTeamsEditSkeleton(game, plan, playersPerTeamFor(game.format), effFillMode(game, game.draftTeams!)) };
+  },
+
+  async prepareLiveRoundEdit(gameId: string, request: LiveRoundEditRequest) {
+    const game = await this.getGameById(gameId);
+    if (!game || game.id !== request.expected.gameId) throw new Error('המחזור לא נמצא');
+    return prepareLiveRoundEdit(game, request);
+  },
+
+  async saveLiveRoundEdit(gameId: string, request: LiveRoundEditRequest,
+    actor: { userId: string; userName: string }, filled?: LiveTeamsFilled): Promise<void> {
+    if (!actor.userId || gameId !== request.expected.gameId) throw new Error('פרטי עריכת המחזור אינם תקפים');
+    if (USE_MOCK_DATA) {
+      const game = mockGamesV2.find(g => g.id === gameId);
+      if (!game) throw new Error('המחזור לא נמצא');
+      Object.assign(game, liveRoundEditPatch(game, request, actor, Date.now(), filled));
+      return;
+    }
+    const ref = docs.game(gameId);
+    // The existing rules authorize organizer/admin writes. A transaction retries
+    // against a concurrent result commit, then rejects that already-saved game.
+    try {
+      await runTransaction(getFirebase().db, async tx => {
+        const snapshot = await tx.get(ref);
+        if (!snapshot.exists()) throw new Error('המחזור לא נמצא');
+        const patch = liveRoundEditPatch({ ...snapshot.data(), matches: [] }, request, actor, serverNow(), filled);
+        if (Object.keys(patch).length) tx.update(ref, stripUndefined(patch) as UpdateData<Game>);
+      });
+    } catch (error) {
+      // A lost acknowledgement is resolved by the operation receipt, not by
+      // guessing or performing another reset against the new board.
+      observeCaughtError(error, { source: 'src/services/gameService.ts', handler: 'saveLiveRoundEdit', site: 'liveRoundEdit:transaction' });
+      const saved = await getDocFromServer(ref);
+      if (!saved.exists() || !saved.data().liveRoundEdits?.some(edit => edit.id === request.operationId && edit.by === actor.userId && edit.fromRoundId === request.expected.roundId)) throw error;
+      liveRoundEditPatch({ ...saved.data(), matches: [] }, request, actor, serverNow(), filled);
+    }
+    const verified = await getDocFromServer(ref);
+    if (!verified.exists() || !verified.data().liveRoundEdits?.some(edit => edit.id === request.operationId)) throw new Error('טרם התקבל אישור שמירה. יש לרענן את מצב המחזור לפני ניסיון נוסף.');
   },
 
   /** One transaction switches the pair, rebuilds the queue and discards ONLY the uncommitted game.

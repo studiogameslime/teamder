@@ -83,6 +83,7 @@ backups/
 
 # Machine-local attachments, repair helper and Python bytecode.
 .codex-remote-attachments/
+.codex-attachments/
 store-repair.ps1
 __pycache__/
 *.pyc

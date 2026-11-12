@@ -18,7 +18,7 @@ function fixture() {
   let listener!: (state: string) => void;
   const addEventListener = jest.fn((_: string, cb: (state: string) => void) => { listener = cb; });
   const context = {
-    getDoc, observeCaughtError: observe, USE_MOCK_DATA: false, __DEV__: false,
+    readAppConfig: getDoc, observeCaughtError: observe, USE_MOCK_DATA: false, __DEV__: false,
     getFirebase: () => ({ db: {} }), doc: () => ({}), notifyBannerMaster: jest.fn(),
     HIDE_ADS: false, ADS_ENABLED: true, appOpenShownThisSession: false,
     setTimeout: () => 0, loadAdsMod,

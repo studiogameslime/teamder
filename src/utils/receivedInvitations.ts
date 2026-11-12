@@ -8,7 +8,7 @@ export type ReceivedInvitation = {
   id: string; type: 'groupInvitation' | 'inviteToGame'; targetId: string;
   title: string; inviterName: string; createdAt: number; startsAt?: number;
   read: boolean; payload: Record<string, unknown>;
-  preview?: InvitationPreview;
+  preview?: InvitationPreview; detailsUnavailable?: boolean;
   status?: 'available'|'joined'|'pending'|'unavailable'|'expired'|'full'|'scheduled';
 };
 function milliseconds(value: any): number {
@@ -16,8 +16,11 @@ function milliseconds(value: any): number {
   if (value && typeof value.toMillis === 'function') return value.toMillis();
   return 0;
 }
+export function invitationExpiry(payload: Record<string, unknown> | undefined): number {
+  return milliseconds(payload?.expiresAt);
+}
 export function invitationHasExpired(payload: Record<string,unknown> | undefined, now = Date.now()): boolean {
-  const expiry = milliseconds(payload?.expiresAt);
+  const expiry = invitationExpiry(payload);
   return expiry > 0 && expiry <= now;
 }
 /** Never infer invitations from friendship or from membership requests. */
@@ -38,7 +41,7 @@ export function receivedInvitations(rows: {id:string; data:Record<string, any>}[
   }
   // Filter after deduplication so an older pending invitation cannot reappear
   // when the latest invitation for the same target has already been accepted.
-  return [...latest.values()].filter(item=>item.status!=='joined').sort((a,b)=>b.createdAt-a.createdAt);
+  return [...latest.values()].filter(item => item.status !== 'joined' && item.status !== 'expired' && !invitationHasExpired(item.payload)).sort((a,b)=>b.createdAt-a.createdAt);
 }
 
 /** Route hints are not invitation evidence. Resolve the recipient's inbox. */

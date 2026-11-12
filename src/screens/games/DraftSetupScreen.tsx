@@ -24,7 +24,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { DraftSetupSkeleton } from '@/components/loading/DraftSetupSkeleton';
 import { PressableScale } from '@/components/PressableScale';
-import { UserAvatar } from '@/components/UserAvatar';
+import { DraftPlayerRow } from '@/components/draft/DraftPlayerRow';
+import { DraftMethodCard as MethodCard } from '@/components/draft/DraftMethodCard';
 import { Button } from '@/components/Button';
 import { ManualAllocation } from '@/components/draft/ManualAllocation';
 import { DraftGenerationPreview } from '@/components/draft/DraftGenerationPreview';
@@ -111,6 +112,7 @@ export function DraftSetupScreen() {
         const latest=await gameService.getGameById(gameId);
         if (!alive || revision!==loadRevision.current) return;
         if (!latest) throw new Error('GAME_NOT_FOUND');
+        if (latest.rotation) { nav.navigate('LiveMatch', { gameId, editRound: true }); return; }
         setGame(latest);setEditSavedTeams(preferSaved);setSplitMode('free');
       } catch(error) {
     observeCaughtError(error, {"source":"src/screens/games/DraftSetupScreen.tsx","handler":"DraftSetupScreen","site":"DraftSetupScreen:8657bd7994"});
@@ -133,6 +135,7 @@ export function DraftSetupScreen() {
         const g = await gameService.getGameById(gameId);
         if (!alive || revision!==loadRevision.current) return;
         if(!g)throw new Error('GAME_NOT_FOUND');
+        if (g.rotation) { nav.navigate('LiveMatch', { gameId, editRound: true }); return; }
         // Teams (כוחות) are a manager-only action. Guard the screen itself
         // — not just the menu entry — so a non-manager who reaches it via a
         // stale nav state or deep link is bounced out instead of editing.
@@ -523,34 +526,14 @@ export function DraftSetupScreen() {
                 const capIndex = captainIds.indexOf(u.id);
                 const isCap = capIndex >= 0;
                 return (
-                  <PressableScale
+                  <DraftPlayerRow
                     key={u.id}
-                    accessibilityRole="checkbox"
+                    user={u}
+                    selected={isCap}
+                    badge={isCap ? he.draftCaptainBadge : undefined}
                     accessibilityLabel={`${u.name} · ${he.draftCaptainBadge}`}
-                    accessibilityState={{ checked: isCap }}
                     onPress={() => toggleCaptain(u.id)}
-                    style={[styles.playerRow, isCap && styles.playerRowActive]}
-                  >
-                    <View style={styles.playerRowInner}>
-                      <View style={styles.playerIdentity}>
-                        <UserAvatar user={u} size={44} />
-                        <Text style={styles.playerName} numberOfLines={1}>
-                          {u.name}
-                        </Text>
-                        {isCap ? (
-                          <View style={styles.capBadge}>
-                            <Ionicons name="shield-checkmark" size={13} color={colors.primary} />
-                            <Text style={styles.capBadgeText}>{he.draftCaptainBadge}</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                      <View style={[styles.check, isCap && styles.checkOn]}>
-                        {isCap ? (
-                          <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-                        ) : null}
-                      </View>
-                    </View>
-                  </PressableScale>
+                  />
                 );
               })}
               {participants.length === 0 ? (
@@ -649,32 +632,6 @@ export function DraftSetupScreen() {
   );
 }
 
-/** A single-choice card; selection stays local until the footer is pressed. */
-function MethodCard({ icon, title, subtitle, onPress, selected, disabled, badge }: {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  subtitle: string;
-  onPress: () => void;
-  selected: boolean;
-  disabled?: boolean;
-  badge?: string;
-}) {
-  return <PressableScale onPress={onPress} disabled={disabled}
-    style={[styles.methodCard, selected && styles.methodSelected, disabled && styles.methodDisabled]}
-    accessibilityRole="radio" accessibilityLabel={`${title}. ${subtitle}${badge ? `. ${badge}` : ''}`}
-    accessibilityState={{checked:selected, disabled:!!disabled}}>
-    <View style={styles.methodInner}>
-      <View style={styles.methodIcon}><Ionicons name={icon} size={26} color={disabled ? '#8795AF' : '#12234D'}/></View>
-      <View style={styles.methodText}>
-        <Text style={styles.methodTitle}>{title}</Text>
-        <Text style={styles.methodSub}>{subtitle}</Text>
-        {!!badge && <View style={[styles.ratingBadge, disabled && styles.ratingDisabled]}><Text style={[styles.ratingText, disabled && styles.ratingDisabledText]}>{badge}</Text></View>}
-      </View>
-      <View style={[styles.radio, selected && styles.radioOn]}>{selected && <View style={styles.radioDot}/>}</View>
-    </View>
-  </PressableScale>;
-}
-
 /** "‹ חזרה לבחירת שיטה" link shown above a chosen method's content. */
 function BackToMethods({ onPress }: { onPress: () => void }) {
   return (
@@ -759,59 +716,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   list: { gap: spacing.sm },
-  playerRow: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    ...shadows.card,
-  },
-  playerRowInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  playerIdentity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    flex: 1,
-    minWidth: 0,
-  },
-  playerRowActive: { borderColor: colors.primary },
-  playerName: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '700',
-    flex: 1,
-    minWidth: 0,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  capBadge: {
-    flexShrink: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  capBadgeText: { ...typography.caption, color: colors.primary, fontWeight: '800' },
-  check: {
-    flexShrink: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   emptyHint: {
     ...typography.body,
     color: colors.textMuted,
@@ -915,18 +819,6 @@ const styles = StyleSheet.create({
   summaryChip: {flexDirection:'row',alignItems:'center',gap:6,backgroundColor:'#EAF3FF',borderRadius:18,paddingHorizontal:11,paddingVertical:9},
   summaryValue: {fontSize:14,color:'#183A77'},
   methodHeading: {fontSize:26,fontWeight:'800',color:'#0C1942',textAlign:'center',marginBottom:18},
-  methodCard: {backgroundColor:'#FFF',borderRadius:24,borderWidth:1.5,borderColor:'#E1EBFA',padding:18,marginBottom:12,minHeight:104},
-  methodSelected: {borderColor:'#2D68FF',backgroundColor:'#F7FAFF'},
-  methodDisabled: {backgroundColor:'#F0F3F8'},
-  methodInner: {flexDirection:'row',alignItems:'center',gap:12},
-  methodIcon: {width:44,height:44,borderRadius:22,backgroundColor:'#E8F1FF',alignItems:'center',justifyContent:'center'},
-  methodText: {flex:1,gap:6},
-  methodTitle: {fontSize:19,fontWeight:'800',color:'#0C1942',textAlign:RTL_LABEL_ALIGN},
-  methodSub: {fontSize:14,lineHeight:21,color:'#6C7EA0',textAlign:RTL_LABEL_ALIGN},
-  ratingBadge: {alignSelf:'flex-start',backgroundColor:'#DCF4EC',paddingHorizontal:10,paddingVertical:6,borderRadius:14,marginTop:4},
-  ratingText: {fontSize:12,color:'#216D54',textAlign:RTL_LABEL_ALIGN},
-  ratingDisabled: {backgroundColor:'#E2E8F2'},
-  ratingDisabledText: {color:'#66758E'},
   editExisting: {padding:14,marginBottom:22,borderRadius:20,backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#D8E7FB'},
   editExistingIcon: {width:40,height:40,borderRadius:20,backgroundColor:'#E8F1FF',alignItems:'center',justifyContent:'center'},
   editExistingRow: {flexDirection:'row',alignItems:'center',gap:8},

@@ -12,7 +12,7 @@ jest.mock('react',()=>{
   };return hooks;
 });
 
-jest.mock('react-native',()=>({Image:'Image',ImageBackground:'Background',Pressable:'Pressable',Text:'Text',View:'View',StyleSheet:{create:(s:any)=>s,hairlineWidth:1}}));
+jest.mock('react-native',()=>({AppState:{addEventListener:jest.fn(()=>({remove:jest.fn()}))},Image:'Image',ImageBackground:'Background',Pressable:'Pressable',Text:'Text',View:'View',StyleSheet:{create:(s:any)=>s,hairlineWidth:1}}));
 jest.mock('@expo/vector-icons',()=>({Ionicons:'Icon'}));
 jest.mock('expo-linear-gradient',()=>({LinearGradient:'Gradient'}));
 jest.mock('@/components/UserAvatar',()=>({UserAvatar:'Avatar'}));
@@ -53,6 +53,13 @@ test('a missing or failed forecast remains absent; closing the screen cancels la
  read.mockRejectedValueOnce(Error('offline'));render(()=>useRoundForecast(game));await tick();expect(render(()=>useRoundForecast(game))).toBeNull();
  runtime.reset();let resolve!:(v:any)=>void;read.mockImplementationOnce(()=>new Promise(r=>{resolve=r;}));render(()=>useRoundForecast(game));runtime.reset();resolve(forecast);await tick();
  expect(render(()=>useRoundForecast(null))).toBeNull();
+});
+test('a missing forecast is retried on resume for the same round, without overlapping requests',async()=>{
+ read.mockResolvedValueOnce(null);render(()=>useRoundForecast(game));await tick();
+ const resume = (require('react-native').AppState.addEventListener as jest.Mock).mock.lastCall![1];
+ resume('active');resume('active');await tick();
+ expect(render(()=>useRoundForecast(game))).toEqual(forecast);
+ resume('active');expect(read).toHaveBeenCalledTimes(2);
 });
 test('the hero preserves menu, back, share, chat, unread count, season and countdown contracts',()=>{
  const actions=Array.from({length:4},()=>jest.fn());

@@ -13,7 +13,7 @@ import type { DraftTeamsResult, LiveMatchState, MatchRotation } from '@/types';
 import { drawRotationPreview } from '@/utils/drawRotationPreview';
 export { Shootout } from './ShootoutWizard';
 
-export function TieDecisionModal({ visible, draftTeams, rotation, live, busy = false, onManual, onPenalties, onBothOut, onDraw, onEndEvening, onClose, discardedPenaltyCount = 0, embedded = false }: {
+export function TieDecisionModal({ visible, draftTeams, rotation, live, busy = false, onManual, onPenalties, onBothOut, onDraw, onClose, discardedPenaltyCount = 0, embedded = false }: {
   visible: boolean;
   draftTeams?: DraftTeamsResult;
   rotation?: MatchRotation;
@@ -24,7 +24,6 @@ export function TieDecisionModal({ visible, draftTeams, rotation, live, busy = f
   /** Requires more than three drafted teams AND two teams actually waiting. */
   onBothOut?: () => void;
   onDraw?: (staySide: 'A' | 'B' | null) => void;
-  onEndEvening?: () => void;
   onClose: () => void;
   discardedPenaltyCount?: number;
   embedded?: boolean;
@@ -32,24 +31,25 @@ export function TieDecisionModal({ visible, draftTeams, rotation, live, busy = f
   const { height, width, fontScale } = useWindowDimensions();
   const compact = width < 360 || fontScale > 1.2;
   const surfaceHeight = embedded ? Math.min(680, Math.floor(height * 0.92)) : Math.max(240, Math.min(700, Math.floor(height - 80)));
-  const [choice,setChoice]=useState<'penalties'|'manual'|'bothOut'|'endEvening'|'draw'|null>(null);
+  const [choice,setChoice]=useState<'penalties'|'manual'|'bothOut'|'draw'|null>(null);
   const [staySide,setStaySide]=useState<'A'|'B'|null>(null);
   const confirming=useRef(false);
   const selectionKey=rotation ? `${rotation.roundInstanceId ?? rotation.round}:${rotation.playing.join(':')}:${rotation.waiting.slice(0,2).join(':')}` : '';
-  useEffect(()=>{setChoice(null);setStaySide(null);confirming.current=false;},[visible,selectionKey,draftTeams?.teams.length,live?.scoreA,live?.scoreB,!!onBothOut,!!onDraw,!!onEndEvening]);
+  useEffect(()=>{setChoice(null);setStaySide(null);confirming.current=false;},[visible,selectionKey,draftTeams?.teams.length,live?.scoreA,live?.scoreB,!!onBothOut,!!onDraw]);
   if (!draftTeams || !rotation || !live) return null;
   const incoming = rotation.waiting.slice(0,2);
   const showBothOut = !!onBothOut && draftTeams.teams.length > 3 && incoming.length === 2;
   const showDraw = !!onDraw && live.scoreA === live.scoreB &&
     (draftTeams.teams.length === 2 && rotation.waiting.length === 0 || draftTeams.teams.length === 3 && rotation.waiting.length === 1);
   const drawPreview = showDraw ? drawRotationPreview(rotation, staySide) : null;
-  const showEndEvening = !!onEndEvening && !live.shootout && discardedPenaltyCount === 0;
-  const selected=choice==='bothOut' && !showBothOut || choice==='endEvening' && !showEndEvening || choice==='draw' && !showDraw ? null : choice;
+  const selected=choice==='bothOut' && !showBothOut || choice==='draw' && !showDraw ? null : choice;
   const close = () => { if (!busy) onClose(); };
   const choose = (next: NonNullable<typeof choice>) => { if (!busy && !confirming.current) setChoice(next); };
+  const changeMethod = () => { if (!busy && !confirming.current) { setChoice(null); setStaySide(null); } };
+  const nextMatchLabel = drawPreview ? `המשחק הבא: ${teamName(drawPreview.playing[0],draftTeams.teams)} מול ${teamName(drawPreview.playing[1],draftTeams.teams)}` : '';
   const confirm = () => {
     if (busy || confirming.current) return;
-    const action=selected==='penalties' ? onPenalties : selected==='manual' ? onManual : selected==='bothOut' && showBothOut ? onBothOut : selected==='draw' && drawPreview ? () => onDraw?.(drawPreview.staying === null ? null : staySide) : selected==='endEvening' && showEndEvening ? onEndEvening : undefined;
+    const action=selected==='penalties' ? onPenalties : selected==='manual' ? onManual : selected==='bothOut' && showBothOut ? onBothOut : selected==='draw' && drawPreview ? () => onDraw?.(drawPreview.staying === null ? null : staySide) : undefined;
     if (!action) return;
     confirming.current=true;
     action();
@@ -60,7 +60,7 @@ export function TieDecisionModal({ visible, draftTeams, rotation, live, busy = f
   const content = (
       <Pressable style={[s.backdrop,embedded && {padding:14,backgroundColor:'#0B122080'}]} onPress={close} accessible={false}>
         <Pressable testID="tie-decision-dialog" style={[s.card, embedded && {maxWidth:undefined,borderRadius:24}, { maxHeight: surfaceHeight, height: surfaceHeight }]} onPress={event => event.stopPropagation()} accessible={false}>
-          <ScrollView bounces={false} style={[s.scroll, s.boundScroll]} contentContainerStyle={s.content}>
+          <ScrollView bounces={false} style={[s.scroll, s.boundScroll]} contentContainerStyle={[s.content,selected==='draw' && s.drawContent]}>
             <View style={s.heading}>
               <Text style={[s.title, compact && s.compactTitle]} maxFontSizeMultiplier={compact ? 1.2 : undefined} accessibilityRole="header">{he.shDecideTitle}</Text>
               <Pressable style={s.close} onPress={close} disabled={busy} accessibilityRole="button" accessibilityLabel={he.liveEndMatchReturn} accessibilityState={{disabled:busy}}>
@@ -86,10 +86,10 @@ export function TieDecisionModal({ visible, draftTeams, rotation, live, busy = f
               </View>
               <Ionicons name="hand-left-outline" size={34} color={colors.textMuted}/>
             </Pressable></>}
-            {showBothOut && <Pressable style={[s.option,selected==='bothOut' && s.selectedOption,busy && s.disabled]} onPress={()=>choose('bothOut')} disabled={busy} accessibilityRole="button" accessibilityLabel={he.shDecideBothOut} accessibilityState={{disabled:busy,selected:selected==='bothOut'}}>
+            {showBothOut && <Pressable style={[s.option,selected==='bothOut' && s.selectedOption,busy && s.disabled]} onPress={()=>choose('bothOut')} disabled={busy} accessibilityRole="button" accessibilityLabel="סיום בתיקו" accessibilityState={{disabled:busy,selected:selected==='bothOut'}}>
               <View style={s.textBlock}>
-                <Text style={s.label}>{he.shDecideBothOut}</Text>
-                <Text style={s.hint}>{he.shDecideIncoming(teamName(incoming[0],draftTeams.teams),teamName(incoming[1],draftTeams.teams))}</Text>
+                <Text style={s.label}>סיום בתיקו</Text>
+                <Text style={s.hint}>{he.shDecideBothOut}. {he.shDecideIncoming(teamName(incoming[0],draftTeams.teams),teamName(incoming[1],draftTeams.teams))}</Text>
               </View>
               <View style={s.shirts}>
                 {incoming.map(index=><TeamShirtIllustration key={index} color={teamColor(index,draftTeams.teams)} width={27}/>)}
@@ -114,30 +114,48 @@ export function TieDecisionModal({ visible, draftTeams, rotation, live, busy = f
                   })}
                   </View>
                 </>}
-                <Pressable style={s.return} onPress={()=>{if(!busy && !confirming.current){setChoice(null);setStaySide(null);}}} disabled={busy} accessibilityRole="button" accessibilityLabel="שינוי שיטת סיום"><Text style={s.returnText}>שינוי שיטת סיום</Text></Pressable>
               </View>}
             </>}
             {showBothOut && <Text style={[s.confirmHint,selected!=='bothOut' && s.hiddenHint]} accessibilityElementsHidden={selected!=='bothOut'} importantForAccessibility={selected==='bothOut' ? 'auto' : 'no-hide-descendants'}>{he.shDecideBothOutInlineHint}</Text>}
-            {showEndEvening && selected!=='draw' && <Pressable style={[s.option,selected==='endEvening' && s.selectedOption,busy && s.disabled]} onPress={()=>choose('endEvening')} disabled={busy} accessibilityRole="button" accessibilityLabel="זה המשחק האחרון, סיום המחזור" accessibilityState={{disabled:busy,selected:selected==='endEvening'}}>
-              <View style={s.textBlock}><Text style={s.label}>זה המשחק האחרון, סיום המחזור</Text><Text style={s.hint}>התוצאה תישמר כתיקו ללא מנצחים. ייפתח אישור לסיום המחזור כולו.</Text></View>
-              <Ionicons name="flag-outline" size={30} color={colors.textMuted}/>
-            </Pressable>}
           </ScrollView>
           <View style={s.actions} testID="tie-decision-actions">
-            {selected==='draw' && drawPreview && <View style={s.drawSummary} testID="draw-rotation-preview">
-              {drawPreview.staying !== null ? <>
-                <Text style={s.hint}>{teamName(drawPreview.staying,draftTeams.teams)} נשארים</Text>
-                <Text style={s.hint}>{teamName(drawPreview.outgoing!,draftTeams.teams)} יוצאים למנוחה</Text>
-                <Text style={s.hint}>{teamName(drawPreview.incoming!,draftTeams.teams)} נכנסים</Text>
-              </> : <Text style={s.hint}>שתי הקבוצות ממשיכות למשחק הבא.</Text>}
-              <Text style={s.nextMatch}>המשחק הבא: {teamName(drawPreview.playing[0],draftTeams.teams)} מול {teamName(drawPreview.playing[1],draftTeams.teams)}</Text>
+            {selected==='draw' && drawPreview && <View style={[s.drawSummary,compact && s.compactDrawSummary]} testID="draw-rotation-preview" accessible accessibilityLabel={`${nextMatchLabel}. ${drawPreview.staying !== null ? `${teamName(drawPreview.staying,draftTeams.teams)} נשארים. ${teamName(drawPreview.incoming!,draftTeams.teams)} נכנסים. ${teamName(drawPreview.outgoing!,draftTeams.teams)} עוברים להמתנה.` : 'שתי הקבוצות ממשיכות למשחק הבא.'}`}>
+              <Text style={s.drawHeading}>המשחק הבא</Text>
+              <View style={s.drawMatchup}>
+                {drawPreview.playing.map((index,slot)=>{
+                  const incomingTeam=index===drawPreview.incoming;
+                  const role=drawPreview.staying === null ? 'ממשיכים' : incomingTeam ? 'נכנסים' : 'נשארים';
+                  return <React.Fragment key={index}>
+                    {slot===1 && <Text style={s.drawVersus}>מול</Text>}
+                    <View style={s.drawTeam}>
+                      <TeamShirtIllustration color={teamColor(index,draftTeams.teams)} width={compact ? 30 : 36}/>
+                      <Text style={[s.drawTeamName,compact && s.compactDrawTeamName]}>{teamName(index,draftTeams.teams)}</Text>
+                      <View style={[s.drawRole,incomingTeam && s.drawIncomingRole]}>
+                        <Text style={[s.drawRoleText,incomingTeam && s.drawIncomingRoleText]}>{role}</Text>
+                      </View>
+                    </View>
+                  </React.Fragment>;
+                })}
+              </View>
+              {drawPreview.outgoing !== null ? <View style={s.drawWaiting}>
+                <TeamShirtIllustration color={teamColor(drawPreview.outgoing,draftTeams.teams)} width={24}/>
+                <Text style={s.drawWaitingText}><Text style={s.drawWaitingName}>{teamName(drawPreview.outgoing,draftTeams.teams)}</Text> עוברים להמתנה</Text>
+              </View> : <Text style={s.drawContinuing}>שתי הקבוצות ממשיכות למשחק הבא.</Text>}
             </View>}
             <Pressable style={[s.confirm,confirmDisabled && s.disabled]} onPress={confirm} disabled={confirmDisabled} accessibilityRole="button" accessibilityLabel={confirmLabel} accessibilityState={{disabled:confirmDisabled}}>
               <Text style={s.confirmText}>{confirmLabel}</Text>
             </Pressable>
-            <Pressable style={s.return} onPress={close} disabled={busy} accessibilityRole="button" accessibilityState={{disabled:busy}}>
-              <Text style={s.returnText}>{he.liveEndMatchReturn}</Text>
-            </Pressable>
+            <View style={selected==='draw' ? s.secondaryActions : undefined} testID="tie-secondary-actions">
+              <Pressable style={[s.return,selected==='draw' && s.secondaryAction]} onPress={close} disabled={busy} accessibilityRole="button" accessibilityLabel={he.liveEndMatchReturn} accessibilityState={{disabled:busy}}>
+                <Text style={[s.returnText,selected==='draw' && s.secondaryText,compact && selected==='draw' && s.compactSecondaryText]}>{he.liveEndMatchReturn}</Text>
+              </Pressable>
+              {selected==='draw' && <>
+                <View style={s.secondaryDivider} accessible={false}/>
+                <Pressable style={[s.return,s.secondaryAction]} onPress={changeMethod} disabled={busy} accessibilityRole="button" accessibilityLabel="שינוי שיטת סיום" accessibilityState={{disabled:busy}}>
+                  <Text style={[s.returnText,s.secondaryText,compact && s.compactSecondaryText]}>שינוי שיטת סיום</Text>
+                </Pressable>
+              </>}
+            </View>
           </View>
         </Pressable>
       </Pressable>
@@ -177,11 +195,31 @@ const s=StyleSheet.create({
   confirmHint:{fontSize:12,color:colors.textMuted,textAlign:RTL_LABEL_ALIGN},
   hiddenHint:{opacity:0},
   drawDetails:{gap:10},
+  drawContent:{gap:8,padding:12,paddingBottom:8},
   stayChoices:{flexDirection:'row',gap:10},
   stayOption:{flex:1,minWidth:0,flexDirection:'column',padding:10,gap:6,justifyContent:'center'},
   stayLabel:{fontSize:15,textAlign:'center',flexShrink:1},
-  drawSummary:{gap:5,padding:12,borderRadius:12,backgroundColor:colors.surfaceMuted},
-  nextMatch:{fontSize:15,fontWeight:'800',color:colors.text,textAlign:RTL_LABEL_ALIGN},
+  drawSummary:{gap:10,padding:12,borderRadius:18,backgroundColor:'#F4F7FD',borderWidth:1,borderColor:'#DCE4F2'},
+  compactDrawSummary:{gap:8,padding:10},
+  drawHeading:{fontSize:17,fontWeight:'800',color:colors.text,textAlign:RTL_LABEL_ALIGN},
+  drawMatchup:{flexDirection:'row',alignItems:'center',gap:8},
+  drawTeam:{flex:1,minWidth:0,alignItems:'center',gap:4},
+  drawTeamName:{fontSize:16,fontWeight:'800',color:colors.text,textAlign:'center'},
+  compactDrawTeamName:{fontSize:14},
+  drawVersus:{fontSize:14,fontWeight:'700',color:colors.textMuted,textAlign:'center'},
+  drawRole:{paddingHorizontal:10,paddingVertical:3,borderRadius:12,backgroundColor:'#DBEAFE'},
+  drawRoleText:{fontSize:12,fontWeight:'700',color:'#1D4ED8',textAlign:'center'},
+  drawIncomingRole:{backgroundColor:'#DCFCE7'},
+  drawIncomingRoleText:{color:'#166534'},
+  drawWaiting:{flexDirection:'row',alignItems:'center',gap:8,paddingTop:9,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:'#DCE4F2'},
+  drawWaitingText:{flex:1,minWidth:0,fontSize:14,lineHeight:20,color:colors.text,textAlign:RTL_LABEL_ALIGN},
+  drawWaitingName:{fontWeight:'800'},
+  drawContinuing:{fontSize:12,lineHeight:18,color:colors.textMuted,textAlign:RTL_LABEL_ALIGN},
+  secondaryActions:{flexDirection:'row',alignItems:'center',gap:8},
+  secondaryAction:{flex:1,minWidth:0,paddingVertical:6,paddingHorizontal:2},
+  secondaryText:{fontSize:15,textAlign:'center',flexShrink:1},
+  compactSecondaryText:{fontSize:14},
+  secondaryDivider:{width:1,height:20,backgroundColor:'#DCE4F2'},
   confirm:{minHeight:52,borderRadius:16,backgroundColor:colors.primary,alignItems:'center',justifyContent:'center',padding:12},
   confirmText:{fontSize:17,fontWeight:'800',color:'#FFFFFF',textAlign:'center'},
 });

@@ -16,9 +16,9 @@ import { activeGuestCount } from '@/types';
 /** Public club projections and invitation-readable rounds; never private player reads. */
 async function withPreviews(items: ReceivedInvitation[], uid: string): Promise<ReceivedInvitation[]> {
   if (!items.length) return items;
-  const clubs = new Map<string, ReturnType<typeof groupService.getPublic>>();
+  const clubs = new Map<string, Promise<Awaited<ReturnType<typeof groupService.getPublic>> | undefined>>();
   const club = (id: string) => {
-    if (!clubs.has(id)) clubs.set(id, groupService.getPublic(id).catch((caughtError71e70f241f: unknown) => { observeCaughtError(caughtError71e70f241f, {"source":"src/services/receivedInvitationsService.ts","handler":"club","site":"receivedInvitationsService:71e70f241f"}); return null; }));
+    if (!clubs.has(id)) clubs.set(id, groupService.getPublic(id).catch((caughtError71e70f241f: unknown) => { observeCaughtError(caughtError71e70f241f, {"source":"src/services/receivedInvitationsService.ts","handler":"club","site":"receivedInvitationsService:71e70f241f"}); return undefined; }));
     return clubs.get(id)!;
   };
   const inviterIds = [...new Set(items.filter(item=>item.status!=='unavailable').map(item => item.payload.inviterId).filter((id): id is string => typeof id === 'string' && !!id))];
@@ -30,11 +30,11 @@ async function withPreviews(items: ReceivedInvitation[], uid: string): Promise<R
     if (item.type === 'groupInvitation') {
       const target = await club(item.targetId);
       const member = useGroupStore.getState().groups.some(g => g.id === item.targetId && [...g.playerIds, ...g.adminIds].includes(uid));
-      return { ...item, ...(member ? { status: 'joined' as const } : {}),
+      return { ...item, detailsUnavailable: target === null, ...(member ? { status: 'joined' as const } : {}),
         ...(target ? { title: target.name, preview: { ...identity, coverPhotoUrl: target.coverPhotoUrl, coverImageId: target.coverImageId, city: target.city, isOpen: target.isOpen } } : { preview: identity }) };
     }
-    const game = await gameService.getGameById(item.targetId).catch((caughtErrora383d44e92: unknown) => { observeCaughtError(caughtErrora383d44e92, {"source":"src/services/receivedInvitationsService.ts","handler":"withPreviews","site":"receivedInvitationsService:a383d44e92"}); return null; });
-    if (!game) return { ...item, preview: identity };
+    const game = await gameService.getGameById(item.targetId).catch((caughtErrora383d44e92: unknown) => { observeCaughtError(caughtErrora383d44e92, {"source":"src/services/receivedInvitationsService.ts","handler":"withPreviews","site":"receivedInvitationsService:a383d44e92"}); return undefined; });
+    if (!game) return { ...item, detailsUnavailable: game === null, preview: identity };
     const target = game.groupId && !game.isOrphanContext ? await club(game.groupId) : null;
     const joined = [...game.players, ...game.waitlist].includes(uid);
     const occupied = game.players.length + activeGuestCount(game.guests) + (game.pendingPromotion?.uid ? 1 : 0);

@@ -117,8 +117,15 @@ test('periodic refresh waits for real snapshot and re-evaluates registration ope
 });
 test('clock synchronization rejection is contained and reported', async () => {
   const f = fixture(); f.clock.syncServerClock.mockRejectedValueOnce(new Error('clock'));
-  await expect(f.exports.publishWatchState([], viewer)).resolves.toBeUndefined();
+  await expect(f.exports.publishWatchState([live()], viewer)).resolves.toBeUndefined();
   expect(f.observe).toHaveBeenCalled(); expect(f.bridge.publishState).not.toHaveBeenCalled();
+});
+
+test('empty schedules and sign-out clear the previous watch state without a network clock read', async () => {
+  const f = fixture();
+  await f.exports.publishWatchState([], {id: '', name: ''});
+  expect(f.clock.syncServerClock).not.toHaveBeenCalled();
+  expect(JSON.parse(f.bridge.publishState.mock.calls[0][0])).toMatchObject({kind: 'notRegistered'});
 });
 
 test('the watch create action resolves through the real phone destination parser', () => {

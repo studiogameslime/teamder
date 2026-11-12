@@ -355,7 +355,7 @@ export function logError(
       existing.message = message;
       existing.code = code;
       existing.stack = stack;
-      existing.context = safeContext(context);
+      existing.context = {...sample.lastContext, clientCapturedAt: sample.capturedAt};
       existing.userId = uid;
       existing.screen = screen;
       existing.trail=trail;existing.journal=journal;existing.version=appVersion;
@@ -366,7 +366,7 @@ export function logError(
         message,
         code,
         stack,
-        context: safeContext(context),
+        context: {...sample.lastContext, clientCapturedAt: sample.capturedAt},
         userId: uid,
         screen,
         pending: 1,

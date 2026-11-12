@@ -5,6 +5,12 @@ import { Dropdown } from './Dropdown';
 import { RTL_LABEL_ALIGN, colors, font  } from '../theme';
 import type { UserActivity } from '../types';
 
+function receiptNote(occurredAt: number | undefined, receivedAt: number): string {
+ if (!receivedAt || (occurredAt && new Date(occurredAt).toDateString()===new Date(receivedAt).toDateString())) return '';
+ const received = new Date(receivedAt).toLocaleString('he-IL',{day:'numeric',month:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});
+ return `נקלט בפולס ב-${received}`;
+}
+
 export function PlayerHistory({data,onError}:{data:UserActivity;onError:(id:string)=>void}) {
  const [filter,setFilter]=useState('all');
  const [period,setPeriod]=useState('all');
@@ -14,7 +20,7 @@ export function PlayerHistory({data,onError}:{data:UserActivity;onError:(id:stri
  const cutoff=period==='today'?start.getTime():period==='week'?Date.now()-7*86400000:period==='month'?Date.now()-30*86400000:0;
  const rows=[
   ...data.timeline.filter(e=>e.kind!=='card').map((e,index)=>({id:`event:${index}`,at:e.at,title:e.action || e.title,subtitle:e.action?e.title:e.subtitle,kind:e.kind as string,errorId:''})),
-  ...data.errors.map(e=>({id:`error:${e.id}`,at:e.lastSeen,title:e.category==='crash'?'האפליקציה קרסה':'תקלה באפליקציה',subtitle:e.title,kind:'error',errorId:e.id})),
+  ...data.errors.map(e=>({id:`error:${e.id}`,at:e.occurredAt ?? 0,title:e.category==='crash'?'האפליקציה קרסה':'תקלה באפליקציה',subtitle:[e.title,receiptNote(e.occurredAt,e.lastSeen)].filter(Boolean).join('\n'),kind:'error',errorId:e.id})),
  ].filter(e=>(!cutoff || e.at>=cutoff) && (filter==='all' || (filter==='errors'?e.kind==='error':filter==='support'?e.kind==='feedback':e.kind!=='error' && e.kind!=='feedback'))).sort((a,b)=>b.at-a.at);
  const day=(at:number)=>!at?'מועד לא תועד':new Date(at).toDateString();
  const heading=(at:number)=>!at?'מועד לא תועד':day(at)===day(start.getTime())?'היום':day(at)===day(yesterday.getTime())?'אתמול':new Date(at).toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'numeric'});

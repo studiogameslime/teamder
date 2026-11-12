@@ -77,9 +77,9 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
   const [senderNames,setSenderNames] = useState<{owner?:string; names:Record<string,string>}>({names:{}});
   useEffect(()=>{
     setRequestRows([]);setRequestOwner(me?.id);setRequestsFailed(false);setRequestsLoading(true);
-    if(!me||preview){setRequestRows(preview?.requests??[]);setRequestsLoading(false);return;}
+    if(!me||me.isGuest||preview){setRequestRows(preview?.requests??[]);setRequestsLoading(false);return;}
     return dmRequestService.subscribe(me.id,rows=>{setRequestRows(rows);setRequestsLoading(false);},()=>{setRequestsFailed(true);setRequestsLoading(false);});
-  },[me?.id,preview,retry]);
+  },[me?.id,me?.isGuest,preview,retry]);
   const senderIds = useMemo(()=>JSON.stringify([...new Set(Object.values(entries).filter(chatSenderNeedsIdentity).map(e=>e.lastSenderId).filter(id=>id!==me?.id))].sort()),[entries,me?.id]);
   useEffect(()=>{
     let live=true;

@@ -82,6 +82,12 @@ function ClubTabButton<K extends string>({ tab: t, isActive, dense, onChange, on
   const traceRef = useRef<ReturnType<typeof createTabTouchTrace> | null>(null);
   if (!traceRef.current) traceRef.current = createTabTouchTrace(t.key, (name, data) => recordDiagnostic('tap', name, data));
   const trace = traceRef.current;
+  const selectedOnTouch = useRef(false);
+  const singleTouch = useRef(false);
+  const select = () => {
+    recordDiagnostic('tap','club_tab_selected',{tab:t.key});
+    t.locked ? onLockedPress?.(t.key) : onChange(t.key);
+  };
   useEffect(() => () => trace.dispose(), [trace]);
   return (
           <Pressable
@@ -95,10 +101,25 @@ function ClubTabButton<K extends string>({ tab: t, isActive, dense, onChange, on
               (_left, _top, width, height, x, y) => done({ x, y, width, height }),
             ))}
             onPressOut={() => trace.pressOut()}
+            onTouchStart={event => {
+              singleTouch.current = event.nativeEvent.touches.length === 1;
+              selectedOnTouch.current = false;
+            }}
             onTouchMove={event => trace.move(touchPoint(event))}
-            onTouchEnd={event => trace.finish('touch_end', touchPoint(event))}
+            onTouchEnd={event => {
+              const staleGeometry = trace.finish('touch_end', touchPoint(event));
+              if (staleGeometry && singleTouch.current && !selectedOnTouch.current) {
+                selectedOnTouch.current = true;
+                select();
+              }
+              singleTouch.current = false;
+            }}
             onTouchCancel={() => trace.finish('touch_cancel')}
-            onPress={() => { recordDiagnostic('tap','club_tab_selected',{tab:t.key}); t.locked ? onLockedPress?.(t.key) : onChange(t.key); }}
+            onPress={event => {
+              if (selectedOnTouch.current && event.nativeEvent.identifier != null) return;
+              selectedOnTouch.current = true;
+              select();
+            }}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive, disabled: !!t.locked }}
             accessibilityLabel={t.label}

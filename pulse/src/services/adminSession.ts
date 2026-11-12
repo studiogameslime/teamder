@@ -2,6 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { invalidate } from './cache';
+import { createProxyReadRecovery } from './proxyReadRecovery';
 
 const apiKey = process.env.EXPO_PUBLIC_PULSE_FIREBASE_API_KEY ?? '';
 const endpoint = 'https://us-central1-soccer-app-52b6b.cloudfunctions.net/pulseAdminProxy';
@@ -12,6 +13,7 @@ let token: { id: string; refresh: string; until: number } | null = null;
 let refreshing: Promise<string> | null = null;
 let generation = 0;
 let storageWork: Promise<void> = Promise.resolve();
+const recoverProxyRead = createProxyReadRecovery();
 function persistRefresh(refresh: string | null, epoch: number): Promise<void> {
   const work = storageWork.catch(() => {}).then(async () => {
     if (epoch !== generation) throw new Error('ההתחברות השתנתה');
@@ -87,7 +89,15 @@ async function idToken(): Promise<string> {
 }
 export async function pulseAdminRequest(body: Record<string, unknown>): Promise<any> {
   const epoch = generation;
-  const response = await fetch(endpoint, { method: 'POST', headers: { Authorization: `Bearer ${await idToken()}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const send = async () => {
+    if (epoch !== generation) throw new Error('ההתחברות השתנתה');
+    const id = await idToken();
+    if (epoch !== generation) throw new Error('ההתחברות השתנתה');
+    return fetch(endpoint, { method: 'POST', headers: { Authorization: `Bearer ${id}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  };
+  const safeRead = body.operation === 'session' || (!body.operation && (body.method === 'GET' ||
+    (body.method === 'POST' && typeof body.url === 'string' && /:run(?:Aggregation)?Query$/.test(body.url))));
+  const response = await (safeRead ? recoverProxyRead(send) : send());
   if (epoch !== generation) throw new Error('ההתחברות השתנתה');
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) { authenticated = false; capabilities = {}; emit(); }

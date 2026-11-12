@@ -81,3 +81,13 @@ it('does not fail a press when the native measurement is unavailable or invalid'
   trace.pressIn({ x: 1, y: 2 }, done => done({ x: NaN, y: 2, width: 100, height: 52 }));
   expect(emit.mock.calls.filter(([name]) => name === 'club_tab_measure')).toHaveLength(0);
 });
+
+it('recovers only a stationary completed touch with a verified misplaced native rectangle', () => {
+  const trace = createTabTouchTrace('players', jest.fn());
+  const start = {x: 198, y: 329};
+  const press = (y: number) => trace.pressIn(start, done => done({x: 165, y, width: 133, height: 52}));
+  press(34); trace.move(start); expect(trace.finish('touch_end', start)).toBe(true);
+  press(310); expect(trace.finish('touch_end', start)).toBe(false);
+  press(34); trace.move({x: 198, y: 360}); expect(trace.finish('touch_end', start)).toBe(false);
+  press(34); expect(trace.finish('touch_cancel')).toBe(false);
+});

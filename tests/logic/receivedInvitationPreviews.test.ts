@@ -40,7 +40,8 @@ test('an unavailable invitation never fetches fresh player or target data, even 
 test('pending membership never reopens the action on a server-confirmed expired invitation',async()=>{
   const f=fixture({pending:['me']});
   f.rows[0].invitationStatus='expired';
-  expect((await f.list())[0].status).toBe('expired');
+  expect(await f.list()).toEqual([]);
+  expect(f.getGameById).not.toHaveBeenCalled();
 });
 
 test('the badge and club decision can resolve while cover hydration is stalled',async()=>{
@@ -69,4 +70,13 @@ test('a legacy notification does not turn an existing pending registration into 
 test('club metadata is public and failure does not erase a valid invitation',async()=>{
   const f=fixture();f.getPublic.mockRejectedValue(new Error('offline'));
   expect((await f.list())[0]).toMatchObject({id:'round-invite',title:'מחזור'});
+});
+
+test('missing public details hide the club link while a transport failure keeps it retryable', async () => {
+  const f = fixture();
+  f.rows.splice(0, 1, {id:'club',type:'groupInvitation',recipientId:'me',payload:{groupId:'g'},createdAt:1});
+  f.getPublic.mockResolvedValueOnce(null as any);
+  expect((await f.list())[0].detailsUnavailable).toBe(true);
+  f.getPublic.mockRejectedValueOnce(new Error('offline'));
+  expect((await f.list())[0].detailsUnavailable).toBe(false);
 });

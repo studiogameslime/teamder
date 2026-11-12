@@ -1,0 +1,89 @@
+{
+  "date": "2026-11-08",
+  "inventoryAtStart": {
+    "allErrorSignatures": 205,
+    "pendingErrors": 27,
+    "unresolvedFlags": 38,
+    "pendingFeedback": 3
+  },
+  "inventoryAfterReadback": {
+    "allErrorSignatures": 205,
+    "pendingErrors": 13,
+    "unresolvedFlags": 23,
+    "pendingFeedback": 0
+  },
+  "suites": 654,
+  "tests": 7292,
+  "appTypesPassed": true,
+  "pulseTypesPassed": true,
+  "retainedDocumentationFailures": 107,
+  "featureStatusFailures": [],
+  "productionReadChecks": [
+    {
+      "key": "ads",
+      "exists": true,
+      "elapsedMs": 405
+    },
+    {
+      "key": "features",
+      "exists": false,
+      "elapsedMs": 405
+    },
+    {
+      "key": "whatsNew",
+      "exists": true,
+      "elapsedMs": 407
+    }
+  ],
+  "fillerRequests": {
+    "getMyRoundFillerNotices": {
+      "state": "ACTIVE",
+      "revision": "getmyroundfillernotices-00001-buq",
+      "updated": "2026-11-06T17:56:47.353496801Z"
+    },
+    "fillerHttp200": {
+      "samples": 10,
+      "last": "2026-11-07T00:14:24.386810Z",
+      "hasMore": true
+    },
+    "fillerHttp404": {
+      "samples": 0,
+      "last": null,
+      "hasMore": false
+    }
+  },
+  "deviceTabSelections": [
+    {
+      "tab": "שחקנים",
+      "selected": true,
+      "afterScroll": "[436,781][786,917]",
+      "beforeScroll": "[538,963][682,1018]"
+    },
+    {
+      "tab": "סטטיסטיקות",
+      "selected": true,
+      "afterScroll": "[42,766][436,902]",
+      "beforeScroll": "[102,963][333,1018]"
+    },
+    {
+      "tab": "מידע",
+      "selected": true,
+      "afterScroll": "[786,813][1080,949]",
+      "beforeScroll": "[888,963][977,1018]"
+    },
+    {
+      "tab": "שחקנים",
+      "selected": true,
+      "afterScroll": "[436,633][786,769]",
+      "beforeScroll": "[538,817][682,872]"
+    }
+  ],
+  "pulseVerified": {
+    "journalEntries": 17,
+    "journalScreenshots": 3,
+    "reviews": 35,
+    "skipped": []
+  },
+  "newDeployment": false,
+  "iosDeviceVerified": false
+}

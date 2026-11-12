@@ -1,7 +1,9 @@
+jest.mock('react-native', () => ({ AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } }));
 import fs from 'fs';
 import ts from 'typescript';
 import vm from 'vm';
-import { retryRead } from '@/services/readRetry';
+import { retryRead, isTransientReadError } from '@/services/readRetry';
+import { profileReadDeadline } from '@/services/profileReadDeadline';
 import { StaleSessionError } from '@/services/staleSession';
 
 function userFixture() {
@@ -18,7 +20,7 @@ function userFixture() {
   walk(source);
   const service = vm.runInNewContext(ts.transpileModule(`({${methods.join(',')}})`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, {
     USE_MOCK_DATA: false, getFirebase: () => ({ auth }), waitForAuthRestore: async () => ({ uid:'owner', isAnonymous:false }),
-    docs: { user: (id: string) => id }, getDoc, retryRead, StaleSessionError,
+    docs: { user: (id: string) => id }, getDoc, retryRead, isTransientReadError, recordDiagnostic: jest.fn(), StaleSessionError, profileReadDeadline,
     readCachedAuthUser, cacheAuthUser, touchPresence: jest.fn(), setTimeout, clearTimeout, __DEV__: false,
   });
   const snapshot = (id = 'owner') => ({ exists: () => true, data: () => ({ id, name: 'שם עדכני' }) });

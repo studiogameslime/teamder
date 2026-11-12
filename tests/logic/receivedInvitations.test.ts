@@ -33,9 +33,17 @@ test('club invitation is independent of navigation, but limited to its target, s
   expect(hasClubInvitation(rows,'club',now)).toBe(true);
   expect(hasClubInvitation(rows,'other',now)).toBe(false);
   expect(hasClubInvitation(rows,'club',expiry)).toBe(false);
-  expect(receivedInvitations([invite('legacy','inviteToGame','me',{gameId:'round',expiresAt:now-10},10)],'me')[0].status).toBe('expired');
+  expect(receivedInvitations([invite('legacy','inviteToGame','me',{gameId:'round',expiresAt:now-10},10)],'me')).toEqual([]);
   for(const status of ['joined','expired','unavailable'] as const)
     expect(hasClubInvitation([{...rows[0],status}],'club',100)).toBe(false);
   expect(hasClubInvitation([{...rows[0],payload:{managerApproved:false}}],'club',100)).toBe(false);
   expect(hasClubInvitation([{...rows[0],status:'pending'}],'club',100)).toBe(true);
+});
+test('the latest expired invite hides its older duplicate even with a stale available status', () => {
+  const expiresAt = { toMillis: () => Date.now() - 1 };
+  const older = invite('older', 'groupInvitation', 'me', { groupId: 'club' }, 1);
+  const latest = invite('latest', 'groupInvitation', 'me', { groupId: 'club', expiresAt }, 2);
+  const stale = { ...latest, data: { ...latest.data, invitationStatus: 'available' } };
+  const active = invite('active', 'groupInvitation', 'me', { groupId: 'other' }, 3);
+  expect(receivedInvitations([older, active, stale], 'me').map(item => item.id)).toEqual(['active']);
 });

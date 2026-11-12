@@ -31,11 +31,8 @@ export function cached<T>(
   const p = Promise.resolve().then(fn);
   const entry = { at: 0, pending: true, p };
   store.set(key, entry);
-  void p.then(() => { entry.pending = false; entry.at = Date.now(); }, (caughtErrorea2685cb95: unknown) => {
-    observeCaughtError(caughtErrorea2685cb95, {"source":"pulse/src/services/cache.ts","handler":"cached","site":"cache:ea2685cb95"});});
-  // Never cache a failure — drop it so the next call retries.
-  p.catch((caughtError899b27e576: unknown) => {
-    observeCaughtError(caughtError899b27e576, {"source":"pulse/src/services/cache.ts","handler":"cached","site":"cache:899b27e576"});
+  void p.then(() => { entry.pending = false; entry.at = Date.now(); }, error => {
+    observeCaughtError(error, {source: 'pulse/src/services/cache.ts', handler: 'cached', site: 'cache:ea2685cb95'});
     if (store.get(key)?.p === p) store.delete(key);
   });
   return p;

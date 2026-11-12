@@ -1,0 +1,70 @@
+{
+  "version": "1.1.79",
+  "android": {
+    "code": 311,
+    "storeTrack": "production",
+    "verified": true,
+    "readAt": "2026-11-09T11:32:32.937Z",
+    "sha256": "4a770e437356b62b73a266f80a7c663ca1eccfa88d835b7c7c4fd2b13837c32f",
+    "bundledSourcesCompared": 8,
+    "smoke": {
+      "version": "1.1.79",
+      "build": 311,
+      "device": "Android emulator API 35",
+      "coldLaunchMs": 3181,
+      "screen": "sign-in",
+      "networkDisabled": true,
+      "freshInstall": true,
+      "fromVerifiedBundleWithTestSignature": true,
+      "storeDeviceInstallVerified": false,
+      "screenshotSha256": "cd87ee1db7125d1227d0dede2da1fc2b5dd39b803345022610804428ad24be7d"
+    }
+  },
+  "ios": {
+    "build": 124,
+    "reviewState": "WAITING_FOR_REVIEW",
+    "storeState": "WAITING_FOR_REVIEW",
+    "releaseType": "AFTER_APPROVAL",
+    "buildLinked": true,
+    "verifiedAt": "2026-11-09T11:41:06.760Z",
+    "sha256": "17dc584d33fb6a9c18221f90b1388b92d9a7c14f0f1cd9399b0d77d2538cc951"
+  },
+  "source": {
+    "head": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "includedLocalChanges": true,
+    "iosInputs": 1180,
+    "androidInputs": 1181
+  },
+  "checks": {
+    "clientTests": 7300,
+    "suites": 654,
+    "rulesTests": 361,
+    "serverTests": 68,
+    "serverTodo": 3,
+    "clientTypecheck": true,
+    "serverCompilation": true,
+    "pulseTypecheck": true
+  },
+  "server": {
+    "inviteSocialPlayerToClub": {
+      "state": "ACTIVE",
+      "revision": "invitesocialplayertoclub-00003-qun",
+      "activeSourceVerified": true
+    },
+    "sendGameInvite": {
+      "state": "ACTIVE",
+      "revision": "sendgameinvite-00037-gul",
+      "activeSourceVerified": true
+    }
+  },
+  "qa": {
+    "selfProfileMatched": true,
+    "getPlayerIdentities": 200,
+    "getSocialPlayerProfile": 200,
+    "getMyPlayerReferrals": 200,
+    "getReceivedInvitations": 200,
+    "searchSocialPlayers": 200
+  },
+  "readBackReleaseLog": 19,
+  "verifiedScreenshots": 3
+}

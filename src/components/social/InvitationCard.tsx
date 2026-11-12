@@ -50,7 +50,7 @@ export function InvitationCard({ item, busy, disabled, onAccept, onOpen }: {
         <Pressable disabled={disabled || unavailable} accessibilityRole="button" accessibilityLabel={club ? 'אישור והצטרפות למועדון' : p?.isFull ? 'אישור והצטרפות לרשימת המתנה' : 'אישור והצטרפות למחזור'} accessibilityState={{ busy, disabled: disabled || unavailable }} onPress={onAccept} style={({pressed}) => [styles.primary, (disabled || unavailable || pressed) && { opacity: 0.55 }]}>
           {busy ? <ActivityIndicator size="small" color="white"/> : null}<Text style={styles.primaryText}>אישור והצטרפות</Text>
         </Pressable>
-        <Pressable disabled={disabled || ['expired','unavailable'].includes(item.status ?? '')} accessibilityRole="button" onPress={onOpen} style={({pressed}) => [styles.secondary, (disabled || pressed) && { opacity: 0.55 }]}><Text style={styles.secondaryText}>{club ? 'פרטי המועדון' : 'פרטי המחזור'}</Text></Pressable>
+        {!item.detailsUnavailable && !['expired', 'unavailable'].includes(item.status ?? '') && <Pressable disabled={disabled} accessibilityRole="button" onPress={onOpen} style={({pressed}) => [styles.secondary, (disabled || pressed) && { opacity: 0.55 }]}><Text style={styles.secondaryText}>{club ? 'פרטי המועדון' : 'פרטי המחזור'}</Text></Pressable>}
       </View>
     </View>
   </View>;

@@ -70,7 +70,7 @@ async function geocodeCity(
         'User-Agent': 'Teamder/1.0 (studiogameslime@gmail.com)',
         Accept: 'application/json',
       },
-    });
+    }, {source: 'src/services/weatherService.ts', handler: 'geocodeCity', site: 'weatherService:city'});
     if (!res.ok) {
     observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + res.status}), {"source":"src/services/weatherService.ts","handler":"geocodeCity","site":"weatherService.ts:http:72"});
       return null;
@@ -156,7 +156,7 @@ export async function getForecastFor(
     `&end_date=${date}`;
 
   try {
-    const res = await fetchRead(url);
+    const res = await fetchRead(url, undefined, {source: 'src/services/weatherService.ts', handler: 'getForecastFor', site: 'weatherService:forecast'});
     if (!res.ok) {
     observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + res.status}), {"source":"src/services/weatherService.ts","handler":"getForecastFor","site":"weatherService.ts:http:159"});
       return null;

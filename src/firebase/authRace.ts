@@ -99,8 +99,10 @@ export async function withAuthRaceRetry<T>(run: () => Promise<T>, options?: { re
     if (ownerUid && currentUid !== ownerUid) throw new StaleSessionError(ownerUid, currentUid ?? '');
   };
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    // Mutations also use this wrapper after an explicit authorization
+    // rejection. Never start the retry under a different identity.
+    assertOwner();
     try {
-      if (options?.retryTransientReads) assertOwner();
       const result = await run();
       if (options?.retryTransientReads) assertOwner();
       return result;
@@ -128,9 +130,12 @@ export async function withAuthRaceRetry<T>(run: () => Promise<T>, options?: { re
       recordDiagnostic('act','auth_retry',{attempt:attempt+2,operationId:diagnosticErrorOperation(err)?.id});
       const user = await awaitUser(RETRY_DELAYS_MS[attempt]);
       if (!user) break; // genuinely signed out
-      if (options?.retryTransientReads) { assertOwner(); ownerUid = user.uid; }
+      ownerUid ??= user.uid;
+      assertOwner();
       try {
-        await user.getIdToken();
+        // The first retry can use a token still being restored. If that token
+        // was denied again, fetch fresh claims once before the next attempt.
+        await user.getIdToken(attempt === 1);
       } catch (caughtErrorb50189ba0f) {
     observeCaughtError(caughtErrorb50189ba0f, {"source":"src/firebase/authRace.ts","handler":"withAuthRaceRetry","site":"authRace:b50189ba0f"});
         /* ignore — the next attempt surfaces any real failure */

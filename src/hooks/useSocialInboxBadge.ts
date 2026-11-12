@@ -6,10 +6,13 @@ import {useUserStore} from '@/store/userStore';
 import {friendsService} from '@/services/friendsService';
 import {receivedInvitationsService} from '@/services/receivedInvitationsService';
 
+import {useUnexpiredInvitations} from './useUnexpiredInvitations';
+import type {ReceivedInvitation} from '@/utils/receivedInvitations';
+
 /** Pending friend requests plus unread, still-actionable invitations. No private identities. */
 export function useSocialInboxBadge() {
   const me=useUserStore(s=>s.currentUser);
-  const [result,setResult]=useState<{owner:string;count:number}|null>(null);
+  const [result,setResult]=useState<{owner:string;requests:number;invites:ReceivedInvitation[]}|null>(null);
   useFocusEffect(useCallback(()=>{
     let alive=true,inFlight=false;
     const owner=me?.id;
@@ -19,7 +22,7 @@ export function useSocialInboxBadge() {
       inFlight=true;
       try{
         const [requests,invites]=await Promise.all([friendsService.queryRequests('toUserId',owner),receivedInvitationsService.listInbox(owner)]);
-        if(alive&&useUserStore.getState().currentUser?.id===owner)setResult({owner,count:requests.length+invites.filter(i=>!i.read&&!['joined','expired','unavailable'].includes(i.status??'available')).length});
+        if(alive&&useUserStore.getState().currentUser?.id===owner)setResult({owner,requests:requests.length,invites:invites.filter(i=>!i.read&&!['joined','expired','unavailable'].includes(i.status??'available'))});
       }catch (caughtError1adf01a2e6){
     observeCaughtError(caughtError1adf01a2e6, {"source":"src/hooks/useSocialInboxBadge.ts","handler":"refresh","site":"useSocialInboxBadge:1adf01a2e6"});/* Retain the previous count on transport failure; do not invent zero. */}
       finally{inFlight=false;}
@@ -29,5 +32,6 @@ export function useSocialInboxBadge() {
     const sub=AppState.addEventListener('change',state=>{if(state==='active')void refresh();});
     return()=>{alive=false;clearInterval(timer);sub.remove();};
   },[me?.id,me?.isGuest]));
-  return result?.owner===me?.id?result?.count??0:0;
+  const invites = useUnexpiredInvitations(result?.invites ?? []);
+  return result && result.owner === me?.id ? result.requests + invites.length : 0;
 }

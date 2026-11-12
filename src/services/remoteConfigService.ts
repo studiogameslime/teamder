@@ -1,4 +1,4 @@
-import { retryRead } from './readRetry';
+import { isTransientReadError, retryRead } from './readRetry';
 import { observeCaughtError } from '../utils/errorObservation';
 // remoteConfigService — server-tunable knobs via Firebase Remote Config.
 //
@@ -15,6 +15,7 @@ import { observeCaughtError } from '../utils/errorObservation';
 // still safe.
 
 import React from 'react';
+import { AppState } from 'react-native';
 import { logError, isExpectedDenial } from '@/services/errorLog';
 
 // Keys + their in-code defaults. The defaults MUST stay sensible on their
@@ -126,7 +127,16 @@ function load(): RcInstance | null {
  * published values. Call once near startup. Safe to call when the native
  * module is absent (no-op) and never throws.
  */
-export async function initRemoteConfig(): Promise<void> {
+let initRequest: Promise<void> | undefined;
+let loadedRemoteConfig = false;
+let retryOnResume: ReturnType<typeof AppState.addEventListener> | undefined;
+export function initRemoteConfig(): Promise<void> {
+  if (loadedRemoteConfig) return Promise.resolve();
+  if (!initRequest) initRequest = loadRemoteConfig().finally(() => { initRequest = undefined; });
+  return initRequest;
+}
+
+async function loadRemoteConfig(): Promise<void> {
   const inst = load();
   if (!inst) return;
   try {
@@ -138,9 +148,17 @@ export async function initRemoteConfig(): Promise<void> {
     await inst.setDefaults(
       RC_DEFAULTS as unknown as Record<string, number | string | boolean>,
     );
-    await retryRead(() => inst.fetchAndActivate(), () => {});
+    await retryRead(() => inst.fetchAndActivate(), () => {}, 500, null);
+    loadedRemoteConfig = true;
+    retryOnResume?.remove();
+    retryOnResume = undefined;
   } catch (err) {
     observeCaughtError(err, {"source":"src/services/remoteConfigService.ts","handler":"initRemoteConfig","site":"remoteConfigService:a9aa06fca9"});
+    if (isTransientReadError(err) && !retryOnResume) {
+      retryOnResume = AppState.addEventListener('change', state => {
+        if (state === 'active') void initRemoteConfig();
+      });
+    }
     // RC fetch failures are transient (network) and non-fatal — the
     // defaults are still registered below so the app behaves correctly.
     // Don't pollute the dashboard with them; only log the unexpected.

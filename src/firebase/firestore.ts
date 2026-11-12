@@ -44,6 +44,8 @@ import {
   LiveMatchState,
   LiveMatchZone,
   DraftTeamsResult,
+  LiveRoundEditRecord,
+  LiveRoundEditPlan,
   MatchRound,
   NotificationPrefs,
   PlayerStats,
@@ -1178,6 +1180,33 @@ function readDraftTeamFeedback(
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
+export function readLiveRoundEdits(value: unknown): LiveRoundEditRecord[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const snapshot = (raw: unknown): LiveRoundEditRecord['before'] | undefined => {
+    if (!raw || typeof raw !== 'object') return undefined;
+    const o = raw as Record<string, unknown>;
+    const teams = readDraftTeams({ teams: o.teams })?.teams;
+    if (!teams || typeof o.format !== 'string' || !/^([3-9]|10|11)v\1$/.test(o.format) ||
+      !Array.isArray(o.activeIds) || !o.activeIds.every(id => typeof id === 'string') ||
+      !Array.isArray(o.playing) || o.playing.length !== 2 || !o.playing.every(Number.isInteger) ||
+      !Array.isArray(o.waiting) || !o.waiting.every(Number.isInteger)) return undefined;
+    return { teams, format: o.format as NonNullable<Game['format']>, activeIds: o.activeIds as string[],
+      playing: o.playing as [number, number], waiting: o.waiting as number[],
+      matchDurationMinutes: typeof o.matchDurationMinutes === 'number' ? o.matchDurationMinutes : 0,
+      ruleTags: Array.isArray(o.ruleTags) ? o.ruleTags.filter((t): t is string => typeof t === 'string') : [] };
+  };
+  return value.flatMap(raw => {
+    if (!raw || typeof raw !== 'object') return [];
+    const o = raw as Record<string, unknown>, before = snapshot(o.before), after = snapshot(o.after), plan = snapshot(o.plan);
+    const rawPlan = o.plan as Record<string, unknown> | undefined;
+    if (!before || !after || !plan || typeof o.id !== 'string' || typeof o.fromRoundId !== 'string' ||
+      typeof o.by !== 'string' || typeof o.at !== 'number' || typeof o.roundNumber !== 'number' ||
+      !rawPlan || !['keep','rating','random','regular','snake','manual'].includes(String(rawPlan.method))) return [];
+    return [{ id: o.id, fromRoundId: o.fromRoundId, by: o.by, at: o.at, roundNumber: o.roundNumber, before, after,
+      plan: { ...plan, numberOfTeams: plan.teams.length, method: rawPlan.method as LiveRoundEditPlan['method'] } }];
+  });
+}
+
 export function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
   if (!v || typeof v !== 'object') return undefined;
   const o = v as Record<string, unknown>;
@@ -1470,6 +1499,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           : null,
       liveMatch: g.liveMatch ?? null,
       draftTeams: g.draftTeams ?? null,
+      liveRoundEdits: g.liveRoundEdits ?? null,
       draftTeamColors: g.draftTeamColors ?? null,
       draftTeamFeedback: g.draftTeamFeedback ?? null,
       rotation: g.rotation ?? null,
@@ -1742,6 +1772,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           : undefined,
       liveMatch: readLiveMatch(d.liveMatch),
       draftTeams: readDraftTeams(d.draftTeams),
+      liveRoundEdits: readLiveRoundEdits(d.liveRoundEdits),
       draftTeamColors: d.draftTeamColors == null ? undefined : readDraftColors(d.draftTeamColors),
       draftTeamFeedback: readDraftTeamFeedback(d.draftTeamFeedback),
       rotation: readRotation(d.rotation),

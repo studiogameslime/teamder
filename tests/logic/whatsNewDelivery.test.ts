@@ -1,10 +1,12 @@
 jest.mock('firebase/firestore', () => ({ doc: jest.fn(), getDoc: jest.fn() }));
+jest.mock('firebase/firestore/lite', () => ({ getFirestore: jest.fn(), doc: jest.fn(), getDoc: jest.fn() }));
 jest.mock('@/firebase/config', () => ({ getFirebase: () => ({ db: {} }), USE_MOCK_DATA: false }));
 jest.mock('@/services/storage', () => ({ storage: { getWhatsNewSeenVersion: jest.fn(), setWhatsNewSeenVersion: jest.fn() } }));
 jest.mock('@/services/updateService', () => ({ getCurrentVersion: () => '1.1.50', compareVersions: (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true }) }));
 jest.mock('@/services/errorLog', () => ({ logError: jest.fn(), isExpectedDenial: () => true }));
 jest.mock('@/data/mockData', () => ({ mockWhatsNew: {} }));
 import { getDoc } from 'firebase/firestore';
+import { getDoc as getDirectDoc } from 'firebase/firestore/lite';
 import { storage } from '@/services/storage';
 import { resolveWhatsNew, markWhatsNewSeen } from '@/services/whatsNewService';
 const item = (version: string) => ({ version, emoji: '⚽', title: 'חדש', body: 'תיאור' });
@@ -46,9 +48,10 @@ it('does not fetch again for an already shown release', async () => {
 it('recovers one transient read without consuming eligibility before display', async () => {
   jest.useFakeTimers();try {
     config([item('1.1.50')]);
+    (getDirectDoc as jest.Mock).mockImplementation((getDoc as jest.Mock).getMockImplementation()!);
     (getDoc as jest.Mock).mockRejectedValueOnce(Object.assign(Error('client is offline'),{code:'unavailable'}));
     const pending=resolveWhatsNew();await jest.advanceTimersByTimeAsync(500);
-    expect((await pending)?.items).toHaveLength(1);expect(getDoc).toHaveBeenCalledTimes(2);
+    expect((await pending)?.items).toHaveLength(1);expect(getDoc).toHaveBeenCalledTimes(1);expect(getDirectDoc).toHaveBeenCalledTimes(1);
     expect(storage.setWhatsNewSeenVersion).not.toHaveBeenCalled();
   }finally{jest.useRealTimers();}
 });

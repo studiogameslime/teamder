@@ -8,6 +8,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OpeningTeamsPanel } from '@/components/match/OpeningTeamsPanel';
 import { LiveTeamsEditModal } from '@/components/match/LiveTeamsEditModal';
+import { LiveRoundEditModal } from '@/components/match/LiveRoundEditModal';
+import { liveRoundEditContext, registeredLiveRoster, type LiveRoundEditContext, type LiveRoundEditPlan, type LiveRoundEditRequest } from '@/utils/liveRoundEdit';
 import { MatchEventPicker } from '@/components/match/MatchEventPicker';
 import { liveTeamsEditContext, liveTeamsChanged, type LiveTeamsEditContext, type LiveTeamsPlan } from '@/utils/liveTeamsEdit';
 import { initialOpeningPlan, openingFingerprint, type OpeningPlan } from '@/utils/openingTeams';
@@ -263,10 +265,13 @@ export function AdvancedLiveMatchScreen() {
      *  Absent on a mid-evening substitution — nothing ended. */
     savedResult?: { a: number; b: number; winner: string | null };
     teamsEdit?: { plan: LiveTeamsPlan; expected: LiveTeamsEditContext };
+    roundEdit?: LiveRoundEditRequest;
   } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [teamsEditor, setTeamsEditor] = useState<{ game: Game; expected: LiveTeamsEditContext } | null>(null);
   const [teamsEditError, setTeamsEditError] = useState('');
+  const [roundEditor, setRoundEditor] = useState<{ game: Game; expected: LiveRoundEditContext; operationId: string } | null>(null);
+  const [roundEditError, setRoundEditError] = useState('');
   // 1s ticker so the still-ongoing stoppage duration counts up while paused
   // (the synced-timer hook only ticks while RUNNING).
   const timerFocused = useIsFocused();
@@ -630,9 +635,10 @@ export function AdvancedLiveMatchScreen() {
     // needs to be told: by the time it opens, the board behind it says 0:0.
     savedResult?: { a: number; b: number; winner: string | null },
     teamsEdit?: { plan: LiveTeamsPlan; expected: LiveTeamsEditContext },
+    roundEdit?: LiveRoundEditRequest,
   ) => {
     const captured=savedRoundViewRef.current;
-    if(!teamsEdit && !keepClock && !savedResult && captured?.gameId===gameId && captured.key===currentRoundKey){
+    if(!teamsEdit && !roundEdit && !keepClock && !savedResult && captured?.gameId===gameId && captured.key===currentRoundKey){
       savedResult={a:captured.live.scoreA,b:captured.live.scoreB,winner:null};
     }
     setFillDeferred(false);
@@ -661,6 +667,7 @@ export function AdvancedLiveMatchScreen() {
       keepClock,
       savedResult,
       teamsEdit,
+      roundEdit,
     };
     if (draft.completionMode === 'balanced' && short.length) {
       setFillDeferred(false);
@@ -784,7 +791,13 @@ export function AdvancedLiveMatchScreen() {
       // clock+score in the same atomic write (a concurrent admin's timer-start
       // can't slip between two writes). For a mid-evening substitution
       // (keepClock) we DON'T reset — the current משחק keeps running.
-      if (flow.teamsEdit && me) {
+      if (flow.roundEdit && me) {
+        await gameService.saveLiveRoundEdit(gameId, flow.roundEdit, { userId: me.id, userName: me.name ?? '' }, flow.working);
+        setGoalRequest(undefined); setPenaltyRequest(undefined); setEventPicker(null); setEndRoundPrompt(null);
+        setShootoutDecision(null); setShootoutOpen(false); setDecisionOpen(false); setWinnerOpen(false);
+        setSavedRoundView(null); savedRoundViewRef.current = null;
+        successHaptic(); toast.success('המחזור עודכן. המשחק הנוכחי מוכן מחדש עם שעון מאופס');
+      } else if (flow.teamsEdit && me) {
         await gameService.saveLiveTeamsEdit(gameId, flow.teamsEdit.plan, flow.teamsEdit.expected,
           { userId: me.id, userName: me.name ?? '' }, flow.working);
         setGoalRequest(undefined); setShootoutDecision(null); setShootoutOpen(false); setDecisionOpen(false); setWinnerOpen(false);
@@ -858,6 +871,11 @@ export function AdvancedLiveMatchScreen() {
   // Dismissing a banked result's picker only hides it. Never mint a new
   // round identity, rotate, or permit another score on the ended game.
   const onFillCancel = () => {
+    // Another admin may have saved the old game while this edit's picker was
+    // open. This is still an uncommitted edit, never a banked result to resume.
+    if (fillFlowRef.current?.roundEdit) {
+      fillFlowRef.current = null; setBalancedRequest(null); setFillRequest(null); setFillDeferred(false); return;
+    }
     if(fillFlowRef.current?.savedResult || pendingSavedRound){setFillDeferred(true);return;}
     fillFlowRef.current=null;setBalancedRequest(null);setFillRequest(null);
   };
@@ -1297,6 +1315,38 @@ export function AdvancedLiveMatchScreen() {
   };
   const currentTeamsEditContext = game && rotation ? liveTeamsEditContext({ ...game, rotation, draftTeams: draftTeams ?? undefined, liveMatch: live ?? undefined, lastCommittedRoundId }) : null;
   const teamsEditorStale = !!teamsEditor && JSON.stringify(currentTeamsEditContext) !== JSON.stringify(teamsEditor.expected);
+
+  const openLiveRoundEditor = () => {
+    if (!canEditLiveTeams || !game || !gameId || !rotation || !draftTeams) return;
+    const board = { ...game, id: gameId, rotation, draftTeams, liveMatch: live ?? undefined, lastCommittedRoundId };
+    const expected = liveRoundEditContext(board);
+    if (expected) {
+      setRoundEditError('');
+      setRoundEditor({ game: board, expected, operationId: `edit-${Date.now()}-${Math.random().toString(36).slice(2)}` });
+    }
+  };
+  useEffect(() => {
+    if (!route.params?.editRound || !game || !isAdmin || !liveLoaded) return;
+    nav.dispatch({ type: 'SET_PARAMS', payload: { params: { editRound: undefined } } });
+    if (canEditLiveTeams) openLiveRoundEditor();
+    else toast.info('יש להשלים את שמירת המשחק והכנת ההרכבים לפני פתיחת עריכת המחזור.');
+  }, [route.params?.editRound, game?.id, isAdmin, liveLoaded, canEditLiveTeams]);
+  const saveLiveRoundEditor = async (plan: LiveRoundEditPlan, resetConfirmed: boolean) => {
+    if (!roundEditor || !canEditLiveTeams || !gameId || !me || startingRef.current) return;
+    startingRef.current = true; markBusy(1); setRoundEditError('');
+    try {
+      const request: LiveRoundEditRequest = { plan, resetConfirmed, expected: roundEditor.expected, operationId: roundEditor.operationId };
+      const prepared = await gameService.prepareLiveRoundEdit(gameId, request);
+      beginFillFlow(prepared.skeleton, prepared.draft, undefined, false, undefined, undefined, request);
+      setRoundEditor(null);
+    } catch (error) {
+      observeCaughtError(error, { source: 'src/screens/AdvancedLiveMatchScreen.tsx', handler: 'saveLiveRoundEditor', site: 'liveRoundEdit:prepare' });
+      logError('saveLiveRoundEditor', error, { gameId });
+      setRoundEditError((error as Error)?.message || 'לא הצלחנו להכין את השמירה. נסו שוב.');
+    } finally { startingRef.current = false; markBusy(-1); }
+  };
+  const currentRoundEditContext = game && rotation ? liveRoundEditContext({ ...game, rotation, draftTeams: draftTeams ?? undefined, liveMatch: live ?? undefined, lastCommittedRoundId }) : null;
+  const roundEditorStale = !!roundEditor && JSON.stringify(currentRoundEditContext) !== JSON.stringify(roundEditor.expected);
 
   // ─── "advanced mode, but no teams" gate ────────────────────────────────
   // Turning advancedMode on and then walking into the live screen without
@@ -2439,7 +2489,6 @@ export function AdvancedLiveMatchScreen() {
         onBothOut={
           rotation?.waiting?.[1] != null ? onDecideBothOut : undefined
         }
-        onEndEvening={() => { setDecisionOpen(false); setEndOpen(true); }}
         onClose={() => { setDecisionOpen(false); setShootoutDecision(null); }}
       />
         ) : undefined}
@@ -2470,15 +2519,23 @@ export function AdvancedLiveMatchScreen() {
         busy={roundBusy} stale={teamsEditorStale} error={teamsEditError} onSave={saveLiveTeamsEditor}
         onClose={() => { if (!roundBusy) setTeamsEditor(null); }}
       />}
+      {roundEditor && isAdmin && <LiveRoundEditModal game={roundEditor.game}
+        players={Object.fromEntries(registeredLiveRoster(game).map(id => [id, resolveFillPlayer(id)]))}
+        ratings={{ ...(myCommunities.find(c => c.id === game.groupId)?.adminRatings ?? {}), ...Object.fromEntries((game.guests ?? []).filter(g => g.estimatedRating).map(g => [`guest:${g.id}`, g.estimatedRating!])) }}
+        canUseRating={myCommunities.find(c => c.id === game.groupId)?.internalRating === true}
+        loadHistory={() => gameService.getRecentSplits(game.groupId, { excludeGameId: game.id })}
+        busy={roundBusy} stale={roundEditorStale} error={roundEditError} onSave={saveLiveRoundEditor}
+        onClose={() => { if (!roundBusy) setRoundEditor(null); }}/>}
       <HamburgerMenu
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
         sections={[{ id: 'live', items: [
           { id: 'liveHelp', label: 'עזרה', icon: 'headset-outline', onPress: () => { setMenuOpen(false); if (me?.id) useSupportChat.getState().open(me.id); } },
-          ...(isAdmin ? [{ id: 'liveDraftTeams', label: 'עריכת קבוצות', icon: 'people-outline' as const, onPress: () => {
+          ...(isAdmin && !rotation ? [{ id: 'liveDraftTeams', label: 'עריכת קבוצות', icon: 'people-outline' as const, onPress: () => {
             setMenuOpen(false);
             (nav as unknown as { navigate: (s: string, p?: unknown) => void }).navigate('DraftSetup', { gameId: gameId, returnRouteKey: route.key });
           } }] : []),
+          ...(canEditLiveTeams ? [{ id: 'liveEditRound', label: 'עריכת המחזור', icon: 'create-outline' as const, onPress: openLiveRoundEditor }] : []),
           ...(canEditLiveTeams ? [{ id: 'liveEditTeams', label: 'סדר המשחק', icon: 'swap-horizontal' as const, onPress: openLiveTeamsEditor }] : []),
           { id: 'liveMenuRounds', label: he.liveMenuRounds, icon: 'list', onPress: () => {
                 (nav as unknown as { navigate: (s: string, p?: unknown) => void }).navigate(

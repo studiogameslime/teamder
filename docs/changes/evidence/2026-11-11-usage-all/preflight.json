@@ -1,0 +1,69 @@
+{
+  "functions": [
+    {
+      "name": "cleanupUsageActivity",
+      "sourceSha256": "9e03a674448018d0f20edf36315b78b023df7a487fa6244517844872c1e5ec31",
+      "unrestrictedModeSupported": true,
+      "changedKeys": [
+        "USAGE_ACTIVITY_UIDS"
+      ]
+    },
+    {
+      "name": "onUsageJoinReceipt",
+      "sourceSha256": "9e03a674448018d0f20edf36315b78b023df7a487fa6244517844872c1e5ec31",
+      "unrestrictedModeSupported": true,
+      "changedKeys": [
+        "USAGE_ACTIVITY_UIDS"
+      ]
+    },
+    {
+      "name": "recordUsageActivity",
+      "sourceSha256": "a8aefa2386b91625f5100022fc34098fd31aa263715c4fa225fc7884c6343483",
+      "unrestrictedModeSupported": true,
+      "changedKeys": [
+        "USAGE_ACTIVITY_UIDS"
+      ]
+    },
+    {
+      "name": "materializeUsageOperation",
+      "sourceSha256": "9e03a674448018d0f20edf36315b78b023df7a487fa6244517844872c1e5ec31",
+      "unrestrictedModeSupported": true,
+      "changedKeys": [
+        "USAGE_ACTIVITY_UIDS"
+      ]
+    }
+  ],
+  "errorsRead": 40,
+  "openErrorOperations": {
+    "caught:index:fd28c6d1ed": 1,
+    "caught:native:watch.context": 1,
+    "caught:adsService:1201931385": 1,
+    "pulse:cache:ea2685cb95": 1,
+    "uncaught:onSchedule:crashlyticsBridge.js:73": 1,
+    "caught:readRetry:exhausted": 5,
+    "caught:EmailAuthScreen:174c49be30": 1,
+    "caught:authRace:35595714d9": 1,
+    "uncaught:onCall:usageActivity.js:202": 1,
+    "caught:index:20a83f91b9": 2,
+    "caught:serverClock:c6566fca82": 1,
+    "caught:userService:c2f30c2c24": 1,
+    "caught:updateService:9a518dd28f": 2,
+    "caught:dmRequestService.ts:snapshot:41": 1,
+    "caught:updateService:d6d7f5046d": 2,
+    "caught:notificationsService:5f4243e9c5": 1,
+    "caught:onboardingActivity:9544dacd45": 1,
+    "signInGuestScreen": 1,
+    "userHydrateSilentGuest": 1,
+    "caught:auth:f1545b2f93": 1,
+    "caught:notificationsService:d572bf4985": 1,
+    "caught:GameCreateScreen:434e22020f": 1,
+    "caught:inbox:filler-interests": 1,
+    "loadFillerInterests": 1,
+    "caught:nearby:67bb320a28": 2,
+    "liveShootoutDecided": 1,
+    "pulse:quota:read": 1,
+    "caught:whatsNewService:3312d66418": 1
+  },
+  "unrelatedErrorsChanged": false,
+  "scope": "Remove account allowlist only; preserve live sources and permissions"
+}

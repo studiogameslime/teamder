@@ -352,30 +352,39 @@ function mirrorToNativeAuth(
  * per boot from waitForAuthRestore. Google-only: the home widget + Wear relay
  * are Android surfaces, and Apple users on iOS have no native widget to feed.
  */
-function ensureNativeAuthMirror(): void {
-  if (Platform.OS !== 'android') return;
+let restoringNativeOwner: FirebaseUser | null = null;
+let nativeRetry: {owner: FirebaseUser; after: number} | null = null;
+function ensureNativeAuthMirror(owner: FirebaseUser): void {
+  if (Platform.OS !== 'android' || owner.isAnonymous || restoringNativeOwner === owner) return;
+  if (nativeRetry?.owner === owner && Date.now() < nativeRetry.after) return;
+  const googleId = owner.providerData?.find(provider => provider.providerId === 'google.com')?.uid;
+  if (!googleId) return;
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const rnAuth = require('@react-native-firebase/auth').default;
     // Already have a native session — nothing to do.
     if (rnAuth().currentUser) return;
     ensureGoogleConfigured();
+    restoringNativeOwner = owner;
     GoogleSignin.signInSilently()
       .then((res: unknown) => {
-        const idToken = (res as { data?: { idToken?: string }; idToken?: string })
-          ?.data?.idToken ?? (res as { idToken?: string })?.idToken;
-        if (!idToken) return;
+        const data = (res as {data?: {idToken?: string; user?: {id?: string}}})?.data;
+        const idToken = data?.idToken;
+        if (!idToken || data.user?.id !== googleId || getFirebase().auth.currentUser !== owner || rnAuth().currentUser) return;
         return rnAuth().signInWithCredential(
           rnAuth.GoogleAuthProvider.credential(idToken),
         );
       })
       .catch((e: unknown) => {
+        if (getFirebase().auth.currentUser !== owner) return;
+        nativeRetry = {owner, after: Date.now() + 60_000};
     observeCaughtError(e, {"source":"src/firebase/auth.ts","handler":"ensureNativeAuthMirror","site":"auth:5d44e1daba"});
         // No cached Google session / silent sign-in unavailable — the user
         // can still re-login to activate the widget. Stay quiet in prod.
         if (__DEV__) console.warn('[auth] boot native-auth mirror skipped', e);
-      });
+      }).finally(() => { if (restoringNativeOwner === owner) restoringNativeOwner = null; });
   } catch (e) {
+    if (restoringNativeOwner === owner) restoringNativeOwner = null;
     observeCaughtError(e, {"source":"src/firebase/auth.ts","handler":"ensureNativeAuthMirror","site":"auth:ab829cbc1d"});
     if (__DEV__) console.warn('[auth] native-auth module unavailable', e);
   }
@@ -533,7 +542,7 @@ export function waitForAuthRestore(): Promise<FirebaseUser | null> {
       // Existing users won't re-login on an app update, so the sign-in-time
       // native mirror never fires for them — re-establish it here on boot so
       // the home widget / Wear relay can control the timer. Fire-and-forget.
-      if (user) ensureNativeAuthMirror();
+      if (user) ensureNativeAuthMirror(user);
       finish(user);
     });
   });

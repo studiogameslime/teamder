@@ -1,5 +1,519 @@
 [
   {
+    "file": "live-round-consistency-settings-2026-11-12.png",
+    "source": "artifacts/live-round-consistency-2026-11-12/native-settings.png",
+    "environment": "אפליקציה באימולטור עם נתוני הדגמה מאומתים בזיכרון",
+    "platform": "Android",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-12",
+    "notes": [
+      "צילום מהמקור המקומי לאחר איחוד רכיבי השחקנים והכוחות.",
+      "אימולטור Teamder_API_35, רזולוציה 1080x2400, חבילת פיתוח קיימת. אין בנייה חדשה או הפצה.",
+      "אין אימות שרת חי או מכשיר פיזי. הצילום אינו שמירה או איפוס של מחזור."
+    ],
+    "sha256": "f1d950b0e78d188608c53f11eacc0d3cdc535cd391ba92201055c6576c9fe7b1"
+  },
+  {
+    "file": "live-round-consistency-methods-2026-11-12.png",
+    "source": "artifacts/live-round-consistency-2026-11-12/native-methods.png",
+    "environment": "אפליקציה באימולטור עם נתוני הדגמה מאומתים בזיכרון",
+    "platform": "Android",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-12",
+    "notes": [
+      "צילום מהמקור המקומי לאחר איחוד רכיבי השחקנים והכוחות.",
+      "אימולטור Teamder_API_35, רזולוציה 1080x2400, חבילת פיתוח קיימת. אין בנייה חדשה או הפצה.",
+      "אין אימות שרת חי או מכשיר פיזי. הצילום אינו שמירה או איפוס של מחזור."
+    ],
+    "sha256": "71754a72a5ee2719fd1e9eef3913026a3598df7bd09cc50dbaffa00cfd356442"
+  },
+  {
+    "file": "live-round-consistency-teams-2026-11-12.png",
+    "source": "artifacts/live-round-consistency-2026-11-12/native-teams.png",
+    "environment": "אפליקציה באימולטור עם נתוני הדגמה מאומתים בזיכרון",
+    "platform": "Android",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-12",
+    "notes": [
+      "צילום מהמקור המקומי לאחר איחוד רכיבי השחקנים והכוחות.",
+      "אימולטור Teamder_API_35, רזולוציה 1080x2400, חבילת פיתוח קיימת. אין בנייה חדשה או הפצה.",
+      "אין אימות שרת חי או מכשיר פיזי. הצילום אינו שמירה או איפוס של מחזור."
+    ],
+    "sha256": "1b97ce5757f43d433a5bd8bb6285141e7fe5d18faa84556bae3c5598c885d67e"
+  },
+  {
+    "file": "live-round-consistency-review-2026-11-12.png",
+    "source": "artifacts/live-round-consistency-2026-11-12/native-review.png",
+    "environment": "אפליקציה באימולטור עם נתוני הדגמה מאומתים בזיכרון",
+    "platform": "Android",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-12",
+    "notes": [
+      "צילום מהמקור המקומי לאחר איחוד רכיבי השחקנים והכוחות.",
+      "אימולטור Teamder_API_35, רזולוציה 1080x2400, חבילת פיתוח קיימת. אין בנייה חדשה או הפצה.",
+      "אין אימות שרת חי או מכשיר פיזי. הצילום אינו שמירה או איפוס של מחזור."
+    ],
+    "sha256": "c561d0748a82199c36c22a3ff3e082a3304b850a9dd1abdfc43fa70316be3b88"
+  },
+  {
+    "file": "live-round-consistency-reset-2026-11-12.png",
+    "source": "artifacts/live-round-consistency-2026-11-12/native-reset.png",
+    "environment": "אפליקציה באימולטור עם נתוני הדגמה מאומתים בזיכרון",
+    "platform": "Android",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-12",
+    "notes": [
+      "צילום מהמקור המקומי לאחר איחוד רכיבי השחקנים והכוחות.",
+      "אימולטור Teamder_API_35, רזולוציה 1080x2400, חבילת פיתוח קיימת. אין בנייה חדשה או הפצה.",
+      "אין אימות שרת חי או מכשיר פיזי. הצילום אינו שמירה או איפוס של מחזור."
+    ],
+    "sha256": "64b0526d1da8353ef5abedd7b65905bf38893ff0f95e3a325efe7cd0d6bb3a08"
+  },
+  {
+    "file": "live-round-consistency-standard-methods-2026-11-12.png",
+    "source": "artifacts/live-round-consistency-2026-11-12/native-standard-methods.png",
+    "environment": "אפליקציה באימולטור עם נתוני הדגמה מאומתים בזיכרון",
+    "platform": "Android",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-12",
+    "notes": [
+      "צילום מהמקור המקומי לאחר איחוד רכיבי השחקנים והכוחות.",
+      "אימולטור Teamder_API_35, רזולוציה 1080x2400, חבילת פיתוח קיימת. אין בנייה חדשה או הפצה.",
+      "אין אימות שרת חי או מכשיר פיזי. הצילום אינו שמירה או איפוס של מחזור."
+    ],
+    "sha256": "72318b5fcbbda27d09026d6919ef70afbb8e8d94fc670606494da4e8f127e1d6"
+  },
+  {
+    "file": "live-round-consistency-standard-captains-2026-11-12.png",
+    "source": "artifacts/live-round-consistency-2026-11-12/native-standard-captains.png",
+    "environment": "אפליקציה באימולטור עם נתוני הדגמה מאומתים בזיכרון",
+    "platform": "Android",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-12",
+    "notes": [
+      "צילום מהמקור המקומי לאחר איחוד רכיבי השחקנים והכוחות.",
+      "אימולטור Teamder_API_35, רזולוציה 1080x2400, חבילת פיתוח קיימת. אין בנייה חדשה או הפצה.",
+      "אין אימות שרת חי או מכשיר פיזי. הצילום אינו שמירה או איפוס של מחזור."
+    ],
+    "sha256": "bb3e7b28226f99e83d27b03822d5c2a2f2eb8e20eaa6c56d1d26e4ad64524c4a"
+  },
+  {
+    "file": "live-round-consistency-before-settings-2026-11-12.png",
+    "source": "artifacts/live-round-consistency-2026-11-12/before-settings.png",
+    "environment": "אפליקציה באימולטור עם נתוני הדגמה מאומתים בזיכרון",
+    "platform": "Android",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-12",
+    "notes": [
+      "צילום קודם באותה שיחה; חותמת מקור המסך אומתה לפני השינוי.",
+      "אימולטור Teamder_API_35, רזולוציה 1080x2400, חבילת פיתוח קיימת. אין בנייה חדשה או הפצה.",
+      "אין אימות שרת חי או מכשיר פיזי. הצילום אינו שמירה או איפוס של מחזור."
+    ],
+    "sha256": "5d35f96056749d147f8198f1a8bf4ea538c2fdf812c81b749afae4ba0784f3bc"
+  },
+  {
+    "file": "live-round-consistency-before-teams-2026-11-12.png",
+    "source": "artifacts/live-round-consistency-2026-11-12/before-teams.png",
+    "environment": "אפליקציה באימולטור עם נתוני הדגמה מאומתים בזיכרון",
+    "platform": "Android",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-12",
+    "notes": [
+      "צילום קודם באותה שיחה; חותמת מקור המסך אומתה לפני השינוי.",
+      "אימולטור Teamder_API_35, רזולוציה 1080x2400, חבילת פיתוח קיימת. אין בנייה חדשה או הפצה.",
+      "אין אימות שרת חי או מכשיר פיזי. הצילום אינו שמירה או איפוס של מחזור."
+    ],
+    "sha256": "c393e1789eba747b1fb099a87a4e4e92a2ba0ff188b079171baa3dfdd39631dd"
+  },
+  {
+    "file": "live-round-edit-native-settings-2026-11-12.png",
+    "source": "artifacts/live-round-edit-2026-11-12/native-settings.png",
+    "environment": "האפליקציה המקומית באימולטור אנדרואיד עם נתוני הדגמה בזיכרון",
+    "platform": "Android",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-12",
+    "notes": [
+      "צילום ממשי של האפליקציה מתוך הקוד המקומי הלא מחויב. מצב הדגמה אומת בזמן הריצה.",
+      "אימולטור Teamder_API_35, רזולוציה 1080x2400. חבילת פיתוח קיימת ללא בנייה חדשה.",
+      "לא אושר איפוס ולא נשמרה העריכה. אין אימות שרת חי או מכשיר פיזי."
+    ],
+    "sha256": "5d35f96056749d147f8198f1a8bf4ea538c2fdf812c81b749afae4ba0784f3bc"
+  },
+  {
+    "file": "live-round-edit-native-methods-2026-11-12.png",
+    "source": "artifacts/live-round-edit-2026-11-12/native-methods.png",
+    "environment": "האפליקציה המקומית באימולטור אנדרואיד עם נתוני הדגמה בזיכרון",
+    "platform": "Android",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-12",
+    "notes": [
+      "צילום ממשי של האפליקציה מתוך הקוד המקומי הלא מחויב. מצב הדגמה אומת בזמן הריצה.",
+      "אימולטור Teamder_API_35, רזולוציה 1080x2400. חבילת פיתוח קיימת ללא בנייה חדשה.",
+      "לא אושר איפוס ולא נשמרה העריכה. אין אימות שרת חי או מכשיר פיזי."
+    ],
+    "sha256": "49de31618c96788228e67c47725d2a7899b7a32cc90661368fcd10f638a3c2eb"
+  },
+  {
+    "file": "live-round-edit-native-teams-2026-11-12.png",
+    "source": "artifacts/live-round-edit-2026-11-12/native-teams.png",
+    "environment": "האפליקציה המקומית באימולטור אנדרואיד עם נתוני הדגמה בזיכרון",
+    "platform": "Android",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-12",
+    "notes": [
+      "צילום ממשי של האפליקציה מתוך הקוד המקומי הלא מחויב. מצב הדגמה אומת בזמן הריצה.",
+      "אימולטור Teamder_API_35, רזולוציה 1080x2400. חבילת פיתוח קיימת ללא בנייה חדשה.",
+      "לא אושר איפוס ולא נשמרה העריכה. אין אימות שרת חי או מכשיר פיזי."
+    ],
+    "sha256": "c393e1789eba747b1fb099a87a4e4e92a2ba0ff188b079171baa3dfdd39631dd"
+  },
+  {
+    "file": "live-round-edit-native-review-2026-11-12.png",
+    "source": "artifacts/live-round-edit-2026-11-12/native-review.png",
+    "environment": "האפליקציה המקומית באימולטור אנדרואיד עם נתוני הדגמה בזיכרון",
+    "platform": "Android",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-12",
+    "notes": [
+      "צילום ממשי של האפליקציה מתוך הקוד המקומי הלא מחויב. מצב הדגמה אומת בזמן הריצה.",
+      "אימולטור Teamder_API_35, רזולוציה 1080x2400. חבילת פיתוח קיימת ללא בנייה חדשה.",
+      "לא אושר איפוס ולא נשמרה העריכה. אין אימות שרת חי או מכשיר פיזי."
+    ],
+    "sha256": "c0441891e0110da0112022d4c87329c46994da5902bf9a1fc2b68181909f8010"
+  },
+  {
+    "file": "live-round-edit-native-reset-2026-11-12.png",
+    "source": "artifacts/live-round-edit-2026-11-12/native-reset.png",
+    "environment": "האפליקציה המקומית באימולטור אנדרואיד עם נתוני הדגמה בזיכרון",
+    "platform": "Android",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-12",
+    "notes": [
+      "צילום ממשי של האפליקציה מתוך הקוד המקומי הלא מחויב. מצב הדגמה אומת בזמן הריצה.",
+      "אימולטור Teamder_API_35, רזולוציה 1080x2400. חבילת פיתוח קיימת ללא בנייה חדשה.",
+      "לא אושר איפוס ולא נשמרה העריכה. אין אימות שרת חי או מכשיר פיזי."
+    ],
+    "sha256": "b8317d3a0905022a6a8b3677c3353c9e215098fdb17da75dd440cf0cae40fe5b"
+  },
+  {
+    "file": "live-round-edit-reset-2026-11-12.png",
+    "source": "artifacts/live-round-edit-2026-11-12/reset-390-1-light.png",
+    "environment": "רכיבי מקור מרונדרים בדפדפן עם מתאמים ונתוני הדגמה",
+    "platform": "Web",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-12",
+    "notes": [
+      "מקור מקומי לא מחויב. רוחב 390. נבדקה כיווניות. אין אימות מכשיר או שרת חי.",
+      "צילום רכיב המימוש, ולא סקיצת התכנון."
+    ],
+    "sha256": "f812850af00cfae6a52aa1b31f7ac5e4f50e341d77c3467cfd10e0fce4c589f4"
+  },
+  {
+    "file": "live-round-edit-settings-2026-11-12.png",
+    "source": "artifacts/live-round-edit-2026-11-12/settings-390-1-light.png",
+    "environment": "רכיבי מקור מרונדרים בדפדפן עם מתאמים ונתוני הדגמה",
+    "platform": "Web",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-12",
+    "notes": [
+      "מקור מקומי לא מחויב. רוחב 390. נבדקה כיווניות. אין אימות מכשיר או שרת חי.",
+      "צילום רכיב המימוש, ולא סקיצת התכנון."
+    ],
+    "sha256": "b2b173901895d0db153e5ade978b34aac2bff1a4edc544b31161f5b321baf3c2"
+  },
+  {
+    "file": "live-round-edit-before-2026-11-12.png",
+    "source": "artifacts/live-round-edit-2026-11-12/before-390-1-light.png",
+    "environment": "רכיבי מקור מרונדרים בדפדפן עם מתאמים ונתוני הדגמה",
+    "platform": "Web",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-12",
+    "notes": [
+      "מקור מקומי לא מחויב. רוחב 390. נבדקה כיווניות. אין אימות מכשיר או שרת חי.",
+      "הצילום הקודם הוא חלון סדר המשחק הקיים; לעריכת המחזור החדשה לא היה חלון קודם."
+    ],
+    "sha256": "ac0ca2e760b78919033d75f33cb1dc3e42bdfe2c93f55e8f4e1d0ebb30eaf843"
+  },
+  {
+    "file": "usage-all-privacy-after-2026-11-11.png",
+    "source": "artifacts/usage-all-2026-11-11/privacy-after.png",
+    "environment": "דף הפרטיות המקומי בדפדפן, ברוחב טלפון",
+    "platform": "Web",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-11",
+    "notes": [
+      "רוחב 390 פיקסלים. נבדקה כיווניות ללא גלישה אופקית. אין בדיקת יישום במכשיר."
+    ],
+    "sha256": "a56b36883ff73e8d0b247bc7594cb43744c2b98b5190a80f0b65b8431ac57831"
+  },
+  {
+    "file": "usage-all-privacy-before-2026-11-11.png",
+    "source": "artifacts/usage-all-2026-11-11/privacy-before.png",
+    "environment": "דף הפרטיות המקומי בדפדפן, ברוחב טלפון",
+    "platform": "Web",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-11",
+    "notes": [
+      "רוחב 390 פיקסלים. נבדקה כיווניות ללא גלישה אופקית. אין בדיקת יישום במכשיר."
+    ],
+    "sha256": "b3441b3afed8eacb83637a59323a30816bb3d0672b4d44008b6fc8c6ce13ee93"
+  },
+  {
+    "file": "rating-review-missing-2026-11-11.png",
+    "source": "artifacts/rating-review-2026-11-11/card-missing.png",
+    "environment": "רכיב מקור במתאם דפדפן עם נתוני הדגמה",
+    "platform": "Web",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-11",
+    "notes": [
+      "כולל שינויים מקומיים. אין אימות מכשיר או נתוני ייצור.",
+      "לפני: מסך קודם. אחרי: כרטיס מקור חדש. סמלים ומעטפת מותאמים לדפדפן."
+    ],
+    "sha256": "f8dc6dfe5905d4ebcd324d08705393ae35e0a3009b49e577c3d4407ca47fc573"
+  },
+  {
+    "file": "rating-review-after-2026-11-11.png",
+    "source": "artifacts/rating-review-2026-11-11/card-up.png",
+    "environment": "רכיב מקור במתאם דפדפן עם נתוני הדגמה",
+    "platform": "Web",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-11",
+    "notes": [
+      "כולל שינויים מקומיים. אין אימות מכשיר או נתוני ייצור.",
+      "לפני: מסך קודם. אחרי: כרטיס מקור חדש. סמלים ומעטפת מותאמים לדפדפן."
+    ],
+    "sha256": "75cf2a56246730843decbc771a272db9092d7dfa4edb35711192fb77ecb05c6c"
+  },
+  {
+    "file": "rating-review-before-2026-11-11.png",
+    "source": "artifacts/rating-review-2026-11-11/ratings-before.png",
+    "environment": "רכיב מקור במתאם דפדפן עם נתוני הדגמה",
+    "platform": "Web",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-11",
+    "notes": [
+      "כולל שינויים מקומיים. אין אימות מכשיר או נתוני ייצור.",
+      "לפני: מסך קודם. אחרי: כרטיס מקור חדש. סמלים ומעטפת מותאמים לדפדפן."
+    ],
+    "sha256": "7e46a8da5577996377e12ee6a6f1358af5e02904677642310b5c5033858395c2"
+  },
+  {
+    "file": "pulse-player-error-dates-before-2026-11-08.jpg",
+    "source": "צילום מסך מקורי שצורף לבקשה",
+    "environment": "מכשיר הבעלים",
+    "platform": "Pulse",
+    "sourceCommit": "unknown",
+    "captured": "2026-11-08",
+    "notes": [
+      "הצילום הועבר בתאריך זה. גרסת פולס והמקור המדויק של החבילה אינם מופיעים בתמונה."
+    ],
+    "sha256": "ac36e8b498c88bebc181fdeb7ac7ad93ef8cb3c82bd0fdb9de936b06082489f8"
+  },
+  {
+    "file": "pulse-player-error-dates-2026-11-08.png",
+    "source": "artifacts/pulse-entry-2026-11-08/player-history.png",
+    "platform": "Web",
+    "environment": "רינדור רכיב מקור בדפדפן",
+    "captured": "2026-11-08",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "notes": [
+      "רכיב ציר השחקן של פולס במתאם דפדפן עם שלושת הזמנים שנקראו מהמסד. מסננים וסמלים מותאמים.",
+      "כולל שינויים מקומיים מעל גרסת המקור."
+    ],
+    "sha256": "cd0a78c80f655f7e0347f02a099c50b50acd8778e259e9347afd41385c547fd4"
+  },
+  {
+    "file": "club-tabs-scroll-2026-11-08.png",
+    "source": "artifacts/pulse-entry-2026-11-08/club-after.png",
+    "platform": "Android",
+    "environment": "דמו מקומי באימולטור",
+    "captured": "2026-11-08",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "notes": [
+      "יישום דמו מקומי באימולטור אנדרואיד מבודד אחרי ארבע בחירות מאומתות של לשונית לאחר גלילה.",
+      "כולל שינויים מקומיים מעל גרסת המקור."
+    ],
+    "sha256": "f694f812c1694655b9f8bab6b7b28b94b95f5415e1c7415319296faffe9aed7a"
+  },
+  {
+    "file": "penalty-columns-after-2026-11-08.png",
+    "source": "artifacts/pulse-entry-2026-11-08/stats-after.png",
+    "platform": "Web",
+    "environment": "רינדור רכיב מקור בדפדפן",
+    "captured": "2026-11-08",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "notes": [
+      "רכיב הסטטיסטיקה המקורי אחרי השינוי עם בעיטות הדגמה. נבדקו שלושה רוחבים ושני גדלי כתב.",
+      "כולל שינויים מקומיים מעל גרסת המקור."
+    ],
+    "sha256": "ff577b336273808007438285aee7dc9fe7780d5ce979852eb870802f15a6ba08"
+  },
+  {
+    "file": "penalty-columns-before-2026-11-08.png",
+    "source": "artifacts/pulse-entry-2026-11-08/stats-before.png",
+    "platform": "Web",
+    "environment": "רינדור רכיב מקור בדפדפן",
+    "captured": "2026-11-08",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "notes": [
+      "רכיב הסטטיסטיקה המקורי לפני השינוי עם בעיטות הדגמה.",
+      "כולל שינויים מקומיים מעל גרסת המקור."
+    ],
+    "sha256": "583ab392601e6399e99e2d3b2be7a824ccaf2c9b6a4608448ff351b041ac8455"
+  },
+  {
+    "file": "friends-expired-invitation-2026-11-08.png",
+    "source": "artifacts/invitation-expiry-2026-11-08/expired.png",
+    "platform": "Web",
+    "environment": "רכיב ההזמנות המקורי עם נתוני הדגמה ומתאם דפדפן",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-08",
+    "notes": [
+      "צילום האזור לאחר פקיעת ההזמנה כשהמסך פתוח. סמלים ומעטפת מותאמים לדפדפן. ללא אימות במכשיר."
+    ],
+    "sha256": "768d83d711e8e6a49f8c1e945855ca980e01a814b9a365b040d6dadaacd1e5dd"
+  },
+  {
+    "file": "match-end-options-before-2026-11-06.png",
+    "source": "artifacts/match-end-options-2026-11-06/before.png",
+    "platform": "Web",
+    "environment": "רכיב חלון סיום המשחק במתאם דפדפן עם נתוני הדגמה בלבד",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-06",
+    "notes": [
+      "רוחב 390 וגופן רגיל, שלוש קבוצות. גוף החלון גולל להצגת האפשרויות.",
+      "מקור עם שינויים מקומיים. הצילום אחרי השינוי נפתח ונבחן בכיווניות עברית.",
+      "אין בדיקת מכשיר חדשה, כתיבת משחק בייצור או הפצה."
+    ],
+    "sha256": "b451c04867681267797fdda9162932c003f1f5195a534bfc5cb321096dcc5ab4"
+  },
+  {
+    "file": "match-end-options-after-2026-11-06.png",
+    "source": "artifacts/match-end-options-2026-11-06/after.png",
+    "platform": "Web",
+    "environment": "רכיב חלון סיום המשחק במתאם דפדפן עם נתוני הדגמה בלבד",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-06",
+    "notes": [
+      "רוחב 390 וגופן רגיל, שלוש קבוצות. גוף החלון גולל להצגת האפשרויות.",
+      "מקור עם שינויים מקומיים. הצילום אחרי השינוי נפתח ונבחן בכיווניות עברית.",
+      "אין בדיקת מכשיר חדשה, כתיבת משחק בייצור או הפצה."
+    ],
+    "sha256": "56c3b8aa2d7ae612078520c708c0b3396a4b4169b61f41be598f97f27d44af78"
+  },
+  {
+    "file": "draw-summary-design-before-A-2026-11-06.png",
+    "source": "artifacts/draw-summary-design-2026-11-06/before-A.png",
+    "platform": "Web",
+    "environment": "חלון התיקו המקורי במתאם דפדפן עם נתוני הדגמה בלבד",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-06",
+    "notes": [
+      "רוחב 390 וגופן רגיל. מקור עם שינויים מקומיים. הצילום אינו הסקיצה המאושרת.",
+      "הצילומים אחרי השינוי נפתחו ונבחנו בכיווניות עברית. נבדקו גם 12 צירופי מצב, רוחב וגופן.",
+      "אין אימות מנוע פריסה מקורי במכשיר, שמירת משחק בייצור או הפצה."
+    ],
+    "sha256": "ec63242af65d077907545c63aa804478c215db96316e1c75a9165b3fcaceb46b"
+  },
+  {
+    "file": "draw-summary-design-before-none-2026-11-06.png",
+    "source": "artifacts/draw-summary-design-2026-11-06/before-none.png",
+    "platform": "Web",
+    "environment": "חלון התיקו המקורי במתאם דפדפן עם נתוני הדגמה בלבד",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-06",
+    "notes": [
+      "רוחב 390 וגופן רגיל. מקור עם שינויים מקומיים. הצילום אינו הסקיצה המאושרת.",
+      "הצילומים אחרי השינוי נפתחו ונבחנו בכיווניות עברית. נבדקו גם 12 צירופי מצב, רוחב וגופן.",
+      "אין אימות מנוע פריסה מקורי במכשיר, שמירת משחק בייצור או הפצה."
+    ],
+    "sha256": "8a7960809768089018881baff0cf0443b2c0364a5e02321def997b3abe6552bd"
+  },
+  {
+    "file": "draw-summary-design-after-A-2026-11-06.png",
+    "source": "artifacts/draw-summary-design-2026-11-06/after-A.png",
+    "platform": "Web",
+    "environment": "חלון התיקו המקורי במתאם דפדפן עם נתוני הדגמה בלבד",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-06",
+    "notes": [
+      "רוחב 390 וגופן רגיל. מקור עם שינויים מקומיים. הצילום אינו הסקיצה המאושרת.",
+      "הצילומים אחרי השינוי נפתחו ונבחנו בכיווניות עברית. נבדקו גם 12 צירופי מצב, רוחב וגופן.",
+      "אין אימות מנוע פריסה מקורי במכשיר, שמירת משחק בייצור או הפצה."
+    ],
+    "sha256": "7307badf4735202d64bd389a774ed30df5f8e29ab4dde94ceaf3bfd1a7e913f5"
+  },
+  {
+    "file": "draw-summary-design-after-none-2026-11-06.png",
+    "source": "artifacts/draw-summary-design-2026-11-06/after-none.png",
+    "platform": "Web",
+    "environment": "חלון התיקו המקורי במתאם דפדפן עם נתוני הדגמה בלבד",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-06",
+    "notes": [
+      "רוחב 390 וגופן רגיל. מקור עם שינויים מקומיים. הצילום אינו הסקיצה המאושרת.",
+      "הצילומים אחרי השינוי נפתחו ונבחנו בכיווניות עברית. נבדקו גם 12 צירופי מצב, רוחב וגופן.",
+      "אין אימות מנוע פריסה מקורי במכשיר, שמירת משחק בייצור או הפצה."
+    ],
+    "sha256": "6114189a1267d89cdfa75cd1302f5e8a86088d28c625d37df68260aa4e5371fd"
+  },
+  {
+    "file": "round-penalties-position-stats-before-2026-11-06.png",
+    "source": "artifacts/round-penalties-position-2026-11-06/stats-before.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור של לשונית סטטיסטיקת המחזור במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-06",
+    "notes": [
+      "שינויים מקומיים מעבר למקור הרשום. רוחב 390 וגופן רגיל. הצילום נפתח ונבחן.",
+      "אווטרים, סמלים ומעטפת מותאמים לדפדפן. רק כותרת אלופי המחזור מוצגת כמתאם; תוכן הטבלה אינו נבדק.",
+      "אין בדיקת מכשיר או נתוני ייצור. מימוש מקומי וטרם הופץ."
+    ],
+    "sha256": "15f540cf384b29a025fee3f39c1ac613f8de99a882423544e61709c7e9a79677"
+  },
+  {
+    "file": "round-penalties-position-stats-after-2026-11-06.png",
+    "source": "artifacts/round-penalties-position-2026-11-06/stats-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור של לשונית סטטיסטיקת המחזור במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-06",
+    "notes": [
+      "שינויים מקומיים מעבר למקור הרשום. רוחב 390 וגופן רגיל. הצילום נפתח ונבחן.",
+      "אווטרים, סמלים ומעטפת מותאמים לדפדפן. רק כותרת אלופי המחזור מוצגת כמתאם; תוכן הטבלה אינו נבדק.",
+      "אין בדיקת מכשיר או נתוני ייצור. מימוש מקומי וטרם הופץ."
+    ],
+    "sha256": "80907cf68a1a6d31e0cf09a2780bac3716f1002fadc69f9ddcabfeece4bc5644"
+  },
+  {
+    "file": "round-penalties-log-stats-before-2026-11-06.png",
+    "source": "artifacts/round-penalties-log-2026-11-06/stats-before.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור של לשונית סטטיסטיקת המחזור במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-06",
+    "notes": [
+      "שינויים מקומיים מעבר למקור הרשום. רוחב 390 וגופן רגיל. הצילום נפתח ונבחן.",
+      "אווטרים, סמלים ומעטפת מותאמים לדפדפן. הטבלה התחתונה הושמטה מהמארח.",
+      "אין בדיקת מכשיר או נתוני ייצור. מימוש מקומי וטרם הופץ."
+    ],
+    "sha256": "a9aeb807a457c6d65eee9fa571ae0f6df8ab64812ff6c2f7f9de4354288724aa"
+  },
+  {
+    "file": "round-penalties-log-stats-after-2026-11-06.png",
+    "source": "artifacts/round-penalties-log-2026-11-06/stats-after.png",
+    "platform": "Web",
+    "environment": "רכיבי מקור של לשונית סטטיסטיקת המחזור במתאם דפדפן עם נתוני הדגמה",
+    "sourceCommit": "d015093613d0745e212d76d85c38c982fe57cc71",
+    "captured": "2026-11-06",
+    "notes": [
+      "שינויים מקומיים מעבר למקור הרשום. רוחב 390 וגופן רגיל. הצילום נפתח ונבחן.",
+      "אווטרים, סמלים ומעטפת מותאמים לדפדפן. הטבלה התחתונה הושמטה מהמארח.",
+      "אין בדיקת מכשיר או נתוני ייצור. מימוש מקומי וטרם הופץ."
+    ],
+    "sha256": "583ab392601e6399e99e2d3b2be7a824ccaf2c9b6a4608448ff351b041ac8455"
+  },
+  {
     "file": "manual-draw-before-2-2026-11-06.png",
     "source": "artifacts/manual-draw-2026-11-06/before-2.png",
     "platform": "Web",

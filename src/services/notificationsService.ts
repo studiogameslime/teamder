@@ -40,7 +40,8 @@ import {
   UserId,
   defaultNotificationPrefs,
 } from '@/types';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Application from 'expo-application';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
@@ -121,7 +122,51 @@ function looksLikeApnsToken(token: string): boolean {
   return /^[0-9a-f]{64}$/i.test(token);
 }
 
-async function getFcmToken(): Promise<string | null> {
+let tokenRequest: Promise<string | null> | null = null;
+let registrationRequest: Promise<string | null> | null = null;
+let registrationRetryAt = 0;
+let registrationLimitLoaded = false;
+const REGISTRATION_RETRY_KEY = 'footy.push.registrationRetryAt';
+const REGISTRATION_WAIT_MS = 30 * 60_000;
+
+function providerToken(): Promise<string | null> {
+  if (!tokenRequest) tokenRequest = requestFcmToken().finally(() => { tokenRequest = null; });
+  return tokenRequest;
+}
+
+async function registrationToken(): Promise<string | null> {
+  if (!registrationLimitLoaded) {
+    try {
+      const saved = Number(await AsyncStorage.getItem(REGISTRATION_RETRY_KEY));
+      if (Number.isSafeInteger(saved) && saved <= Date.now() + REGISTRATION_WAIT_MS) {
+        registrationRetryAt = Math.max(registrationRetryAt, saved);
+      }
+      registrationLimitLoaded = true;
+    } catch (error) {
+      observeCaughtError(error, {source:'src/services/notificationsService.ts',handler:'registrationToken',site:'push:readCooldown'});
+    }
+  }
+  return Date.now() < registrationRetryAt ? null : providerToken();
+}
+
+function getFcmToken(forRemoval = false): Promise<string | null> {
+  if (forRemoval) return providerToken();
+  if (!registrationRequest) registrationRequest = registrationToken().finally(() => { registrationRequest = null; });
+  return registrationRequest;
+}
+
+async function registrationLimited(error: unknown): Promise<boolean> {
+  if (!/\bTOO_MANY_REGISTRATIONS\b/.test(String((error as Error)?.message ?? error))) return false;
+  registrationRetryAt = Date.now() + REGISTRATION_WAIT_MS;
+  try {
+    await AsyncStorage.setItem(REGISTRATION_RETRY_KEY, String(registrationRetryAt));
+  } catch (storageError) {
+    observeCaughtError(storageError, {source:'src/services/notificationsService.ts',handler:'registrationLimited',site:'push:saveCooldown'});
+  }
+  return true;
+}
+
+async function requestFcmToken(): Promise<string | null> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const messaging = require('@react-native-firebase/messaging').default;
@@ -140,6 +185,8 @@ async function getFcmToken(): Promise<string | null> {
     if (typeof token === 'string' && token.length > 0) return token;
   } catch (caughtError5f4243e9c5) {
     observeCaughtError(caughtError5f4243e9c5, {"source":"src/services/notificationsService.ts","handler":"getFcmToken","site":"notificationsService:5f4243e9c5"});
+    // On Android Expo asks the very same provider for a token.
+    if (await registrationLimited(caughtError5f4243e9c5)) return null;
     // Native module missing (Expo Go, a dev client built before this shipped).
     // Fall through rather than lose Android, which never had the bug.
   }
@@ -156,8 +203,33 @@ async function getFcmToken(): Promise<string | null> {
     return token;
   } catch (caughtErrord572bf4985) {
     observeCaughtError(caughtErrord572bf4985, {"source":"src/services/notificationsService.ts","handler":"getFcmToken","site":"notificationsService:d572bf4985"});
+    await registrationLimited(caughtErrord572bf4985);
     return null;
   }
+}
+
+/** Own the automatic, already-permitted registration for the mounted account. */
+export function maintainPushRegistration(register: () => Promise<string | null>): () => void {
+  let active = true, pending = false, confirmed = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const check = async () => {
+    if (!active || pending || confirmed || AppState.currentState === 'background' || AppState.currentState === 'inactive') return;
+    pending = true;
+    clearTimeout(timer);
+    try {
+      confirmed = Boolean(await register());
+    } catch (error) {
+      observeCaughtError(error, {source:'src/services/notificationsService.ts',handler:'maintainPushRegistration',site:'push:autoRegister'});
+    } finally {
+      pending = false;
+      if (active && !confirmed && registrationRetryAt > Date.now()) {
+        timer = setTimeout(() => void check(), registrationRetryAt - Date.now());
+      }
+    }
+  };
+  const subscription = AppState.addEventListener('change', state => { if (state === 'active') void check(); });
+  void check();
+  return () => { active = false; clearTimeout(timer); subscription.remove(); };
 }
 
 /** How long the "העונה הסתיימה" home card stays up after the close. */
@@ -595,11 +667,15 @@ export const notificationsService = {
    *
    * Mock mode: no-op.
    */
-  async registerDeviceToken(uid: UserId, token: string): Promise<void> {
-    if (USE_MOCK_DATA || !token) return;
+  async registerDeviceToken(uid: UserId, token: string): Promise<boolean> {
+    if (USE_MOCK_DATA || !token) return false;
+    const owner = getFirebase().auth.currentUser;
+    if (!owner || owner.uid !== uid || owner.isAnonymous) return false;
     // Mirror the token to Joryio so it can reach this device too. Independent
     // of the Firestore write below: whichever fails, the other still lands.
-    void joryio.registerPushToken(token);
+    void joryio.registerPushToken(token).catch(error => {
+      observeCaughtError(error, {source:'src/services/notificationsService.ts',handler:'registerDeviceToken',site:'push:companionRegister'});
+    });
     try {
       await setDoc(
         docs.userPrivatePush(uid),
@@ -622,6 +698,7 @@ export const notificationsService = {
     observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"registerDeviceToken","site":"notificationsService:114b843878"});
       logError('registerDeviceToken', err, { uid });
       if (__DEV__) console.warn('[notifications] registerDeviceToken', err);
+      return false;
     }
     // Drop this account's dead APNs tokens the first time a real FCM token
     // lands. 153 users carry one and the server pruner will never take it:
@@ -630,7 +707,9 @@ export const notificationsService = {
     // adding that code to the pruner would let one bad payload wipe every
     // token we have. Cleaning by SHAPE is the safe half of that job, and only
     // the owner can write here anyway.
+    if (getFirebase().auth.currentUser !== owner) return false;
     void this.pruneApnsTokens(uid);
+    return true;
   },
 
   /** Remove any 64-hex APNs tokens from this user — they can never be
@@ -675,7 +754,7 @@ export const notificationsService = {
     }
     if (!Notifications) return;
     try {
-      const token = await getFcmToken();
+      const token = await getFcmToken(true);
       if (!token) return;
       await setDoc(
         docs.userPrivatePush(uid),
@@ -809,8 +888,7 @@ export const notificationsService = {
       if (!existing.granted) return null;
       const token = await getFcmToken();
       if (!token) return null;
-      await this.registerDeviceToken(uid, token);
-      return token;
+      return await this.registerDeviceToken(uid, token) ? token : null;
     } catch (err) {
     observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"registerPushTokenIfPermitted","site":"notificationsService:3d160b2695"});
       logError('registerPushTokenIfPermitted', err, { uid });
@@ -878,8 +956,7 @@ export const notificationsService = {
       if (USE_MOCK_DATA) return null;
       const token = await getFcmToken();
       if (!token) return null;
-      await this.registerDeviceToken(uid, token);
-      return token;
+      return await this.registerDeviceToken(uid, token) ? token : null;
     } catch (err) {
     observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"requestAndRegisterPushToken","site":"notificationsService:56181b5877"});
       logError('requestAndRegisterPushToken', err, { uid });

@@ -20,6 +20,14 @@ import type { DraftTeamsResult, LiveMatchState, MatchRotation, PenaltyOutcome } 
 
 type Kick = NonNullable<LiveMatchState['shootout']>['kicks'][number];
 type Screen = 'first' | 'turn' | 'kicker' | 'keeper' | 'result' | 'log' | 'edit' | 'undo' | 'finish';
+
+// Both rejections occur before any statistics are committed. An ambiguous
+// network failure must still retry the original idempotent decision.
+function rejectedFinishSnapshot(error: unknown): boolean {
+  const failure = error as {code?: string; message?: string} | null;
+  return (!failure?.code && failure?.message === 'המשחק, ההרכבים או התוצאה השתנו. יש לבדוק את המצב המעודכן לפני הסיום.') ||
+    (failure?.code === 'functions/failed-precondition' && failure.message === 'המשחק השתנה. יש לנסות שוב עם התוצאה המעודכנת.');
+}
 type CompletedKick = { id: string; team: 'A' | 'B'; outcome: PenaltyOutcome; kicker: RosterMember; keeper: RosterMember };
 const outcomeText = (kick: Kick) => kick.outcome ? outcomes.find(o => o.key === kick.outcome)!.title : kick.scored ? 'גול' : 'לא הובקע';
 
@@ -162,6 +170,10 @@ export function Shootout({ visible, gameId, shootout, draftTeams, rotation, play
     observeCaughtError(error, {"source":"src/components/match/ShootoutWizard.tsx","handler":"saveSetup","site":"ShootoutWizard:3e98f418ab"});
       logError('shootoutSaveSetup', error, { gameId, roundId, stage: screen });
       if (current()) {
+        if (screen === 'finish' && rejectedFinishSnapshot(error)) {
+          setupAttempt.current = null;
+          setFinishChoice(null);
+        }
         setSaveError(true);
         setReselectAllowed((error as {code?:string})?.code === 'LIVE_ROSTER_CHANGED' && screen === 'edit');
         setSaveErrorMessage(String((error as Error)?.message).includes('closedSeasonGame')
@@ -263,7 +275,11 @@ export function Shootout({ visible, gameId, shootout, draftTeams, rotation, play
   const summary = screen === 'log' || screen === 'finish';
   const leading: 'A' | 'B' | null = scoredOf('A') === scoredOf('B') ? null : scoredOf('A') > scoredOf('B') ? 'A' : 'B';
   const finishSide = leading ?? finishChoice;
-  const finishDisabled = busy || saveError || !kicks.length || !finishSide || !rotation || !draftTeams;
+  // The parent commits the board from its live snapshot. While our locally
+  // acknowledged kick is ahead of it, the two views describe different games.
+  const awaitingBoard = !!shootout && shadow?.base === signature &&
+    shootoutFingerprint({...shootout, kicks, nextTeam: shadow.nextTeam}) !== shootoutFingerprint(shootout);
+  const finishDisabled = busy || saveError || awaitingBoard || !kicks.length || !finishSide || !rotation || !draftTeams;
   const editSide = edit?.team ?? 'A', editOther = editSide === 'A' ? 'B' : 'A';
   const pitchTeam = completed?.team ?? attempt.current?.team ?? kickingTeam;
   const pitchOther = pitchTeam === 'A' ? 'B' : 'A';

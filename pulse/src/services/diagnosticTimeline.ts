@@ -1,7 +1,7 @@
 import { observeCaughtError } from './errorObservation';
 export type Step={seq:number;ms:number;kind:string;name:string;screen?:string;data?:Record<string,string|number|boolean>};
 export type Operation={id:string;name:string;startedAt:number;durationMs?:number;result:'pending'|'success'|'failure';code?:string;before:Record<string,string|number|boolean>;after?:Record<string,string|number|boolean>;outcome?:Record<string,string|number|boolean>};
-export type Journal={sessionId:string;total:number;omitted:number;entries:Step[];context?:Record<string,string|number|boolean>;operations?:Operation[];operationsOmitted?:number};
+export type Journal={sessionId:string;capturedAt?:number;total:number;omitted:number;entries:Step[];context?:Record<string,string|number|boolean>;operations?:Operation[];operationsOmitted?:number};
 function primitiveState(raw:unknown):Record<string,string|number|boolean>{
  const out:Record<string,string|number|boolean>={};
  if(raw&&typeof raw==='object'&&!Array.isArray(raw))for(const [k,v]of Object.entries(raw).slice(0,60)){
@@ -28,7 +28,8 @@ export function parseJournal(raw:unknown):Journal|null {
    return [{id:op.id.slice(0,100),name:op.name.slice(0,100),startedAt:op.startedAt,result:op.result,
     ...(Number.isFinite(op.durationMs)&&op.durationMs>=0?{durationMs:op.durationMs}:{}),...(typeof op.code==='string'?{code:op.code.slice(0,100)}:{}),outcome:primitiveState(op.outcome),before:primitiveState(op.before),...(op.after?{after:primitiveState(op.after)}:{})}];
   }):[];
-  return {operationsOmitted:Number.isSafeInteger(v.operationsOmitted)&&v.operationsOmitted>=0?v.operationsOmitted:0,context:v.context?primitiveState(v.context):undefined,operations,sessionId:String(v.sessionId??'').slice(0,100),total:v.total,omitted:Math.max(v.omitted,v.total-entries.length),entries};
+  const capturedAt=Number.isSafeInteger(v.capturedAt)&&v.capturedAt>0&&v.capturedAt>=v.startedAt?v.capturedAt:undefined;
+  return {capturedAt,operationsOmitted:Number.isSafeInteger(v.operationsOmitted)&&v.operationsOmitted>=0?v.operationsOmitted:0,context:v.context?primitiveState(v.context):undefined,operations,sessionId:String(v.sessionId??'').slice(0,100),total:v.total,omitted:Math.max(v.omitted,v.total-entries.length),entries};
  }catch (caughtError756efbc373){
     observeCaughtError(caughtError756efbc373, {"source":"pulse/src/services/diagnosticTimeline.ts","handler":"parseJournal","site":"diagnosticTimeline:756efbc373"});return null;}
 }

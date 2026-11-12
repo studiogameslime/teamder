@@ -1,4 +1,5 @@
-import { runDiagnosticOperation } from './diagnosticJournal';
+import { recordDiagnostic, runDiagnosticOperation } from './diagnosticJournal';
+import { profileReadDeadline } from './profileReadDeadline';
 import { isTransientReadError, retryRead } from './readRetry';
 import { observeCaughtError } from '../utils/errorObservation';
 import { readPlayerIdentity, playerReadCall, invalidatePlayerIdentityReads } from './publicPlayerService';
@@ -146,31 +147,34 @@ export const userService = {
     // AsyncStorage-cached user so a signed-in user still gets into the app; the
     // live doc refreshes once the network returns.
     let snap: import('firebase/firestore').DocumentSnapshot<User> | null = null;
-    let readTimer: ReturnType<typeof setTimeout> | undefined;
+    let cancelDeadline: (() => void) | undefined;
     let readExpired = false;
+    const timeout = new Error('getCurrentUser: read timeout');
     const assertReadCurrent = () => {
       if (getFirebase().auth.currentUser?.uid !== fbUser.uid) throw new StaleSessionError(fbUser.uid, getFirebase().auth.currentUser?.uid ?? '');
-      if (readExpired) throw new Error('getCurrentUser: read timeout');
+      if (readExpired) throw timeout;
     };
     try {
       snap = await Promise.race([
-        retryRead(() => options?.requireServer ? getDocFromServer(ref) : getDoc(ref), assertReadCurrent),
+        retryRead(() => options?.requireServer ? getDocFromServer(ref) : getDoc(ref), assertReadCurrent, 500, null),
         new Promise<never>((_, reject) =>
-          { readTimer = setTimeout(() => { readExpired = true; reject(new Error('getCurrentUser: read timeout')); }, 8000); },
+          { cancelDeadline = profileReadDeadline(() => { readExpired = true; reject(timeout); }); },
         ),
       ]);
     } catch (err) {
       if (getFirebase().auth.currentUser?.uid !== fbUser.uid) throw new StaleSessionError(fbUser.uid, getFirebase().auth.currentUser?.uid ?? '');
-    observeCaughtError(err, {"source":"src/services/userService.ts","handler":"getCurrentUser","site":"userService:c2f30c2c24"});
-      if (__DEV__) console.warn('[auth] getCurrentUser read timed out', err);
-      if (options?.requireServer) throw err;
-      const cached = await readCachedAuthUser(fbUser.uid);
+      const cached = options?.requireServer ? null : await readCachedAuthUser(fbUser.uid);
       if (getFirebase().auth.currentUser?.uid !== fbUser.uid) throw new StaleSessionError(fbUser.uid, getFirebase().auth.currentUser?.uid ?? '');
+      if (cached && (err === timeout || isTransientReadError(err))) {
+        recordDiagnostic('act', 'profile_restored_from_cache', {profileSource: 'cache'});
+      } else {
+        observeCaughtError(err, {source: 'src/services/userService.ts', handler: 'getCurrentUser', site: 'userService:c2f30c2c24'});
+      }
       if (cached) return cached;
       // A restored account whose profile is unavailable is not signed out.
       throw err;
     } finally {
-      if (readTimer) clearTimeout(readTimer);
+      cancelDeadline?.();
     }
     if (snap.exists()) {
       // Presence ping — powers Pulse's platform / "inactive N days" segments.

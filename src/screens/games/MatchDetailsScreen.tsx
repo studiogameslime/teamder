@@ -1,4 +1,5 @@
 import { useUsageSection } from '@/hooks/useUsageSection';
+import { LiveRoundEditsCard } from '@/components/match/LiveRoundEditsCard';
 import { ContentReveal } from '@/components/anim/ContentReveal';
 import { useConfirmedFeedback } from '@/hooks/useConfirmedFeedback';
 import { registrationFeedback } from '@/utils/registrationFeedback';
@@ -2495,7 +2496,9 @@ export function MatchDetailsScreen() {
                 label: he.matchMenuEdit,
                 icon: 'create-outline' as const,
                 onPress: () => {
-                  if (canEditGame(game, { isOrganizerOrAdmin: isAdmin })) {
+                  if (game.rotation && game.draftTeams) {
+                    nav.navigate('LiveMatch', { gameId: game.id, editRound: true });
+                  } else if (canEditGame(game, { isOrganizerOrAdmin: isAdmin })) {
                     handleEditPress();
                   } else {
                     appAlert(
@@ -2563,7 +2566,9 @@ export function MatchDetailsScreen() {
                     hasTeams: !!game.draftTeams,
                   });
                   const dt = game.draftTeams;
-                  if (dt) {
+                  if (game.rotation && dt) {
+                    nav.navigate('LiveMatch', { gameId: game.id, editRound: true });
+                  } else if (dt) {
                     nav.navigate('DraftBoard', {
                       gameId: game.id,
                       captainIds: [...dt.teams]
@@ -2920,6 +2925,7 @@ export function MatchDetailsScreen() {
     ? 'חסר עוד שחקן אחד לשתי קבוצות מלאות'
     : `חסרים עוד ${missingDraftPlayers} שחקנים לשתי קבוצות מלאות`;
   const openDraftSetup = (source: 'create_banner' | 'manage_banner') => {
+    if (game.rotation && game.draftTeams) { nav.navigate('LiveMatch', { gameId: game.id, editRound: true }); return; }
     if (missingDraftPlayers > 0) return;
     logEvent(AnalyticsEvent.TeamsFlowOpened, {
       gameId: game.id,
@@ -3581,6 +3587,7 @@ export function MatchDetailsScreen() {
                           </ChangeMotion>
                         ))}
                     </View>
+                    <LiveRoundEditsCard edits={game.liveRoundEdits} nameOf={id => resolveDraftUser(id).name}/>
                     {isAdmin && teamsAreDraft ? (
                       <View style={styles.publishTeamsWrap}>
                         <Button

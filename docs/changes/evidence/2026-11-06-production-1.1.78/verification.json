@@ -1,0 +1,47 @@
+{
+  "version": "1.1.78",
+  "sourceHead": "d015093613d0745e212d76d85c38c982fe57cc71",
+  "uncommittedChangesIncluded": true,
+  "sourceInputs": 1177,
+  "android": {
+    "code": 310,
+    "productionVerified": true,
+    "bundleHashMatches": true,
+    "otherTracksUnchanged": true,
+    "readAt": "2026-11-06T19:56:07.348Z"
+  },
+  "ios": {
+    "build": "123",
+    "buildId": "bfd51407-5444-4522-9383-6bb54e6a645e",
+    "versionId": "b260a120-a468-49bc-b05b-bbbe1a1aa373",
+    "submitted": true,
+    "reviewState": "WAITING_FOR_REVIEW",
+    "storeState": "WAITING_FOR_REVIEW",
+    "releaseType": "AFTER_APPROVAL",
+    "buildLinkedAndReadBackVerified": true,
+    "readBackAt": "2026-11-06T20:04:34.168Z"
+  },
+  "checks": {
+    "fullSuitePassed": true,
+    "clientTests": 7274,
+    "suites": 651,
+    "typechecksClean": [
+      "client",
+      "server",
+      "pulse"
+    ],
+    "rulesPassed": 361,
+    "serverPassed": 68,
+    "serverTodoNotRun": 3,
+    "initialPerformanceFailure": {
+      "actualMs": 1502,
+      "limitMs": 1500,
+      "codeOrThresholdChanged": false,
+      "completeRerunPassed": true
+    },
+    "productionDataUsedInTests": false
+  },
+  "deviceInstallVerified": false,
+  "oldLogPruningRejectedAndNotPerformed": true,
+  "releaseLogReadBackVerified": true
+}

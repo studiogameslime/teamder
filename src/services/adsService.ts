@@ -18,11 +18,11 @@ import { observeCaughtError } from '../utils/errorObservation';
 import React from 'react';
 import { AppState, Platform, Text, View } from 'react-native';
 import Constants from 'expo-constants';
-import { doc, getDoc } from 'firebase/firestore';
+import { readAppConfig } from './readAppConfig';
 import { logError } from '@/services/errorLog';
 import { storage } from '@/services/storage';
 import { rcNumber, rcBool, useRemoteConfig } from '@/services/remoteConfigService';
-import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
+import { USE_MOCK_DATA } from '@/firebase/config';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 
 // ─── App-open ad frequency controls ───────────────────────────────────────
@@ -286,8 +286,7 @@ async function refreshAdsMaster(): Promise<void> {
     return;
   }
   try {
-    const { db } = getFirebase();
-    const snap = await getDoc(doc(db, 'appConfig', 'ads'));
+    const snap = await readAppConfig('ads');
     if (snap.exists()) {
       const data = snap.data() as {
         appOpenEnabled?: unknown;

@@ -1,8 +1,10 @@
+jest.mock('react-native', () => ({ AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } }));
 import fs from 'fs';
 import vm from 'vm';
 import ts from 'typescript';
 import { subscribeUserSession, suspendUserSessionListeners } from '@/services/userSessionListeners';
-import { retryRead } from '@/services/readRetry';
+import { retryRead, isTransientReadError } from '@/services/readRetry';
+import { profileReadDeadline } from '@/services/profileReadDeadline';
 import { StaleSessionError } from '@/services/staleSession';
 
 function actualMethod(file: string, name: string, context: object) {
@@ -295,7 +297,7 @@ test('cold cached-profile hydration waits for restored Firebase identity before 
   const cached = { id: uid, name: 'שם שמור' }, readCachedAuthUser = jest.fn(async () => cached);
   const getCurrentUser = actualMethod('src/services/userService.ts', 'getCurrentUser', {
     USE_MOCK_DATA: false, waitForAuthRestore: () => restored, docs: { user: (id: string) => id },
-      getFirebase: () => ({ auth }), retryRead, StaleSessionError,
+      getFirebase: () => ({ auth }), retryRead, isTransientReadError, recordDiagnostic: jest.fn(), StaleSessionError, profileReadDeadline,
     getDoc: async () => { throw Error('offline profile'); }, readCachedAuthUser,
     setTimeout, clearTimeout, __DEV__: false, console,
   });

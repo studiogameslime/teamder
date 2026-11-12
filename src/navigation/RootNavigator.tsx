@@ -33,7 +33,7 @@ import {
 import { colors } from '@/theme';
 import { adsService } from '@/services/adsService';
 import { initRemoteConfig } from '@/services/remoteConfigService';
-import { notificationsService } from '@/services/notificationsService';
+import { maintainPushRegistration, notificationsService } from '@/services/notificationsService';
 import { storage } from '@/services/storage';
 import {
   readPendingAction,
@@ -620,15 +620,8 @@ export function RootNavigator() {
     // Somebody who already granted push keeps everything: FCM rotates tokens,
     // so the refresh below still has to run on every launch for their existing
     // notifications to keep arriving.
-    notificationsService
-      .registerPushTokenIfPermitted(currentUser.id)
-      .catch((err) => {
-    observeCaughtError(err, {"source":"src/navigation/RootNavigator.tsx","handler":"RootNavigator","site":"RootNavigator:79a60699f8"});
-        if (__DEV__) {
-          console.warn('[boot] registerPushTokenIfPermitted threw', err);
-        }
-      });
-  }, [currentUser?.id]);
+    return maintainPushRegistration(() => notificationsService.registerPushTokenIfPermitted(currentUser.id));
+  }, [currentUser?.id, currentUser?.isGuest]);
 
   // ── The decision tree ───────────────────────────────────────────────────
   //

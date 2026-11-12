@@ -14,17 +14,17 @@ import SystemConfiguration
 // Expo's Module is not an NSObject. WatchConnectivity requires an
 // NSObjectProtocol delegate, so keep that responsibility in a retained adapter.
 private final class WatchSessionDelegate: NSObject, WCSessionDelegate {
-  private let onActivationError: () -> Void
+  private let onActivation: (WCSession, Error?) -> Void
 
-  init(onActivationError: @escaping () -> Void) {
-    self.onActivationError = onActivationError
+  init(onActivation: @escaping (WCSession, Error?) -> Void) {
+    self.onActivation = onActivation
     super.init()
   }
 
   func session(_ session: WCSession,
                activationDidCompleteWith state: WCSessionActivationState,
                error: Error?) {
-    if error != nil { onActivationError() }
+    DispatchQueue.main.async { self.onActivation(session, error) }
   }
 
   func sessionDidBecomeInactive(_ session: WCSession) {}
@@ -34,8 +34,12 @@ private final class WatchSessionDelegate: NSObject, WCSessionDelegate {
 }
 
 public class WatchBridgeModule: Module {
-  private lazy var sessionDelegate = WatchSessionDelegate { [weak self] in
-    self?.recordDiagnostic("watch.activation")
+  // State publication and activation completion are serialized on the main
+  // queue so a pending logout always supersedes the previous user's snapshot.
+  private var pendingState: String?
+  private lazy var sessionDelegate = WatchSessionDelegate { [weak self] session, error in
+    if error != nil { self?.recordDiagnostic("watch.activation"); return }
+    self?.deliverPendingState(session)
   }
   private let diagnosticLock = NSLock()
   private var diagnosticCodes: [String] = []
@@ -58,6 +62,23 @@ public class WatchBridgeModule: Module {
     diagnosticCodes.removeAll(keepingCapacity: true)
     diagnosticOverflow = false
     return result
+  }
+
+  private func deliverPendingState(_ session: WCSession) {
+    guard session.activationState == .activated, let json = pendingState else { return }
+    pendingState = nil
+    guard session.isPaired && session.isWatchAppInstalled else { return }
+    let ctx: [String: Any] = ["json": json]
+    do {
+      try session.updateApplicationContext(ctx)
+    } catch {
+      recordDiagnostic("watch.context")
+    }
+    if session.isReachable {
+      session.sendMessage(ctx, replyHandler: nil, errorHandler: { [weak self] _ in
+        self?.recordDiagnostic("watch.message")
+      })
+    }
   }
 
   public func definition() -> ModuleDefinition {
@@ -89,27 +110,15 @@ public class WatchBridgeModule: Module {
     Function("isWatchPaired") { () -> Bool in
       guard WCSession.isSupported() else { return false }
       let s = WCSession.default
-      return s.isPaired && s.isWatchAppInstalled
+      return s.activationState == .activated && s.isPaired && s.isWatchAppInstalled
     }
 
     AsyncFunction("publishState") { (json: String) in
       guard WCSession.isSupported() else { return }
       let session = WCSession.default
-      let ctx: [String: Any] = ["json": json]
-      // Latest-wins snapshot — delivered when the watch next wakes even if it's
-      // asleep/unreachable now (the primary channel).
-      do {
-        try session.updateApplicationContext(ctx)
-      } catch {
-        self.recordDiagnostic("watch.context")
-      }
-      // Instant push when the watch app is foreground + reachable.
-      if session.isReachable {
-        session.sendMessage(ctx, replyHandler: nil, errorHandler: { [weak self] _ in
-          self?.recordDiagnostic("watch.message")
-        })
-      }
-    }
+      self.pendingState = json
+      self.deliverPendingState(session)
+    }.runOnQueue(.main)
   }
 
 }

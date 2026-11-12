@@ -13,7 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ScrollSurface } from '@/components/ScrollSurface';
 import { ManagerWorkspace } from '@/components/manager/ManagerWorkspace';
 import { ManagerEquipmentHolders } from '@/components/manager/ManagerEquipmentHolders';
-import { ManagerRatingFilters, availableManagerRatingFilter } from '@/components/manager/ManagerRatingFilters';
+import { ManagerRatingReview } from '@/components/manager/ManagerRatingReview';
 import { UserAvatar } from '@/components/UserAvatar';
 import { AdminRatingSheet } from '@/components/AdminRatingSheet';
 import { SafeModal } from '@/components/SafeModal';
@@ -24,7 +24,7 @@ import { useUserStore } from '@/store/userStore';
 import { groupService } from '@/services/groupService';
 import { loadManagerDashboard, managerLoadErrorMessage, watchManagerAccess, type ManagerData } from '@/services/managerDashboardService';
 import { logError } from '@/services/errorLog';
-import { equipmentCounts, managerOverview, ratingAdvice, ratingSeries, registrationState, type RatingSeries, type ScorePoint } from '@/utils/managerDashboard';
+import { equipmentCounts, managerOverview, registrationState, type ScorePoint } from '@/utils/managerDashboard';
 import { inSeason } from '@/utils/seasonScope';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { canJoinGame } from '@/services/gameLifecycle';
@@ -69,9 +69,8 @@ export function ManagerDashboardScreen() {
  const [loading,setLoading]=useState(true),[error,setError]=useState(''),[refresh,setRefresh]=useState(0);
  const [tab,setTab]=useState<Tab>(initialTab(route.params.initialTab));
  useUsageSection(tab, { groupId });
- const [period,setPeriod]=useState<Period>(90),[filter,setFilter]=useState<'all'|'up'|'down'>(route.params.initialFilter??'all');
+ const [period,setPeriod]=useState<Period>(90);
  const [ratingTarget,setRatingTarget]=useState<User|null>(null),[saving,setSaving]=useState(false);
- const [details,setDetails]=useState<RatingSeries|null>(null);
  const [allEquipment,setAllEquipment]=useState(false);
  const [allAbsent,setAllAbsent]=useState(false),[allCancellations,setAllCancellations]=useState(false);
  useEffect(()=>{setAllAbsent(false);setAllCancellations(false);},[groupId]);
@@ -79,40 +78,32 @@ export function ManagerDashboardScreen() {
  const contentRef=useRef<ScrollView>(null);
  const workspaceBack=useRef<(()=>void)|null>(null);
  const openPlayer=(id:string)=>{setWorkspacePlayer(id);setTab('club');contentRef.current?.scrollTo({y:0,animated:false});};
- const [playerSearch,setPlayerSearch]=useState('');
- useEffect(()=>{setPlayerSearch('');setWorkspacePlayer(null);},[groupId,me?.id]);
+ useEffect(()=>{setWorkspacePlayer(null);},[groupId,me?.id]);
  const [now,setNow]=useState(Date.now());
  const [workspaceNeedsScores,setWorkspaceNeedsScores]=useState(false);
  const ownerKey=JSON.stringify([groupId,me?.id,me?.isGuest===true]);
  const currentOwner=useRef(ownerKey);currentOwner.current=ownerKey;
  const base=snapshot?.owner===ownerKey?snapshot.data:null;
- const scoreRead=useManagerDashboardScores(base,me?.id??'',focused&&!loading&&(tab==='ratings'||tab==='club'&&workspaceNeedsScores),tab==='ratings'?period:90,now,()=>setRefresh(value=>value+1));
+ const scoreRead=useManagerDashboardScores(base,me?.id??'',focused&&!loading&&tab==='club'&&workspaceNeedsScores,tab==='ratings'?period:90,now,()=>setRefresh(value=>value+1));
  const data=scoreRead.data;
  useFocusEffect(useCallback(()=>{
-   let active=true;setLoading(true);setError('');setSnapshot(null);setNow(Date.now());setRatingTarget(null);setDetails(null);setWorkspaceNeedsScores(false);
+   let active=true;setLoading(true);setError('');setSnapshot(null);setNow(Date.now());setRatingTarget(null);setWorkspaceNeedsScores(false);
    if(!me) {setLoading(false);setError('לוח המנהל זמין למנהלי המועדון בלבד');return;}
-   const stopAccess=watchManagerAccess(groupId,me.id,allowed=>{if(!allowed){active=false;setSnapshot(null);setLoading(false);setError('לוח המנהל זמין למנהלי המועדון בלבד');setRatingTarget(null);setDetails(null);}});
+   const stopAccess=watchManagerAccess(groupId,me.id,allowed=>{if(!allowed){active=false;setSnapshot(null);setLoading(false);setError('לוח המנהל זמין למנהלי המועדון בלבד');setRatingTarget(null);}});
    const isCurrent=()=>active&&currentOwner.current===ownerKey;
    loadManagerDashboard(groupId,me.id,{includeScores:false,isCurrent}).then(value=>{if(isCurrent())setSnapshot({owner:ownerKey,data:value});}).catch(err=>{
     if(!isCurrent())return;
     observeCaughtError(err, {"source":"src/screens/communities/ManagerDashboardScreen.tsx","handler":"ManagerDashboardScreen","site":"ManagerDashboardScreen:f26a3e4703"});logError('loadManagerDashboard',err,{groupId});setError(managerLoadErrorMessage(err));}).finally(()=>{if(isCurrent())setLoading(false);});
    return ()=>{active=false;stopAccess();};
  },[groupId,me?.id,me?.isGuest,ownerKey,refresh]));
- useEffect(()=>{setTab(initialTab(route.params.initialTab));setFilter(route.params.initialFilter??'all');},[groupId,route.params.initialTab,route.params.initialFilter]);
+ useEffect(()=>{setTab(initialTab(route.params.initialTab));},[groupId,route.params.initialTab,route.params.initialFilter]);
  const since=period==='season'?(data?.group.seasons?.startedAt??now):now-period*86400000;
  const scoped=useMemo(()=>data?.games.filter(g=>g.startsAt<now&&(period==='season'?inSeason(g,data.group.seasons):g.startsAt>=since))??[],[data,since,now,period]);
  const overview=useMemo(()=>data?managerOverview(data.group,data.games,now):null,[data,now]);
  const cancellations=useMemo(()=>data?managerOverview(data.group,scoped,now):null,[data,scoped,now]);
- const advice=useMemo(()=>data&&!data.scoresIncomplete?ratingAdvice(data.group,scoped,data.scores):[],[data,scoped]);
- const series=useMemo(()=>data?ratingSeries(data.group,scoped,data.scores):[],[data,scoped]);
- const recommendations=new Map(advice.map(a=>[a.userId,a]));
  const equipment=useMemo(()=>data?equipmentCounts(data.group,data.events,since,now):[],[data,since,now]);
  const users=useMemo(()=>Object.fromEntries(data?.users.map(u=>[u.id,u])??[]),[data]);
  const user=(id:string)=>users[id]??{id,name:'שחקן ללא פרטים',createdAt:0};
- const search=playerSearch.trim().toLocaleLowerCase();
- const scoresComplete=!!data&&!data.scoresIncomplete&&!scoreRead.loading&&!scoreRead.failed;
- const activeFilter=availableManagerRatingFilter(filter,scoresComplete);
- const visibleSeries=series.filter(a=>(activeFilter==='all'||recommendations.get(a.userId)?.direction===activeFilter)&&user(a.userId).name.toLocaleLowerCase().includes(search)).sort((a,b)=>Number(recommendations.has(b.userId))-Number(recommendations.has(a.userId))||a.userId.localeCompare(b.userId));
  const saveRating=async(value:number|null)=>{
    if(!data||!me||!ratingTarget||saving)return;
    setSaving(true);
@@ -124,14 +115,13 @@ export function ManagerDashboardScreen() {
  const person=(id:string,subtitle:string)=><View key={id} style={s.person}>
    <UserAvatar user={user(id)} size={38}/><View style={{flex:1,gap:4}}><Label style={s.name}>{user(id).name}</Label><Label style={s.muted}>{subtitle}</Label></View>
  </View>;
- const up=advice.filter(a=>a.direction==='up').length,down=advice.length-up;
  return <SafeAreaView edges={['top']} style={s.root}>
  <ImageBackground source={require('../../assets/images/manager-locker-room.png')} resizeMethod="resize" style={s.hero}>
  <LinearGradient colors={['#15428BB0','#164D9999']} style={StyleSheet.absoluteFill}/>
  <View style={s.heroLine}><Pressable accessibilityRole="button" accessibilityLabel="חזרה" onPress={()=>workspaceBack.current?workspaceBack.current():nav.goBack()} style={s.back}><Ionicons name="chevron-forward" size={25} color="white"/></Pressable><Label style={s.heroTitle}>לוח מנהל</Label></View>
  <Label style={s.heroSubtitle}>{data?.group.name??'ניהול המועדון'}</Label>
  </ImageBackground>
- {data&&<View style={s.tabs}>{([{key:'club',label:'סקירה'},{key:'ratings',label:'דירוגים'},{key:'equipment',label:'ציוד'}] as const).map(t=><Pressable key={t.key} accessibilityRole="tab" accessibilityState={{selected:tab===t.key}} onPress={()=>{setTab(t.key);setDetails(null);setWorkspacePlayer(null);}} style={[s.tab,tab===t.key&&s.tabActive]}><Label style={[s.tabLabel,tab===t.key&&{color:BLUE}]}>{t.label}</Label></Pressable>)}</View>}
+ {data&&<View style={s.tabs}>{([{key:'club',label:'סקירה'},{key:'ratings',label:'דירוגים'},{key:'equipment',label:'ציוד'}] as const).map(t=><Pressable key={t.key} accessibilityRole="tab" accessibilityState={{selected:tab===t.key}} onPress={()=>{setTab(t.key);setWorkspacePlayer(null);}} style={[s.tab,tab===t.key&&s.tabActive]}><Label style={[s.tabLabel,tab===t.key&&{color:BLUE}]}>{t.label}</Label></Pressable>)}</View>}
  {loading&&!data?<ScrollSurface contentContainerStyle={s.content}><ManagerDashboardSkeleton tab={tab}/></ScrollSurface>:!data?<View style={s.center}><Label>{error}</Label><Action title="נסה שוב" icon="refresh" onPress={()=>setRefresh(v=>v+1)}/></View>:
  <ScrollSurface ref={contentRef} keyboardShouldPersistTaps="handled" key={tab} contentContainerStyle={s.content} refreshControl={<RefreshControl refreshing={loading} onRefresh={()=>setRefresh(v=>v+1)}/>}>
  {data.truncated&&<Label style={s.notice}>מוצגים עד 200 מחזורים ו-1,000 אירועי ציוד וכרטיסים אחרונים. ייתכן שהתקופה אינה מלאה.</Label>}
@@ -145,26 +135,7 @@ export function ManagerDashboardScreen() {
  onPageChange={()=>contentRef.current?.scrollTo({y:0,animated:false})}
  onBackChange={back=>{workspaceBack.current=back;}}
  renderTrend={(points,direction)=><ManagerTrend points={points} direction={direction}/>}/>}
- {tab==='ratings'&&<>
- <Label style={s.pageHeading}>ציונים ומגמות</Label>{periodPicker}
- <Label style={s.subtitle}>עד חמישה ציונים זמינים בתקופה והמלצות לבדיקת דירוג המנהל</Label>
- <View style={{flexDirection:'row',alignItems:'center',gap:8,backgroundColor:'#FFF',borderWidth:1,borderColor:'#DCE5F2',borderRadius:12,paddingHorizontal:12}}>
- <TextInput value={playerSearch} onChangeText={setPlayerSearch} placeholder="חיפוש שחקן לפי שם" accessibilityLabel="חיפוש שחקן לפי שם" placeholderTextColor="#77849B" autoCorrect={false} style={{flex:1,minHeight:42,color:NAVY,fontSize:14,textAlign:'right',writingDirection:'rtl'}}/>
- {playerSearch?<Pressable accessibilityRole="button" accessibilityLabel="נקה חיפוש" onPress={()=>setPlayerSearch('')} hitSlop={10}><Ionicons name="close-circle" size={20} color="#77849B"/></Pressable>:<Ionicons name="search-outline" size={20} color="#77849B"/>}
- </View>
- <ManagerRatingFilters filter={filter} complete={scoresComplete} count={series.length} up={up} down={down} onSelect={setFilter}/>
- {scoreRead.loading&&<ManagerDashboardSkeleton tab="ratings"/>}
- {scoreRead.failed&&<Box><Label>{scoreRead.needsBaseRefresh?'נתוני העונה השתנו. יש לרענן את לוח המנהל כדי להציג ציונים מעודכנים.':'חלק מהציונים לא נטענו. הציונים שנטענו מוצגים; המלצות יתחדשו לאחר טעינה מלאה.'}</Label><Action title="נסה שוב" icon="refresh" onPress={scoreRead.retry}/></Box>}
- {!data.group.internalRating&&<Label style={s.foot}>ציוני המחזור מוצגים גם ללא דירוג מנהל. להפעלת המלצות יש להפעיל דירוג מנהל בהגדרות המועדון.</Label>}
- {!scoreRead.loading&&!scoreRead.failed&&!visibleSeries.length&&<Box><Label>{search?'לא נמצאו שחקנים שתואמים לחיפוש ולסינון שנבחר.':filter==='all'?'אין ציוני מחזור שמורים בתקופה שנבחרה.':'אין המלצות בסינון שנבחר. אפשר לראות את הציונים בלחיצה על הכול.'}</Label></Box>}
- {visibleSeries.map(a=>{const recommendation=recommendations.get(a.userId),direction=recommendation?.direction??'neutral',rising=direction==='up',color=rising?GREEN:direction==='down'?AMBER:BLUE,bg=rising?'#E9F8EF':direction==='down'?'#FFF3DF':'#EDF3FF',last=a.points[a.points.length-1];return <View key={a.userId} style={s.ratingCard}>
- <View style={s.ratingTop}><UserAvatar user={user(a.userId)} size={42}/><View style={{flex:1}}><Pressable accessibilityRole="button" accessibilityLabel={`מידע ניהולי על ${user(a.userId).name}`} onPress={()=>openPlayer(a.userId)}><Label style={s.ratingName}>{user(a.userId).name}</Label></Pressable><Label style={s.muted}>דירוג מנהל {a.rating===null?'טרם נקבע':`⁦${a.rating.toFixed(1)}/5⁩`}</Label></View><View style={[s.badge,{backgroundColor:bg}]}><Label style={{fontSize:13,color,fontWeight:'700'}}>{recommendation?`לבחון ${rising?'העלאה':'הורדה'}`:'נתוני ביצוע'}</Label><Ionicons name={recommendation?(rising?'arrow-up':'arrow-down'):'stats-chart-outline'} size={16} color={color}/></View></View>
- <Label style={s.chartTitle}>ציונים מ־{a.points.length} מחזורים אחרונים</Label><ManagerTrend points={a.points} direction={direction}/>
- <View style={[s.lastScore,{backgroundColor:bg}]}><View style={s.scoreNumber}><Label style={s.scoreCaption}>ממוצע {a.points.length} ציונים אחרונים</Label><Label style={s.lastNumber}>{`⁦${(a.points.reduce((sum,p)=>sum+p.score,0)/a.points.length).toFixed(1)}/10⁩`}</Label></View><View style={{flex:1}}><Label style={s.reason}>{recommendation?`מגמת ${rising?'עלייה':'ירידה'} לאורך 5 מחזורים`:a.points.length<5?'מוצגים כל הציונים הקיימים; המלצה נבחנת מחמישה ציונים.':'הציונים זמינים לצפייה, ללא המלצה לשינוי דירוג.'}</Label></View></View>
- <View style={s.cardActions}><Action title="הצג נתונים" icon="stats-chart-outline" onPress={()=>setDetails(a)}/>{data.group.internalRating&&<Pressable accessibilityRole="button" onPress={()=>{logEvent(AnalyticsEvent.RatingSheetOpened,{groupId,hasRating:a.rating!==null});setRatingTarget(user(a.userId));}} style={s.edit}><Label style={s.editText}>ערוך דירוג</Label><Ionicons name="chevron-back" size={19} color={BLUE}/></Pressable>}</View>
- </View>;})}
- <Label style={s.foot}>ציוני המחזור מתוך 10 ודירוג המנהל מתוך 5. המלצה אינה משנה דירוג אוטומטית.</Label>
- </>}
+ {tab==='ratings'&&<ManagerRatingReview key={`${ownerKey}:${refresh}`} groupId={groupId} viewerId={me?.id??''} users={data.users} enabled={!!data.group.internalRating} onEdit={setRatingTarget} onSaved={()=>setRefresh(v=>v+1)} onRound={id=>nav.navigate('MatchDetails',{gameId:id})} renderTrend={points=><ManagerTrend points={points} direction="neutral"/>}/>}
  {tab==='equipment'&&<><ManagerEquipmentHolders data={data} now={now} onPlayer={openPlayer} onRound={id=>nav.navigate('MatchDetails',{gameId:id})}/><Label style={s.pageHeading}>כדור וגופיות</Label>{periodPicker}{data.equipmentUnavailable?<Box><Label>רישומי הציוד לא נטענו. לא ניתן להציג ספירה.</Label><Action title="נסה שוב" icon="refresh" onPress={()=>setRefresh(v=>v+1)}/></Box>:<>
  <View style={s.equipmentTiles}>{(['ball','jerseys'] as const).map((kind,i)=><View key={kind} style={[s.equipmentTile,{backgroundColor:i?'#ECFAF1':'#EAF2FF'}]}><View style={{flex:1}}><Label style={s.name}>{i?'גופיות':'כדור'}</Label><Label style={[s.metricN,{color:i?GREEN:BLUE}]}>{equipment.reduce((n,e)=>n+e[kind],0)}</Label><Label style={s.muted}>לקיחות מתועדות</Label></View><Ionicons name={i?'shirt-outline':'football-outline'} size={34} color={i?GREEN:BLUE}/></View>)}</View>
  <Box title="מי לקח ציוד?" icon="people-outline"><View style={s.tableHeader}><Label style={{flex:1,fontWeight:'700'}}>שחקן</Label><Label style={s.tableNum}>כדור</Label><Label style={s.tableNum}>גופיות</Label></View>{(allEquipment?equipment:equipment.slice(0,10)).map(e=><View key={e.userId} style={s.tableRow}><UserAvatar user={user(e.userId)} size={30}/><Label style={{flex:1,fontWeight:'600'}}>{user(e.userId).name}</Label><Label style={s.tableNum}>{e.ball}</Label><Label style={s.tableNum}>{e.jerseys}</Label></View>)}
@@ -174,7 +145,6 @@ export function ManagerDashboardScreen() {
  </>}</>}
  </ScrollSurface>}
  <AdminRatingSheet target={data?ratingTarget:null} current={ratingTarget?data?.group.adminRatings?.[ratingTarget.id]??0:0} saving={saving} onClose={()=>!saving&&setRatingTarget(null)} onSave={saveRating}/>
- <SafeModal visible={!!details&&!!data} transparent animationType="fade" onRequestClose={()=>setDetails(null)}><Pressable style={s.backdrop} onPress={()=>setDetails(null)}><Pressable style={s.detailSheet} onPress={e=>e.stopPropagation()}><ScrollSurface style={{flexShrink:1}} contentContainerStyle={{gap:14}}><Label style={s.heading}>{details?user(details.userId).name:''} · ציוני המחזורים</Label><Label style={s.muted}>מוצגים עד חמשת הציונים הזמינים האחרונים בתקופה, לא בהכרח ממחזורים רצופים. המלצה לשינוי דירוג נבחנת רק כשיש חמישה ציונים ושינוי מתמשך; ציון חריג בודד אינו מספיק.</Label>{details?.points.map(p=><Pressable key={p.gameId} accessibilityRole="button" onPress={()=>{setDetails(null);nav.navigate('MatchDetails',{gameId:p.gameId});}} style={s.detailRow}><Label style={{flex:1}}>מחזור {date(p.at)}</Label><Label style={s.name}>{p.score.toFixed(1)} מתוך 10</Label><Ionicons name="chevron-back" color={BLUE} size={18}/></Pressable>)}<Label style={s.muted}>ציונים חסרים אינם אפס. הסטטיסטיקה אינה מתארת את כל התרומה ההגנתית או את יכולת השוער.</Label><Action title="סגור" icon="close" onPress={()=>setDetails(null)}/></ScrollSurface></Pressable></Pressable></SafeModal>
  </SafeAreaView>;
 }
 const s=StyleSheet.create({

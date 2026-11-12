@@ -406,9 +406,10 @@ export async function sendClubInvitation(db: ReturnType<typeof getFirestore>, ui
     const alreadyApproved=number(prior?.expiresAt)>Date.now()&&strings(g.adminIds).includes(prior?.inviterId);
     if(Date.now()-number(last.data()?.createdAt)<86400000&&(!manager||alreadyApproved))return {invited:false,reason:'already_invited'};
     tx.set(marker,{createdAt:Date.now()});
-    const expiresAt=Date.now()+7*86400000;
+    const createdAt = Date.now();
+    const expiresAt = createdAt + 7 * 86400000;
     if(manager)tx.update(gref,{approvedInvites:{...(g.approvedInvites??{}),[targetId]:{inviterId:uid,expiresAt}},updatedAt:Date.now()});
-    tx.create(db.collection('notifications').doc(),{type:'groupInvitation',recipientId:targetId,payload:{groupId,groupName:text(g.name),inviterId:uid,inviterName:text(user.name),invitationOnly:true,managerApproved:manager,expiresAt},createdAt:Date.now(),delivered:false});
+    tx.create(db.collection('notifications').doc(),{type:'groupInvitation',recipientId:targetId,payload:{groupId,groupName:text(g.name),inviterId:uid,inviterName:text(user.name),invitationOnly:true,managerApproved:manager,expiresAt},createdAt,createdAtMs:createdAt,delivered:false});
     return {invited:true};
   });
   return result;

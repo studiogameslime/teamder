@@ -1,6 +1,6 @@
 import React from 'react';
 
-let mockSelected:'penalties'|'manual'|'bothOut'|'endEvening'|'draw'|null=null;
+let mockSelected:'penalties'|'manual'|'bothOut'|'draw'|null=null;
 let mockStaySide:'A'|'B'|null=null;
 let mockStateCall=0;
 let mockConfirming={current:false};
@@ -30,7 +30,7 @@ test('embedded decision content has no second native modal and shares the penalt
  const tree:any=TieDecisionModal({...props(),embedded:true});expect(tree.type).toBe('Pressable');
  const card=buttons(tree).find(n=>n.props.testID==='tie-decision-dialog');expect(Object.assign({},...card.props.style.filter(Boolean))).toMatchObject({height:680,maxHeight:680});
 });
-const choices=[['penalties','onPenalties',he.shDecidePenalties],['manual','onManual',he.shDecideManual],['bothOut','onBothOut',he.shDecideBothOut]] as const;
+const choices=[['penalties','onPenalties',he.shDecidePenalties],['manual','onManual',he.shDecideManual],['bothOut','onBothOut','סיום בתיקו']] as const;
 const callbacks=(input:any)=>[input.onPenalties,input.onManual,input.onBothOut];
 
 test('the chooser starts with a visible disabled confirmation and no selected option',()=>{
@@ -95,29 +95,23 @@ test('a new modal context clears the selection and the duplicate-confirm guard',
  expect(buttons(TieDecisionModal(props())).find(button=>button.props.accessibilityLabel===he.shDecideConfirm).props.disabled).toBe(true);
 });
 
-test.each([2,3,4])('the last tied game with %s teams can open evening completion after explicit confirmation', count => {
- const input={...props(count),onEndEvening:jest.fn()};
- buttons(TieDecisionModal(input)).find(b=>b.props.accessibilityLabel==='זה המשחק האחרון, סיום המחזור').props.onPress();
- expect(input.onEndEvening).not.toHaveBeenCalled();
- const confirm=buttons(TieDecisionModal(input)).find(b=>b.props.accessibilityLabel===he.shDecideConfirm);
- confirm.props.onPress();confirm.props.onPress();
- expect(input.onEndEvening).toHaveBeenCalledTimes(1);
- callbacks(input).forEach(action=>expect(action).not.toHaveBeenCalled());
-});
-
-test('an unfinished shootout cannot be silently discarded by evening completion',()=>{
- const input={...props(),live:{scoreA:1,scoreB:1,shootout:{kicks:[{id:'kick'}]}},onEndEvening:jest.fn()};
- mockSelected='endEvening';
- const actions=buttons(TieDecisionModal(input));
- expect(actions.find(b=>b.props.accessibilityLabel==='זה המשחק האחרון, סיום המחזור')).toBeUndefined();
- actions.find(b=>b.props.accessibilityLabel===he.shDecideConfirm).props.onPress();
- expect(input.onEndEvening).not.toHaveBeenCalled();
+test.each([2,3,4])('the %s-team match chooser offers exactly three result methods and never evening completion',count=>{
+ const input={...props(count),onDraw:jest.fn()},tree=TieDecisionModal(input);
+ const methods=buttons(tree).filter(b=>typeof b.props.accessibilityState?.selected==='boolean');
+ expect(methods.map(b=>b.props.accessibilityLabel)).toEqual(['פנדלים','בחירת מנצחים','סיום בתיקו']);
+ expect(copy(tree)).not.toContain('סיום המחזור');
+ callbacks(input).forEach(action=>expect(action).not.toHaveBeenCalled());expect(input.onDraw).not.toHaveBeenCalled();
 });
 
 function copy(node:any):string {
  if(node==null || typeof node==='boolean')return '';
  if(typeof node!=='object')return String(node);
  return (Array.isArray(node)?node.map(copy).join(' '):copy(node.props?.children)).replace(/\s+/g,' ');
+}
+function preview(node:any):any {
+ if(!node || typeof node!=='object')return undefined;
+ if(node.props?.testID==='draw-rotation-preview')return node;
+ return (Array.isArray(node)?node:[node.props?.children]).map(preview).find(Boolean);
 }
 test.each(['A','B'] as const)('a three-team draw requires an explicit staying side, previews %s and confirms once',side=>{
  const input={...props(3),onDraw:jest.fn()};
@@ -130,9 +124,9 @@ test.each(['A','B'] as const)('a three-team draw requires an explicit staying si
  expect(disabled.props.disabled).toBe(true);disabled.props.onPress();expect(input.onDraw).not.toHaveBeenCalled();
  buttons(tree).find(b=>b.props.accessibilityLabel===`${side==='A'?0:1} נשארים`).props.onPress();
  tree=TieDecisionModal(input);
- expect(copy(tree)).toContain(`${side==='A'?1:0} יוצאים למנוחה`);
- expect(copy(tree)).toContain('2 נכנסים');
- expect(copy(tree)).toContain(side==='A'?'המשחק הבא: 0 מול 2':'המשחק הבא: 2 מול 1');
+ expect(copy(tree)).toContain(`${side==='A'?1:0} עוברים להמתנה`);
+ expect(preview(tree).props.accessibilityLabel).toContain('2 נכנסים');
+ expect(preview(tree).props.accessibilityLabel).toContain(side==='A'?'המשחק הבא: 0 מול 2':'המשחק הבא: 2 מול 1');
  const confirm=buttons(tree).find(b=>b.props.accessibilityLabel==='שמירת תיקו והמשך');
  expect(confirm.props.disabled).toBe(false);confirm.props.onPress();confirm.props.onPress();
  expect(input.onDraw).toHaveBeenCalledTimes(1);expect(input.onDraw).toHaveBeenCalledWith(side);
@@ -142,17 +136,25 @@ test('two-team draw keeps the two teams and needs no staying-side choice',()=>{
  const input={...props(2),onDraw:jest.fn()};
  buttons(TieDecisionModal(input)).find(b=>b.props.accessibilityLabel==='סיום בתיקו').props.onPress();
  const tree=TieDecisionModal(input);expect(copy(tree)).not.toContain('מי נשארים למשחק הבא?');
- expect(copy(tree)).toContain('המשחק הבא: 0 מול 1');
+ expect(preview(tree).props.accessibilityLabel).toContain('המשחק הבא: 0 מול 1');
  buttons(tree).find(b=>b.props.accessibilityLabel==='שמירת תיקו והמשך').props.onPress();
  expect(input.onDraw).toHaveBeenCalledWith(null);
 });
 test('staying choice can be changed before saving and is cleared with the game context',()=>{
  const input={...props(3),onDraw:jest.fn()};mockSelected='draw';mockStaySide='A';
  buttons(TieDecisionModal(input)).find(b=>b.props.accessibilityLabel==='1 נשארים').props.onPress();
- expect(copy(TieDecisionModal(input))).toContain('0 יוצאים למנוחה');
+ expect(copy(TieDecisionModal(input))).toContain('0 עוברים להמתנה');
  mockEffects.at(-1)!();expect(mockStaySide).toBeNull();expect(mockSelected).toBeNull();
  expect(input.onDraw).not.toHaveBeenCalled();
+ mockSelected='draw';mockStaySide='B';
+ buttons(TieDecisionModal(input)).find(b=>b.props.accessibilityLabel==='שינוי שיטת סיום').props.onPress();
+ expect(mockSelected).toBeNull();expect(mockStaySide).toBeNull();
+ expect(input.onDraw).not.toHaveBeenCalled();callbacks(input).forEach(action=>expect(action).not.toHaveBeenCalled());
 });
-test.each([4,5])('draw staying choices are not offered to %s teams',count=>{
- expect(copy(TieDecisionModal({...props(count),onDraw:jest.fn()}))).not.toContain('סיום בתיקו');
+test.each([4,5])('the %s-team draw uses the existing both-out method without manual staying choices',count=>{
+ const input={...props(count),onDraw:jest.fn()};
+ buttons(TieDecisionModal(input)).find(b=>b.props.accessibilityLabel==='סיום בתיקו').props.onPress();
+ const tree=TieDecisionModal(input);expect(copy(tree)).not.toContain('מי נשארים למשחק הבא?');
+ buttons(tree).find(b=>b.props.accessibilityLabel===he.liveEndMatchConfirm).props.onPress();
+ expect(input.onBothOut).toHaveBeenCalledTimes(1);expect(input.onDraw).not.toHaveBeenCalled();
 });

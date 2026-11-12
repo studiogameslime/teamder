@@ -464,3 +464,32 @@ test('a tied finish requires an explicit winner selection before the shared conf
  action(tree,'הכחולים').props.onPress();tree=draw(input);expect(input.onDecided).not.toHaveBeenCalled();expect(action(tree,'אישור ומעבר למשחק הבא').props.disabled).toBe(false);
  action(tree,'אישור ומעבר למשחק הבא').props.onPress();expect(input.onDecided).toHaveBeenCalledWith('B');
 });
+
+test.each([
+  new Error('המשחק, ההרכבים או התוצאה השתנו. יש לבדוק את המצב המעודכן לפני הסיום.'),
+  Object.assign(new Error('המשחק השתנה. יש לנסות שוב עם התוצאה המעודכנת.'), {code:'functions/failed-precondition'}),
+])('a definitive board conflict requires a fresh winner confirmation after the listener updates',async failure=>{
+ const input=properties(),oldDecision=input.onDecided.mockRejectedValueOnce(failure);
+ input.shootout.kicks=[{id:'one',team:'B',kickerId:'b0',keeperId:'a0',scored:true,outcome:'goal',at:1}];
+ let tree=draw(input);action(tree,'סיום פנדלים').props.onPress();tree=draw(input);
+ action(tree,'אישור ומעבר למשחק הבא').props.onPress();await settle();
+ const latest=jest.fn().mockResolvedValue(undefined);input.onDecided=latest;
+ input.shootout.kicks=[{...input.shootout.kicks[0],scored:false,outcome:'miss'},{id:'two',team:'A',kickerId:'a0',keeperId:'b0',scored:true,outcome:'goal',at:2}];
+ tree=draw(input);action(tree,'ניסיון חוזר').props.onPress();await settle();
+ expect(oldDecision).toHaveBeenCalledTimes(1);expect(latest).not.toHaveBeenCalled();
+ tree=draw(input);action(tree,'אישור ומעבר למשחק הבא').props.onPress();
+ expect(latest).toHaveBeenCalledWith('A');
+});
+
+test('the acknowledged final kick must reach the live board before a decision is committed',async()=>{
+ const input=properties();let tree=choosePeople(input);
+ action(tree,'גול').props.onPress();await settle();tree=draw(input);
+ pitch(tree).props.onAnimationComplete();tree=draw(input);
+ action(tree,'סיום פנדלים').props.onPress();tree=draw(input);
+ expect(action(tree,'אישור ומעבר למשחק הבא').props.disabled).toBe(true);
+ expect(input.onDecided).not.toHaveBeenCalled();
+ const saved=mockRecord.mock.calls[0][1];
+ input.shootout={...input.shootout,kicks:[{...saved,at:1234}],keeperB:saved.keeperId};
+ tree=draw(input);const confirm=action(tree,'אישור ומעבר למשחק הבא');
+ expect(confirm.props.disabled).toBe(false);confirm.props.onPress();expect(input.onDecided).toHaveBeenCalledWith('A');
+});

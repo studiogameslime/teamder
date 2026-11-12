@@ -6,6 +6,7 @@ import * as types from '@/types';
 import * as draftColors from '@/utils/draftColors';
 import * as engine from '@/services/rotationEngine';
 import * as edit from '@/utils/liveTeamsEdit';
+import * as roundEdit from '@/utils/liveRoundEdit';
 import * as tally from '@/utils/goalTally';
 import * as decision from '@/utils/roundDecision';
 import * as shootout from '@/utils/shootoutDecision';
@@ -126,7 +127,7 @@ export function liveTeamsEndToEndWorld(size=4) {
   '@/firebase/config':{USE_MOCK_DATA:false,getFirebase:()=>({db,functions:{}})},'@/firebase/firestore':{docs:{game:(id:string)=>({...ref(`games/${id}`),converted:true})},col:{games:()=>ref('games'),pairStats:()=>ref('pairStats')}},
   '@/utils/playedGames':{isAttendedGame},'@/utils/personalPartnerStats':{personalPartnerResults},
   '@/utils/championship':{rankChampionshipRows},'@/firebase/authRace':{withAuthRaceRetry:(read:()=>unknown)=>read()},
-  '@/types':types,'@/services/rotationEngine':engine,'@/utils/liveTeamsEdit':edit,'@/utils/goalTally':tally,'@/utils/roundDecision':decision,'@/utils/shootoutDecision':shootout,
+  '@/types':types,'@/services/rotationEngine':engine,'@/utils/liveTeamsEdit':edit,'@/utils/liveRoundEdit':roundEdit,'@/utils/goalTally':tally,'@/utils/roundDecision':decision,'@/utils/shootoutDecision':shootout,
   '@/utils/alternativeRoundDecision':{alternativeRoundFingerprint},'@/utils/liveLineupFingerprint':{liveLineupFingerprint},'@/utils/penaltyStats':{buildShootoutPenaltyPayload},
   '@/utils/stripUndefined':{stripUndefined},'@/services/rotationWriteSource':{rotationWriteSource},'@/utils/roundParticipants':{roundParticipantSides},
   '@/utils/roundHistoryOrder':{sortRounds},'@/services/serverClock':{serverNow:()=>Date.now()},'@/services/errorLog':{logError:logs,logUnexpected:logs},

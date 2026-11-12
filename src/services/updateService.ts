@@ -23,11 +23,11 @@ export const isReleaseVersion = (value: unknown): value is string =>
   typeof value === 'string' && /^\d+(\.\d+){1,3}$/.test(value);
 
 function bounded<T>(promise: Promise<T>, timeoutMs = 8000): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(Object.assign(new Error('Store check timed out'), { code: 'deadline-exceeded' })), timeoutMs);
-    promise.then(value => { clearTimeout(timer); resolve(value); }, error => {
-    if (!isPlayAppNotOwned(error) && !isPlayInstallNotAllowed(error)) observeCaughtError(error, {"source":"src/services/updateService.ts","handler":"bounded","site":"updateService:9a518dd28f"}); clearTimeout(timer); reject(error); });
+  let timer: ReturnType<typeof setTimeout>;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(Object.assign(new Error('Store check timed out'), { code: 'deadline-exceeded' })), timeoutMs);
   });
+  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
 }
 
 /**
@@ -105,7 +105,20 @@ async function resolveStoreUpdate(): Promise<StoreUpdate | null> {
       // public listing or another release track's configured version.
       const bridge = NativeModules.TeamderStoreUpdate;
       if (typeof bridge?.check !== 'function') return null;
-      const result = await bounded<{ available: boolean; versionCode: number }>(bridge.check());
+      const check = () => bounded<{ available: boolean; versionCode: number }>(bridge.check());
+      let result;
+      try {
+        result = await check();
+      } catch (error) {
+        if ((error as {code?: string})?.code !== 'deadline-exceeded' &&
+            !/Failed to bind to the service/i.test(String(error))) {
+          if (!isPlayAppNotOwned(error) && !isPlayInstallNotAllowed(error))
+            observeCaughtError(error, {source: 'src/services/updateService.ts', handler: 'resolveStoreUpdate', site: 'updateService:d6d7f5046d'});
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        result = await check();
+      }
       const installed = Number(base.fromBuild);
       if (result.available !== true || !Number.isSafeInteger(result.versionCode) ||
           !Number.isSafeInteger(installed) || installed <= 0 || result.versionCode <= installed) return null;
@@ -113,12 +126,16 @@ async function resolveStoreUpdate(): Promise<StoreUpdate | null> {
     } else {
       const region = getLocales()[0]?.regionCode;
       const country = region && /^[A-Za-z]{2}$/.test(region) ? region.toLowerCase() : 'il';
-      const controller = new AbortController();
-      let json: { results?: Array<{ trackId?: number; bundleId?: string; version?: string }> };
-      try {
-        json = await bounded(fetch(`https://itunes.apple.com/lookup?id=${IOS_APP_STORE_ID}&country=${country}`, { signal: controller.signal })
-          .then(response => { if (!response.ok) throw new Error('Store lookup failed'); return response.json(); }));
-      } finally { controller.abort(); }
+      const json = await retryRead(async () => {
+        const controller = new AbortController();
+        try {
+          return await bounded(fetch(`https://itunes.apple.com/lookup?id=${IOS_APP_STORE_ID}&country=${country}`, {signal: controller.signal})
+            .then(response => {
+              if (!response.ok) throw Object.assign(new Error('Store lookup failed'), {code: 'http/' + response.status});
+              return response.json() as Promise<{results?: Array<{trackId?: number; bundleId?: string; version?: string}>}>;
+            }));
+        } finally { controller.abort(); }
+      }, () => {}, 1000, null);
       const app = json.results?.find(item => item.trackId === Number(IOS_APP_STORE_ID) && item.bundleId === ANDROID_PACKAGE);
       if (!isReleaseVersion(app?.version) || compareVersions(current, app.version) >= 0) return null;
       available = { ...base, kind: 'optional', targetVersion: app.version, source: 'app_store' };

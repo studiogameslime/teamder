@@ -1,3 +1,4 @@
+jest.mock('react-native', () => ({ AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } }));
 import fs from 'fs';
 import vm from 'vm';
 import ts from 'typescript';
@@ -28,6 +29,7 @@ test('profile read failure preserves Firebase account without a cached user', as
     '@/firebase/config': { USE_MOCK_DATA: false, getFirebase: () => ({ auth }) },
     './storage': { storage: { getAuthUserJson: async () => null } },
     './readRetry': { retryRead },
+    './profileReadDeadline': require('@/services/profileReadDeadline'),
     '@/firebase/auth': { waitForAuthRestore: async () => auth.currentUser, signInAnonymously: signIn },
     '@/firebase/firestore': { docs: { user: (id: string) => id } },
     'firebase/firestore': { getDoc: async () => { throw Error('offline'); } },

@@ -103,7 +103,7 @@ export async function reverseGeocodeCity(
       `&format=json&accept-language=he&zoom=14`;
     const res = await fetchRead(url, {
       headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
-    });
+    }, { source: 'src/services/geocodeService.ts', handler: 'reverseGeocodeCity', site: 'geocodeService:reverseGeocodeCity' });
     if (!res.ok) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + res.status}), {"source":"src/services/geocodeService.ts","handler":"reverseGeocodeCity","site":"geocodeService.ts:http:105"}); return null; }
     const data = (await res.json()) as {
       address?: {
@@ -146,7 +146,7 @@ export async function reverseGeocode(
       `&format=json&accept-language=he&zoom=18&addressdetails=1`;
     const res = await fetchRead(url, {
       headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
-    });
+    }, { source: 'src/services/geocodeService.ts', handler: 'reverseGeocode', site: 'geocodeService:reverseGeocode' });
     if (!res.ok) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + res.status}), {"source":"src/services/geocodeService.ts","handler":"reverseGeocode","site":"geocodeService.ts:http:148"}); return null; }
     const data = (await res.json()) as {
       name?: string;
@@ -219,7 +219,7 @@ async function lookupCity(
         'User-Agent': USER_AGENT,
         Accept: 'application/json',
       },
-    });
+    }, { source: 'src/services/geocodeService.ts', handler: 'lookupCity', site: 'geocodeService:lookupCity' });
     if (!res.ok) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + res.status}), {"source":"src/services/geocodeService.ts","handler":"lookupCity","site":"geocodeService.ts:http:221"}); return null; } // A network/service failure remains retryable.
     const data = (await res.json()) as Array<{ lat?: string; lon?: string }>;
     if (signal.aborted) return null;

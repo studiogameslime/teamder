@@ -69,6 +69,8 @@ import { decideSpotOffer, spotOfferExpired } from './spotOfferDecision';
 import { eveningScoreServer } from './eveningScoreCore';
 import { sharedEveningScore, sharedInputFromStats, sharedAwardMinimum, readSharedCalibration, SHARED_SCORE_ACTIVATION_AT } from './sharedEveningScore';
 import { prepareSharedScoreCalibration, freezeSharedScoreCalibration } from './sharedScoreCalibration';
+import { prepareRatingSnapshot } from './ratingReviewStore';
+export { getRatingReview, decideRatingReview, onRatingReviewLegacyChange } from './ratingReview';
 import { prepareRetroScores } from './retroScores';
 import { readGameEveningScores, EveningScoresAccessError } from './gameEveningScores';
 import { occupancyOf, inFillerQuietHours, hasFillerRegistrationConflict, canOfferFiller } from './fillerRules';
@@ -8727,7 +8729,7 @@ export const sendGameInvite = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, asy
     // The read grant, approval and notification commit together or not at all.
     tx.create(noticeRef, { type: 'inviteToGame', recipientId, createdByUid: senderUid,
       payload: { gameId, gameTitle: game.title ?? 'המחזור', inviterName: sender.name ?? '', inviterId: senderUid, startsAt: game.startsAt ?? 0, expiresAt },
-      createdAt: now, delivered: false });
+      createdAt: now, createdAtMs: now, delivered: false });
     tx.set(senderSnap.ref, { achievements: { invitesSent: admin.firestore.FieldValue.increment(1) }, updatedAt: now }, { merge: true });
     return { ok: true, invited: true };
   });
@@ -15887,6 +15889,7 @@ async function closeSeasonIfRoundsTargetMet(groupId: string, _sealedGameId: stri
 
 
 function seasonManager(): SeasonManager { return new SeasonManager({ db, announce: announceSeasonClosed, report: reportServerError,
+  ratingSnapshot:async(tx,game,gameId,club,now)=>prepareRatingSnapshot(db,tx,game,gameId,club,now,game.groupId?await readServerAdminRatings(game.groupId,tx):{}),
   scoreCalibration:(tx,game,gameId,now)=>prepareSharedScoreCalibration(tx,db,game,gameId,now,{starting:true}) }); }
 async function runSeasonRollovers(): Promise<void> { await seasonManager().sweep(); }
 export const startSeasonEvening = onCall({ enforceAppCheck: ENFORCE_APP_CHECK, timeoutSeconds: 300 }, async request => seasonManager().startEvening(String(request.data?.gameId ?? ''), request.auth?.uid ?? ''));

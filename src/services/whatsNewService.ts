@@ -1,5 +1,5 @@
 import { observeCaughtError } from '../utils/errorObservation';
-import { retryRead } from './readRetry';
+import { readAppConfig } from './readAppConfig';
 // whatsNewService — decides whether to show the one-time "מה חדש" modal after
 // a version update, and WHICH highlights to show, per user.
 //
@@ -16,8 +16,7 @@ import { retryRead } from './readRetry';
 // after a visible render, so the modal does not reappear for that version
 // — across relaunches, foregrounding, or closing the app mid-modal.
 
-import { doc, getDoc } from 'firebase/firestore';
-import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
+import { USE_MOCK_DATA } from '@/firebase/config';
 import { getCurrentVersion, compareVersions } from '@/services/updateService';
 import { storage } from '@/services/storage';
 import { logError, isExpectedDenial } from '@/services/errorLog';
@@ -110,8 +109,7 @@ export async function markWhatsNewSeen(version: string): Promise<void> {
 async function fetchWhatsNewDoc(): Promise<WhatsNewDoc | null> {
   if (USE_MOCK_DATA) return mockWhatsNew;
   try {
-    const { db } = getFirebase();
-    const snap = await retryRead(() => getDoc(doc(db, 'appConfig', 'whatsNew')), () => {});
+    const snap = await readAppConfig('whatsNew');
     if (!snap.exists()) return null;
     const d = snap.data() as Record<string, unknown>;
     return {

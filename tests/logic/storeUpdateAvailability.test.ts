@@ -34,6 +34,17 @@ test('missing bridge and unavailable store do not block app use', async () => {
   NativeModules.TeamderStoreUpdate = bridge; bridge.check.mockRejectedValue(new Error('Not owned by Play')); expect(await checkForUpdate()).toBeNull();
 });
 
+test('a temporary Play binding failure retries once and returns the verified update', async () => {
+  jest.useFakeTimers();
+  try {
+    bridge.check.mockRejectedValueOnce(new Error('Failed to bind to the service.'));
+    const result = checkForUpdate();
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(await result).toMatchObject({targetBuild: 284}); expect(bridge.check).toHaveBeenCalledTimes(2);
+    expect(observeCaughtError).not.toHaveBeenCalled();
+  } finally { jest.useRealTimers(); }
+});
+
 test('Play ownership -10 is normal unavailability at both observation points', async () => {
   bridge.check.mockRejectedValue(new Error('-10: Install Error(-10): The app is not owned by any user on this device.'));
   expect(await checkForUpdate()).toBeNull();
@@ -45,7 +56,7 @@ test('other native store failures remain visible', async () => {
   const error = new Error('Install Error(-2): internal failure');
   bridge.check.mockRejectedValue(error);
   expect(await checkForUpdate()).toBeNull();
-  expect(observeCaughtError).toHaveBeenCalledWith(error, expect.objectContaining({ handler: 'bounded' }));
+  expect(observeCaughtError).toHaveBeenCalledWith(error, expect.objectContaining({ handler: 'resolveStoreUpdate' }));
 });
 
 test('temporary device installation restrictions leave checking retryable without an incident', async () => {
@@ -86,6 +97,16 @@ test('Apple lookup verifies exact app identity and published version', async () 
 test('iOS cannot force a minimum not yet published in the queried store', async () => {
   apple('1.1.51'); (getDoc as jest.Mock).mockResolvedValue({ exists: () => true, data: () => ({ minimumSupportedVersion: '1.1.52' }) });
   expect((await checkForUpdate())?.kind).toBe('optional');
+});
+test('an expired Apple lookup is aborted before a fresh request recovers the verified version', async () => {
+  jest.useFakeTimers();
+  try {
+    apple('1.1.51'); lookup.mockImplementationOnce(() => new Promise(() => {}));
+    const pending=checkForUpdate(); await jest.advanceTimersByTimeAsync(9000);
+    expect(lookup.mock.calls[0][1].signal.aborted).toBe(true);
+    expect(await pending).toMatchObject({targetVersion:'1.1.51'});
+    expect(lookup).toHaveBeenCalledTimes(2);
+  } finally { jest.useRealTimers(); }
 });
 test('Apple scheme failure falls back to the exact app web page, total failure is false', async () => {
   (Platform as any).OS = 'ios'; (Linking.openURL as jest.Mock).mockRejectedValueOnce(new Error('scheme'));

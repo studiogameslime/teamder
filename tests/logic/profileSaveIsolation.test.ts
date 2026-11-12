@@ -1,3 +1,4 @@
+jest.mock('react-native', () => ({ AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } }));
 import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
@@ -25,6 +26,7 @@ function world() {
     '@/firebase/config': { USE_MOCK_DATA: false, getFirebase: () => ({ auth }) },
     '@/firebase/firestore': { docs: { user: (id:string) => id } },
     './publicPlayerService': { invalidatePlayerIdentityReads() {} },
+    './profileReadDeadline': require('@/services/profileReadDeadline'),
     './readRetry': { isTransientReadError, retryRead: async (read: () => unknown, check: () => void) => { check(); const result = await read(); check(); return result; } },
     './staleSession': { StaleSessionError, isStaleSession }, '@/services/staleSession': { StaleSessionError, isStaleSession },
     '@/firebase/auth': { waitForAuthRestore: async () => auth.currentUser },

@@ -131,6 +131,7 @@ export function DraftBoardScreen() {
             return;
           }
         }
+        if (g.rotation && !readOnly) { nav.navigate('LiveMatch', { gameId, editRound: true }); return; }
         if (g && !readOnly && !resume) {
           const active = new Set(activeDraftRosterIds(g));
           if (new Set(loadCaptainIds).size !== loadCaptainIds.length || loadCaptainIds.some((id) => !active.has(id))) {

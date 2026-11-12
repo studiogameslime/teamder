@@ -1,0 +1,13 @@
+{
+  "artifact": "artifacts/release-1.1.79-2026-11-09/teamder-1.1.79-124.ipa",
+  "version": "1.1.79",
+  "build": 124,
+  "usageEnabled": false,
+  "method": "Hermes bytecode: exported USAGE_ACTIVITY_ENABLED is LoadConstFalse",
+  "snippets": [
+    "    LoadConstString   r3, \"__esModule\"\n    Call4             r3, r9, r10, r4, r3, r8\n    PutById           r4, r0, 1, \"USAGE_ACTIVITY_EN\"...\n    CreateClosure     r3, r2, Function<beginUsageRegistration>\n    PutById           r4, r3, 2, \"beginUsageRegistr\"...",
+    "    StoreToEnvironment r2, 11, r3\n    LoadConstFalse    r3\n    PutById           r4, r3, 1, \"USAGE_ACTIVITY_EN\"...\n    StoreNPToEnvironment r2, 12, r3\n    TryGetById        r1, r1, 3, \"Map\""
+  ],
+  "bundleSha256": "51b76cc7723c0a225812c13482cdd1b11ee81a38935c948cf42c42092c66f12d",
+  "deviceRuntimeVerified": false
+}

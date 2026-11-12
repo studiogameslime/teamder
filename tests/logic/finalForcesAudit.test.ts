@@ -81,27 +81,29 @@ test('an explicit restoration makes that participant draftable again', () => {
   expect(activeDraftRosterIds(game)).toEqual(['a', 'b', 'c', 'gone', 'guest:active']);
 });
 
-test.each([false, true])('a new split keeps departures and historical/live results intact (mock=%s)', async mock => {
+test.each([false, true])('legacy split cannot rewrite departures or a live result without the new editor (mock=%s)', async mock => {
   const { service, current } = serviceWorld(mock);
   const departed = clone(current.draftTeams!.leftHome);
   const live = clone(current.liveMatch);
   const previousSource = rotationWriteSource(current);
+  const before = clone(current);
   for (const [index, groups] of [[['c', 'a'], ['b', 'guest:active']], [['b', 'c'], ['a', 'guest:active']]].entries()) {
-    await service.saveDraftTeams('audit', createManualDraft(groups, 'owner', 10 + index), undefined, true, current);
+    await expect(service.saveDraftTeams('audit', createManualDraft(groups, 'owner', 10 + index), undefined, true, current)).rejects.toThrow('עריכת המחזור');
     expect(current.draftTeams!.leftHome).toEqual(departed);
     expect(current.draftTeams!.teams.flatMap(team => team.playerIds)).not.toEqual(expect.arrayContaining(['gone']));
     expect(current.draftTeams!.originalTeams?.flatMap(team => team.playerIds)).not.toEqual(expect.arrayContaining(['guest:gone']));
-    expect(current.rotation!.baseTeams?.map(team => team.playerIds)).toEqual(groups);
+    expect(current.rotation!.baseTeams).toEqual(before.rotation!.baseTeams);
     expect(current.rotation!.playing).toEqual([0, 1]);
     expect(current.rotation!.roundInstanceId).toBe('round3');
     expect(current.rotation!.wins).toEqual({ 0: 1, 1: 1 });
     expect(current.liveMatch).toEqual(live);
   }
-  expect(rotationWriteSource(current)).not.toBe(previousSource);
+  expect(rotationWriteSource(current)).toBe(previousSource);
 });
 
 test.each([false, true])('departure after editor load rejects the old full roster atomically (mock=%s)', async mock => {
   const { service, current, write } = serviceWorld(mock);
+  delete current.rotation; current.status = 'open';
   const next = createManualDraft([['a', 'b'], ['c', 'guest:active']], 'owner', 4);
   current.draftTeams!.leftHome!.push({ playerId: 'b', homeTeam: 0, at: 5 });
   current.draftTeams!.teams[0].playerIds = ['a'];

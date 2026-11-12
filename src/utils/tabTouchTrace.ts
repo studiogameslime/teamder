@@ -1,5 +1,5 @@
 import { observeCaughtError } from './errorObservation';
-/** Observes a tab gesture without claiming, cancelling or completing it. */
+/** Records native tab gestures and identifies a stationary tap rejected by stale geometry. */
 export type TouchPoint = { x: number; y: number };
 type Geometry = { x: number; y: number; width: number; height: number };
 type TraceData = Record<string, string | number | boolean>;
@@ -17,6 +17,7 @@ export function createTabTouchTrace(tab: string, emit: Emit) {
   let index = 0;
   let completed = true;
   let start: TouchPoint | undefined;
+  let measuredOutside = false;
   let maxDx = 0, maxDy = 0;
   let phases = new Set<string>();
   const once = (phase: string, data: TraceData = {}) => {
@@ -32,7 +33,7 @@ export function createTabTouchTrace(tab: string, emit: Emit) {
   return {
     pressIn(point: TouchPoint | undefined, measure: Measure) {
       if (completed) {
-        index += 1; completed = false; start = point; maxDx = 0; maxDy = 0; phases = new Set();
+        index += 1; completed = false; start = point; maxDx = 0; maxDy = 0; phases = new Set(); measuredOutside = false;
       }
       if (phases.has('press_in')) return;
       once('press_in', point ?? {});
@@ -43,6 +44,7 @@ export function createTabTouchTrace(tab: string, emit: Emit) {
         measure(rect => {
           if (ticket !== index || !Object.values(rect).every(Number.isFinite) || rect.width < 0 || rect.height < 0) return;
           const inside = !!start && start.x >= rect.x && start.x <= rect.x + rect.width && start.y >= rect.y && start.y <= rect.y + rect.height;
+          measuredOutside = !!start && !inside && rect.width > 0 && rect.height > 0;
           once('measure', { ...rect, phase: start ? (inside ? 'inside' : 'outside') : 'unknown' });
         });
       } catch (caughtError43b5afdc48) {
@@ -61,6 +63,7 @@ export function createTabTouchTrace(tab: string, emit: Emit) {
       if (phase === 'touch_end') update(point);
       once(phase, { ...(phase === 'touch_end' ? point : undefined), dx: maxDx, dy: maxDy });
       completed = true;
+      return phase === 'touch_end' && !!point && measuredOutside && maxDx <= 4 && maxDy <= 4;
     },
     // Press-out can carry the same synthetic cancellation coordinates.
     pressOut() { once('press_out'); },

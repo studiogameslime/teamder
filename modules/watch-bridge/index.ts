@@ -2,7 +2,7 @@ import { observeCaughtError } from '../../src/utils/errorObservation';
 // JS handle for the iOS WatchConnectivity sender (Expo native module).
 // Android uses the classic NativeModules.WatchBridge (Wear Data Layer) instead;
 // this local module is iOS-only (see expo-module.config.json).
-import { requireNativeModule } from 'expo-modules-core';
+import { requireOptionalNativeModule } from 'expo-modules-core';
 
 export interface WatchBridge {
   takeDiagnostics?(): Promise<string[]>;
@@ -15,7 +15,7 @@ export interface WatchBridge {
 // Returns null on platforms/builds where the native module isn't present.
 export function getWatchBridge(): WatchBridge | null {
   try {
-    return requireNativeModule('WatchBridge') as WatchBridge;
+    return requireOptionalNativeModule<WatchBridge>('WatchBridge');
   } catch (caughtErrorfd28c6d1ed) {
     observeCaughtError(caughtErrorfd28c6d1ed, {"source":"modules/watch-bridge/index.ts","handler":"getWatchBridge","site":"index:fd28c6d1ed"});
     return null;

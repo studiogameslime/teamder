@@ -1,0 +1,14 @@
+{
+  "typecheckPassed": true,
+  "testSuitesPassed": 657,
+  "testsPassed": 7334,
+  "featureStatus": {
+    "failures": []
+  },
+  "documentationExistingFailures": 107,
+  "newDocumentationFailures": [],
+  "serverVerified": "verified.json",
+  "iosEnabled": false,
+  "newStoreBuild": false,
+  "releaseLogReadBack": true
+}

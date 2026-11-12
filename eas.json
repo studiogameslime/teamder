@@ -29,6 +29,9 @@
         "resourceClass": "m-medium",
         "image": "macos-tahoe-26.5-xcode-26.6",
         "credentialsSource": "local"
+      },
+      "env": {
+        "EXPO_PUBLIC_USAGE_ACTIVITY_ENABLED": "true"
       }
     },
     "ios-launch-recovery": {

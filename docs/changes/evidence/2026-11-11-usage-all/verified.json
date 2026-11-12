@@ -1,0 +1,35 @@
+{
+  "functions": [
+    {
+      "name": "cleanupUsageActivity",
+      "allAccountsEnabled": true,
+      "sourceUnchanged": true,
+      "revision": "cleanupusageactivity-00003-toj",
+      "trafficVerified": true
+    },
+    {
+      "name": "onUsageJoinReceipt",
+      "allAccountsEnabled": true,
+      "sourceUnchanged": true,
+      "revision": "onusagejoinreceipt-00003-xuc",
+      "trafficVerified": true
+    },
+    {
+      "name": "recordUsageActivity",
+      "allAccountsEnabled": true,
+      "sourceUnchanged": true,
+      "revision": "recordusageactivity-00003-zob",
+      "trafficVerified": true
+    },
+    {
+      "name": "materializeUsageOperation",
+      "allAccountsEnabled": true,
+      "sourceUnchanged": true,
+      "revision": "materializeusageoperation-00003-xoh",
+      "trafficVerified": true
+    }
+  ],
+  "otherFunctionsUnchanged": 125,
+  "concurrentOtherFunctionChanges": [],
+  "verifiedAt": "2026-11-11T13:17:25.839101+00:00"
+}

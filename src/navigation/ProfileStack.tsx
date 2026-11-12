@@ -82,7 +82,7 @@ export type ProfileStackParamList = {
   AvailablePlayers: { gameId: string };
   AddMembers: { gameId: string };
   GameEdit: { gameId: string };
-  LiveMatch: { gameId: string };
+  LiveMatch: { gameId: string; editRound?: boolean };
   // Reachable from MatchDetails' community-link icon. The full set of
   // screens CommunityDetails links to is duplicated here so drilling from a
   // community opened in THIS stack stays in-stack — a route missing here

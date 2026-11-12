@@ -10,11 +10,11 @@
 // Reference layout, top to bottom:
 //   סיכום מחזור אישי  (a link, not a section)
 //   המחזור במספרים    stats.rounds / goals / assists / shootouts
-//   פנדלים במחזור     saved roundHistory attempts, by phase and role
 //   כוכבי המחזור      leaders.*
 //   הקבוצות במחזור    teamHighlights.best / worst
 //   הצמד של הערב      pairHighlight
 //   מה קרה הערב       events[]
+//   פנדלים במחזור     saved roundHistory attempts, by phase
 //   טבלת המחזור       GameChampionship  ← last, per the brief
 
 import React from 'react';
@@ -167,9 +167,6 @@ export function MatchStatsTab({
       <TabSectionTitle icon="grid" text={he.gdStatsNumbersTitle} />
       <ClubStatsSummary games={s.rounds} goals={s.goals} assists={s.assists} shootouts={s.shootouts} />
 
-      {game.status === 'finished' ? <RoundPenaltiesSection gameId={game.id} refreshKey={championshipRefreshKey}
-        expectedRounds={s.rounds} expectedShootouts={s.shootouts} userOf={userOf} /> : null}
-
       {stars.length > 0 ? <>
         <TabSectionTitle icon="trophy-outline" text={he.gdStatsStarsTitle} />
         <ClubStatsAwards leaders={stars.map(st => ({
@@ -237,6 +234,9 @@ export function MatchStatsTab({
           </View>
         </>
       ) : null}
+
+      {game.status === 'finished' ? <RoundPenaltiesSection gameId={game.id} refreshKey={championshipRefreshKey}
+        expectedRounds={s.rounds} expectedShootouts={s.shootouts} userOf={userOf} /> : null}
 
       {/* The table, then the admin's correction for it (owner report). The
           component is unchanged — same

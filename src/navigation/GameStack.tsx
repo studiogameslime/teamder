@@ -76,7 +76,7 @@ export type GameStackParamList = {
   // focus; the list itself is the same committed round history either way.
   MatchRounds: { gameId: string; live?: boolean };
   /** v2 — live-match screen takes the gameId of the game it manages. */
-  LiveMatch: { gameId: string };
+  LiveMatch: { gameId: string; editRound?: boolean };
   /** Phase 9 — find invitable players for a specific game. */
   AvailablePlayers: { gameId: string };
   AddMembers: { gameId: string; reserve?: boolean };

@@ -1,0 +1,31 @@
+{
+  "at": "2026-11-11T13:14:52.035381+00:00",
+  "approvedPrivacyOnly": true,
+  "sites": [
+    {
+      "site": "teamderfc",
+      "versionName": "sites/teamderfc/versions/c6bfbd209939970a",
+      "released": true,
+      "finalizedAndVerified": true,
+      "releaseName": "sites/teamderfc/releases/1794402911169000",
+      "liveFilesVerified": 82,
+      "otherFilesPreserved": 81,
+      "configurationPreserved": true,
+      "publicPrivacySha256": "6ad27e5db027f80e4be30398d5ae66b0789974d08500fd0228d5bba3cc88a3df"
+    },
+    {
+      "site": "soccer-app-52b6b",
+      "versionName": "sites/soccer-app-52b6b/versions/d680f4a8a9ddefa2",
+      "released": true,
+      "finalizedAndVerified": true,
+      "releaseName": "sites/soccer-app-52b6b/releases/1794402915714000",
+      "liveFilesVerified": 82,
+      "otherFilesPreserved": 81,
+      "configurationPreserved": true,
+      "publicPrivacySha256": "6ad27e5db027f80e4be30398d5ae66b0789974d08500fd0228d5bba3cc88a3df"
+    }
+  ],
+  "published": true,
+  "onlyPrivacyChanged": true,
+  "otherLocalPublicFilesUsed": false
+}

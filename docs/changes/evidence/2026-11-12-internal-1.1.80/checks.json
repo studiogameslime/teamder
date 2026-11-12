@@ -1,0 +1,17 @@
+{
+  "clientTests": 7388,
+  "clientSuites": 660,
+  "rulesTests": 361,
+  "serverTests": 68,
+  "serverTodo": 3,
+  "packagedRatingTests": 9,
+  "clientTypecheck": true,
+  "serverTypecheck": true,
+  "pulseTypecheck": true,
+  "featureStatusCheck": true,
+  "logHashes": {
+    "jest-final.log": "8507d6c3e103556b7a495d2091c277b6bde6f16ed49f43957345d2e2784ee03a",
+    "rules-final.log": "82dc8b30504ce0ec069e30aa402317c38651b8f01fe556c6f49e204916f24d9c",
+    "packaged-rating-tests.log": "5922562f22d3cc04891a0b63b8c959525a28e468331e56d5d064a5b862e3cdac"
+  }
+}

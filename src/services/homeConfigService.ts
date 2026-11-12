@@ -1,4 +1,4 @@
-import { retryRead } from './readRetry';
+import { readAppConfig } from './readAppConfig';
 import { observeCaughtError } from '../utils/errorObservation';
 // homeConfigService — Pulse-controlled master switches for home-screen surfaces,
 // stored in Firestore under appConfig/features. The Teamder app reads them; the
@@ -6,8 +6,7 @@ import { observeCaughtError } from '../utils/errorObservation';
 // appConfig/ads: only an explicit `false` disables — a missing doc/field means
 // "on", and any read error fails OPEN (show).
 
-import { doc, getDoc } from 'firebase/firestore';
-import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
+import { USE_MOCK_DATA } from '@/firebase/config';
 
 /** Master switch for the home "פנויים לשחק לידך" availability CALENDAR view
  *  (the weekly heatmap only — NOT the "set availability" prompt shown to users
@@ -17,8 +16,7 @@ let lastAvailabilityCardEnabled = true;
 export async function getAvailabilityCardEnabled(): Promise<boolean> {
   if (USE_MOCK_DATA) return true;
   try {
-    const { db } = getFirebase();
-    const snap = await retryRead(() => getDoc(doc(db, 'appConfig', 'features')), () => {});
+    const snap = await readAppConfig('features');
     if (!snap.exists()) return lastAvailabilityCardEnabled = true;
     const data = snap.data() as { availabilityCardEnabled?: unknown };
     return lastAvailabilityCardEnabled = data.availabilityCardEnabled !== false;

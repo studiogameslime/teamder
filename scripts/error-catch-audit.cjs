@@ -30,6 +30,7 @@ const boundaries = {
   'pulse/src/services/errorObservation.ts': 'Reporter dispatch recursion boundary.',
   'pulse/src/services/diagnosticRedaction.ts': 'Reporter sanitizer recursion boundary.',
   'pulse/src/services/adminSession.ts': 'Reporter authentication transport: failures reported by callers; no recursive retry.',
+  'pulse/src/services/proxyReadRecovery.ts': 'Used by the error reporter itself for proxy GETs. Original terminal errors propagate to each caller; observing the DNS probe here would report delivery through the same unavailable proxy.',
 };
 function domain(file) {
   if (/^(src\/|modules\/.*\.tsx?$|App\.tsx$)/.test(file)) return 'app';

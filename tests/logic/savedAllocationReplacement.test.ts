@@ -34,8 +34,9 @@ function harness(mock = false) {
   return { service: context.module.exports, current, validateDraftRoster };
 }
 
-test.each([false, true])('every new allocation replaces all current saved rosters (mock=%s)', async mock => {
+test.each([false, true])('before kickoff every new allocation replaces the saved split (mock=%s)', async mock => {
   const { service, current, validateDraftRoster } = harness(mock);
+  delete current.rotation; delete current.liveMatch; current.status = 'open';
   const live = JSON.stringify(current.liveMatch);
   const oldLocal = JSON.stringify({ teams: [['a'], ['b', 'c', 'd']], baseDraftRevision: manualDraftRevision(current.draftTeams) });
   for (const [index, ids] of [
@@ -51,12 +52,7 @@ test.each([false, true])('every new allocation replaces all current saved roster
     await service.saveDraftTeams('game', next, index === 0 ? { algorithm: 'rating_balanced_v2' } : undefined, true);
     expect(current.draftTeams.teams.map((t: any) => t.playerIds)).toEqual(ids);
     expect(resolveSplitTeams(current.draftTeams, current.rotation).map(t => t.playerIds)).toEqual(ids);
-    expect(current.rotation.baseTeams.map((t: any) => t.playerIds)).toEqual(ids);
-    expect(current.rotation.loans).toEqual([]);
-    expect(current.rotation.round).toBe(4);
-    expect(current.rotation.roundInstanceId).toBe('four');
-    expect(current.rotation.lastRoundAt).toBe(12);
-    expect(current.rotation.wins).toEqual({ 0: 2, 1: 1 });
+    expect(current.rotation).toBeUndefined();
     expect(JSON.stringify(current.liveMatch)).toBe(live);
     expect(rotationWriteSource(current)).not.toBe(oldSource);
     expect(hasManualDraft(oldLocal, manualDraftRevision(current.draftTeams))).toBe(false);
@@ -65,38 +61,39 @@ test.each([false, true])('every new allocation replaces all current saved roster
   expect(validateDraftRoster).toHaveBeenCalledTimes(4);
 });
 
-test('legacy editor also uses the current transactional rotation instead of a preflight read', async () => {
+test('legacy editor cannot bypass current-game reset confirmation once rotation exists', async () => {
   const { service, current } = harness();
   service.getGameById = () => { throw Error('a preflight read must not determine the saved rotation'); };
   const next = createManualDraft([['a', 'd'], ['b', 'c']], 'owner', 20);
-  await service.saveDraftTeams('game', next);
+  const before = structuredClone(current);
+  await expect(service.saveDraftTeams('game', next)).rejects.toThrow('עריכת המחזור');
   expect(current.rotation.roundInstanceId).toBe('four');
-  expect(current.rotation.baseTeams[0].playerIds).toEqual(['a', 'd']);
+  expect(current).toEqual(before);
 });
 
 test('rejected replacement does not partially change the saved allocation', async () => {
   const { service, current, validateDraftRoster } = harness();
+  delete current.rotation; current.status = 'open';
   const before = JSON.stringify(current);
   validateDraftRoster.mockImplementation(() => { throw Error('DRAFT_ROSTER_CHANGED'); });
   await expect(service.saveDraftTeams('game', createManualDraft([['d', 'b'], ['c', 'a']], 'owner', 20), undefined, true)).rejects.toThrow('DRAFT_ROSTER_CHANGED');
   expect(JSON.stringify(current)).toBe(before);
 });
 
-test.each([3, 4, 7])('replacement updates all %s groups and preserves waiting order', async count => {
+test.each([3, 4, 7])('legacy replacement of %s groups cannot change a live queue', async count => {
   const { service, current } = harness();
   current.rotation.playing = [1, 0];
   current.rotation.waiting = [2];
   const groups = Array.from({ length: count }, (_, index) => [`p${index}a`, `p${index}b`]);
-  await service.saveDraftTeams('game', createManualDraft(groups, 'owner', 20));
-  expect(current.rotation.baseTeams.map((t: any) => t.playerIds)).toEqual(groups);
-  expect(current.rotation.playing).toEqual([1, 0]);
-  expect(current.rotation.waiting).toEqual(Array.from({ length: count - 2 }, (_, i) => i + 2));
+  const before = structuredClone(current);
+  await expect(service.saveDraftTeams('game', createManualDraft(groups, 'owner', 20))).rejects.toThrow('עריכת המחזור');
+  expect(current).toEqual(before);
 });
 
 test('a replacement cannot remove a side currently playing and leave a dangling live reference', async () => {
   const { service, current } = harness();
   current.rotation.playing = [0, 2];
   const before = JSON.stringify(current);
-  await expect(service.saveDraftTeams('game', createManualDraft([['a', 'b'], ['c', 'd']], 'owner', 20))).rejects.toThrow('לא ניתן להסיר קבוצה שמשחקת כעת');
+  await expect(service.saveDraftTeams('game', createManualDraft([['a', 'b'], ['c', 'd']], 'owner', 20))).rejects.toThrow('עריכת המחזור');
   expect(JSON.stringify(current)).toBe(before);
 });
