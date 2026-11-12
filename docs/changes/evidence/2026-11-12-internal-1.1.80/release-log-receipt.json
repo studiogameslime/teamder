@@ -1,0 +1,33 @@
+{
+  "readBackVerified": true,
+  "version": "1.1.80",
+  "internalOnly": true,
+  "releaseId": "internal-release-1.1.80-312-2026-11-12",
+  "fixIds": [
+    "live-round-design-unified-2026-11-12",
+    "live-round-current-edit-2026-11-12",
+    "combined-rating-review-2026-11-11",
+    "rating-review-history-index-2026-11-12"
+  ],
+  "proofs": {
+    "live-round-design-unified-2026-11-12": {
+      "shotId": "zoNVFtz52GsbP9eMBgRC",
+      "sha256": "adb7d11ed0cb4a4d93b7154953798d791362ad830694f3ee6c248758636eea8e"
+    },
+    "live-round-current-edit-2026-11-12": {
+      "shotId": "GgWe7y6elDU8V8JE6HS3",
+      "sha256": "f56530881baef223d5ad5d70019dad831e587602ed49d2cf313f63f164757ade"
+    },
+    "combined-rating-review-2026-11-11": {
+      "shotId": "boI1jKORjesyJjUtSNAY",
+      "sha256": "815e9d5a4a99a095163c71e23e4a6b077c0180695bbb6e7111f6547210e1102b"
+    }
+  },
+  "historicalItemsPreserved": true,
+  "archivedVersionMetadata": [
+    "1.1.72",
+    "1.1.74",
+    "1.1.73",
+    "1.1.75"
+  ]
+}

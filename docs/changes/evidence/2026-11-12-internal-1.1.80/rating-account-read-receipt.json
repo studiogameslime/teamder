@@ -1,0 +1,7 @@
+{
+  "authenticated": true,
+  "businessDataWritten": false,
+  "managerDecisionTested": false,
+  "status": 403,
+  "nonadminDenied": true
+}

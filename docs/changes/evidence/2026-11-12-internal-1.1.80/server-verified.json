@@ -1,0 +1,39 @@
+{
+  "at": "2026-11-12T18:46:37.667097+00:00",
+  "targets": {
+    "getRatingReview": {
+      "active": true,
+      "revision": "getratingreview-00001-sim",
+      "sourceVerified": true,
+      "compatibilityEnabled": true
+    },
+    "decideRatingReview": {
+      "active": true,
+      "revision": "decideratingreview-00001-luv",
+      "sourceVerified": true,
+      "compatibilityEnabled": true
+    },
+    "onRatingReviewLegacyChange": {
+      "active": true,
+      "revision": "onratingreviewlegacychange-00001-vak",
+      "sourceVerified": true,
+      "compatibilityEnabled": true
+    },
+    "setClubAdminRating": {
+      "active": true,
+      "revision": "setclubadminrating-00004-sog",
+      "sourceVerified": true,
+      "compatibilityEnabled": true
+    },
+    "startSeasonEvening": {
+      "active": true,
+      "revision": "startseasonevening-00004-saj",
+      "sourceVerified": true,
+      "compatibilityEnabled": true
+    }
+  },
+  "otherFunctionsUnchanged": 125,
+  "rulesChanged": false,
+  "dataMigrated": false,
+  "ratingScalingPreservedAsExplicitDefault": 100
+}

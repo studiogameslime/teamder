@@ -1,0 +1,99 @@
+{
+  "verified": true,
+  "at": "2026-11-12T18:49:41.050Z",
+  "internal": "1.1.80/312",
+  "buildCommit": "c977d60921d3c8c4d5876ac56285f416c7b67822",
+  "bundle": {
+    "versionCode": 312,
+    "sha1": "5228bc593512582f107c6fe7bd850736f7f107fa",
+    "sha256": "a91de0da2ebc2e4dd11e96862d3567c7efd7d48a615a3fd695e07e2876e02999"
+  },
+  "tracks": [
+    {
+      "track": "production",
+      "releases": [
+        {
+          "name": "1.1.79",
+          "versionCodes": [
+            "311"
+          ],
+          "releaseNotes": [
+            {
+              "language": "iw-IL",
+              "text": "טעינת הפרופיל מתאוששת טוב יותר מחיבור חלש. שיפרנו גם את הרישום להתראות, את ההזמנות ואת אישור תוצאות הפנדלים."
+            }
+          ],
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "track": "beta"
+    },
+    {
+      "track": "alpha",
+      "releases": [
+        {
+          "name": "27 (0.2.10)",
+          "versionCodes": [
+            "27"
+          ],
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "track": "internal",
+      "releases": [
+        {
+          "name": "1.1.80",
+          "versionCodes": [
+            "312"
+          ],
+          "releaseNotes": [
+            {
+              "language": "iw-IL",
+              "text": "אפשר לערוך מחזור פעיל ולחלק מחדש את הקבוצות בכל השיטות, עם תמונות השחקנים ועיצוב אחיד. המתכונת נשארת חמישה מול חמישה גם בשלוש רביעיות. השינוי מאפס רק את המשחק הנוכחי לאחר אישור, ושומר על המשחקים הקודמים והסטטיסטיקות. נוספו המלצות דירוג למנהלים."
+            }
+          ],
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "track": "wear:beta"
+    },
+    {
+      "track": "wear:internal",
+      "releases": [
+        {
+          "name": "1.0.32",
+          "versionCodes": [
+            "1029"
+          ],
+          "releaseNotes": [
+            {
+              "language": "iw-IL",
+              "text": "מדידה אישית מהשעון עם התחלה ועצירה ידנית, סנכרון פרטי לטלפון ותמיכה במדדי מהירות כשהשעון מספק אותם. שיפורי יציבות במדידה ובסנכרון ועדכון הסבר הפרטיות."
+            }
+          ],
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "track": "wear:production",
+      "releases": [
+        {
+          "name": "1.0.30",
+          "versionCodes": [
+            "1027"
+          ],
+          "status": "completed"
+        }
+      ]
+    }
+  ],
+  "otherTracksUnchanged": true,
+  "deviceInstallVerified": false
+}

@@ -1,0 +1,37 @@
+{
+  "at": "2026-11-12T18:46:49.384390+00:00",
+  "indexReady": true,
+  "indexName": "projects/soccer-app-52b6b/databases/(default)/collectionGroups/games/indexes/CICAgJjmnIgK",
+  "querySucceeded": true,
+  "otherIndexesUnchanged": 35,
+  "readiness": {
+    "getRatingReview": {
+      "optionsStatus": 204,
+      "unauthenticatedStatus": 401,
+      "error": "UNAUTHENTICATED"
+    },
+    "decideRatingReview": {
+      "optionsStatus": 204,
+      "unauthenticatedStatus": 401,
+      "error": "UNAUTHENTICATED"
+    },
+    "setClubAdminRating": {
+      "optionsStatus": 204,
+      "unauthenticatedStatus": 401,
+      "error": "UNAUTHENTICATED"
+    },
+    "startSeasonEvening": {
+      "optionsStatus": 204,
+      "unauthenticatedStatus": 401,
+      "error": "UNAUTHENTICATED"
+    }
+  },
+  "baselineScoresPreserved": 625,
+  "changedBaselineScores": 0,
+  "currentScores": 625,
+  "rulesUnchanged": true,
+  "rulesSha256": "d3c19be7c0449228f5809b2ce3f04c2042a24608daa99183e43a6111e5ff2b24",
+  "businessDataWrittenByVerification": false,
+  "managerDecisionTested": false,
+  "triggerDeliveryTested": false
+}

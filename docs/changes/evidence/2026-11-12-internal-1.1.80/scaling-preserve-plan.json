@@ -1,0 +1,8 @@
+{
+  "previousExplicitLimit": null,
+  "previousRevisionScaling": null,
+  "previousEffectiveDefault": 100,
+  "newExplicitLimit": 100,
+  "source": "https://docs.cloud.google.com/run/docs/configuring/max-instances",
+  "otherConfigChanges": false
+}

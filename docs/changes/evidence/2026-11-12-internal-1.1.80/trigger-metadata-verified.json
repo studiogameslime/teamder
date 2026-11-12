@@ -1,0 +1,20 @@
+{
+  "onSocialSearchNameWritten": {
+    "invokerBindings": [],
+    "eventType": "google.cloud.firestore.document.v1.written",
+    "destinationMatches": true,
+    "conditions": {},
+    "reconciling": false,
+    "destinationKind": "cloudFunction",
+    "deliveryTested": false
+  },
+  "onRatingReviewLegacyChange": {
+    "invokerBindings": [],
+    "eventType": "google.cloud.firestore.document.v1.updated",
+    "destinationMatches": true,
+    "conditions": {},
+    "reconciling": false,
+    "destinationKind": "cloudFunction",
+    "deliveryTested": false
+  }
+}
